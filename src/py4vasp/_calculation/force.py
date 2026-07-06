@@ -1,16 +1,144 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import copy
+
 import numpy as np
 
-from py4vasp import _config, exception
-from py4vasp._calculation import base, slice_, structure
-from py4vasp._raw import data as raw_data
+from py4vasp import _config, exception, raw
+from py4vasp._calculation import slice_
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+    slice_steps,
+)
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.data_db import Force_DB
 from py4vasp._third_party import view
-from py4vasp._util import check, database, reader
+from py4vasp._util import check
 
 
-class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
+class ForceHandler:
+    """Handler for force data — performs all data access and transformation logic."""
+
+    force_rescale = 1.5
+    "Scaling constant to convert forces to Å."
+
+    def __init__(self, raw_force: raw.Force, steps=None):
+        self._raw_force = raw_force
+        self._steps = steps
+
+    @classmethod
+    def from_data(cls, raw_force: raw.Force, steps=None) -> "ForceHandler":
+        return cls(raw_force, steps=steps)
+
+    def __str__(self) -> str:
+        result = """
+POSITION                                       TOTAL-FORCE (eV/Angst)
+-----------------------------------------------------------------------------------
+        """.strip()
+        step = self._last_step
+        structure = StructureHandler.from_data(self._raw_force.structure, steps=step)
+        positions = structure.cartesian_positions()
+        forces = np.array(self._raw_force.forces)[step]
+        position_to_string = lambda pos: " ".join(f"{x:12.5f}" for x in pos)
+        force_to_string = lambda f: " ".join(f"{x:13.6f}" for x in f)
+        for position, force in zip(positions, forces):
+            result += f"\n{position_to_string(position)}    {force_to_string(force)}"
+        return result
+
+    def to_dict(self) -> dict:
+        """Read the forces into a dictionary.
+
+        Forces and associated structural information for one or more selected steps of
+        the trajectory are returned in a dictionary. This includes the lattice vectors,
+        atomic positions, and atomic species in addition to the forces acting on each atom.
+        The forces are in Cartesian coordinates and in units of eV/Å.
+
+        Returns
+        -------
+        dict
+            Contains the forces for all selected steps and the structural information
+            to know on which atoms the forces act.
+        """
+        structure = StructureHandler.from_data(
+            self._raw_force.structure, steps=self._steps
+        )
+        return {
+            "structure": structure.to_dict(),
+            "forces": slice_steps(
+                np.array(self._raw_force.forces), self._steps, default_ndim=2
+            ),
+        }
+
+    def to_database(self) -> dict:
+        """Serialize force statistics to the database format."""
+        if check.is_none(self._raw_force.forces):
+            raise exception.NoData("No force data available to write to database.")
+        forces = np.array(self._raw_force.forces)
+        if forces.ndim == 2:
+            final_force_norms = np.linalg.norm(forces, axis=-1)
+            initial_force_norms = final_force_norms.copy()
+        else:
+            final_force_norms = np.linalg.norm(forces[-1], axis=-1)
+            initial_force_norms = np.linalg.norm(forces[0], axis=-1)
+        return Force_DB(
+            final_force_min=float(np.min(final_force_norms)),
+            final_force_median=float(np.median(final_force_norms)),
+            final_force_mean=float(np.mean(final_force_norms)),
+            final_force_max=float(np.max(final_force_norms)),
+            final_index_force_max=int(np.argmax(final_force_norms)),
+            initial_force_min=float(np.min(initial_force_norms)),
+            initial_force_max=float(np.max(initial_force_norms)),
+            initial_index_force_max=int(np.argmax(initial_force_norms)),
+        )
+
+    def to_view(self, supercell=None):
+        """Visualize the forces showing arrows at the atoms."""
+        structure = StructureHandler.from_data(self._raw_force.structure)
+        viewer = structure.to_view(supercell)
+        forces = self.force_rescale * slice_steps(
+            np.array(self._raw_force.forces), self._steps, default_ndim=2
+        )
+        if forces.ndim == 2:
+            forces = forces[np.newaxis]
+        ion_arrow = view.IonArrow(
+            quantity=forces,
+            label="forces",
+            color=_config.VASP_COLORS["purple"],
+            radius=0.2,
+        )
+        viewer.ion_arrows = [ion_arrow]
+        return viewer
+
+    def number_steps(self) -> int:
+        """Return the number of forces in the trajectory."""
+        n = len(np.array(self._raw_force.forces))
+        return len(range(n)[self._to_slice])
+
+    @property
+    def _last_step(self):
+        if self._steps is None or self._steps == -1:
+            return -1
+        if isinstance(self._steps, slice):
+            stop = self._steps.stop
+            return (stop - 1) if stop is not None else -1
+        return self._steps
+
+    @property
+    def _to_slice(self):
+        if self._steps is None or self._steps == -1:
+            return slice(-1, None)
+        if isinstance(self._steps, slice):
+            return self._steps
+        return slice(self._steps, self._steps + 1)
+
+
+@quantity("force")
+class Force(view.Mixin):
     """The forces determine the path of the atoms in a trajectory.
 
     You can use this class to analyze the forces acting on the atoms. The forces
@@ -50,28 +178,40 @@ class Force(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     3
     """
 
-    _raw_data: raw_data.Force
+    force_rescale = ForceHandler.force_rescale
 
-    force_rescale = 1.5
-    "Scaling constant to convert forces to Å."
+    def __init__(self, source, quantity_name: str = "force", steps=None):
+        self._source = source
+        self._quantity_name = quantity_name
+        self._steps = steps
 
-    @base.data_access
-    def __str__(self):
+    @classmethod
+    def from_data(cls, raw_force: raw.Force) -> "Force":
+        """Create a Force dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_force))
+
+    def __getitem__(self, steps) -> "Force":
+        new = copy.copy(self)
+        new._steps = steps
+        return new
+
+    def _handler_factory(self, raw):
+        return ForceHandler.from_data(raw, steps=self._steps)
+
+    def __str__(self, selection=None) -> str:
         "Convert the forces to a format similar to the OUTCAR file."
-        result = """
-POSITION                                       TOTAL-FORCE (eV/Angst)
------------------------------------------------------------------------------------
-        """.strip()
-        step = self._last_step_in_slice
-        position_to_string = lambda position: " ".join(f"{x:12.5f}" for x in position)
-        positions = self._structure[step].cartesian_positions()
-        force_to_string = lambda force: " ".join(f"{x:13.6f}" for x in force)
-        for position, force in zip(positions, self._force[step]):
-            result += f"\n{position_to_string(position)}    {force_to_string(force)}"
-        return result
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ForceHandler.__str__,
+        )
 
-    @base.data_access
-    def to_dict(self):
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self) if not cycle else "...")
+
+    def read(self) -> dict:
         """Read the forces into a dictionary.
 
         Forces and associated structural information for one or more selected steps of
@@ -93,58 +233,41 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
 
-        If you use the `to_dict` method, the result will depend on the steps that you
+        If you use the `read` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
         step will be used. The structure is included to provide the necessary context for
         the forces.
 
-        >>> calculation.force.to_dict()
+        >>> calculation.force.read()
         {'structure': {...}, 'forces': array([[...]])}
 
         To select the results for all steps, you don't specify the array boundaries.
         Notice that in this case the forces contain an additional dimension for the
         different steps.
 
-        >>> calculation.force[:].to_dict()
+        >>> calculation.force[:].read()
         {'structure': {...}, 'forces': array([[[...]]])}
 
         You can also select specific steps or a subset of steps as follows
 
-        >>> calculation.force[1].to_dict()
+        >>> calculation.force[1].read()
         {'structure': {...}, 'forces': array([[...]])}
-        >>> calculation.force[0:2].to_dict()
+        >>> calculation.force[0:2].read()
         {'structure': {...}, 'forces': array([[[...]]])}
         """
-        return {
-            "structure": self._structure[self._steps].read(),
-            "forces": self._force[self._steps],
-        }
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ForceHandler.to_dict,
+        )
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        if check.is_none(self._raw_data.forces):
-            raise exception.NoData("No force data available to write to database.")
-        if self._raw_data.forces[:].ndim == 2:
-            final_force_norms = np.linalg.norm(self._raw_data.forces[:], axis=-1)
-            initial_force_norms = final_force_norms.copy()
-        else:
-            final_force_norms = np.linalg.norm(self._raw_data.forces[-1], axis=-1)
-            initial_force_norms = np.linalg.norm(self._raw_data.forces[0], axis=-1)
-        return {
-            "force": Force_DB(
-                final_force_min=float(np.min(final_force_norms)),
-                final_force_median=float(np.median(final_force_norms)),
-                final_force_mean=float(np.mean(final_force_norms)),
-                final_force_max=float(np.max(final_force_norms)),
-                final_index_force_max=int(np.argmax(final_force_norms)),
-                initial_force_min=float(np.min(initial_force_norms)),
-                initial_force_max=float(np.max(initial_force_norms)),
-                initial_index_force_max=int(np.argmax(initial_force_norms)),
-            ),
-        }
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read()
 
-    @base.data_access
-    def to_view(self, supercell=None):
+    def to_view(self, supercell=None) -> view.View:
         """Visualize the forces showing arrows at the atoms.
 
         This method adds arrows to the atoms in the structure sized according to the
@@ -200,36 +323,30 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         >>> calculation.force.to_view(supercell=[2,3,1])
         View(..., supercell=array([2, 3, 1]), ...)
         """
-        viewer = self._structure.plot(supercell)
-        forces = self.force_rescale * self._force[self._steps]
-        if forces.ndim == 2:
-            forces = forces[np.newaxis]
-        ion_arrow = view.IonArrow(
-            quantity=forces,
-            label="forces",
-            color=_config.VASP_COLORS["purple"],
-            radius=0.2,
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ForceHandler.to_view,
+            supercell,
         )
-        viewer.ion_arrows = [ion_arrow]
-        return viewer
 
-    @base.data_access
-    def number_steps(self):
+    def number_steps(self) -> int:
         """Return the number of forces in the trajectory."""
-        range_ = range(len(self._raw_data.forces))
-        return len(range_[self._slice])
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ForceHandler.number_steps,
+        )
 
-    @property
-    def _force(self):
-        return _ForceReader(self._raw_data.forces)
-
-
-class _ForceReader(reader.Reader):
-    def error_message(self, key, err):
-        key = np.array(key)
-        steps = key if key.ndim == 0 else key[0]
-        return (
-            f"Error reading the forces. Please check if the steps "
-            f"`{steps}` are properly formatted and within the boundaries. "
-            "Additionally, you may consider the original error message:\n" + err.args[0]
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            ForceHandler.from_data,
+            ForceHandler.to_database,
         )

@@ -7,12 +7,10 @@ from unittest.mock import mock_open, patch
 import pytest
 
 from py4vasp import Calculation, _calculation, control, exception
-from py4vasp._calculation import base
 
 
-@patch.object(base.Refinery, "from_path", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
-def test_creation_from_path(mock_access, mock_from_path):
+def test_creation_from_path(mock_access):
     # note: in pytest __file__ defaults to absolute path
     absolute_path = Path(__file__)
     calc = Calculation.from_path(absolute_path)
@@ -23,14 +21,12 @@ def test_creation_from_path(mock_access, mock_from_path):
     calc = Calculation.from_path("~")
     assert calc.path() == Path.home()
     mock_access.assert_not_called()
-    mock_from_path.assert_not_called()
-    calc.band  # access the band object
-    mock_from_path.assert_called_once()
+    calc.band  # access the band object — no data loaded yet
+    mock_access.assert_not_called()
 
 
-@patch.object(base.Refinery, "from_file", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
-def test_creation_from_file(mock_access, mock_from_file):
+def test_creation_from_file(mock_access):
     # note: in pytest __file__ defaults to absolute path
     absolute_path = Path(__file__)
     absolute_file = absolute_path / "example.h5"
@@ -42,9 +38,8 @@ def test_creation_from_file(mock_access, mock_from_file):
     calc = Calculation.from_file("~/example.h5")
     assert calc.path() == Path.home()
     mock_access.assert_not_called()
-    mock_from_file.assert_not_called()
-    calc.band  # access the band object
-    mock_from_file.assert_called()
+    calc.band  # access the band object — no data loaded yet
+    mock_access.assert_not_called()
 
 
 @patch("py4vasp.raw.access", autospec=True)

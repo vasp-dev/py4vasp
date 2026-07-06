@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.projector import SPIN_PROJECTION, Projector
+from py4vasp._calculation.projector import SPIN_PROJECTION, Projector, ProjectorHandler
 from py4vasp._raw.data_db import Projector_DB
 
 
@@ -33,8 +33,10 @@ def missing_orbitals(raw_data):
 
 @pytest.fixture(params=["Sr2TiO4", "Fe3O4", "Ba2PbO4", "without_orbitals"])
 def all_projectors(request, raw_data):
-    projector = Projector.from_data(raw_data.projector(request.param))
+    raw_projector = raw_data.projector(request.param)
+    projector = Projector.from_data(raw_projector)
     projector.ref = types.SimpleNamespace()
+    projector.ref.raw_data = raw_projector
     projector.ref.orbital_types = list(projector.selections().get("orbital", {}))
     return projector
 
@@ -330,7 +332,8 @@ def test_factory_methods(raw_data, check_factory_methods, projections):
 
 
 def test_to_database(all_projectors):
-    db_data: Projector_DB = all_projectors._read_to_database()["projector:default"]
+    handler = ProjectorHandler.from_data(all_projectors.ref.raw_data)
+    db_data: Projector_DB = handler.to_database()
     assert isinstance(db_data, Projector_DB)
     if db_data.orbital_types is not None:
         assert sorted(db_data.orbital_types) == sorted(all_projectors.ref.orbital_types)

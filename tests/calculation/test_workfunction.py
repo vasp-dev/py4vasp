@@ -88,10 +88,14 @@ workfunction along {lattice_vector}:
     assert actual == {"text/plain": reference}
 
 
-def test_to_database(workfunction):
-    actual: Workfunction_DB = workfunction._read_to_database()["workfunction:default"]
+def test_to_database(raw_data):
+    from py4vasp._calculation.workfunction import WorkfunctionHandler
+
+    raw_workfunction = raw_data.workfunction("1")
+    handler = WorkfunctionHandler.from_data(raw_workfunction)
+    actual: Workfunction_DB = handler.to_database()
     assert isinstance(actual, Workfunction_DB)
-    expected = Workfunction_DB(workfunction.ref.idipol, None)
+    expected = Workfunction_DB(raw_workfunction.idipol, None)
     assert actual == expected
 
 

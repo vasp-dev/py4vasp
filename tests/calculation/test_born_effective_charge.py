@@ -5,26 +5,30 @@ from dataclasses import fields
 
 import pytest
 
-from py4vasp._calculation.born_effective_charge import BornEffectiveCharge
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.born_effective_charge import (
+    BornEffectiveCharge,
+    BornEffectiveChargeHandler,
+)
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.data_db import BornEffectiveCharge_DB
 
 
 @pytest.fixture
 def Sr2TiO4(raw_data):
     raw_born_charges = raw_data.born_effective_charge("Sr2TiO4")
-    born_charges = BornEffectiveCharge.from_data(raw_born_charges)
-    born_charges.ref = types.SimpleNamespace()
-    structure = Structure.from_data(raw_born_charges.structure)
-    born_charges.ref.structure = structure
-    born_charges.ref.charge_tensors = raw_born_charges.charge_tensors
-    born_charges.ref.minmax_info = (12, 0, 174, 6)
-    return born_charges
+    handler = BornEffectiveChargeHandler.from_data(raw_born_charges)
+    handler.ref = types.SimpleNamespace()
+    structure = StructureHandler.from_data(raw_born_charges.structure)
+    handler.ref.structure = structure
+    handler.ref.charge_tensors = raw_born_charges.charge_tensors
+    handler.ref.minmax_info = (12, 0, 174, 6)
+    handler.ref.raw_data = raw_born_charges
+    return handler
 
 
 def test_Sr2TiO4_read(Sr2TiO4, Assert):
     actual = Sr2TiO4.read()
-    reference_structure = Sr2TiO4.ref.structure.read()
+    reference_structure = Sr2TiO4.ref.structure.to_dict()
     for key in actual["structure"]:
         if key in ("elements", "names"):
             assert actual["structure"][key] == reference_structure[key]
@@ -76,8 +80,7 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def test_to_database(Sr2TiO4):
-    database_data = Sr2TiO4._read_to_database()
-    born_db: BornEffectiveCharge_DB = database_data["born_effective_charge:default"]
+    born_db: BornEffectiveCharge_DB = Sr2TiO4.to_database()
     assert born_db.eigenvalue_min == Sr2TiO4.ref.minmax_info[0]
     assert born_db.eigenvalue_max == Sr2TiO4.ref.minmax_info[2]
     assert born_db.eigenvalue_min_index == Sr2TiO4.ref.minmax_info[1]

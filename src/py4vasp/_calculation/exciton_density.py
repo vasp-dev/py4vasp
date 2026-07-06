@@ -4,20 +4,91 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import _config, exception
-from py4vasp._calculation import _stoichiometry, base, structure
-from py4vasp._raw import data as raw_data
+from py4vasp import _config, exception, raw
+from py4vasp._calculation._stoichiometry import StoichiometryHandler
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._third_party import view
-from py4vasp._util import import_, index, select
-from py4vasp._util.density import Visualizer
-
-pretty = import_.optional("IPython.lib.pretty")
-
+from py4vasp._util import index, select
 
 _DEFAULT_SELECTION = "1"
 
 
-class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
+class ExcitonDensityHandler:
+    """Handler for exciton charge density data."""
+
+    def __init__(self, raw_exciton_density: raw.ExcitonDensity):
+        self._raw_exciton_density = raw_exciton_density
+
+    @classmethod
+    def from_data(
+        cls, raw_exciton_density: raw.ExcitonDensity
+    ) -> "ExcitonDensityHandler":
+        return cls(raw_exciton_density)
+
+    def __str__(self) -> str:
+        _raise_error_if_no_data(self._raw_exciton_density.exciton_charge)
+        grid = self._raw_exciton_density.exciton_charge.shape[1:]
+        stoichiometry = StoichiometryHandler.from_data(
+            self._raw_exciton_density.structure.stoichiometry
+        )
+        return f"""exciton charge density:
+    structure: {str(stoichiometry)}
+    grid: {grid[2]}, {grid[1]}, {grid[0]}
+    excitons: {len(self._raw_exciton_density.exciton_charge)}"""
+
+    def to_dict(self) -> dict:
+        _raise_error_if_no_data(self._raw_exciton_density.exciton_charge)
+        return {
+            "structure": self._structure().to_dict(),
+            "charge": self.to_numpy(),
+        }
+
+    def to_numpy(self) -> np.ndarray:
+        return np.moveaxis(self._raw_exciton_density.exciton_charge, 0, -1).T
+
+    def to_view(
+        self,
+        selection: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+        center: bool = False,
+        **user_options,
+    ) -> view.View:
+        _raise_error_if_no_data(self._raw_exciton_density.exciton_charge)
+        map_ = self._create_map()
+        selector = index.Selector({0: map_}, self._raw_exciton_density.exciton_charge)
+        selection = selection or _DEFAULT_SELECTION
+        tree = select.Tree.from_selection(selection)
+        viewer = self._structure().to_view(supercell)
+        viewer.grid_scalars = [
+            view.GridQuantity(selector[sel].T[np.newaxis], label=selector.label(sel))
+            for sel in tree.selections()
+        ]
+        if center:
+            viewer.shift = np.array([0.5, 0.5, 0.5])
+        for scalar in viewer.grid_scalars:
+            scalar.isosurfaces = self._isosurfaces(**user_options)
+        return viewer
+
+    def _structure(self) -> StructureHandler:
+        return StructureHandler.from_data(self._raw_exciton_density.structure)
+
+    def _create_map(self) -> dict:
+        num_excitons = self._raw_exciton_density.exciton_charge.shape[0]
+        return {str(choice + 1): choice for choice in range(num_excitons)}
+
+    def _isosurfaces(self, isolevel=0.8, color=None, opacity=0.6):
+        color = color or _config.VASP_COLORS["cyan"]
+        return [view.Isosurface(isolevel, color, opacity)]
+
+
+@quantity("density", group="exciton")
+class ExcitonDensity(view.Mixin):
     """This class accesses exciton charge densities of VASP.
 
     The exciton charge densities can be calculated via the BSE/TDHF algorithm in
@@ -25,8 +96,7 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
 
     Examples
     --------
-
-    First, we create some example data do that you can follow along. Please define a
+    First, we create some example data so that you can follow along. Please define a
     variable `path` with the path to a directory that exists and does not contain any
     VASP calculation data. Alternatively, you can use your own data if you have run
     VASP and construct `calculation` from it.
@@ -34,7 +104,8 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path)
 
-    For your own postprocessing, you can read the band data into a Python dictionary:
+    For your own postprocessing, you can read the exciton density data into a Python
+    dictionary:
 
     >>> calculation.exciton.density.read()
     {'structure': {...}, 'charge': array([[[[...]]]]...)}
@@ -47,32 +118,42 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.exciton.density.plot()
+    ...
     View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='1', isosurfaces=[Isosurface(...)])], ...)
-
 
     Finally, you can inspect possible selections with:
 
     >>> calculation.exciton.density.selections()
     {'exciton_density': ['default'...]...}
 
-    Please check the documentation of these methods for more details on how to use them and which options they provide.
+    Please check the documentation of these methods for more details on how to use
+    them and which options they provide.
     """
 
-    _raw_data: raw_data.ExcitonDensity
+    def __init__(self, source, quantity_name: str = "exciton_density"):
+        self._source = source
+        self._quantity_name = quantity_name
 
-    @base.data_access
-    def __str__(self):
-        _raise_error_if_no_data(self._raw_data.exciton_charge)
-        grid = self._raw_data.exciton_charge.shape[1:]
-        raw_stoichiometry = self._raw_data.structure.stoichiometry
-        stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
-        return f"""exciton charge density:
-    structure: {pretty.pretty(stoichiometry)}
-    grid: {grid[2]}, {grid[1]}, {grid[0]}
-    excitons: {len(self._raw_data.exciton_charge)}"""
+    @classmethod
+    def from_data(cls, raw_exciton_density: raw.ExcitonDensity) -> "ExcitonDensity":
+        return cls(source=DataSource(raw_exciton_density))
 
-    @base.data_access
-    def to_dict(self):
+    def _handler_factory(self, raw):
+        return ExcitonDensityHandler.from_data(raw)
+
+    def __str__(self, selection=None) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ExcitonDensityHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self, selection=None) -> dict:
         """Read the exciton density into a dictionary.
 
         Returns
@@ -81,13 +162,19 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
             Contains the supercell structure information as well as the exciton
             charge density represented on a grid in the supercell.
         """
-        _raise_error_if_no_data(self._raw_data.exciton_charge)
-        result = {"structure": self._structure.read()}
-        result.update({"charge": self.to_numpy()})
-        return result
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ExcitonDensityHandler.to_dict,
+        )
 
-    @base.data_access
-    def to_numpy(self):
+    def to_dict(self, selection=None) -> dict:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read(selection=selection)
+
+    def to_numpy(self, selection=None) -> np.ndarray:
         """Convert the exciton charge density to a numpy array.
 
         Returns
@@ -95,12 +182,17 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
         np.ndarray
             Charge density of all excitons.
         """
-        return np.moveaxis(self._raw_data.exciton_charge, 0, -1).T
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ExcitonDensityHandler.to_numpy,
+        )
 
-    @base.data_access
     def to_view(
         self,
-        selection: Optional[str] = None,
+        selection: str | None = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
         center: bool = False,
         **user_options,
@@ -117,7 +209,7 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
             direction.
 
         center : bool = False
-            Shift the origin of the unit cell to the center. This is helpful if you
+            Shift the origin of the unit cell to the center. This is helpful if
             the exciton is at the corner of the cell.
 
         user_options
@@ -137,39 +229,19 @@ class ExcitonDensity(base.Refinery, structure.Mixin, view.Mixin):
         >>> calculation.exciton.density.plot()
         Plot an isosurface of the third exciton charge density
         >>> calculation.exciton.density.plot("3")
-        Plot an isosurface of the sum of first and second exciton charge
-        densities
+        Plot an isosurface of the sum of first and second exciton charge densities
         >>> calculation.exciton.density.plot("1+2")
         """
-        _raise_error_if_no_data(self._raw_data.exciton_charge)
-        viewer = self._structure.plot(supercell)
-        # build selector
-        map_ = self._create_map()
-        selector = index.Selector({0: map_}, self._raw_data.exciton_charge)
-
-        # define selections
-        selection = selection or _DEFAULT_SELECTION
-        tree = select.Tree.from_selection(selection)
-
-        # set up Visualizer
-        visualizer = Visualizer(self._structure)
-        dataDict = {selector.label(sel): (selector[sel].T) for sel in tree.selections()}
-        viewer = visualizer.to_view(dataDict, supercell=supercell)
-
-        # adjust viewer
-        if center:
-            viewer.shift = np.array([0.5, 0.5, 0.5])
-        for scalar in viewer.grid_scalars:
-            scalar.isosurfaces = self._isosurfaces(**user_options)
-        return viewer
-
-    def _create_map(self):
-        num_excitons = self._raw_data.exciton_charge.shape[0]
-        return {str(choice + 1): choice for choice in range(num_excitons)}
-
-    def _isosurfaces(self, isolevel=0.8, color=None, opacity=0.6):
-        color = color or _config.VASP_COLORS["cyan"]
-        return [view.Isosurface(isolevel, color, opacity)]
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ExcitonDensityHandler.to_view,
+            supercell=supercell,
+            center=center,
+            **user_options,
+        )
 
 
 def _raise_error_if_no_data(data):

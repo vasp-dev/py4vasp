@@ -3,7 +3,7 @@
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation._stoichiometry import Stoichiometry
+from py4vasp._calculation._stoichiometry import Stoichiometry, StoichiometryHandler
 from py4vasp._calculation.selection import Selection
 from py4vasp._raw.data_db import Stoichiometry_DB
 from py4vasp._util import check, convert, import_, select
@@ -84,9 +84,8 @@ class Base:
         assert actual == self.format_output
 
     def test_to_database(self):
-        db_data: Stoichiometry_DB = self.stoichiometry._read_to_database()[
-            "stoichiometry:default"
-        ]
+        handler = StoichiometryHandler.from_data(self.raw_stoichiometry)
+        db_data: Stoichiometry_DB = handler.to_database()
         assert isinstance(db_data, Stoichiometry_DB)
 
         expected_ion_types = getattr(self, "ref_ion_types", self.unique_elements)
@@ -139,7 +138,8 @@ class Base:
 class TestSr2TiO4(Base):
     @pytest.fixture(autouse=True)
     def _setup(self, raw_data):
-        self.stoichiometry = Stoichiometry.from_data(raw_data.stoichiometry("Sr2TiO4"))
+        self.raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4")
+        self.stoichiometry = Stoichiometry.from_data(self.raw_stoichiometry)
         self.names = ["Sr_1", "Sr_2", "Ti_1", "O_1", "O_2", "O_3", "O_4"]
         self.elements = 2 * ["Sr"] + ["Ti"] + 4 * ["O"]
         self.poscar_string = "Sr Ti O\n2 1 4"
@@ -170,8 +170,8 @@ class TestCa3AsBr3(Base):
 
     @pytest.fixture(autouse=True)
     def _setup(self, raw_data):
-        raw_stoichiometry = raw_data.stoichiometry("Ca2AsBr-CaBr2")
-        self.stoichiometry = Stoichiometry.from_data(raw_stoichiometry)
+        self.raw_stoichiometry = raw_data.stoichiometry("Ca2AsBr-CaBr2")
+        self.stoichiometry = Stoichiometry.from_data(self.raw_stoichiometry)
         self.names = ["Ca_1", "Ca_2", "As_1", "Br_1", "Ca_3", "Br_2", "Br_3"]
         self.elements = ["Ca", "Ca", "As", "Br", "Ca", "Br", "Br"]
         self.poscar_string = "Ca As Br Ca Br\n2 1 1 1 2"
@@ -197,8 +197,8 @@ class TestBa2MnO4(Base):
 
     @pytest.fixture(params=("Sr2TiO4", "Sr2TiO4 without ion types"), autouse=True)
     def _setup(self, request, raw_data):
-        raw_stoichiometry = raw_data.stoichiometry(request.param)
-        self.stoichiometry = Stoichiometry.from_data(raw_stoichiometry)
+        self.raw_stoichiometry = raw_data.stoichiometry(request.param)
+        self.stoichiometry = Stoichiometry.from_data(self.raw_stoichiometry)
         self.overwrite_ion_types = ["Ba", "Mn", "O"]
         self.names = ["Ba_1", "Ba_2", "Mn_1", "O_1", "O_2", "O_3", "O_4"]
         self.elements = 2 * ["Ba"] + ["Mn"] + 4 * ["O"]
@@ -251,4 +251,20 @@ def test_ion_types_not_required(method, raw_data):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.stoichiometry("Sr2TiO4")
-    check_factory_methods(Stoichiometry, data)
+    check_factory_methods(Stoichiometry, data, skip_methods=["to_mdtraj"])
+
+
+def test_to_database_dispatch(raw_data):
+    """The dispatcher keys the handler result by quantity name for the database."""
+    raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4")
+    result = Stoichiometry.from_data(raw_stoichiometry)._to_database()
+    assert set(result) == {"stoichiometry"}
+    expected = StoichiometryHandler.from_data(raw_stoichiometry).to_database()
+    assert result["stoichiometry"] == expected
+
+
+def test_to_database_dispatch_skips_empty(raw_data):
+    """Stoichiometry without ion types carries no database data, so it is omitted."""
+    raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4 without ion types")
+    result = Stoichiometry.from_data(raw_stoichiometry)._to_database()
+    assert result == {}

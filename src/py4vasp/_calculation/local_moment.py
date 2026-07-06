@@ -1,10 +1,21 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import copy
+
 import numpy as np
 
-from py4vasp import _config, exception
-from py4vasp._calculation import base, slice_, structure
-from py4vasp._raw import data as raw_data
+from py4vasp import _config, exception, raw
+from py4vasp._calculation import slice_
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+    slice_steps,
+)
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.data_db import LocalMoment_DB
 from py4vasp._third_party import view
 from py4vasp._util import check, documentation, select
@@ -26,7 +37,240 @@ selection : str
 _ORBITAL_PROJECTION = "orbital_projection"
 
 
-class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
+class LocalMomentHandler:
+    """Handler for local moment data."""
+
+    length_moments = 1.5
+    "Length in \u00c5 how a magnetic moment is displayed relative to the largest moment."
+
+    def __init__(self, raw_local_moment: raw.LocalMoment, steps=None):
+        self._raw_local_moment = raw_local_moment
+        self._steps = steps
+
+    @classmethod
+    def from_data(
+        cls, raw_local_moment: raw.LocalMoment, steps=None
+    ) -> "LocalMomentHandler":
+        return cls(raw_local_moment, steps=steps)
+
+    def __str__(self) -> str:
+        if self._is_nonpolarized:
+            return "not spin polarized"
+        magmom = "MAGMOM = "
+        moments_last_step = self.magnetic("spin")
+        moments_to_string = lambda vec: " ".join(f"{moment:.2f}" for moment in vec)
+        if moments_last_step.ndim == 1:
+            return magmom + moments_to_string(moments_last_step)
+        else:
+            separator = " \\\n         "
+            generator = (moments_to_string(vec) for vec in moments_last_step)
+            return magmom + separator.join(generator)
+
+    def to_dict(self) -> dict:
+        return {
+            _ORBITAL_PROJECTION: self.selections()[_ORBITAL_PROJECTION],
+            "charge": self.projected_charge(),
+            **self._add_total_magnetic_moment(),
+            **self._add_spin_and_orbital_moments(),
+        }
+
+    def to_database(self) -> dict:
+        spin_moments_orbitals = None
+        if not check.is_none(self._raw_local_moment.spin_moments):
+            if not self._is_nonpolarized:
+                spin_moments_orbitals = self._raw_local_moment.spin_moments[-1, -1]
+        spin_moment_total_min = None
+        spin_moment_total_max = None
+        if spin_moments_orbitals is not None:
+            spin_moments_total = np.sum(spin_moments_orbitals, axis=-1)
+            spin_moment_total_min = float(np.min(spin_moments_total))
+            spin_moment_total_max = float(np.max(spin_moments_total))
+        return LocalMoment_DB(
+            has_orbital_moments=self._has_orbital_moments,
+            final_spin_moment_total_min=spin_moment_total_min,
+            final_spin_moment_total_max=spin_moment_total_max,
+        )
+
+    def to_view(self, selection="total", supercell=None):
+        structure = StructureHandler.from_data(
+            self._raw_local_moment.structure, steps=self._steps
+        )
+        viewer = structure.to_view(supercell)
+        if not self._is_nonpolarized:
+            viewer.ion_arrows = list(
+                self._prepare_magnetic_moments_for_plotting(selection)
+            )
+        return viewer
+
+    def projected_charge(self):
+        self._raise_error_if_steps_out_of_bounds()
+        return self._raw_local_moment.spin_moments[self._steps_or_last, 0]
+
+    def projected_magnetic(self, selection="total"):
+        self._raise_error_if_steps_out_of_bounds()
+        self._raise_error_if_no_magnetic_moments()
+        tree = select.Tree.from_selection(selection)
+        moments = [self._magnetic_moments(sel) for sel in tree.selections()]
+        return np.squeeze(moments)
+
+    def charge(self):
+        return _sum_over_orbitals(self.projected_charge())
+
+    def magnetic(self, selection="total"):
+        return _sum_over_orbitals(
+            self.projected_magnetic(selection), is_vector=self._is_noncollinear
+        )
+
+    def selections(self):
+        result = {}
+        if self._raw_local_moment.spin_moments.shape[-1] == 4:
+            result[_ORBITAL_PROJECTION] = ["s", "p", "d", "f"]
+        else:
+            result[_ORBITAL_PROJECTION] = ["s", "p", "d"]
+        if self._is_nonpolarized:
+            result["component"] = ["charge"]
+        elif self._has_orbital_moments:
+            result["component"] = ["charge", "total", "spin", "orbital"]
+        else:
+            result["component"] = ["charge", "total", "spin"]
+        return result
+
+    def number_steps(self) -> int:
+        n = len(np.array(self._raw_local_moment.spin_moments))
+        return len(range(n)[self._to_slice])
+
+    @property
+    def _is_nonpolarized(self):
+        return self._raw_local_moment.spin_moments.shape[1] == 1
+
+    @property
+    def _is_collinear(self):
+        return self._raw_local_moment.spin_moments.shape[1] == 2
+
+    @property
+    def _is_noncollinear(self):
+        return self._raw_local_moment.spin_moments.shape[1] == 4
+
+    @property
+    def _has_orbital_moments(self):
+        return not check.is_none(self._raw_local_moment.orbital_moments)
+
+    @property
+    def _steps_or_last(self):
+        if self._steps is None or self._steps == -1:
+            return -1
+        return self._steps
+
+    @property
+    def _to_slice(self):
+        if self._steps is None or self._steps == -1:
+            return slice(-1, None)
+        if isinstance(self._steps, slice):
+            return self._steps
+        return slice(self._steps, self._steps + 1)
+
+    def _magnetic_moments(self, selection):
+        self._raise_error_if_selection_not_available(selection)
+        if self._is_collinear:
+            return self._spin_moments()
+        else:
+            return self._noncollinear_moments(selection[0])
+
+    def _noncollinear_moments(self, selection):
+        spin_moments = self._spin_moments()
+        orbital_moments = self._orbital_moments(spin_moments)
+        if selection == "orbital":
+            moments = orbital_moments
+        elif selection == "spin":
+            moments = spin_moments
+        else:
+            moments = spin_moments + orbital_moments
+        direction_axis = 1 if moments.ndim == 4 else 0
+        return np.moveaxis(moments, direction_axis, -1)
+
+    def _spin_moments(self):
+        return self._raw_local_moment.spin_moments[self._steps_or_last, 1:]
+
+    def _orbital_moments(self, spin_moments):
+        if not self._has_orbital_moments:
+            return np.zeros_like(spin_moments)
+        zero_s_moments = np.zeros((*spin_moments.shape[:-1], 1))
+        orbital_moments = self._raw_local_moment.orbital_moments[self._steps_or_last]
+        return np.concatenate((zero_s_moments, orbital_moments), axis=-1)
+
+    def _add_total_magnetic_moment(self):
+        if self._is_nonpolarized:
+            return {}
+        return {"total": self.projected_magnetic()}
+
+    def _add_spin_and_orbital_moments(self):
+        if not self._has_orbital_moments:
+            return {}
+        spin_moments = self._spin_moments()
+        orbital_moments = self._orbital_moments(spin_moments)
+        direction_axis = 1 if spin_moments.ndim == 4 else 0
+        return {
+            "spin": np.moveaxis(spin_moments, direction_axis, -1),
+            "orbital": np.moveaxis(orbital_moments, direction_axis, -1),
+        }
+
+    def _prepare_magnetic_moments_for_plotting(self, selection):
+        tree = select.Tree.from_selection(selection)
+        for (sel, *_) in tree.selections():
+            moments = self.magnetic(sel)
+            moments = self._make_sure_moments_have_timestep_dimension(moments)
+            moments = _convert_moment_to_3d_vector(moments)
+            max_length_moments = _max_length_moments(moments)
+            if max_length_moments > 1e-15:
+                rescale_moments = LocalMomentHandler.length_moments / max_length_moments
+                yield view.IonArrow(
+                    quantity=rescale_moments * moments,
+                    label=f"{sel} moments",
+                    color=_color(sel),
+                    radius=0.2,
+                )
+
+    def _make_sure_moments_have_timestep_dimension(self, moments):
+        is_slice = isinstance(self._steps, slice)
+        if not is_slice and moments is not None:
+            moments = moments[np.newaxis]
+        return moments
+
+    def _raise_error_if_steps_out_of_bounds(self):
+        try:
+            np.zeros(self._raw_local_moment.spin_moments.shape[0])[self._steps_or_last]
+        except IndexError as error:
+            raise exception.IncorrectUsage(
+                f"Error reading the magnetic moments. Please check if the steps "
+                f"`{self._steps}` are properly formatted and within the boundaries."
+            ) from error
+
+    def _raise_error_if_no_magnetic_moments(self):
+        if self._is_nonpolarized:
+            raise exception.NoData(
+                "There are no magnetic moments in the data. Please make sure that you "
+                "either set ISPIN = 2 or LNONCOLLINEAR = T or LSORBIT = T."
+            )
+
+    def _raise_error_if_selection_not_available(self, selection):
+        if len(selection) != 1:
+            raise exception.IncorrectUsage()
+        selection = selection[0]
+        if selection not in ("spin", "orbital", "total"):
+            raise exception.IncorrectUsage(
+                f"The selection {selection} is incorrect. Please check if it is spelled "
+                "correctly. Possible choices are total, spin, or orbital."
+            )
+        if selection != "orbital" or self._has_orbital_moments:
+            return
+        raise exception.NoData(
+            "There are no orbital moments in the VASP output. Please make sure that you "
+            "run the calculation with LORBMOM = T and LSORBIT = T."
+        )
+
+
+@quantity("local_moment")
+class LocalMoment(view.Mixin):
     """The local moments describe the charge and magnetization near an atom.
 
     The projection on local moments is particularly relevant in the context of
@@ -54,9 +298,9 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path, "collinear")
 
-    If you access the local moments, the result will depend on the steps that you selected
-    with the [] operator. Without any selection the results from the final step will be
-    used.
+    If you access the local moments, the result will depend on the steps that you
+    selected with the [] operator. Without any selection the results from the final
+    step will be used.
 
     >>> calculation.local_moment.number_steps()
     1
@@ -74,29 +318,39 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
     3
     """
 
-    _raw_data: raw_data.LocalMoment
-    _missing_data_message = "Atom resolved magnetic information not present, please verify LORBIT tag is set."
+    length_moments = LocalMomentHandler.length_moments
 
-    length_moments = 1.5
-    "Length in Å how a magnetic moment is displayed relative to the largest moment."
+    def __init__(self, source, quantity_name: str = "local_moment", steps=None):
+        self._source = source
+        self._quantity_name = quantity_name
+        self._steps = steps
 
-    @base.data_access
-    def __str__(self):
-        if self._is_nonpolarized:
-            return "not spin polarized"
-        magmom = "MAGMOM = "
-        moments_last_step = self.magnetic("spin")
-        moments_to_string = lambda vec: " ".join(f"{moment:.2f}" for moment in vec)
-        if moments_last_step.ndim == 1:
-            return magmom + moments_to_string(moments_last_step)
-        else:
-            separator = " \\\n         "
-            generator = (moments_to_string(vec) for vec in moments_last_step)
-            return magmom + separator.join(generator)
+    @classmethod
+    def from_data(cls, raw_local_moment: raw.LocalMoment) -> "LocalMoment":
+        return cls(source=DataSource(raw_local_moment))
 
-    @base.data_access
+    def __getitem__(self, steps) -> "LocalMoment":
+        new = copy.copy(self)
+        new._steps = steps
+        return new
+
+    def _handler_factory(self, raw):
+        return LocalMomentHandler.from_data(raw, steps=self._steps)
+
+    def __str__(self, selection=None) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            LocalMomentHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self) if not cycle else "...")
+
     @documentation.format(index_note=_index_note)
-    def to_dict(self):
+    def read(self) -> dict:
         """Read the charges and magnetization data into a dictionary.
 
         Be careful when comparing the magnetic moments to experimental data. The
@@ -113,18 +367,19 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         Examples
         --------
-        First we create some example data so that we can illustrate how to use this method.
-        Of course you can also use your own VASP calculation data if you have it available.
+        First we create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
 
         >>> from py4vasp import demo
         >>> collinear_calculation = demo.calculation(path, "collinear")
         >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
 
-        If you use the `to_dict` method, the result will depend on the steps that you
+        If you use the `read` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
         step will be used.
 
-        >>> collinear_calculation.local_moment.to_dict()
+        >>> collinear_calculation.local_moment.read()
         {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[...]]),
             'total': array([[...]])}}
 
@@ -132,16 +387,16 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         Notice that in this case the charge and the total moment contain an additional
         dimension for the different steps.
 
-        >>> collinear_calculation.local_moment[:].to_dict()
+        >>> collinear_calculation.local_moment[:].read()
         {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[[...]]]),
             'total': array([[[...]]])}}
 
         You can also select specific steps or a subset of steps as follows
 
-        >>> collinear_calculation.local_moment[2].to_dict()
+        >>> collinear_calculation.local_moment[2].read()
         {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[...]]),
             'total': array([[...]])}}
-        >>> collinear_calculation.local_moment[0:3].to_dict()
+        >>> collinear_calculation.local_moment[0:3].read()
         {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[[...]]]),
             'total': array([[[...]]])}}
 
@@ -149,43 +404,22 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         if the calculation was run with LORBMOM = T, orbital and spin moments are
         reported separately.
 
-        >>> noncollinear_calculation.local_moment.to_dict()
+        >>> noncollinear_calculation.local_moment.read()
         {{'orbital_projection': ['s', 'p', 'd'], 'charge': array([[...]]),
             'total': array([[[...]]]), 'spin': array([[[...]]]), 'orbital': array([[[...]]])}}
         """
-        return {
-            _ORBITAL_PROJECTION: self.selections()[_ORBITAL_PROJECTION],
-            "charge": self.projected_charge(),
-            **self._add_total_magnetic_moment(),
-            **self._add_spin_and_orbital_moments(),
-        }
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            LocalMomentHandler.to_dict,
+        )
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        spin_moments_orbitals = None
-        if not check.is_none(self._raw_data.spin_moments):
-            if not self._is_nonpolarized:
-                spin_moments_orbitals = self._raw_data.spin_moments[-1, -1]
+    def to_dict(self) -> dict:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read()
 
-        spin_moment_total_min = None
-        spin_moment_total_max = None
-        if spin_moments_orbitals is not None:
-            spin_moments_total = np.sum(
-                spin_moments_orbitals, axis=-1
-            )  # sum over orbitals
-            spin_moment_total_min = float(np.min(spin_moments_total))
-            spin_moment_total_max = float(np.max(spin_moments_total))
-
-        data_dict = {
-            "local_moment": LocalMoment_DB(
-                has_orbital_moments=self._has_orbital_moments,
-                final_spin_moment_total_min=spin_moment_total_min,
-                final_spin_moment_total_max=spin_moment_total_max,
-            )
-        }
-        return data_dict
-
-    @base.data_access
     @documentation.format(selection=_moment_selection)
     def to_view(self, selection="total", supercell=None):
         """Visualize the magnetic moments as arrows inside the structure.
@@ -203,14 +437,15 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         -------
         View
             Contains the atoms and the unit cell as well as an arrow indicating the
-            strength of the magnetic moment. If noncollinear magnetism is used
-            the moment points in the actual direction; for collinear magnetism
-            the moments are aligned along the z axis by convention.
+            strength of the magnetic moment. If noncollinear magnetism is used the
+            moment points in the actual direction; for collinear magnetism the
+            moments are aligned along the z axis by convention.
 
         Examples
         --------
-        First we create some example data so that we can illustrate how to use this method.
-        Of course you can also use your own VASP calculation data if you have it available.
+        First we create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
 
         >>> from py4vasp import demo
         >>> collinear_calculation = demo.calculation(path, "collinear")
@@ -249,17 +484,17 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         You can also select spin or orbital moments separately.
 
         >>> noncollinear_calculation.local_moment.to_view(selection="spin, orbital")
-        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='spin moments', ...),
-            IonArrow(quantity=array([[[...]]]), label='orbital moments', ...)], ...)
+        View(..., ion_arrows=[IonArrow(quantity=array([[[...]]]), label='spin moments', ...), IonArrow(quantity=array([[[...]]]), label='orbital moments', ...)], ...)
         """
-        viewer = self._structure[self._steps].plot(supercell)
-        if not self._is_nonpolarized:
-            viewer.ion_arrows = list(
-                self._prepare_magnetic_moments_for_plotting(selection)
-            )
-        return viewer
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            LocalMomentHandler.to_view,
+            supercell,
+        )
 
-    @base.data_access
     def projected_charge(self):
         """Read the orbital- and site-projected charges of the selected steps.
 
@@ -270,15 +505,16 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         Examples
         --------
-        First we create some example data so that we can illustrate how to use this method.
-        Of course you can also use your own VASP calculation data if you have it available.
+        First we create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path, "collinear")
 
-        If you use the `projected_charge` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
-        step will be used.
+        If you use the `projected_charge` method, the result will depend on the steps
+        that you selected with the [] operator. Without any selection the results from
+        the final step will be used.
 
         >>> calculation.local_moment.projected_charge()
         array([[...]])
@@ -290,10 +526,14 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         >>> calculation.local_moment[:].projected_charge()
         array([[[...]]])
         """
-        self._raise_error_if_steps_out_of_bounds()
-        return self._raw_data.spin_moments[self._steps, 0]
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            LocalMomentHandler.projected_charge,
+        )
 
-    @base.data_access
     @documentation.format(selection=_moment_selection, index_note=_index_note)
     def projected_magnetic(self, selection="total"):
         """Read the orbital- and site-projected magnetic moments of the selected steps.
@@ -305,23 +545,24 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         Returns
         -------
         np.ndarray
-            Contains the magnetic moments for the selected steps projected on atoms and
-            orbitals.
+            Contains the magnetic moments for the selected steps projected on atoms
+            and orbitals.
 
         {index_note}
 
         Examples
         --------
-        First we create some example data so that we can illustrate how to use this method.
-        Of course you can also use your own VASP calculation data if you have it available.
+        First we create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
 
         >>> from py4vasp import demo
         >>> collinear_calculation = demo.calculation(path, "collinear")
         >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
 
-        If you use the `projected_magnetic` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
-        step will be used.
+        If you use the `projected_magnetic` method, the result will depend on the steps
+        that you selected with the [] operator. Without any selection the results from
+        the final step will be used.
 
         >>> collinear_calculation.local_moment.projected_magnetic()
         array([[...]])
@@ -338,11 +579,6 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         >>> collinear_calculation.local_moment[0:3].projected_magnetic()
         array([[[...]]])
 
-        To select the results for all steps, you don't specify the array boundaries.
-
-        >>> collinear_calculation.local_moment[:].projected_magnetic()
-        array([[[...]]])
-
         For noncollinear calculations, the magnetic moments are aligned according to
         the spin axis (:tag:`SAXIS`). Since the moments are now vectors, the result
         has an additional dimension for the different directions.
@@ -355,13 +591,14 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         >>> noncollinear_calculation.local_moment.projected_magnetic(selection="spin")
         array([[[...]]])
         """
-        self._raise_error_if_steps_out_of_bounds()
-        self._raise_error_if_no_magnetic_moments()
-        tree = select.Tree.from_selection(selection)
-        moments = [self._magnetic_moments(selection) for selection in tree.selections()]
-        return np.squeeze(moments)
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            LocalMomentHandler.projected_magnetic,
+        )
 
-    @base.data_access
     def charge(self):
         """Read the site-projected charges of the selected steps.
 
@@ -373,8 +610,9 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         Examples
         --------
-        First we create some example data so that we can illustrate how to use this method.
-        Of course you can also use your own VASP calculation data if you have it available.
+        First we create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path, "collinear")
@@ -396,12 +634,17 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         The charge is equivalent to summing the projected charges over the orbitals
 
         >>> np.allclose(calculation.local_moment.charge(),
-        ...     calculation.local_moment.projected_charge().sum(axis=-1))
+        ...    calculation.local_moment.projected_charge().sum(axis=-1))
         True
         """
-        return _sum_over_orbitals(self.projected_charge())
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            LocalMomentHandler.charge,
+        )
 
-    @base.data_access
     @documentation.format(selection=_moment_selection, index_note=_index_note)
     def magnetic(self, selection="total"):
         """Read the site-projected magnetic moments of the selected steps.
@@ -424,8 +667,9 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
 
         Examples
         --------
-        First we create some example data so that we can illustrate how to use this method.
-        Of course you can also use your own VASP calculation data if you have it available.
+        First we create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
 
         >>> from py4vasp import demo
         >>> collinear_calculation = demo.calculation(path, "collinear")
@@ -450,11 +694,6 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         >>> collinear_calculation.local_moment[0:3].magnetic()
         array([[...]])
 
-        To select the results for all steps, you don't specify the array boundaries.
-
-        >>> collinear_calculation.local_moment[:].magnetic()
-        array([[...]])
-
         For noncollinear calculations, the magnetic moments are aligned according to
         the spin axis (:tag:`SAXIS`). Since the moments are now vectors, the result
         has an additional dimension for the different directions.
@@ -467,150 +706,47 @@ class LocalMoment(slice_.Mixin, base.Refinery, structure.Mixin, view.Mixin):
         >>> noncollinear_calculation.local_moment.magnetic(selection="spin")
         array([[...]])
 
-        The magnetic moment is equivalent to summing the projected magnetic moments over
-        the orbitals
+        The magnetic moment is equivalent to summing the projected magnetic moments
+        over the orbitals
 
         >>> np.allclose(collinear_calculation.local_moment.magnetic(),
-        ...     collinear_calculation.local_moment.projected_magnetic().sum(axis=-1))
+        ...    collinear_calculation.local_moment.projected_magnetic().sum(axis=-1))
         True
         """
-        return _sum_over_orbitals(
-            self.projected_magnetic(selection), is_vector=self._is_noncollinear
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            LocalMomentHandler.magnetic,
         )
 
-    @base.data_access
-    def selections(self):
-        result = super().selections()
-        if self._raw_data.spin_moments.shape[-1] == 4:
-            result[_ORBITAL_PROJECTION] = ["s", "p", "d", "f"]
-        else:
-            result[_ORBITAL_PROJECTION] = ["s", "p", "d"]
-        if self._is_nonpolarized:
-            result["component"] = ["charge"]
-        elif self._has_orbital_moments:
-            result["component"] = ["charge", "total", "spin", "orbital"]
-        else:
-            result["component"] = ["charge", "total", "spin"]
-        return result
+    def selections(self) -> dict:
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            LocalMomentHandler.selections,
+        )
 
-    @base.data_access
-    def number_steps(self):
+    def number_steps(self) -> int:
         """Return the number of local moments in the trajectory."""
-        range_ = range(len(self._raw_data.spin_moments))
-        return len(range_[self._slice])
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            LocalMomentHandler.number_steps,
+        )
 
-    @property
-    def _is_nonpolarized(self):
-        return self._raw_data.spin_moments.shape[1] == 1
-
-    @property
-    def _is_collinear(self):
-        return self._raw_data.spin_moments.shape[1] == 2
-
-    @property
-    def _is_noncollinear(self):
-        return self._raw_data.spin_moments.shape[1] == 4
-
-    @property
-    def _has_orbital_moments(self):
-        return not check.is_none(self._raw_data.orbital_moments)
-
-    def _magnetic_moments(self, selection):
-        self._raise_error_if_selection_not_available(selection)
-        if self._is_collinear:
-            return self._spin_moments()
-        else:
-            return self._noncollinear_moments(selection[0])
-
-    def _noncollinear_moments(self, selection):
-        spin_moments = self._spin_moments()
-        orbital_moments = self._orbital_moments(spin_moments)
-        if selection == "orbital":
-            moments = orbital_moments
-        elif selection == "spin":
-            moments = spin_moments
-        else:  # total
-            moments = spin_moments + orbital_moments
-        direction_axis = 1 if moments.ndim == 4 else 0
-        return np.moveaxis(moments, direction_axis, -1)
-
-    def _spin_moments(self):
-        return self._raw_data.spin_moments[self._steps, 1:]
-
-    def _orbital_moments(self, spin_moments):
-        if not self._has_orbital_moments:
-            return np.zeros_like(spin_moments)
-        zero_s_moments = np.zeros((*spin_moments.shape[:-1], 1))
-        orbital_moments = self._raw_data.orbital_moments[self._steps]
-        return np.concatenate((zero_s_moments, orbital_moments), axis=-1)
-
-    def _add_total_magnetic_moment(self):
-        if self._is_nonpolarized:
-            return {}
-        return {"total": self.projected_magnetic()}
-
-    def _add_spin_and_orbital_moments(self):
-        if not self._has_orbital_moments:
-            return {}
-        spin_moments = self._spin_moments()
-        orbital_moments = self._orbital_moments(spin_moments)
-        direction_axis = 1 if spin_moments.ndim == 4 else 0
-        return {
-            "spin": np.moveaxis(spin_moments, direction_axis, -1),
-            "orbital": np.moveaxis(orbital_moments, direction_axis, -1),
-        }
-
-    def _prepare_magnetic_moments_for_plotting(self, selection):
-        tree = select.Tree.from_selection(selection)
-        for (selection, *_) in tree.selections():
-            moments = self.magnetic(selection)
-            moments = self._make_sure_moments_have_timestep_dimension(moments)
-            moments = _convert_moment_to_3d_vector(moments)
-            max_length_moments = _max_length_moments(moments)
-            if max_length_moments > 1e-15:
-                rescale_moments = LocalMoment.length_moments / max_length_moments
-                yield view.IonArrow(
-                    quantity=rescale_moments * moments,
-                    label=f"{selection} moments",
-                    color=_color(selection),
-                    radius=0.2,
-                )
-
-    def _make_sure_moments_have_timestep_dimension(self, moments):
-        if not self._is_slice and moments is not None:
-            moments = moments[np.newaxis]
-        return moments
-
-    def _raise_error_if_steps_out_of_bounds(self):
-        try:
-            np.zeros(self._raw_data.spin_moments.shape[0])[self._steps]
-        except IndexError as error:
-            raise exception.IncorrectUsage(
-                f"Error reading the magnetic moments. Please check if the steps "
-                f"`{self._steps}` are properly formatted and within the boundaries."
-            ) from error
-
-    def _raise_error_if_no_magnetic_moments(self):
-        if self._is_nonpolarized:
-            raise exception.NoData(
-                "There are no magnetic moments in the data. Please make sure that you "
-                "either set ISPIN = 2 or LNONCOLLINEAR = T or LSORBIT = T."
-            )
-
-    def _raise_error_if_selection_not_available(self, selection):
-        if len(selection) != 1:
-            raise exception.IncorrectUsage()
-        selection = selection[0]
-        if selection not in ("spin", "orbital", "total"):
-            raise exception.IncorrectUsage(
-                f"The selection {selection} is incorrect. Please check if it is spelled "
-                "correctly. Possible choices are total, spin, or orbital."
-            )
-        if selection != "orbital" or self._has_orbital_moments:
-            return
-        raise exception.NoData(
-            "There are no orbital moments in the VASP output. Please make sure that you "
-            "run the calculation with LORBMOM = T and LSORBIT = T."
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            LocalMomentHandler.from_data,
+            LocalMomentHandler.to_database,
         )
 
 

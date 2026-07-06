@@ -5,6 +5,7 @@ import types
 import pytest
 
 from py4vasp._calculation._CONTCAR import CONTCAR as _CONTCAR
+from py4vasp._calculation._CONTCAR import CONTCARHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._raw.data_db import CONTCAR_DB
 
@@ -73,6 +74,7 @@ def CONTCAR(raw_data, request):
     contcar.ref.lattice_velocities = raw_contcar.lattice_velocities
     contcar.ref.ion_velocities = raw_contcar.ion_velocities
     contcar.ref.string = REF_Sr2TiO4 if selection == "Sr2TiO4" else REF_Fe3O4
+    contcar.ref.raw_data = raw_contcar
     return contcar
 
 
@@ -122,8 +124,8 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def test_to_database(CONTCAR):
-    database_data = CONTCAR._read_to_database()
-    db_dict: CONTCAR_DB = database_data["CONTCAR:default"]
+    handler = CONTCARHandler.from_data(CONTCAR.ref.raw_data)
+    db_dict: CONTCAR_DB = handler.to_database()
 
     assert db_dict.system == CONTCAR.ref.system
     assert isinstance(db_dict.system, (str, type(None)))

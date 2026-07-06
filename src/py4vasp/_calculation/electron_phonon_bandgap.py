@@ -4,12 +4,17 @@ from collections import abc
 
 import numpy as np
 
-from py4vasp._calculation import base
+from py4vasp import raw
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
-from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
-from py4vasp._util import index, select
+from py4vasp._util import convert, index, select
 
 
 class BandgapInstance(ElectronPhononInstance, graph.Mixin):
@@ -25,8 +30,6 @@ class BandgapInstance(ElectronPhononInstance, graph.Mixin):
         parent: Reference to the parent calculation object containing the data.
         index: Index specifying which dataset to access from the parent.
     """
-
-    _raw_data: raw_data.ElectronPhononBandgap
 
     def __init__(self, parent, index):
         self.parent = parent
@@ -129,7 +132,62 @@ class BandgapInstance(ElectronPhononInstance, graph.Mixin):
         }
 
 
-class ElectronPhononBandgap(base.Refinery, abc.Sequence):
+class ElectronPhononBandgapHandler(abc.Sequence):
+    """Handler for electron-phonon bandgap data."""
+
+    def __init__(self, raw_data: raw.ElectronPhononBandgap):
+        self._raw_data = raw_data
+
+    @classmethod
+    def from_data(
+        cls, raw_data: raw.ElectronPhononBandgap
+    ) -> "ElectronPhononBandgapHandler":
+        return cls(raw_data)
+
+    def _accumulator(self):
+        return ElectronPhononAccumulator(self, self._raw_data)
+
+    def __str__(self):
+        return str(self._accumulator())
+
+    def to_dict(self):
+        return self._accumulator().to_dict()
+
+    def selections(self):
+        base_selections = {
+            convert.quantity_name(self.__class__.__name__.replace("Handler", "")): [
+                "default"
+            ],
+        }
+        result = self._accumulator().selections(base_selections)
+        result.pop("scattering_approx", None)
+        return result
+
+    def chemical_potential_mu_tag(self):
+        return self._accumulator().chemical_potential_mu_tag()
+
+    def select(self, selection):
+        indices = self._accumulator().select_indices(
+            selection, scattering_approximation="SERTA"
+        )
+        return [BandgapInstance(self, index) for index in indices]
+
+    def _get_data(self, name, index):
+        return self._accumulator().get_data(name, index)
+
+    def __getitem__(self, key):
+        if 0 <= key < len(self):
+            mask = np.equal(self._raw_data.scattering_approximation, "SERTA")
+            index_ = np.arange(len(mask))[mask][key]
+            return BandgapInstance(self, index_)
+        raise IndexError("Index out of range for electron phonon bandgap instance.")
+
+    def __len__(self):
+        return sum(np.equal(self._raw_data.scattering_approximation, "SERTA"))
+
+
+@quantity("bandgap", group="electron_phonon")
+class ElectronPhononBandgap(abc.Sequence):
     """
     ElectronPhononBandgap provides access to the electron-phonon bandgap renormalization
     data and selection utilities.
@@ -146,22 +204,46 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
     potential tag returned by `ChemicalPotential.mu_tag()`.
     """
 
-    def _accumulator(self):
-        return ElectronPhononAccumulator(self, self._raw_data)
+    def __init__(self, source, quantity_name: str = "electron_phonon_bandgap"):
+        self._source = source
+        self._quantity_name = quantity_name
 
-    @base.data_access
-    def __str__(self):
-        return str(self._accumulator())
+    @classmethod
+    def from_data(cls, raw_data: raw.ElectronPhononBandgap) -> "ElectronPhononBandgap":
+        return cls(source=DataSource(raw_data))
 
-    @base.data_access
-    def to_dict(self):
+    def _handler_factory(self, raw):
+        return ElectronPhononBandgapHandler.from_data(raw)
+
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononBandgapHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self, selection=None):
         """
         Converts the bandgap data to a dictionary format.
         """
-        return self._accumulator().to_dict()
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononBandgapHandler.to_dict,
+        )
 
-    @base.data_access
-    def selections(self):
+    def to_dict(self, selection=None):
+        """Convenient alias for :py:meth:`read`."""
+        return self.read(selection=selection)
+
+    def selections(self, selection=None):
         """Return a dictionary describing what options are available to read the
         electron transport coefficients.
 
@@ -174,14 +256,15 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
             - "selfen_delta": The self-energy delta value.
             - <mu_tag>: The chemical potential value for the current index.
         """
-        base_selections = super().selections()
-        result = self._accumulator().selections(base_selections)
-        # This class only make sense when the scattering approximation is SERTA
-        result.pop("scattering_approx", None)
-        return result
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononBandgapHandler.selections,
+        )
 
-    @base.data_access
-    def chemical_potential_mu_tag(self):
+    def chemical_potential_mu_tag(self, selection=None):
         """
         Retrieves the INCAR tag that was used to set the chemical potential
         as well as its values.
@@ -192,9 +275,14 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
             The INCAR tag name and its corresponding value as set in the calculation.
             Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
         """
-        return self._accumulator().chemical_potential_mu_tag()
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononBandgapHandler.chemical_potential_mu_tag,
+        )
 
-    @base.data_access
     def select(self, selection):
         """Return a list of BandgapInstance objects matching the selection.
 
@@ -211,23 +299,13 @@ class ElectronPhononBandgap(base.Refinery, abc.Sequence):
         list[BandgapInstance]
             Instances that match the selection criteria.
         """
-        indices = self._accumulator().select_indices(
-            selection, scattering_approximation="SERTA"
-        )
-        return [BandgapInstance(self, index) for index in indices]
+        with self._source.access(self._quantity_name) as raw:
+            return self._handler_factory(raw).select(selection)
 
-    @base.data_access
-    def _get_data(self, name, index):
-        return self._accumulator().get_data(name, index)
-
-    @base.data_access
     def __getitem__(self, key):
-        if 0 <= key < len(self):
-            mask = np.equal(self._raw_data.scattering_approximation, "SERTA")
-            index_ = np.arange(len(mask))[mask][key]
-            return BandgapInstance(self, index_)
-        raise IndexError("Index out of range for electron phonon bandgap instance.")
+        with self._source.access(self._quantity_name) as raw:
+            return self._handler_factory(raw)[key]
 
-    @base.data_access
     def __len__(self):
-        return sum(np.equal(self._raw_data.scattering_approximation, "SERTA"))
+        with self._source.access(self._quantity_name) as raw:
+            return len(self._handler_factory(raw))

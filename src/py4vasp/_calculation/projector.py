@@ -1,10 +1,18 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp import exception
-from py4vasp._calculation import _stoichiometry, base
-from py4vasp._raw import data as raw_data
+from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
+from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Projector_DB
-from py4vasp._util import check, convert, documentation, index, select
+from py4vasp._util import check, convert, index, select
 
 SPIN_PROJECTION = "is_spin_projection"
 selection_doc = """\
@@ -33,29 +41,26 @@ selection : str
     If you are unsure about the specific projections that are available, you can use
 
     >>> calculation.projector.selections()
-    {'atom': [...], 'orbital': [...], 'spin': [...]}
+    {\'atom\': [...], \'orbital\': [...], \'spin\': [...]}
 
     to get a list of all available ones.
 """
 
 
-class Projector(base.Refinery):
-    """The projectors used for atom and orbital resolved quantities.
+class ProjectorHandler:
+    """Handler for projector data."""
 
-    This is a utility class that facilitates projecting quantities such as the
-    electronic band structure and the DOS on atoms and orbitals. As a user, you can
-    investigate the available projections with the :meth:`to_dict` or :meth:`selections`
-    methods. The former is useful for scripts, when you need to know which array
-    index corresponds to which orbital or atom. The latter describes the available
-    selections that you can use in the methods that project on orbitals or atoms.
-    """
-
-    _raw_data: raw_data.Projector
     _missing_data_message = "No projectors found, please verify the LORBIT tag is set."
 
-    @base.data_access
+    def __init__(self, raw_projector: raw.Projector):
+        self._raw_projector = raw_projector
+
+    @classmethod
+    def from_data(cls, raw_projector: raw.Projector) -> "ProjectorHandler":
+        return cls(raw_projector)
+
     def __str__(self):
-        if self._raw_data.orbital_types.is_none():
+        if self._raw_projector.orbital_types.is_none():
             return "no projectors"
         if self._is_collinear:
             spin_projection = "\n    spin: total, up, down"
@@ -67,20 +72,7 @@ class Projector(base.Refinery):
     atoms: {", ".join(self._stoichiometry().ion_types())}
     orbitals: {", ".join(self._orbital_types())}""" + spin_projection
 
-    def _stoichiometry(self):
-        return _stoichiometry.Stoichiometry.from_data(self._raw_data.stoichiometry)
-
-    def _orbital_types(self):
-        clean_string = lambda orbital: convert.text_to_string(orbital).strip()
-        for orbital in self._raw_data.orbital_types:
-            orbital = clean_string(orbital)
-            if orbital == "x2-y2":
-                yield "dx2y2"
-            else:
-                yield orbital
-
-    @base.data_access
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """Return a map from labels to indices in the arrays produced by VASP.
 
         Returns
@@ -117,24 +109,50 @@ class Projector(base.Refinery):
                   'up': slice(0, 1, None),
                   'down': slice(1, 2, None)}}
         """
-        if self._raw_data.orbital_types.is_none():
+        if self._raw_projector.orbital_types.is_none():
             return {}
         atom_dict = self._init_atom_dict()
         orbital_dict = self._init_orbital_dict()
         spin_dict = self._init_spin_dict()
         return {"atom": atom_dict, "orbital": orbital_dict, "spin": spin_dict}
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        return {
-            "projector": Projector_DB(
-                orbital_types=(
-                    sorted(list(self._init_orbital_dict().keys()), key=self._sort_key)
-                    if not check.is_none(self._raw_data.orbital_types)
-                    else None
-                )
+    def to_database(self) -> dict:
+        return Projector_DB(
+            orbital_types=(
+                sorted(list(self._init_orbital_dict().keys()), key=self._sort_key)
+                if not check.is_none(self._raw_projector.orbital_types)
+                else None
             )
+        )
+
+    def selections(self) -> dict:
+        dicts = self.to_dict()
+        if len(dicts) == 0:
+            return dicts
+        return {
+            "atom": sorted(dicts["atom"], key=self._sort_key),
+            "orbital": sorted(dicts["orbital"], key=self._sort_key),
+            "spin": sorted(dicts["spin"], key=self._sort_key),
         }
+
+    def project(self, selection, projections):
+        if not selection:
+            return {}
+        self._raise_error_if_orbitals_missing()
+        selector = self._make_selector(projections)
+        return dict(self._create_projections(selector, selection))
+
+    def _stoichiometry(self):
+        return _stoichiometry.Stoichiometry.from_data(self._raw_projector.stoichiometry)
+
+    def _orbital_types(self):
+        clean_string = lambda orbital: convert.text_to_string(orbital).strip()
+        for orbital in self._raw_projector.orbital_types:
+            orbital = clean_string(orbital)
+            if orbital == "x2-y2":
+                yield "dx2y2"
+            else:
+                yield orbital
 
     def _init_atom_dict(self):
         return {
@@ -173,61 +191,15 @@ class Projector(base.Refinery):
 
     @property
     def _is_nonpolarized(self):
-        return self._raw_data.number_spin_projections == 1
+        return self._raw_projector.number_spin_projections == 1
 
     @property
     def _is_collinear(self):
-        return self._raw_data.number_spin_projections == 2
+        return self._raw_projector.number_spin_projections == 2
 
     @property
     def _is_noncollinear(self):
-        return self._raw_data.number_spin_projections == 4
-
-    @base.data_access
-    def selections(self):
-        """Return the available selection strings for atom, orbital, and spin projections.
-
-        Use this method to discover which labels you can pass to the ``selection``
-        argument of methods that support orbital projections (e.g.
-        :meth:`~py4vasp._calculation.band.Band.to_dict` or
-        :meth:`~py4vasp._calculation.dos.Dos.to_dict`). The returned lists contain
-        all valid identifiers in a consistent order: atoms are sorted by element and
-        then by index, orbitals follow angular-momentum order (s, p, d, f), and spin
-        components start with ``total``.
-
-        Returns
-        -------
-        -
-            A dictionary with three keys:
-
-            - ``"atom"`` — sorted list of element names and one-based ion indices,
-              e.g. ``["Fe", "O", "1", "2", "3", ...]``.
-            - ``"orbital"`` — sorted list of orbital labels, e.g.
-              ``["s", "p", "px", "py", "pz", "d", ...]``.
-            - ``"spin"`` — sorted list of spin components, e.g.
-              ``["total", "up", "down"]`` for collinear calculations or
-              ``["total", "sigma_x", "sigma_y", "sigma_z"]`` for noncollinear ones.
-
-            Returns an empty dictionary if :tag:`LORBIT` was not set in the INCAR file.
-
-        Examples
-        --------
-        List the available projections of a nonpolarized Sr2TiO4 calculation:
-
-        >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-        >>> calculation.projector.selections()
-        {'atom': ['Sr', 'Ti', 'O', '1', '2', '3', ...], 'orbital': ['s', 'p', 'px', 'py', ...],
-            'spin': ['total']}
-        """
-        dicts = self.to_dict()
-        if len(dicts) == 0:
-            return dicts
-        return {
-            "atom": sorted(dicts["atom"], key=self._sort_key),
-            "orbital": sorted(dicts["orbital"], key=self._sort_key),
-            "spin": sorted(dicts["spin"], key=self._sort_key),
-        }
+        return self._raw_projector.number_spin_projections == 4
 
     def _sort_key(self, key):
         spin_keys = [
@@ -251,51 +223,15 @@ class Projector(base.Refinery):
             return str(orbital_keys.index(key[:1])) + key
         if key.isdecimal():
             return int(key)
-        assert key.istitle()  # should be atom
+        assert key.istitle()
         return 0
-
-    @base.data_access
-    @documentation.format(selection_doc=selection_doc)
-    def project(self, selection, projections):
-        """Select a certain subset of the given projections and return them with a
-        suitable label.
-
-        We create some example data do that you can follow along. Please define a
-        variable `path` with the path to a directory that exists and does not contain any
-        VASP calculation data. Alternatively, you can use your own data if you have run
-        VASP and construct `calculation` from it.
-
-        >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-
-        Parameters
-        ----------
-        selection : str
-            {selection_doc}
-        projections : np.ndarray
-            A data array where the first three indices correspond to spin, atom, and
-            orbital, respectively. The selection will be parsed and mapped onto the
-            corresponding dimension.
-        Returns
-        -------
-        dict
-            Each selection receives a label describing its spin, atom, and orbital, where
-            default choices are skipped. The value associated to the label contains the
-            corresponding subsection of the projections array summed over all remaining
-            spin components, atoms, and orbitals.
-        """
-        if not selection:
-            return {}
-        self._raise_error_if_orbitals_missing()
-        selector = self._make_selector(projections)
-        return dict(self._create_projections(selector, selection))
 
     def _make_selector(self, projections):
         maps = self.to_dict()
         maps = {1: maps["atom"], 2: maps["orbital"], 0: maps["spin"]}
         try:
             return index.Selector(maps, projections, use_number_labels=True)
-        except exception._Py4VaspInternalError as error:
+        except exception._Py4VaspInternalError:
             message = f"""Error reading the projections. Please make sure that the passed
                 projections has the right format, i.e., the indices correspond to spin,
                 atom, and orbital, respectively."""
@@ -311,11 +247,9 @@ class Projector(base.Refinery):
                     spin_projections.append(label)
                 yield label, weight
             elif self._is_collinear:
-                # collinear defaults to two separate projections
                 yield self._create_projection(selector, selection + ("up",))
                 yield self._create_projection(selector, selection + ("down",))
             else:
-                # noncollinear defaults to total
                 yield self._create_projection(selector, selection + ("total",))
         if self._is_noncollinear:
             yield SPIN_PROJECTION, spin_projections
@@ -332,6 +266,122 @@ class Projector(base.Refinery):
         )
 
     def _raise_error_if_orbitals_missing(self):
-        if self._raw_data.orbital_types.is_none():
+        if self._raw_projector.orbital_types.is_none():
             message = "Projectors are not available, rerun VASP setting LORBIT >= 10."
             raise exception.IncorrectUsage(message)
+
+
+@quantity("projector")
+class Projector:
+    """The projectors used for atom and orbital resolved quantities.
+
+    This is a utility class that facilitates projecting quantities such as the
+    electronic band structure and the DOS on atoms and orbitals. As a user, you can
+    investigate the available projections with the :meth:`read` or :meth:`selections`
+    methods. The former is useful for scripts, when you need to know which array
+    index corresponds to which orbital or atom. The latter describes the available
+    selections that you can use in the methods that project on orbitals or atoms.
+    """
+
+    def __init__(self, source, quantity_name="projector"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(cls, raw_projector):
+        return cls(source=DataSource(raw_projector))
+
+    def _handler_factory(self, raw):
+        return ProjectorHandler.from_data(raw)
+
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ProjectorHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self, selection=None) -> dict:
+        """Return a map from labels to indices in the arrays produced by VASP.
+
+        Returns
+        -------
+        dict
+            A dictionary containing three dictionaries for spin, atom, and orbitals.
+            Each of those describes which indices VASP uses to store certain elements
+            for projected quantities. If VASP was run without setting :tag:`LORBIT`
+            this will return an empty dictionary.
+
+        Examples
+        --------
+
+        For nonpolarized Fe3O4 with :tag:`LORBIT` = 10, this would work like this
+
+        >>> import pprint
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, selection="collinear")
+        >>> pprint.pp(calculation.projector.read())
+        {'atom': {'Fe': slice(0, 3, None),
+                  '1': slice(0, 1, None),
+                  '2': slice(1, 2, None),
+                  '3': slice(2, 3, None),
+                  'O': slice(3, 7, None),
+                  '4': slice(3, 4, None),
+                  '5': slice(4, 5, None),
+                  '6': slice(5, 6, None),
+                  '7': slice(6, 7, None)},
+         'orbital': {'s': slice(0, 1, None),
+                     'p': slice(1, 2, None),
+                     'd': slice(2, 3, None),
+                     'f': slice(3, 4, None)},
+         'spin': {'total': slice(0, 2, None),
+                  'up': slice(0, 1, None),
+                  'down': slice(1, 2, None)}}
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ProjectorHandler.to_dict,
+        )
+
+    def to_dict(self, selection=None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection=selection)
+
+    def selections(self, selection=None) -> dict:
+        from py4vasp._raw import definition as raw_module
+
+        handler_selections = merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ProjectorHandler.selections,
+        )
+        return handler_selections
+
+    def project(self, selection, projections):
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ProjectorHandler.project,
+            projections,
+        )
+
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            ProjectorHandler.from_data,
+            ProjectorHandler.to_database,
+        )

@@ -123,9 +123,8 @@ def test_create_from_files_with_wildcards(tmp_path):
     assert output_number_of_calculations["file_2"] == 2
 
 
-@patch("py4vasp._calculation.base.Refinery.from_path", autospec=True)
 @patch("py4vasp.raw.access", autospec=True)
-def test_has_attributes(mock_access, mock_from_path):
+def test_has_attributes(mock_access):
     batch = Batch.from_paths(path_name_1="path_1", path_name_2="path_2")
     assert hasattr(batch, "energies")
     assert hasattr(batch.energies, "read")

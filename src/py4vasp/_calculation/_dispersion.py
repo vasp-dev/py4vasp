@@ -3,49 +3,53 @@
 import numpy as np
 
 import py4vasp._third_party.graph as _graph
-from py4vasp._calculation import base, kpoint, projector
-from py4vasp._raw import data as raw_data
+from py4vasp._calculation import projector
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
+from py4vasp._calculation.kpoint import KpointHandler
+from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Dispersion_DB
-from py4vasp._util import check, database
+from py4vasp._util import check
 
 
-class Dispersion(base.Refinery):
-    """Generic class for all dispersions (electrons, phonons).
+class DispersionHandler:
+    """Handler for dispersion (band/phonon) data."""
 
-    Provides some utility functionalities common to all dispersions to avoid duplication
-    of code."""
+    def __init__(self, raw_dispersion: raw.Dispersion):
+        self._raw_dispersion = raw_dispersion
 
-    _raw_data: raw_data.Dispersion
+    @classmethod
+    def from_data(cls, raw_dispersion: raw.Dispersion) -> "DispersionHandler":
+        return cls(raw_dispersion)
 
-    @base.data_access
     def __str__(self):
         return f"""band data:
-    {self._kpoints.number_kpoints()} k-points
-    {self._raw_data.eigenvalues.shape[-1]} bands"""
+    {self._kpoints().number_kpoints()} k-points
+    {self._raw_dispersion.eigenvalues.shape[-1]} bands"""
 
-    @base.data_access
-    def to_dict(self):
-        """Read the dispersion into a dictionary.
+    def read(self) -> dict:
+        return self.to_dict()
 
-        Returns
-        -------
-        dict
-            Contains the **k**-point distances and associated labels as well as the
-            eigenvalues of all the bands.
-        """
-        kpoint_labels = self._kpoints.labels()
+    def to_dict(self) -> dict:
+        kpoints = self._kpoints()
+        kpoint_labels = kpoints.labels()
         labels_dict = {} if kpoint_labels is None else {"kpoint_labels": kpoint_labels}
         return {
-            "kpoint_distances": self._kpoints.distances(),
+            "kpoint_distances": kpoints.distances(),
             **labels_dict,
-            "eigenvalues": self._raw_data.eigenvalues[:],
+            "eigenvalues": self._raw_dispersion.eigenvalues[:],
         }
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
+    def to_database(self) -> dict:
         eigenvalues = (
-            self._raw_data.eigenvalues[:]
-            if not check.is_none(self._raw_data.eigenvalues)
+            self._raw_dispersion.eigenvalues[:]
+            if not check.is_none(self._raw_dispersion.eigenvalues)
             else None
         )
         min_eigenvalue = float(np.min(eigenvalues)) if eigenvalues is not None else None
@@ -61,51 +65,25 @@ class Dispersion(base.Refinery):
             min_eigenvalue_down = float(np.min(eigenvalues_down))
             max_eigenvalue_down = float(np.max(eigenvalues_down))
 
-        return database.combine_db_dicts(
-            {
-                "dispersion": Dispersion_DB(
-                    eigenvalue_min=min_eigenvalue,
-                    eigenvalue_max=max_eigenvalue,
-                    eigenvalue_min_up=min_eigenvalue_up,
-                    eigenvalue_max_up=max_eigenvalue_up,
-                    eigenvalue_min_down=min_eigenvalue_down,
-                    eigenvalue_max_down=max_eigenvalue_down,
-                ),
-            },
-            self._kpoints._read_to_database(*args, **kwargs),
+        return Dispersion_DB(
+            eigenvalue_min=min_eigenvalue,
+            eigenvalue_max=max_eigenvalue,
+            eigenvalue_min_up=min_eigenvalue_up,
+            eigenvalue_max_up=max_eigenvalue_up,
+            eigenvalue_min_down=min_eigenvalue_down,
+            eigenvalue_max_down=max_eigenvalue_down,
         )
 
-    @property
-    def _kpoints(self):
-        return kpoint.Kpoint.from_data(self._raw_data.kpoints)
-
-    @base.data_access
     def plot(self, projections=None):
-        """Generate a graph of the dispersion.
-
-        The bands are plotted along the k-point distances. The k-point labels are added
-        as ticks if present. Pass a dictionary with projections to generate a fatband
-        plot based on the weights passed.
-
-        Parameters
-        ----------
-        projections : dict
-            The key will be used for the legend of the figure. The values will be used
-            to broaden the lines. Must have the same shape as the eigenvalues of the
-            dispersion.
-
-        Returns
-        -------
-        Graph
-            Contains the band structure for all the **k** points. If projections are
-            passed, the weight of the band is adjusted accordingly.
-        """
         data = self.to_dict()
         projections = self._use_projections_or_default(projections)
         return _graph.Graph(
             series=_band_structure(data, projections),
-            xticks=_xticks(data, self._kpoints.line_length()),
+            xticks=_xticks(data, self._kpoints().line_length()),
         )
+
+    def _kpoints(self):
+        return KpointHandler.from_data(self._raw_dispersion.kpoints)
 
     def _use_projections_or_default(self, projections):
         if projections is not None:
@@ -116,8 +94,67 @@ class Dispersion(base.Refinery):
             return {"bands": None}
 
     def _spin_polarized(self):
-        eigenvalues = self._raw_data.eigenvalues
+        eigenvalues = self._raw_dispersion.eigenvalues
         return eigenvalues.ndim == 3 and eigenvalues.shape[0] == 2
+
+
+@quantity("_dispersion")
+class Dispersion:
+    """Generic class for all dispersions (electrons, phonons)."""
+
+    def __init__(self, source, quantity_name="dispersion"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(cls, raw_dispersion):
+        return cls(source=DataSource(raw_dispersion))
+
+    def _handler_factory(self, raw):
+        return DispersionHandler.from_data(raw)
+
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DispersionHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self, selection=None) -> dict:
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DispersionHandler.read,
+        )
+
+    def to_dict(self, selection=None) -> dict:
+        return self.read(selection=selection)
+
+    def plot(self, projections=None):
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            DispersionHandler.plot,
+            projections,
+        )
+
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            DispersionHandler.from_data,
+            DispersionHandler.to_database,
+        )
 
 
 def _band_structure(data, projections):

@@ -6,6 +6,7 @@ import pytest
 
 from py4vasp._calculation.piezoelectric_tensor import (
     PiezoelectricTensor,
+    PiezoelectricTensorHandler,
     _extract_tensor,
 )
 from py4vasp._raw.data_db import PiezoelectricTensor_DB
@@ -66,6 +67,26 @@ def test_read(piezoelectric_tensor, Assert):
     Assert.allclose(actual["relaxed_ion"], piezoelectric_tensor.ref.relaxed_ion)
 
 
+def test_to_dict_matches_read(raw_data):
+    raw_tensor = raw_data.piezoelectric_tensor("default")
+    handler = PiezoelectricTensorHandler.from_data(raw_tensor)
+    assert (
+        handler.to_dict()["clamped_ion"].tolist()
+        == handler.to_dict()["clamped_ion"].tolist()
+    )
+    assert (
+        handler.to_dict()["relaxed_ion"].tolist()
+        == handler.to_dict()["relaxed_ion"].tolist()
+    )
+
+
+def test_dispatcher_to_dict_matches_read(piezoelectric_tensor):
+    read_result = piezoelectric_tensor.read()
+    dict_result = piezoelectric_tensor.to_dict()
+    assert read_result["clamped_ion"].tolist() == dict_result["clamped_ion"].tolist()
+    assert read_result["relaxed_ion"].tolist() == dict_result["relaxed_ion"].tolist()
+
+
 def test_print(piezoelectric_tensor, format_):
     actual, _ = format_(piezoelectric_tensor)
     reference = f"""
@@ -84,18 +105,15 @@ Piezoelectric tensor (C/m²)
     assert actual == {"text/plain": reference}
 
 
-def _check_to_database(piezoelectric_tensor):
-    db_data: PiezoelectricTensor_DB = piezoelectric_tensor._read_to_database()[
-        "piezoelectric_tensor:default"
-    ]
+def _check_to_database(raw_tensor, piezo_ref):
+    handler = PiezoelectricTensorHandler.from_data(raw_tensor)
+    db_data: PiezoelectricTensor_DB = handler.to_database()
     assert isinstance(db_data, PiezoelectricTensor_DB)
     for idx, prefix in enumerate(["total", "ionic", "electronic"]):
         sum_2d_tensor_not_none = 0
         for idy, suffix in enumerate(["x", "y", "z"]):
             assert getattr(db_data, f"{prefix}_3d_tensor_{suffix}") == list(
-                _extract_tensor(piezoelectric_tensor.ref.piezo[idx])[
-                    idy, (0, 1, 2, 5, 3, 4)
-                ]
+                _extract_tensor(piezo_ref.piezo[idx])[idy, (0, 1, 2, 5, 3, 4)]
             )
             assert (
                 getattr(
@@ -103,25 +121,27 @@ def _check_to_database(piezoelectric_tensor):
                 )
                 is not None
             )
-            if not piezoelectric_tensor.ref.is_2d:
+            if not piezo_ref.is_2d:
                 assert getattr(db_data, f"{prefix}_2d_tensor_{suffix}") is None
             elif getattr(db_data, f"{prefix}_2d_tensor_{suffix}") is not None:
                 sum_2d_tensor_not_none += 1
         for desc in ["mean_absolute", "rms", "frobenius_norm"]:
             assert getattr(db_data, f"{prefix}_3d_{desc}") is not None
-        if piezoelectric_tensor.ref.is_2d:
+        if piezo_ref.is_2d:
             assert sum_2d_tensor_not_none == 2
     # TODO add real reference data for computed values
-    for key, value in piezoelectric_tensor.ref.overview_data.items():
+    for key, value in piezo_ref.overview_data.items():
         assert getattr(db_data, key) == value
 
 
-def test_to_database(piezoelectric_tensor, Assert):
-    _check_to_database(piezoelectric_tensor)
+def test_to_database(raw_data, piezoelectric_tensor):
+    raw_tensor = raw_data.piezoelectric_tensor("default")
+    _check_to_database(raw_tensor, piezoelectric_tensor.ref)
 
 
-def test_to_database_as_slab(piezoelectric_tensor_as_slab, Assert):
-    _check_to_database(piezoelectric_tensor_as_slab)
+def test_to_database_as_slab(raw_data, piezoelectric_tensor_as_slab):
+    raw_tensor = raw_data.piezoelectric_tensor("as-slab")
+    _check_to_database(raw_tensor, piezoelectric_tensor_as_slab.ref)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

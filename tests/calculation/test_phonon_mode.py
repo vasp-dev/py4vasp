@@ -2,11 +2,15 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import h5py
 import numpy as np
 import pytest
 
-from py4vasp._calculation.phonon_mode import PhononMode
+import py4vasp
+from py4vasp import raw
+from py4vasp._calculation.phonon_mode import PhononMode, PhononModeHandler
 from py4vasp._calculation.structure import Structure
+from py4vasp._demo.phonon import mode as phonon_mode_demo
 from py4vasp._raw.data_db import PhononMode_DB
 
 
@@ -18,6 +22,7 @@ def phonon_mode(raw_data):
     mode.ref.structure = Structure.from_data(raw_mode.structure)
     mode.ref.frequencies = raw_mode.frequencies.flatten().view(np.complex128)
     mode.ref.eigenvectors = raw_mode.eigenvectors
+    mode.ref.raw_data = raw_mode
     return mode
 
 
@@ -63,7 +68,8 @@ def test_print(phonon_mode, format_):
 
 
 def test_to_database(phonon_mode):
-    db_data: PhononMode_DB = phonon_mode._read_to_database()["phonon_mode:default"]
+    handler = PhononModeHandler.from_data(phonon_mode.ref.raw_data)
+    db_data: PhononMode_DB = handler.to_database()
     assert isinstance(db_data, PhononMode_DB)
     assert db_data.frequencies_real_max == float(
         np.max(phonon_mode.ref.frequencies.real)
@@ -71,6 +77,23 @@ def test_to_database(phonon_mode):
     assert db_data.frequencies_imag_max == float(
         np.max(phonon_mode.ref.frequencies.imag)
     )
+
+
+def test_to_database_dispatch(phonon_mode):
+    """The standalone dispatcher keys the result by the full quantity name."""
+    result = phonon_mode._to_database()
+    assert set(result) == {"phonon_mode"}
+
+
+def test_to_database_in_calculation(tmp_path):
+    """Collecting a group member at the calculation level keys it ``<group>_<member>``
+    (``phonon_mode``), not the doubled ``phonon_phonon_mode``."""
+    with h5py.File(tmp_path / "vaspout.h5", "w") as h5f:
+        py4vasp._raw.write.write(h5f, raw.Version(99, 99, 99))
+        py4vasp._raw.write.write(h5f, phonon_mode_demo.Sr2TiO4())
+    properties = py4vasp.Calculation.from_path(tmp_path)._to_database().properties
+    assert "phonon_mode" in properties
+    assert "phonon_phonon_mode" not in properties
 
 
 def test_factory_methods(raw_data, check_factory_methods):

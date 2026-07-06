@@ -1,11 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import string
-
 import pytest
 
 from py4vasp import raw
-from py4vasp._calculation.system import System
+from py4vasp._calculation.system import System, SystemHandler
 from py4vasp._util.convert import text_to_string
 
 
@@ -26,7 +24,17 @@ def test_system_read(string_format, byte_format):
 
 def check_system_read(raw_system):
     expected = {"system": text_to_string(raw_system.system)}
-    assert System.from_data(raw_system).read() == expected
+    assert SystemHandler.from_data(raw_system).to_dict() == expected
+
+
+def test_to_dict_matches_read(string_format):
+    handler = SystemHandler.from_data(string_format)
+    assert handler.to_dict() == {"system": text_to_string(string_format.system)}
+
+
+def test_dispatcher_to_dict_matches_read(string_format):
+    dispatcher = System.from_data(string_format)
+    assert dispatcher.to_dict() == dispatcher.read()
 
 
 def test_system_print(string_format, byte_format, format_):

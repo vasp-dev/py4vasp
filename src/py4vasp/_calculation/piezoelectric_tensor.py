@@ -4,9 +4,16 @@ from contextlib import suppress
 
 import numpy as np
 
-from py4vasp import exception
-from py4vasp._calculation import base, cell
-from py4vasp._raw import data as raw_data
+from py4vasp import exception, raw
+from py4vasp._calculation.cell import CellHandler
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
 from py4vasp._raw.data_db import PiezoelectricTensor_DB
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
@@ -20,7 +27,211 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
 )
 
 
-class PiezoelectricTensor(base.Refinery):
+class PiezoelectricTensorHandler:
+    """Handler for the piezoelectric_tensor quantity. Works with exactly one raw.PiezoelectricTensor object."""
+
+    def __init__(self, raw_piezoelectric_tensor: raw.PiezoelectricTensor):
+        self._raw_piezoelectric_tensor = raw_piezoelectric_tensor
+
+    @classmethod
+    def from_data(
+        cls, raw_piezoelectric_tensor: raw.PiezoelectricTensor
+    ) -> "PiezoelectricTensorHandler":
+        return cls(raw_piezoelectric_tensor)
+
+    def __str__(self):
+        data = self.to_dict()
+        return f"""Piezoelectric tensor (C/m²)
+         XX          YY          ZZ          XY          YZ          ZX
+---------------------------------------------------------------------------
+{_tensor_to_string(data["clamped_ion"], "clamped-ion")}
+{_tensor_to_string(data["relaxed_ion"], "relaxed-ion")}"""
+
+    def to_dict(self) -> dict:
+        """Read the ionic and electronic contribution to the piezoelectric tensor
+        into a dictionary.
+
+        It will combine both terms as the total piezoelectric tensor (relaxed_ion)
+        but also give the pure electronic contribution, so that you can separate the
+        parts.
+
+        Returns
+        -------
+        dict
+            The clamped ion and relaxed ion data for the piezoelectric tensor.
+        """
+        electron_data = self._raw_piezoelectric_tensor.electron[:]
+        return {
+            "clamped_ion": electron_data,
+            "relaxed_ion": electron_data + self._raw_piezoelectric_tensor.ion[:],
+        }
+
+    def to_database(self) -> dict:
+        reduced_tensor_x, reduced_tensor_y, reduced_tensor_z, tensor_2d = (
+            [None, None, None] for _ in range(4)
+        )
+        in_plane = [[False, False, False] for _ in range(3)]
+        e11, e22, e33, e_avg_abs, e_rms, e_frobenius = (
+            [None, None, None] for _ in range(6)
+        )
+
+        total_tensor, electronic_tensor, ionic_tensor = None, None, None
+        if not check.is_none(self._raw_piezoelectric_tensor.ion) and not check.is_none(
+            self._raw_piezoelectric_tensor.electron
+        ):
+            total_tensor = (
+                self._raw_piezoelectric_tensor.electron[:]
+                + self._raw_piezoelectric_tensor.ion[:]
+            )
+        if not check.is_none(self._raw_piezoelectric_tensor.electron):
+            electronic_tensor = self._raw_piezoelectric_tensor.electron[:]
+        if not check.is_none(self._raw_piezoelectric_tensor.ion):
+            ionic_tensor = self._raw_piezoelectric_tensor.ion[:]
+
+        for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
+            e_tensor = None
+            # Piezoelectric stress tensor e_ij (C/m^2)
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+                e_tensor = _extract_tensor(
+                    tensor
+                )  # 3x6 tensor, column order: XX YY ZZ YZ ZX XY
+                # write in default VASP order (rows: x,y,z; columns: XX,YY,ZZ,XY,YZ,ZX)
+                reduced_tensor_x[idt] = e_tensor[0, (0, 1, 2, 5, 3, 4)].tolist()
+                reduced_tensor_y[idt] = e_tensor[1, (0, 1, 2, 5, 3, 4)].tolist()
+                reduced_tensor_z[idt] = e_tensor[2, (0, 1, 2, 5, 3, 4)].tolist()
+
+                if not check.is_none(self._raw_piezoelectric_tensor.cell):
+                    cCell = CellHandler.from_data(
+                        self._raw_piezoelectric_tensor.cell, steps=-1
+                    )
+                    in_plane[idt], lvac = _compute_2d_plane_and_conversion_factor(cCell)
+                    if in_plane[idt] is not None and lvac is not None:
+                        tensor_2d[idt] = e_tensor * lvac
+
+            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+                (
+                    e11[idt],
+                    e22[idt],
+                    e33[idt],
+                    e_avg_abs[idt],
+                    e_rms[idt],
+                    e_frobenius[idt],
+                ) = _compute_bulk_quantities(e_tensor)
+
+        return PiezoelectricTensor_DB(
+            total_3d_tensor_x=reduced_tensor_x[0],
+            total_3d_tensor_y=reduced_tensor_y[0],
+            total_3d_tensor_z=reduced_tensor_z[0],
+            total_3d_piezoelectric_stress_coefficient_x=e11[0],
+            total_3d_piezoelectric_stress_coefficient_y=e22[0],
+            total_3d_piezoelectric_stress_coefficient_z=e33[0],
+            total_3d_mean_absolute=e_avg_abs[0],
+            total_3d_rms=e_rms[0],
+            total_3d_frobenius_norm=e_frobenius[0],
+            total_2d_tensor_x=(
+                (
+                    tensor_2d[0][0]
+                    if (in_plane[0] is not None and in_plane[0][0])
+                    else None
+                )
+                if tensor_2d[0] is not None
+                else None
+            ),
+            total_2d_tensor_y=(
+                (
+                    tensor_2d[0][1]
+                    if (in_plane[0] is not None and in_plane[0][1])
+                    else None
+                )
+                if tensor_2d[0] is not None
+                else None
+            ),
+            total_2d_tensor_z=(
+                (
+                    tensor_2d[0][2]
+                    if (in_plane[0] is not None and in_plane[0][2])
+                    else None
+                )
+                if tensor_2d[0] is not None
+                else None
+            ),
+            ionic_3d_tensor_x=reduced_tensor_x[1],
+            ionic_3d_tensor_y=reduced_tensor_y[1],
+            ionic_3d_tensor_z=reduced_tensor_z[1],
+            ionic_3d_piezoelectric_stress_coefficient_x=e11[1],
+            ionic_3d_piezoelectric_stress_coefficient_y=e22[1],
+            ionic_3d_piezoelectric_stress_coefficient_z=e33[1],
+            ionic_3d_mean_absolute=e_avg_abs[1],
+            ionic_3d_rms=e_rms[1],
+            ionic_3d_frobenius_norm=e_frobenius[1],
+            ionic_2d_tensor_x=(
+                (
+                    tensor_2d[1][0]
+                    if (in_plane[1] is not None and in_plane[1][0])
+                    else None
+                )
+                if tensor_2d[1] is not None
+                else None
+            ),
+            ionic_2d_tensor_y=(
+                (
+                    tensor_2d[1][1]
+                    if (in_plane[1] is not None and in_plane[1][1])
+                    else None
+                )
+                if tensor_2d[1] is not None
+                else None
+            ),
+            ionic_2d_tensor_z=(
+                (
+                    tensor_2d[1][2]
+                    if (in_plane[1] is not None and in_plane[1][2])
+                    else None
+                )
+                if tensor_2d[1] is not None
+                else None
+            ),
+            electronic_3d_tensor_x=reduced_tensor_x[2],
+            electronic_3d_tensor_y=reduced_tensor_y[2],
+            electronic_3d_tensor_z=reduced_tensor_z[2],
+            electronic_3d_piezoelectric_stress_coefficient_x=e11[2],
+            electronic_3d_piezoelectric_stress_coefficient_y=e22[2],
+            electronic_3d_piezoelectric_stress_coefficient_z=e33[2],
+            electronic_3d_mean_absolute=e_avg_abs[2],
+            electronic_3d_rms=e_rms[2],
+            electronic_3d_frobenius_norm=e_frobenius[2],
+            electronic_2d_tensor_x=(
+                (
+                    tensor_2d[2][0]
+                    if (in_plane[2] is not None and in_plane[2][0])
+                    else None
+                )
+                if tensor_2d[2] is not None
+                else None
+            ),
+            electronic_2d_tensor_y=(
+                (
+                    tensor_2d[2][1]
+                    if (in_plane[2] is not None and in_plane[2][1])
+                    else None
+                )
+                if tensor_2d[2] is not None
+                else None
+            ),
+            electronic_2d_tensor_z=(
+                (
+                    tensor_2d[2][2]
+                    if (in_plane[2] is not None and in_plane[2][2])
+                    else None
+                )
+                if tensor_2d[2] is not None
+                else None
+            ),
+        )
+
+
+@quantity("piezoelectric_tensor")
+class PiezoelectricTensor:
     """The piezoelectric tensor is the derivative of the energy with respect to strain and field.
 
     The piezoelectric tensor represents the coupling between mechanical stress and
@@ -39,19 +250,18 @@ class PiezoelectricTensor(base.Refinery):
     the crystal structure.
     """
 
-    _raw_data: raw_data.PiezoelectricTensor
+    def __init__(self, source, quantity_name: str = "piezoelectric_tensor"):
+        self._source = source
+        self._quantity_name = quantity_name
 
-    @base.data_access
-    def __str__(self):
-        data = self.to_dict()
-        return f"""Piezoelectric tensor (C/m²)
-         XX          YY          ZZ          XY          YZ          ZX
----------------------------------------------------------------------------
-{_tensor_to_string(data["clamped_ion"], "clamped-ion")}
-{_tensor_to_string(data["relaxed_ion"], "relaxed-ion")}"""
+    @classmethod
+    def from_data(
+        cls, raw_piezoelectric_tensor: raw.PiezoelectricTensor
+    ) -> "PiezoelectricTensor":
+        """Create a PiezoelectricTensor dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_piezoelectric_tensor))
 
-    @base.data_access
-    def to_dict(self):
+    def read(self) -> dict:
         """Read the ionic and electronic contribution to the piezoelectric tensor
         into a dictionary.
 
@@ -64,172 +274,38 @@ class PiezoelectricTensor(base.Refinery):
         dict
             The clamped ion and relaxed ion data for the piezoelectric tensor.
         """
-        electron_data = self._raw_data.electron[:]
-        return {
-            "clamped_ion": electron_data,
-            "relaxed_ion": electron_data + self._raw_data.ion[:],
-        }
-
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        reduced_tensor_x, reduced_tensor_y, reduced_tensor_z, tensor_2d = (
-            [None, None, None] for _ in range(4)
-        )
-        in_plane = [[False, False, False] for _ in range(3)]
-        e11, e22, e33, e_avg_abs, e_rms, e_frobenius = (
-            [None, None, None] for _ in range(6)
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            PiezoelectricTensorHandler.from_data,
+            PiezoelectricTensorHandler.to_dict,
         )
 
-        total_tensor, electronic_tensor, ionic_tensor = None, None, None
-        if not check.is_none(self._raw_data.ion) and not check.is_none(
-            self._raw_data.electron
-        ):
-            total_tensor = self._raw_data.electron[:] + self._raw_data.ion[:]
-        if not check.is_none(self._raw_data.electron):
-            electronic_tensor = self._raw_data.electron[:]
-        if not check.is_none(self._raw_data.ion):
-            ionic_tensor = self._raw_data.ion[:]
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read()
 
-        for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
-            e_tensor = None
-            # Piezoelectric stress tensor e_ij (C/m^2)
-            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-                e_tensor = _extract_tensor(
-                    tensor
-                )  # 3x6 tensor, column order: XX YY ZZ YZ ZX XY
-                # write in default VASP order (rows: x,y,z; columns: XX,YY,ZZ,XY,YZ,ZX)
-                reduced_tensor_x[idt] = e_tensor[0, (0, 1, 2, 5, 3, 4)].tolist()
-                reduced_tensor_y[idt] = e_tensor[1, (0, 1, 2, 5, 3, 4)].tolist()
-                reduced_tensor_z[idt] = e_tensor[2, (0, 1, 2, 5, 3, 4)].tolist()
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            PiezoelectricTensorHandler.from_data,
+            PiezoelectricTensorHandler.__str__,
+        )
 
-                if not check.is_none(self._raw_data.cell):
-                    cCell = cell.Cell.from_data(self._raw_data.cell)
-                    in_plane[idt], lvac = _compute_2d_plane_and_conversion_factor(cCell)
-                    if in_plane[idt] is not None and lvac is not None:
-                        tensor_2d[idt] = e_tensor * lvac
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
 
-            with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-                (
-                    e11[idt],
-                    e22[idt],
-                    e33[idt],
-                    e_avg_abs[idt],
-                    e_rms[idt],
-                    e_frobenius[idt],
-                ) = _compute_bulk_quantities(e_tensor)
-
-        return {
-            "piezoelectric_tensor": PiezoelectricTensor_DB(
-                total_3d_tensor_x=reduced_tensor_x[0],
-                total_3d_tensor_y=reduced_tensor_y[0],
-                total_3d_tensor_z=reduced_tensor_z[0],
-                total_3d_piezoelectric_stress_coefficient_x=e11[0],
-                total_3d_piezoelectric_stress_coefficient_y=e22[0],
-                total_3d_piezoelectric_stress_coefficient_z=e33[0],
-                total_3d_mean_absolute=e_avg_abs[0],
-                total_3d_rms=e_rms[0],
-                total_3d_frobenius_norm=e_frobenius[0],
-                total_2d_tensor_x=(
-                    (
-                        tensor_2d[0][0]
-                        if (in_plane[0] is not None and in_plane[0][0])
-                        else None
-                    )
-                    if tensor_2d[0] is not None
-                    else None
-                ),
-                total_2d_tensor_y=(
-                    (
-                        tensor_2d[0][1]
-                        if (in_plane[0] is not None and in_plane[0][1])
-                        else None
-                    )
-                    if tensor_2d[0] is not None
-                    else None
-                ),
-                total_2d_tensor_z=(
-                    (
-                        tensor_2d[0][2]
-                        if (in_plane[0] is not None and in_plane[0][2])
-                        else None
-                    )
-                    if tensor_2d[0] is not None
-                    else None
-                ),
-                ionic_3d_tensor_x=reduced_tensor_x[1],
-                ionic_3d_tensor_y=reduced_tensor_y[1],
-                ionic_3d_tensor_z=reduced_tensor_z[1],
-                ionic_3d_piezoelectric_stress_coefficient_x=e11[1],
-                ionic_3d_piezoelectric_stress_coefficient_y=e22[1],
-                ionic_3d_piezoelectric_stress_coefficient_z=e33[1],
-                ionic_3d_mean_absolute=e_avg_abs[1],
-                ionic_3d_rms=e_rms[1],
-                ionic_3d_frobenius_norm=e_frobenius[1],
-                ionic_2d_tensor_x=(
-                    (
-                        tensor_2d[1][0]
-                        if (in_plane[1] is not None and in_plane[1][0])
-                        else None
-                    )
-                    if tensor_2d[1] is not None
-                    else None
-                ),
-                ionic_2d_tensor_y=(
-                    (
-                        tensor_2d[1][1]
-                        if (in_plane[1] is not None and in_plane[1][1])
-                        else None
-                    )
-                    if tensor_2d[1] is not None
-                    else None
-                ),
-                ionic_2d_tensor_z=(
-                    (
-                        tensor_2d[1][2]
-                        if (in_plane[1] is not None and in_plane[1][2])
-                        else None
-                    )
-                    if tensor_2d[1] is not None
-                    else None
-                ),
-                electronic_3d_tensor_x=reduced_tensor_x[2],
-                electronic_3d_tensor_y=reduced_tensor_y[2],
-                electronic_3d_tensor_z=reduced_tensor_z[2],
-                electronic_3d_piezoelectric_stress_coefficient_x=e11[2],
-                electronic_3d_piezoelectric_stress_coefficient_y=e22[2],
-                electronic_3d_piezoelectric_stress_coefficient_z=e33[2],
-                electronic_3d_mean_absolute=e_avg_abs[2],
-                electronic_3d_rms=e_rms[2],
-                electronic_3d_frobenius_norm=e_frobenius[2],
-                electronic_2d_tensor_x=(
-                    (
-                        tensor_2d[2][0]
-                        if (in_plane[2] is not None and in_plane[2][0])
-                        else None
-                    )
-                    if tensor_2d[2] is not None
-                    else None
-                ),
-                electronic_2d_tensor_y=(
-                    (
-                        tensor_2d[2][1]
-                        if (in_plane[2] is not None and in_plane[2][1])
-                        else None
-                    )
-                    if tensor_2d[2] is not None
-                    else None
-                ),
-                electronic_2d_tensor_z=(
-                    (
-                        tensor_2d[2][2]
-                        if (in_plane[2] is not None and in_plane[2][2])
-                        else None
-                    )
-                    if tensor_2d[2] is not None
-                    else None
-                ),
-            )
-        }
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            PiezoelectricTensorHandler.from_data,
+            PiezoelectricTensorHandler.to_database,
+        )
 
 
 def _tensor_to_string(tensor, label):
@@ -259,7 +335,7 @@ def _extract_tensor(raw_tensor):
     return C_voigt
 
 
-def _compute_2d_piezoelectric(e_tensor: np.ndarray, cell_: cell.Cell) -> np.ndarray:
+def _compute_2d_piezoelectric(e_tensor: np.ndarray, cell_: CellHandler) -> np.ndarray:
     """
     Convert 3D piezoelectric stress tensor (C/m^2) to 2D (C/m).
     """
@@ -269,7 +345,7 @@ def _compute_2d_piezoelectric(e_tensor: np.ndarray, cell_: cell.Cell) -> np.ndar
 
 
 def _compute_2d_plane_and_conversion_factor(
-    cell_: cell.Cell,
+    cell_: CellHandler,
 ) -> tuple[list[bool], float]:
     """
     Identify the 2D plane (in-plane directions) and compute the conversion factor

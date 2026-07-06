@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.band import _OCCUPATION_CUTOFF, Band
+from py4vasp._calculation.band import _OCCUPATION_CUTOFF, Band, BandHandler
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import Projector
 from py4vasp._raw.data_db import Band_DB
@@ -28,6 +28,7 @@ def single_band(raw_data):
         np.max(np.sum(band.ref.occupations > _OCCUPATION_CUTOFF, axis=-1))
     )
     band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
+    band.ref.raw_data = raw_band
     return band
 
 
@@ -43,6 +44,7 @@ def multiple_bands(raw_data):
         np.max(np.sum(band.ref.occupations > _OCCUPATION_CUTOFF, axis=-1))
     )
     band.ref.kpoints = Kpoint.from_data(raw_band.dispersion.kpoints)
+    band.ref.raw_data = raw_band
     return band
 
 
@@ -93,6 +95,7 @@ def spin_polarized(raw_data):
     band.ref.num_occupied_bands_down = int(
         np.max(np.sum(band.ref.occupations_down > _OCCUPATION_CUTOFF, axis=-1))
     )
+    band.ref.raw_data = raw_band
     return band
 
 
@@ -128,6 +131,7 @@ def noncollinear_projectors(raw_data):
         np.max(np.sum(band.ref.occupations > _OCCUPATION_CUTOFF, axis=-1))
     )
     band.ref.fermi_energy = raw_band.fermi_energy
+    band.ref.raw_data = raw_band
     return band
 
 
@@ -674,9 +678,10 @@ spin polarized band data:
 
 
 def _check_to_database(_band):
-    database_data: Band_DB = _band._read_to_database(
+    handler = BandHandler.from_data(_band.ref.raw_data)
+    database_data: Band_DB = handler.to_database(
         fermi_energy=getattr(_band.ref, "fermi_energy_argument", None)
-    )["band:default"]
+    )
 
     assert isinstance(database_data, Band_DB)
 
@@ -726,6 +731,14 @@ def test_to_database_spin_polarized(spin_polarized):
 
 def test_to_database_noncollinear_projectors(noncollinear_projectors):
     _check_to_database(noncollinear_projectors)
+
+
+def test_dispatcher_to_database_default(single_band):
+    """Dispatcher._to_database() must return {selection_name: handler_result}."""
+    result = single_band._to_database()
+    assert isinstance(result, dict)
+    assert "band" in result
+    assert isinstance(result["band"], Band_DB)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

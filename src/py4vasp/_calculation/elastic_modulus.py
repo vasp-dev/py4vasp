@@ -5,11 +5,18 @@ from typing import Optional
 
 import numpy as np
 
-from py4vasp import exception
-from py4vasp._calculation import base, structure
-from py4vasp._raw import data as raw_data
+from py4vasp import exception, raw
+from py4vasp._calculation import structure
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
 from py4vasp._raw.data_db import ElasticModulus_DB
-from py4vasp._util import check
+from py4vasp._util import check, error
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -22,40 +29,34 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
 )
 
 
-class ElasticModulus(base.Refinery):
-    """The elastic modulus is the second derivative of the energy with respect to strain.
+class ElasticModulusHandler:
+    """Handler for the elastic modulus quantity. Works with exactly one raw.ElasticModulus object."""
 
-    The elastic modulus, also known as the modulus of elasticity, is a measure of a
-    material's stiffness and its ability to deform elastically in response to an
-    applied force. It quantifies the ratio of stress (force per unit area) to strain
-    (deformation) in a material within its elastic limit. You can use this class to
-    extract the elastic modulus of a linear response calculation. There are two
-    variants of the elastic modulus: (i) in the clamped-ion one, the cell is deformed
-    but the ions are kept in their positions; (ii) in the relaxed-ion one the
-    atoms are allowed to relax when the cell is deformed.
-    """
+    def __init__(self, raw_elastic_modulus: raw.ElasticModulus):
+        self._raw_elastic_modulus = raw_elastic_modulus
 
-    _raw_data: raw_data.ElasticModulus
+    @classmethod
+    def from_data(
+        cls, raw_elastic_modulus: raw.ElasticModulus
+    ) -> "ElasticModulusHandler":
+        return cls(raw_elastic_modulus)
 
-    @base.data_access
-    def to_dict(self):
-        """Read the clamped-ion and relaxed-ion elastic modulus into a dictionary.
-
-        Returns
-        -------
-        dict
-            Contains the level of approximation and its associated elastic modulus.
-        """
+    def to_dict(self) -> dict:
         return {
-            "clamped_ion": self._raw_data.clamped_ion[:],
-            "relaxed_ion": self._raw_data.relaxed_ion[:],
+            "clamped_ion": self._raw_elastic_modulus.clamped_ion[:],
+            "relaxed_ion": self._raw_elastic_modulus.relaxed_ion[:],
         }
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        encountered_errors = kwargs.get("encountered_errors")
-        selection = kwargs.get("selection") or "default"
-        error_key = f"elastic_modulus:{selection}"
+    def __str__(self) -> str:
+        return f"""Elastic modulus (kBar)
+Direction    XX          YY          ZZ          XY          YZ          ZX
+--------------------------------------------------------------------------------
+{_elastic_modulus_string(self._raw_elastic_modulus.clamped_ion[:], "clamped-ion")}
+{_elastic_modulus_string(self._raw_elastic_modulus.relaxed_ion[:], "relaxed-ion")}"""
+
+    def to_database(self) -> dict:
+        encountered_errors = {}
+        error_key = "elastic_modulus:default"
 
         volume_per_atom = None
         (
@@ -68,23 +69,26 @@ class ElasticModulus(base.Refinery):
             fracture_toughness,
         ) = ([None, None, None] for _ in range(7))
         compact_tensor = [None, None, None]
-        if not check.is_none(self._raw_data.structure):
-            structure_obj = structure.Structure.from_data(self._raw_data.structure)
+
+        if not check.is_none(self._raw_elastic_modulus.structure):
+            structure_obj = structure.Structure.from_data(
+                self._raw_elastic_modulus.structure
+            )
             volume = structure_obj.volume()
             num_atoms = structure_obj.number_atoms()
             volume_per_atom = volume / num_atoms if num_atoms > 0 else None
 
         total_tensor, ionic_tensor, electronic_tensor = None, None, None
-        if not check.is_none(self._raw_data.clamped_ion):
-            electronic_tensor = self._raw_data.clamped_ion[:]
-        if not check.is_none(self._raw_data.relaxed_ion):
-            total_tensor = self._raw_data.relaxed_ion[:]
+        if not check.is_none(self._raw_elastic_modulus.clamped_ion):
+            electronic_tensor = self._raw_elastic_modulus.clamped_ion[:]
+        if not check.is_none(self._raw_elastic_modulus.relaxed_ion):
+            total_tensor = self._raw_elastic_modulus.relaxed_ion[:]
         if electronic_tensor is not None and total_tensor is not None:
             ionic_tensor = total_tensor - electronic_tensor
 
         for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
             voigt_tensor = None
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -99,13 +103,12 @@ class ElasticModulus(base.Refinery):
                         else None
                     )
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
                 context=f"to_database.properties[{idt}]",
             ):
-                # Properties from elastic tensor
                 (
                     bulk_modulus[idt],
                     shear_modulus[idt],
@@ -121,42 +124,32 @@ class ElasticModulus(base.Refinery):
                     error_key=error_key,
                 )
 
-        return {
-            "elastic_modulus": ElasticModulus_DB(
-                total_3d_tensor=compact_tensor[0],  # [kbar]
-                total_bulk_modulus=bulk_modulus[0],  # [GPa]
-                total_shear_modulus=shear_modulus[0],  # [GPa]
-                total_young_modulus=youngs_modulus[0],  # [GPa]
-                total_poisson_ratio=poisson_ratio[0],  # []
-                total_pugh_ratio=pugh_ratio[0],  # []
-                total_vickers_hardness=vickers_hardness[0],  # [GPa]
-                total_fracture_toughness=fracture_toughness[0],  # [MPa·m^0.5]
-                ionic_3d_tensor=compact_tensor[1],
-                ionic_bulk_modulus=bulk_modulus[1],
-                ionic_shear_modulus=shear_modulus[1],
-                ionic_young_modulus=youngs_modulus[1],
-                ionic_poisson_ratio=poisson_ratio[1],
-                ionic_pugh_ratio=pugh_ratio[1],
-                ionic_vickers_hardness=vickers_hardness[1],
-                ionic_fracture_toughness=fracture_toughness[1],
-                electronic_3d_tensor=compact_tensor[2],
-                electronic_bulk_modulus=bulk_modulus[2],
-                electronic_shear_modulus=shear_modulus[2],
-                electronic_young_modulus=youngs_modulus[2],
-                electronic_poisson_ratio=poisson_ratio[2],
-                electronic_pugh_ratio=pugh_ratio[2],
-                electronic_vickers_hardness=vickers_hardness[2],
-                electronic_fracture_toughness=fracture_toughness[2],
-            )
-        }
-
-    @base.data_access
-    def __str__(self):
-        return f"""Elastic modulus (kBar)
-Direction    XX          YY          ZZ          XY          YZ          ZX
---------------------------------------------------------------------------------
-{_elastic_modulus_string(self._raw_data.clamped_ion[:], "clamped-ion")}
-{_elastic_modulus_string(self._raw_data.relaxed_ion[:], "relaxed-ion")}"""
+        return ElasticModulus_DB(
+            total_3d_tensor=compact_tensor[0],
+            total_bulk_modulus=bulk_modulus[0],
+            total_shear_modulus=shear_modulus[0],
+            total_young_modulus=youngs_modulus[0],
+            total_poisson_ratio=poisson_ratio[0],
+            total_pugh_ratio=pugh_ratio[0],
+            total_vickers_hardness=vickers_hardness[0],
+            total_fracture_toughness=fracture_toughness[0],
+            ionic_3d_tensor=compact_tensor[1],
+            ionic_bulk_modulus=bulk_modulus[1],
+            ionic_shear_modulus=shear_modulus[1],
+            ionic_young_modulus=youngs_modulus[1],
+            ionic_poisson_ratio=poisson_ratio[1],
+            ionic_pugh_ratio=pugh_ratio[1],
+            ionic_vickers_hardness=vickers_hardness[1],
+            ionic_fracture_toughness=fracture_toughness[1],
+            electronic_3d_tensor=compact_tensor[2],
+            electronic_bulk_modulus=bulk_modulus[2],
+            electronic_shear_modulus=shear_modulus[2],
+            electronic_young_modulus=youngs_modulus[2],
+            electronic_poisson_ratio=poisson_ratio[2],
+            electronic_pugh_ratio=pugh_ratio[2],
+            electronic_vickers_hardness=vickers_hardness[2],
+            electronic_fracture_toughness=fracture_toughness[2],
+        )
 
     def _compute_elastic_properties(
         self,
@@ -176,7 +169,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
             fracture_toughness,
         ) = (None, None, None, None, None, None, None)
 
-        with base.suppress_and_record(
+        with error.suppress_and_record(
             encountered_errors,
             error_key,
             *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -184,7 +177,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
         ):
             elastic_tensor = _ElasticTensor.from_array(voigt_tensor)
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -194,7 +187,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     elastic_tensor.get_VRH()
                 )
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -207,7 +200,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                         else 0.0 if shear_modulus == 0 else None
                     )
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -215,7 +208,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
             ):
                 vickers_hardness = elastic_tensor.get_hardness()
 
-            with base.suppress_and_record(
+            with error.suppress_and_record(
                 encountered_errors,
                 error_key,
                 *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
@@ -234,6 +227,74 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
             pugh_ratio,
             vickers_hardness,
             fracture_toughness,
+        )
+
+
+@quantity("elastic_modulus")
+class ElasticModulus:
+    """The elastic modulus is the second derivative of the energy with respect to strain.
+
+    The elastic modulus, also known as the modulus of elasticity, is a measure of a
+    material's stiffness and its ability to deform elastically in response to an
+    applied force. It quantifies the ratio of stress (force per unit area) to strain
+    (deformation) in a material within its elastic limit. You can use this class to
+    extract the elastic modulus of a linear response calculation. There are two
+    variants of the elastic modulus: (i) in the clamped-ion one, the cell is deformed
+    but the ions are kept in their positions; (ii) in the relaxed-ion one the
+    atoms are allowed to relax when the cell is deformed.
+    """
+
+    def __init__(self, source, quantity_name: str = "elastic_modulus"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(cls, raw_elastic_modulus: raw.ElasticModulus) -> "ElasticModulus":
+        """Create an ElasticModulus dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_elastic_modulus))
+
+    def _handler_factory(self, raw_data):
+        return ElasticModulusHandler.from_data(raw_data)
+
+    def read(self) -> dict:
+        """Read the clamped-ion and relaxed-ion elastic modulus into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the level of approximation and its associated elastic modulus.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ElasticModulusHandler.to_dict,
+        )
+
+    def to_dict(self) -> dict:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read()
+
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            ElasticModulusHandler.from_data,
+            ElasticModulusHandler.to_database,
         )
 
 
@@ -339,7 +400,7 @@ class _ElasticTensor:
 
     def get_VRH(self):
         """
-        Voigt–Reuss–Hill averaged elastic moduli.
+        Voigt-Reuss-Hill averaged elastic moduli.
 
         Returns
         -------

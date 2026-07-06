@@ -2,19 +2,30 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from __future__ import annotations
 
+import pathlib
 from typing import Any, Iterable, List, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike
 
 from py4vasp import exception
-from py4vasp._calculation import _dispersion, base, kpoint, projector
-from py4vasp._raw import data as raw_data
+from py4vasp._calculation import projector
+from py4vasp._calculation._dispersion import DispersionHandler
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
+from py4vasp._calculation.kpoint import KpointHandler
+from py4vasp._calculation.projector import ProjectorHandler
+from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Band_DB
 from py4vasp._third_party import graph
 from py4vasp._util import (
     check,
-    database,
     documentation,
     import_,
     index,
@@ -25,7 +36,7 @@ from py4vasp._util import (
 pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
 
-_OCCUPATION_CUTOFF = 1e-2  # TODO decide appropriate cutoff
+_OCCUPATION_CUTOFF = 1e-2
 
 # Cartesian axis (x=0, y=1, z=2) corresponding to each accepted spin-component token.
 _SPIN_TOKEN_TO_CARTESIAN_AXIS = {
@@ -41,7 +52,253 @@ _SPIN_TOKEN_TO_CARTESIAN_AXIS = {
 }
 
 
-class Band(base.Refinery, graph.Mixin):
+class BandHandler:
+    """Handler for electronic band structure data."""
+
+    def __init__(self, raw_band: raw.Band):
+        self._raw_band = raw_band
+
+    @classmethod
+    def from_data(cls, raw_band: raw.Band) -> "BandHandler":
+        return cls(raw_band)
+
+    def __str__(self) -> str:
+        return f"""
+{"spin polarized" if self._is_collinear() else ""} band data:
+    {self._raw_band.dispersion.eigenvalues.shape[1]} k-points
+    {self._raw_band.dispersion.eigenvalues.shape[2]} bands
+{str(self._projector())}
+    """.strip()
+
+    def to_dict(self, selection=None, fermi_energy=None) -> dict[str, Any]:
+        dispersion = self._dispersion().to_dict()
+        eigenvalues = dispersion.pop("eigenvalues")
+        return {
+            **dispersion,
+            "fermi_energy": self._raw_band.fermi_energy,
+            **self._shift_dispersion_by_fermi_energy(eigenvalues, fermi_energy),
+            **self._read_occupations(),
+            **self._read_projections(selection),
+        }
+
+    def to_database(self, selection=None, fermi_energy=None) -> Band_DB:
+        occupations = self._read_occupations()
+        num_total_occupied = occupations.get("occupations", None)
+        num_checked_bands = None
+        if num_total_occupied is not None:
+            num_checked_bands = np.shape(num_total_occupied)[-1]
+            num_total_occupied = int(
+                np.max(np.sum(num_total_occupied > _OCCUPATION_CUTOFF, axis=-1))
+            )
+        num_occupied_up = occupations.get("occupations_up", None)
+        num_occupied_down = occupations.get("occupations_down", None)
+        if num_occupied_up is not None:
+            num_checked_bands = np.shape(num_occupied_up)[-1]
+            num_occupied_up = int(
+                np.max(np.sum(num_occupied_up > _OCCUPATION_CUTOFF, axis=-1))
+            )
+        if num_occupied_down is not None:
+            num_occupied_down = int(
+                np.max(np.sum(num_occupied_down > _OCCUPATION_CUTOFF, axis=-1))
+            )
+
+        raw_fermi_energy = (
+            self._raw_band.fermi_energy
+            if not check.is_none(self._raw_band.fermi_energy)
+            else None
+        )
+
+        return Band_DB(
+            num_considered_bands=num_checked_bands,
+            num_occupied_bands=num_total_occupied,
+            num_occupied_bands_up=num_occupied_up,
+            num_occupied_bands_down=num_occupied_down,
+            fermi_energy_raw=raw_fermi_energy,
+            fermi_energy=fermi_energy or raw_fermi_energy,
+        )
+
+    def to_graph(self, selection=None, fermi_energy=None, width=0.5) -> graph.Graph:
+        projections = self._projections(selection, width)
+        result = self._dispersion().plot(projections)
+        result = self._shift_series_by_fermi_energy(result, fermi_energy)
+        result.ylabel = "Energy (eV)"
+        return result
+
+    def to_frame(self, selection=None, fermi_energy=None):
+        return pd.DataFrame(self._extract_relevant_data(selection, fermi_energy))
+
+    def to_quiver(self, selection, normal=None, supercell=None) -> graph.Graph:
+        reciprocal_lattice_vectors = self._kpoint()._reciprocal_lattice_vectors()
+        nkp1, nkp2, cut = self._kmesh()
+        plot_plane = slicing.plane(
+            reciprocal_lattice_vectors, cut, normal, axis_labels=("b1", "b2", "b3")
+        )
+        options = {"lattice": plot_plane}
+        if supercell is not None:
+            options["supercell"] = np.ones(2, dtype=np.int_) * supercell
+        selector = self._make_selector(self._raw_band.projections)
+        tree = select.Tree.from_selection(selection)
+        quiver_plots = [
+            graph.Contour(
+                **self._quiver_plot(selector, sel, nkp1, nkp2, plot_plane), **options
+            )
+            for sel in tree.selections()
+        ]
+        return graph.Graph(quiver_plots, title="Spin Texture")
+
+    def selections(self) -> dict:
+        return self._projector().selections()
+
+    def _is_collinear(self):
+        return len(self._raw_band.dispersion.eigenvalues) == 2
+
+    def _is_noncollinear(self):
+        assert not check.is_none(self._raw_band.projections)
+        return len(self._raw_band.projections) == 4
+
+    def _dispersion(self):
+        return DispersionHandler.from_data(self._raw_band.dispersion)
+
+    def _projector(self):
+        return ProjectorHandler.from_data(self._raw_band.projectors)
+
+    def _kpoint(self):
+        return KpointHandler.from_data(self._raw_band.dispersion.kpoints)
+
+    def _projections(self, selection, width):
+        if selection is None:
+            return None
+        check.raise_error_if_not_number(
+            width, "Width of fat band structure must be a number."
+        )
+        projections = self._read_projections(selection)
+        spin_projections = projections.get(projector.SPIN_PROJECTION, [])
+        for label, weight in projections.items():
+            if label == projector.SPIN_PROJECTION or label in spin_projections:
+                continue
+            weight *= width
+        return projections
+
+    def _read_projections(self, selection):
+        return self._projector().project(selection, self._raw_band.projections)
+
+    def _read_occupations(self):
+        if self._is_collinear():
+            return {
+                "occupations_up": self._raw_band.occupations[0],
+                "occupations_down": self._raw_band.occupations[1],
+            }
+        else:
+            return {"occupations": self._raw_band.occupations[0]}
+
+    def _shift_dispersion_by_fermi_energy(self, eigenvalues, fermi_energy):
+        shifted = self._shift_array_by_fermi_energy(eigenvalues, fermi_energy)
+        if len(shifted) == 2:
+            return {"bands_up": shifted[0], "bands_down": shifted[1]}
+        else:
+            return {"bands": shifted[0]}
+
+    def _shift_series_by_fermi_energy(self, g, fermi_energy):
+        for series in g.series:
+            series.y = self._shift_array_by_fermi_energy(series.y, fermi_energy)
+        return g
+
+    def _shift_array_by_fermi_energy(self, array, fermi_energy):
+        if fermi_energy is None:
+            fermi_energy = self._raw_band.fermi_energy
+        return array - fermi_energy
+
+    def _extract_relevant_data(self, selection, fermi_energy):
+        need_to_be_repeated = ("kpoint_distances", "kpoint_labels")
+        relevant_keys = (
+            "bands",
+            "bands_up",
+            "bands_down",
+            "occupations",
+            "occupations_up",
+            "occupations_down",
+        )
+        data = {}
+        for key, value in self.to_dict(selection, fermi_energy).items():
+            if key in need_to_be_repeated:
+                data[key] = np.repeat(value, self._raw_band.occupations[0].shape[-1])
+            if key in relevant_keys:
+                data[key] = _to_series(value)
+        for key, value in self._read_projections(selection).items():
+            if key == projector.SPIN_PROJECTION:
+                continue
+            data[key] = _to_series(value)
+        return data
+
+    def _kmesh(self):
+        try:
+            nkpx = self._raw_band.dispersion.kpoints.number_x
+            nkpy = self._raw_band.dispersion.kpoints.number_y
+            nkpz = self._raw_band.dispersion.kpoints.number_z
+            if nkpx == 1:
+                return (nkpy, nkpz, "a")
+            elif nkpy == 1:
+                return (nkpx, nkpz, "b")
+            elif nkpz == 1:
+                return (nkpx, nkpy, "c")
+            else:
+                raise exception.DataMismatch(
+                    f"For spin texture visualisation, the plane normal (a,b,c) to the desired cutting plane must have exactly 1 k-point, but the k-point mesh is {nkpx},{nkpy},{nkpz}. Please adjust the KPOINTS file and re-run VASP."
+                )
+        except exception.NoData:
+            raise exception.DataMismatch(
+                "For spin texture visualisation, a k-point grid is assumed, but could not be found for this VASP run."
+            )
+
+    def _quiver_plot(self, selector, selection, nkp1, nkp2, plot_plane):
+        data = selector[selection]
+        axes = _spin_axes_from_selection(selection)
+        # Embed the two selected spin components into a 3D Cartesian vector so
+        # that _project_vectors_to_plane can rotate them into the plot frame.
+        embedded = np.zeros((3, data.shape[1]), dtype=data.dtype)
+        embedded[list(axes)] = data
+        # VASP stores k-points with kx as the fastest-varying (innermost) index.
+        # Reshape in VASP storage order (slow, fast) then transpose to align with
+        # the (grid_a, grid_b) layout expected by the plot pipeline.
+        embedded = embedded.reshape(3, nkp2, nkp1).transpose(0, 2, 1)
+        projected = slicing._project_vectors_to_plane(plot_plane, embedded)
+        return {"data": projected, "label": selector.label(selection)}
+
+    def _make_selector(self, projections):
+        maps = self._projector().to_dict()
+        maps = {
+            1: maps["atom"],
+            2: maps["orbital"],
+            0: self._spin_map(maps["spin"]),
+            4: self._band_map(projections.shape[-1]),
+        }
+        return index.Selector(
+            maps, projections, reduction=_ToQuiverReduction, use_number_labels=True
+        )
+
+    def _spin_map(self, spin_map):
+        if "sigma_x" not in spin_map:
+            raise exception.DataMismatch(
+                "System is not noncollinear which is required to visualize spin texture."
+            )
+        return {
+            "sigma_x~sigma_y": slice(1, 3),
+            "sigma_x~sigma_z": slice(1, 4, 2),
+            "sigma_y~sigma_z": slice(2, 4),
+            "x~y": slice(1, 3),
+            "x~z": slice(1, 4, 2),
+            "y~z": slice(2, 4),
+            "sigma_1~sigma_2": slice(1, 3),
+            "sigma_1~sigma_3": slice(1, 4, 2),
+            "sigma_2~sigma_3": slice(2, 4),
+        }
+
+    def _band_map(self, num_bands):
+        return {"band": {i + 1: i for i in range(num_bands)}}
+
+
+@quantity("band")
+class Band(graph.Mixin):
     """The band structure contains the **k** point resolved eigenvalues.
 
     The most common use case of this class is to produce the electronic band
@@ -52,7 +309,6 @@ class Band(base.Refinery, graph.Mixin):
 
     Examples
     --------
-
     First, we create some example data do that you can follow along. Please define a
     variable `path` with the path to a directory that exists and does not contain any
     VASP calculation data. Alternatively, you can use your own data if you have run
@@ -82,22 +338,31 @@ class Band(base.Refinery, graph.Mixin):
         'atom': [...], 'orbital': [...], 'spin': [...]}
     """
 
-    _raw_data: raw_data.Band
+    def __init__(self, source, quantity_name="band"):
+        self._source = source
+        self._quantity_name = quantity_name
 
-    @base.data_access
-    def __str__(self) -> str:
-        return f"""
-{"spin polarized" if self._is_collinear() else ""} band data:
-    {self._raw_data.dispersion.eigenvalues.shape[1]} k-points
-    {self._raw_data.dispersion.eigenvalues.shape[2]} bands
-{pretty.pretty(self._projector())}
-    """.strip()
+    @classmethod
+    def from_data(cls, raw_band):
+        return cls(source=DataSource(raw_band))
 
-    @base.data_access
+    def _handler_factory(self, raw):
+        return BandHandler.from_data(raw)
+
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            BandHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_dict(
-        self, selection: Optional[str] = None, fermi_energy: Optional[float] = None
-    ) -> dict[str, Any]:
+    def read(self, selection=None, fermi_energy=None) -> dict:
         """Read the data into a dictionary.
 
         You may use this data for your own postprocessing tools. Sometimes you may
@@ -137,25 +402,25 @@ class Band(base.Refinery, graph.Mixin):
         Return the **k** points, the electronic eigenvalues, and the Fermi energy as
         a Python dictionary
 
-        >>> calculation.band.to_dict()
+        >>> calculation.band.read()
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...)}}
 
         Select the p orbitals of the first atom in the POSCAR file:
 
-        >>> calculation.band.to_dict(selection="1(p)")
+        >>> calculation.band.read(selection="1(p)")
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...), 'Sr_1_p': array(...)}}
 
         Select the d orbitals of Sr and Ti:
 
-        >>> calculation.band.to_dict("d(Sr, Ti)")
+        >>> calculation.band.read("d(Sr, Ti)")
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...), 'Sr_d': array(...), 'Ti_d': array(...)}}
 
         For collinear calculations, the spin channels are treated separately
 
-        >>> collinear_calculation.band.to_dict()
+        >>> collinear_calculation.band.read()
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
             'bands_down': array(...), 'occupations_up': array(...),
             'occupations_down': array(...)}}
@@ -163,7 +428,7 @@ class Band(base.Refinery, graph.Mixin):
         You can also select particular spin channels, for example the spin-up contribution
         of the first three atoms combined
 
-        >>> collinear_calculation.band.to_dict("up(1:3)")
+        >>> collinear_calculation.band.read("up(1:3)")
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
             'bands_down': array(...), 'occupations_up': array(...),
             'occupations_down': array(...), '1:3_up': array(...)}}
@@ -171,122 +436,46 @@ class Band(base.Refinery, graph.Mixin):
         For noncollinear calculations, the resulting dictionary has the same structure
         as for the nonpolarized case
 
-        >>> noncollinear_calculation.band.to_dict()
+        >>> noncollinear_calculation.band.read()
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...)}}
 
         If you want to investigate the spin projection of the bands, you can select
         particular spin components. Here, we select the x and z components of the spin
 
-        >>> noncollinear_calculation.band.to_dict("sigma_x, sigma_z")
+        >>> noncollinear_calculation.band.read("sigma_x, sigma_z")
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...), 'sigma_x': array(...), 'sigma_z': array(...),
             'is_spin_projection': ['sigma_x', 'sigma_z']}}
 
         Add the contribution of three d orbitals
 
-        >>> calculation.band.to_dict("dxy + dxz + dyz")
+        >>> calculation.band.read("dxy + dxz + dyz")
         {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...), 'dxy + dxz + dyz': array(...)}}
 
         Read the density of states generated by the '''k'''-point mesh in the KPOINTS_OPT
         file
 
-        >>> calculation.band.to_dict("kpoints_opt")
+        >>> calculation.band.read("kpoints_opt")  # doctest: +SKIP
         {{'kpoint_distances': array(...), 'kpoint_labels': ..., 'fermi_energy': ...,
             'bands': array(...), 'occupations': array(...)}}
         """
-        dispersion = self._dispersion().read()
-        eigenvalues = dispersion.pop("eigenvalues")
-        return {
-            **dispersion,
-            "fermi_energy": self._raw_data.fermi_energy,
-            **self._shift_dispersion_by_fermi_energy(eigenvalues, fermi_energy),
-            **self._read_occupations(),
-            **self._read_projections(selection),
-        }
-
-    @base.data_access
-    @documentation.format(selection_doc=projector.selection_doc)
-    def _to_database(
-        self,
-        selection: Optional[str] = None,
-        fermi_energy: Optional[float] = None,
-        **kwargs,
-    ) -> dict[str, Any]:
-        """Read the data into a database object.
-
-        >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-
-        Parameters
-        ----------
-        {selection_doc}
-        fermi_energy : float
-            Overwrite the Fermi energy of the band structure calculation with a more
-            accurate one from a different calculation. This is recommended for metallic
-            systems where the Fermi energy may be significantly different.
-
-        Returns
-        -------
-        dict
-            Contains the **k**-point path for plotting band structures with the
-            eigenvalues shifted to bring the Fermi energy to 0. If available
-            and a selection is passed, the projections of these bands on the
-            selected projectors are included. If you specified '''k'''-point labels
-            in the KPOINTS file, these are returned as well.
-        """
-        dispersion = self._dispersion()._read_to_database(**kwargs)
-
-        # Find occupations
-        occupations = self._read_occupations()
-        num_total_occupied = occupations.get("occupations", None)
-        num_checked_bands = None
-        if num_total_occupied is not None:
-            num_checked_bands = np.shape(num_total_occupied)[-1]
-            num_total_occupied = int(
-                np.max(np.sum(num_total_occupied > _OCCUPATION_CUTOFF, axis=-1))
-            )
-        num_occupied_up = occupations.get("occupations_up", None)
-        num_occupied_down = occupations.get("occupations_down", None)
-        if num_occupied_up is not None:
-            num_checked_bands = np.shape(num_occupied_up)[-1]
-            num_occupied_up = int(
-                np.max(np.sum(num_occupied_up > _OCCUPATION_CUTOFF, axis=-1))
-            )
-        if num_occupied_down is not None:
-            num_occupied_down = int(
-                np.max(np.sum(num_occupied_down > _OCCUPATION_CUTOFF, axis=-1))
-            )
-
-        raw_fermi_energy = (
-            self._raw_data.fermi_energy
-            if not check.is_none(self._raw_data.fermi_energy)
-            else None
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            BandHandler.to_dict,
+            fermi_energy=fermi_energy,
         )
 
-        return database.combine_db_dicts(
-            {
-                "band": Band_DB(
-                    num_considered_bands=num_checked_bands,
-                    num_occupied_bands=num_total_occupied,
-                    num_occupied_bands_up=num_occupied_up,
-                    num_occupied_bands_down=num_occupied_down,
-                    fermi_energy_raw=raw_fermi_energy,
-                    fermi_energy=fermi_energy or raw_fermi_energy,
-                ),
-            },
-            dispersion,
-        )
+    def to_dict(self, selection=None, fermi_energy=None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection=selection, fermi_energy=fermi_energy)
 
-    @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_graph(
-        self,
-        selection: Optional[str] = None,
-        fermi_energy: Optional[float] = None,
-        width: float = 0.5,
-    ) -> graph.Graph:
+    def to_graph(self, selection=None, fermi_energy=None, width=0.5) -> graph.Graph:
         """Read the data and generate a graph.
 
         On the x axis, we show the **k** points as distances from the previous ones.
@@ -378,7 +567,7 @@ class Band(base.Refinery, graph.Mixin):
         Read the density of states generated by the '''k'''-point mesh in the KPOINTS_OPT
         file
 
-        >>> calculation.band.to_graph("kpoints_opt")
+        >>> calculation.band.to_graph("kpoints_opt")  # doctest: +SKIP
         Graph(series=[Series(..., label='bands', ...)], ...)
 
         If you use projections, you can also adjust the width of the lines. Passing
@@ -387,17 +576,18 @@ class Band(base.Refinery, graph.Mixin):
         >>> calculation.band.to_graph("d", width=1.0)
         Graph(series=[Series(..., label='d', weight=array(...), ...)], ...)
         """
-        projections = self._projections(selection, width)
-        graph = self._dispersion().plot(projections)
-        graph = self._shift_series_by_fermi_energy(graph, fermi_energy)
-        graph.ylabel = "Energy (eV)"
-        return graph
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            BandHandler.to_graph,
+            fermi_energy=fermi_energy,
+            width=width,
+        )
 
-    @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_frame(
-        self, selection: Optional[str] = None, fermi_energy: Optional[float] = None
-    ) -> pd.DataFrame:
+    def to_frame(self, selection=None, fermi_energy=None):
         """Read the data into a DataFrame.
 
         We create some example data do that you can follow along. Please define a
@@ -455,7 +645,7 @@ class Band(base.Refinery, graph.Mixin):
         of the first three atoms combined
 
         >>> collinear_calculation.band.to_frame("up(1:3)")
-           kpoint_distances  bands_up  ...  occupations_down    1:3_up
+           kpoint_distances  bands_up  ...  occupations_down  1:3_up
         0  ...
 
         For noncollinear calculations, the resulting dictionary has the same structure
@@ -478,22 +668,24 @@ class Band(base.Refinery, graph.Mixin):
            kpoint_distances  bands  occupations  dxy + dxz + dyz
         0  ...
         """
-        return pd.DataFrame(self._extract_relevant_data(selection, fermi_energy))
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            BandHandler.to_frame,
+            fermi_energy=fermi_energy,
+        )
 
-    @base.data_access
-    def to_quiver(
-        self,
-        selection: str,
-        normal: Optional[str] = None,
-        supercell: Optional[ArrayLike] = None,
-    ) -> graph.Graph:
+    def to_quiver(self, selection, normal=None, supercell=None) -> graph.Graph:
         """Generate a quiver plot of spin texture.
 
-        Note that plotting the spin texture requires a special setup of the VASP calculation.
-        You need to run a noncollinear calculation and a suitable **k**-point mesh. The
-        **k**-point mesh must be a regular two-dimensional grid, i.e. one of the three
-        reciprocal lattice directions must not be sampled (1 in that direction). py4vasp
-        will check this condition and raise an error if it is not fulfilled.
+        Note that plotting the spin texture requires a special setup of the VASP
+        calculation. You need to run a noncollinear calculation and a suitable
+        **k**-point mesh. The **k**-point mesh must be a regular two-dimensional grid,
+        i.e. one of the three reciprocal lattice directions must not be sampled
+        (1 in that direction). py4vasp will check this condition and raise an error if
+        it is not fulfilled.
 
         The spin texture is represented by arrows in a plane in reciprocal space. The
         plane is defined by the two reciprocal lattice vectors that are sampled by the
@@ -503,8 +695,9 @@ class Band(base.Refinery, graph.Mixin):
         and which bands are included. You can also select particular atoms and orbitals.
 
         Let us generate some example data do that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet. Alternatively,
-        you can use your own data if you have run VASP with an appropriate k-point mesh.
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, you can use your own data if you have run VASP with an
+        appropriate k-point mesh.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path, selection="spin_texture")
@@ -516,7 +709,7 @@ class Band(base.Refinery, graph.Mixin):
             in the plot. This must be provided and py4vasp will raise an error if it is
             not in the correct format. The selection string has the following structure:
 
-                <spin_component>~<spin_component>(band=<band_index>)
+               <spin_component>~<spin_component>(band=<band_index>)
 
             where <spin_component> is one of "sigma_x", "sigma_y", or "sigma_z", and
             <band_index> is the index of the band to be included (1-based). For the
@@ -540,8 +733,8 @@ class Band(base.Refinery, graph.Mixin):
             l = 1) from P (phosphorus).
 
             It is possible to add or subtract different components, e.g., a selection of
-            "Ti(d) - O(p)" would project onto the d orbitals of Ti and the p orbitals of O and
-            then compute the difference of these two selections.
+            "Ti(d) - O(p)" would project onto the d orbitals of Ti and the p orbitals of O
+            and then compute the difference of these two selections.
 
             If you are unsure about the specific projections that are available, you can use
 
@@ -563,18 +756,21 @@ class Band(base.Refinery, graph.Mixin):
         -------
         Graph
             A quiver plot for the spin texture in the plane spanned by the 2 remaining
-            lattice vectors. The arrows represent the spin expectation value at each **k** point.
-            The plot is replicated periodically according to the specified supercell.
+            lattice vectors. The arrows represent the spin expectation value at each
+            **k** point. The plot is replicated periodically according to the specified
+            supercell.
 
         Examples
         --------
-        Plot a projection of the spin texture in reciprocal space, summed over all atoms and orbitals, for the first band and the x and y components.
+        Plot a projection of the spin texture in reciprocal space, summed over all atoms
+        and orbitals, for the first band and the x and y components.
 
         >>> calculation.band.to_quiver("x~y(band=1)")
         Graph(series=[Contour(data=array([[[...]]]), ..., label='x~y_band=1', ...)], ...,
             title='Spin Texture')
 
-        Select the Ba atom, the third band, the x and z spin components, then sum over all orbitals:
+        Select the Ba atom, the third band, the x and z spin components, then sum
+        over all orbitals:
 
         >>> calculation.band.to_quiver("Ba(sigma_1~sigma_3(band=3))")
         Graph(series=[Contour(..., label='Ba_sigma_1~sigma_3_band=3', ...)], ...)
@@ -589,7 +785,8 @@ class Band(base.Refinery, graph.Mixin):
         >>> calculation.band.to_quiver(selection="band=1(x~y)", supercell=3)
         Graph(series=[Contour(..., supercell=array([3, 3]), ...)], ...)
 
-        You can also provide different replication numbers for the two remaining lattice vectors:
+        You can also provide different replication numbers for the two remaining
+        lattice vectors:
 
         >>> calculation.band.to_quiver(selection="band=1(x~y)", supercell=np.array([2, 4]))
         Graph(series=[Contour(..., supercell=array([2, 4]), ...)], ...)
@@ -597,203 +794,48 @@ class Band(base.Refinery, graph.Mixin):
         We can also use KPOINTS_OPT to specify a different mesh. We can use the normal
         argument to rotate the plane normal to align with the nearest coordinate axis.
 
-        >>> calculation.band.to_quiver(selection="kpoints_opt(band=1(x~y))", normal="auto")
+        >>> calculation.band.to_quiver(selection="kpoints_opt(band=1(x~y))", normal="auto")  # doctest: +SKIP
         Graph(series=[Contour(data=array([[[...]]]), ...)], ...)
 
         The automatic rotation will only work if one of the reciprocal lattice vectors is
-        sufficiently close to a Cartesian axis. If this is not the case, you can manually specify the desired axis.
-        For example, to rotate the plane normal to align with the x coordinate axis:
+        sufficiently close to a Cartesian axis. If this is not the case, you can manually
+        specify the desired axis. For example, to rotate the plane normal to align with
+        the x coordinate axis:
 
         >>> calculation.band.to_quiver(selection="band=1(x~y)", normal="x")
         Graph(series=[Contour(data=array([[[...]]]), ...)], ...)
         """
-        reciprocal_lattice_vectors = self._kpoint()._reciprocal_lattice_vectors()
-        nkp1, nkp2, cut = self._kmesh()
-        # Plane is defined by KPOINTS file
-        plot_plane = slicing.plane(
-            reciprocal_lattice_vectors, cut, normal, axis_labels=("b1", "b2", "b3")
-        )
-        options = {"lattice": plot_plane}
-        if supercell is not None:
-            options["supercell"] = np.ones(2, dtype=np.int_) * supercell
-        #
-        selector = self._make_selector(self._raw_data.projections)
-        tree = select.Tree.from_selection(selection)
-        quiver_plots = [
-            graph.Contour(
-                **self._quiver_plot(selector, selection, nkp1, nkp2, plot_plane),
-                **options,
-            )
-            for selection in tree.selections()
-        ]
-        return graph.Graph(quiver_plots, title="Spin Texture")
-
-    def _quiver_plot(self, selector, selection, nkp1, nkp2, plot_plane):
-        data = selector[selection]
-        axes = _spin_axes_from_selection(selection)
-        # Embed the two selected spin components into a 3D Cartesian vector so
-        # that _project_vectors_to_plane can rotate them into the plot frame.
-        embedded = np.zeros((3, data.shape[1]), dtype=data.dtype)
-        embedded[list(axes)] = data
-        # VASP stores k-points with kx as the fastest-varying (innermost) index.
-        # Reshape in VASP storage order (slow, fast) then transpose to align with
-        # the (grid_a, grid_b) layout expected by the plot pipeline.
-        embedded = embedded.reshape(3, nkp2, nkp1).transpose(0, 2, 1)
-        projected = slicing._project_vectors_to_plane(plot_plane, embedded)
-        return {"data": projected, "label": selector.label(selection)}
-
-    def _make_selector(self, projections):
-        maps = self._projector().to_dict()
-        maps = {
-            1: maps["atom"],
-            2: maps["orbital"],
-            0: self._spin_map(maps["spin"]),
-            4: self._band_map(projections.shape[-1]),
-        }
-        return index.Selector(
-            maps, projections, reduction=_ToQuiverReduction, use_number_labels=True
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            BandHandler.to_quiver,
+            normal=normal,
+            supercell=supercell,
         )
 
-    def _spin_map(self, spin_map):
-        if "sigma_x" not in spin_map:
-            # Spin Texture only makes sense for non-collinear systems
-            raise exception.DataMismatch(
-                "System is not noncollinear which is required to visualize spin texture."
-            )
-        return {
-            "sigma_x~sigma_y": slice(1, 3),
-            "sigma_x~sigma_z": slice(1, 4, 2),
-            "sigma_y~sigma_z": slice(2, 4),
-            "x~y": slice(1, 3),
-            "x~z": slice(1, 4, 2),
-            "y~z": slice(2, 4),
-            "sigma_1~sigma_2": slice(1, 3),
-            "sigma_1~sigma_3": slice(1, 4, 2),
-            "sigma_2~sigma_3": slice(2, 4),
-        }
+    def selections(self, selection=None) -> dict:
+        from py4vasp._raw import definition as raw_module
 
-    def _band_map(self, num_bands):
-        return {"band": {i + 1: i for i in range(num_bands)}}
-
-    @base.data_access
-    def selections(self) -> dict[str, Any]:
-        return {**super().selections(), **self._projector().selections()}
-
-    def _scale(self):
-        if isinstance(self._raw_data.dispersion.kpoints.cell.scale, np.float64):
-            return self._raw_data.dispersion.kpoints.cell.scale
-        if not self._raw_data.dispersion.kpoints.cell.scale.is_none():
-            return self._raw_data.dispersion.kpoints.cell.scale[()]
-        else:
-            return 1.0
-
-    def _is_collinear(self):
-        return len(self._raw_data.dispersion.eigenvalues) == 2
-
-    def _is_noncollinear(self):
-        message = "If there are no projections, we cannot use them to check whether the system is noncollinear."
-        assert not check.is_none(self._raw_data.projections), message
-        return len(self._raw_data.projections) == 4
-
-    def _dispersion(self):
-        return _dispersion.Dispersion.from_data(self._raw_data.dispersion)
-
-    def _projector(self):
-        return projector.Projector.from_data(self._raw_data.projectors)
-
-    def _kpoint(self):
-        return kpoint.Kpoint.from_data(self._raw_data.dispersion.kpoints)
-
-    def _projections(self, selection, width):
-        if selection is None:
-            return None
-        error_message = "Width of fat band structure must be a number."
-        check.raise_error_if_not_number(width, error_message)
-        projections = self._read_projections(selection)
-        spin_projections = projections.get(projector.SPIN_PROJECTION, [])
-        for label, weight in projections.items():
-            if label == projector.SPIN_PROJECTION or label in spin_projections:
-                # do not scale spin projections
-                continue
-            weight *= width
-        return projections
-
-    def _read_projections(self, selection):
-        return self._projector().project(selection, self._raw_data.projections)
-
-    def _read_occupations(self):
-        if self._is_collinear():
-            return {
-                "occupations_up": self._raw_data.occupations[0],
-                "occupations_down": self._raw_data.occupations[1],
-            }
-        else:
-            return {"occupations": self._raw_data.occupations[0]}
-
-    def _shift_dispersion_by_fermi_energy(self, eigenvalues, fermi_energy):
-        shifted = self._shift_array_by_fermi_energy(eigenvalues, fermi_energy)
-        if len(shifted) == 2:
-            return {"bands_up": shifted[0], "bands_down": shifted[1]}
-        else:
-            return {"bands": shifted[0]}
-
-    def _shift_series_by_fermi_energy(self, graph, fermi_energy):
-        for series in graph.series:
-            series.y = self._shift_array_by_fermi_energy(series.y, fermi_energy)
-        return graph
-
-    def _shift_array_by_fermi_energy(self, array, fermi_energy):
-        if fermi_energy is None:
-            fermi_energy = self._raw_data.fermi_energy
-        return array - fermi_energy
-
-    def _extract_relevant_data(self, selection, fermi_energy):
-        need_to_be_repeated = ("kpoint_distances", "kpoint_labels")
-        relevant_keys = (
-            "bands",
-            "bands_up",
-            "bands_down",
-            "occupations",
-            "occupations_up",
-            "occupations_down",
+        handler_selections = merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            BandHandler.selections,
         )
-        data = {}
-        for key, value in self.to_dict(selection, fermi_energy).items():
-            if key in need_to_be_repeated:
-                data[key] = np.repeat(value, self._raw_data.occupations[0].shape[-1])
-            if key in relevant_keys:
-                data[key] = _to_series(value)
-        for key, value in self._read_projections(selection).items():
-            if key == projector.SPIN_PROJECTION:
-                # do not include spin projection in dataframe
-                continue
-            data[key] = _to_series(value)
-        return data
+        sources = list(raw_module.selections(self._quantity_name))
+        return {self._quantity_name: sources, **handler_selections}
 
-    def _kmesh(self) -> tuple[int, int, str]:
-        """
-        Returns a tuple of number of k-points in two directions as per spin selection,
-        and the corresponding cut direction in which the kpoint mesh is 1.
-        """
-        try:
-            nkpx = self._raw_data.dispersion.kpoints.number_x
-            nkpy = self._raw_data.dispersion.kpoints.number_y
-            nkpz = self._raw_data.dispersion.kpoints.number_z
-
-            if nkpx == 1:
-                return (nkpy, nkpz, "a")
-            elif nkpy == 1:
-                return (nkpx, nkpz, "b")
-            elif nkpz == 1:
-                return (nkpx, nkpy, "c")
-            else:
-                raise exception.DataMismatch(
-                    f"For spin texture visualisation, the plane normal (a,b,c) to the desired cutting plane must have exactly 1 k-point, but the k-point mesh is {nkpx},{nkpy},{nkpz}. Please adjust the KPOINTS file and re-run VASP."
-                )
-        except exception.NoData:
-            raise exception.DataMismatch(
-                f"For spin texture visualisation, a k-point grid is assumed, but could not be found for this VASP run."
-            )
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            self._handler_factory,
+            BandHandler.to_database,
+        )
 
 
 def _to_series(array):
@@ -824,9 +866,6 @@ def _spin_axes_from_selection(selection):
 
 class _ToQuiverReduction(index.Reduction):
     def __init__(self, keys: List):
-        # raise an IncorrectUsage Warning if:
-        #   - no spin elements have been chosen
-        #   - no band has been chosen
         if not (keys[0]):
             raise exception.IncorrectUsage(
                 "Spin Elements must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `x~y`. You can combine arguments by `arg1(arg2(arg3(...)))`."
@@ -835,8 +874,8 @@ class _ToQuiverReduction(index.Reduction):
             raise exception.IncorrectUsage(
                 "A band must be chosen, but none are given. Please adapt your `selection` argument to include, e.g., `band[1]`. You can combine arguments by `arg1(arg2(arg3(...)))`."
             )
-        pass
+        super().__init__(keys)
 
     def __call__(self, array: ArrayLike, axis: Iterable):
-        axis = tuple(filter(None, axis))  # prevents summation along 0-axis
+        axis = tuple(filter(None, axis))
         return np.sum(array, axis=axis)

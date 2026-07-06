@@ -9,6 +9,16 @@ import pytest
 
 import py4vasp
 from py4vasp import _calculation, demo, exception
+from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calculation attributes
+    band,
+    dos,
+    force,
+    kpoint,
+    local_moment,
+    projector,
+    structure,
+    system,
+)
 
 
 def test_creating_default_calculation(tmp_path):

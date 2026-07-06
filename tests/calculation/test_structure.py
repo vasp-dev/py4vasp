@@ -8,7 +8,7 @@ import pytest
 
 from py4vasp import exception, raw
 from py4vasp._calculation._stoichiometry import Stoichiometry
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.data_db import Structure_DB
 from py4vasp._util import check
 
@@ -172,20 +172,21 @@ def not_a_supercell(request):
 
 def make_structure(raw_structure: raw.Structure):
     structure = Structure.from_data(raw_structure)
+    handler = StructureHandler.from_data(raw_structure)
     structure.ref = types.SimpleNamespace()
+    structure.ref.raw_data = raw_structure
     if not raw_structure.cell.scale.is_none():
         scale = raw_structure.cell.scale[()]
     else:
         scale = 1.0
     structure.ref.lattice_vectors = scale * raw_structure.cell.lattice_vectors
     structure.ref.volume = np.abs(np.linalg.det(structure.ref.lattice_vectors))
-    if structure._is_trajectory:
-        structure.ref.area_2d, structure.ref.area_2d_span = (
-            structure[:]._cell()._area_2d()
-        )
+    if handler._is_trajectory:
+        all_steps = StructureHandler.from_data(raw_structure, steps=slice(None))
+        structure.ref.area_2d, structure.ref.area_2d_span = all_steps._cell()._area_2d()
     else:
-        structure.ref.area_2d, structure.ref.area_2d_span = structure._cell()._area_2d()
-    structure.ref.dimensionality = structure._dimensionality()
+        structure.ref.area_2d, structure.ref.area_2d_span = handler._cell()._area_2d()
+    structure.ref.dimensionality = handler._dimensionality()
     structure.ref.positions = raw_structure.positions
     if check.is_none(raw_structure.stoichiometry.ion_types):
         structure.ion_type_arg = {"ion_types": ("Sr", "Ti", "O")}
@@ -516,19 +517,24 @@ def test_print_Ca3AsBr3(Ca3AsBr3, format_):
 
 
 def test_is_suspected_2d_system(Graphite, Sr2TiO4, Fe3O4):
-    assert Graphite._cell().is_suspected_2d_system
-    assert not Sr2TiO4._cell().is_suspected_2d_system
-    assert not Fe3O4._cell().is_suspected_2d_system
+    def is_suspected_2d(structure):
+        cell = StructureHandler.from_data(structure.ref.raw_data)._cell()
+        return cell.is_suspected_2d_system
+
+    assert is_suspected_2d(Graphite)
+    assert not is_suspected_2d(Sr2TiO4)
+    assert not is_suspected_2d(Fe3O4)
 
 
 def test_system_dimensionality(Graphite, Sr2TiO4, Fe3O4):
-    assert Graphite._dimensionality() == 2
-    assert Sr2TiO4._dimensionality() == 3
-    assert Fe3O4._dimensionality() == 3
+    assert StructureHandler.from_data(Graphite.ref.raw_data)._dimensionality() == 2
+    assert StructureHandler.from_data(Sr2TiO4.ref.raw_data)._dimensionality() == 3
+    assert StructureHandler.from_data(Fe3O4.ref.raw_data)._dimensionality() == 3
 
 
 def test_to_database(structures, Assert):
-    db_data: Structure_DB = structures._read_to_database()["structure:default"]
+    handler = StructureHandler.from_data(structures.ref.raw_data)
+    db_data: Structure_DB = handler.to_database()
     assert isinstance(db_data, Structure_DB)
     has_timesteps = structures.ref.positions.ndim == 3
     final_positions = (
@@ -597,6 +603,32 @@ def test_to_database(structures, Assert):
     assert getattr(db_data, f"{prefix}_angle_alpha") == pytest.approx(alpha)
     assert getattr(db_data, f"{prefix}_angle_beta") == pytest.approx(beta)
     assert getattr(db_data, f"{prefix}_angle_gamma") == pytest.approx(gamma)
+
+
+def test_to_database_dispatch(raw_data):
+    """The dispatcher keys the handler result by quantity name for the database."""
+    raw_structure = raw_data.structure("Sr2TiO4")
+    result = Structure.from_data(raw_structure)._to_database()
+    assert set(result) == {"structure"}
+    expected = StructureHandler.from_data(raw_structure).to_database()
+    assert result["structure"] == expected
+
+
+def test_to_database_collects_available_sources(tmp_path):
+    """Database collection enumerates every structure source. For a CONTCAR-only
+    calculation only the ``final`` source carries data, so the result is keyed
+    ``structure_final`` (default/exciton/poscar have no data and are dropped)."""
+    import h5py
+
+    import py4vasp
+    from py4vasp._demo import CONTCAR as contcar_demo
+
+    with h5py.File(tmp_path / "vaspout.h5", "w") as h5f:
+        py4vasp._raw.write.write(h5f, raw.Version(99, 99, 99))
+        py4vasp._raw.write.write(h5f, contcar_demo.Sr2TiO4())
+    result = py4vasp.Calculation.from_path(tmp_path).structure._to_database()
+    assert set(result) == {"structure_final"}
+    assert result["structure_final"].num_ions == 7
 
 
 def test_factory_methods(raw_data, check_factory_methods):

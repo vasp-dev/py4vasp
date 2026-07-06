@@ -4,19 +4,11 @@ import importlib
 import pathlib
 from typing import Any, List, Optional, Tuple, Union
 
-import h5py
-
 from py4vasp import exception
-from py4vasp._raw.access import access
+from py4vasp._calculation.dispatch import _REGISTRY, FileSource, Group
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
-from py4vasp._raw.definition import (
-    DEFAULT_SOURCE,
-    schema,
-    selections,
-    unique_selections,
-)
-from py4vasp._raw.schema import Link
-from py4vasp._util import convert, database, import_
+from py4vasp._raw.data_db import __SCHEMA_VERSION__
+from py4vasp._util import convert, import_
 
 
 def _append_database_error(
@@ -29,69 +21,24 @@ def _append_database_error(
     encountered_errors.setdefault(key, []).append(message)
 
 
-INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
-QUANTITIES = (
-    "band",
-    "bandgap",
-    "born_effective_charge",
-    "current_density",
-    "density",
-    "dielectric_function",
-    "dielectric_tensor",
-    "dos",
-    "effective_coulomb",
-    "elastic_modulus",
-    "electronic_minimization",
-    "energy",
-    "force",
-    "force_constant",
-    "internal_strain",
-    "kpoint",
-    "local_moment",
-    "nics",
-    "pair_correlation",
-    "partial_density",
-    "piezoelectric_tensor",
-    "polarization",
-    "potential",
-    "projector",
-    "run_info",
-    "stress",
-    "structure",
-    "system",
-    "velocity",
-    "workfunction",
-    "_CONTCAR",
-    "_dispersion",
-    "_stoichiometry",
+_REGISTRY_MODULES_IMPORTED = False
+
+_SUPPRESSED_DB_EXCEPTIONS = (
+    exception.Py4VaspError,
+    exception.OutdatedVaspVersion,
+    exception.NoData,
+    exception.FileAccessError,
+    AttributeError,
+    TypeError,
+    ValueError,
 )
-GROUPS = {
-    "electron_phonon": ("bandgap", "chemical_potential", "self_energy", "transport"),
-    "exciton": ("density", "eigenvector"),
-    "phonon": ("band", "dos", "mode"),
-}
-GROUP_TYPE_ALIAS = {
-    convert.to_camelcase(f"{group}_{member}"): f"{group}.{member}"
-    for group, members in GROUPS.items()
-    for member in members
-}
 
-AUTOSUMMARY_QUANTITIES = [
-    (quantity, f"~py4vasp.Calculation.{quantity}")
-    for quantity in QUANTITIES
-    if not quantity.startswith("_")
-]
-AUTOSUMMARY_GROUPS = [
-    (
-        f"{group}.{member}",
-        f"~py4vasp._calculation.{group}_{member}.{convert.to_camelcase(f'{group}_{member}')}",
-    )
-    for group, members in GROUPS.items()
-    for member in members
-]
-AUTOSUMMARIES = sorted(AUTOSUMMARY_QUANTITIES + AUTOSUMMARY_GROUPS)
 
-__all__ = QUANTITIES
+INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
+
+# QUANTITIES, GROUPS, GROUP_TYPE_ALIAS, AUTOSUMMARY_QUANTITIES, AUTOSUMMARY_GROUPS,
+# AUTOSUMMARIES, and __all__ are derived from the dispatcher _REGISTRY by
+# _rebuild_public_registry_views() at the bottom of this module.
 
 
 class Calculation:
@@ -190,6 +137,7 @@ instead of the constructor Calculation()."""
         calc = cls(_internal=True)
         calc._path = pathlib.Path(path_name).expanduser().resolve()
         calc._file = None
+        calc._source = FileSource(calc._path)
         return calc
 
     @classmethod
@@ -236,28 +184,14 @@ instead of the constructor Calculation()."""
         calc = cls(_internal=True)
         calc._path = pathlib.Path(file_name).expanduser().resolve().parent
         calc._file = file_name
+        calc._source = FileSource(calc._path, file=file_name)
         return calc
 
-    def _to_database(
-        self,
-        tags: Optional[Union[str, list[str]]] = None,
-        fermi_energy: Optional[float] = None,
-    ):
-        """
-        Retrieve the data of the calculation needed to write it to a VASP database.
+    def _to_database(self):
+        """Retrieve the data of the calculation needed to write it to a VASP database.
 
         The actual database write is handled by external modules, e.g., the `vaspdb`
         package. This method prepares all the data that is needed for the database.
-
-        Parameters
-        ----------
-        tags
-            Tags to associate with the calculation in the database.
-            Can be a single string or a list of strings.
-        fermi_energy: float
-            If provided, this Fermi energy will be used for database computations
-            instead of the one read from the calculation data, e.g., for band structure.
-            This is relevant, e.g., for metallic systems where the Fermi energy may be significantly different.
 
         Examples
         --------
@@ -266,56 +200,47 @@ instead of the constructor Calculation()."""
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> calc_data = calculation._to_database()
-
-        Tag your calculation when writing it to the database:
-
-        >>> calc_data = calculation._to_database(tags=["relaxation", "vaspdb", "testing some stuff"])
-
-        Notes
-        -----
-        To add a variable to the database data, implement a `_to_database` method
-        in a `base.Refinery` subclass (see `base.Refinery._read_to_database` for reference) listed in QUANTITIES.
-        For example, the `_calculation.energy.Energy` class implements such a method to add energy-related
-        data to the database.
-
-        If you do not know which quantity to add it to, consider `_calculation.run_info.RunInfo` if you can
-        guarantee the quantity will always be available. If not, implement your own dataclass - just make sure
-        to implement the base dataclass in `_raw.data`, add its schema in `_raw.definition`, write an implementation
-        for `_calculation.your_quantity.YourQuantity` and add it to the QUANTITIES list.
         """
-        hdf5_path: pathlib.Path = self._path / (self._file or "vaspout.h5")
-
-        # Check h5 file existence
-        if not hdf5_path.exists():
-            raise exception.FileAccessError(
-                f"The HDF5 file {hdf5_path} does not exist."
-            )
-
-        # Obtain DatabaseData instance
-        # Obtain runtime data from h5 file
-        database_data = None
-        with access("runtime_data", file=self._file, path=self._path) as runtime_data:
-            database_data = _DatabaseData(
-                metadata=CalculationMetaData(
-                    hdf5_original_path=hdf5_path,
-                    tags=tags,
-                    infer_none_files=True,
-                )
-            )
-
-        # Check available quantities and compute additional properties
-        (
-            database_data.available_quantities,
-            database_data.additional_properties,
-            database_data.encountered_errors,
-        ) = self._compute_database_data(hdf5_path, fermi_energy=fermi_energy)
-
-        # Return DatabaseData object for VaspDB to process
-        return database_data
+        metadata = CalculationMetaData(
+            path=self._path,
+            schema_version=__SCHEMA_VERSION__,
+        )
+        properties = self._compute_database_data()
+        return _DatabaseData(metadata=metadata, properties=properties)
 
     def path(self):
         "Return the path in which the calculation is run."
         return self._path
+
+    def __getattr__(self, name):
+        # Resolves a quantity (or group) by name from the dispatcher _REGISTRY. Called
+        # only when normal attribute lookup has already failed.
+        if name.startswith("_"):
+            raise AttributeError(name)
+        if name not in _REGISTRY:
+            module_name = f"py4vasp._calculation.{name}"
+            try:
+                importlib.import_module(module_name)
+            except ImportError as err:
+                # Missing quantity modules are expected for unknown names; however,
+                # re-raise ImportError originating from inside an existing module.
+                if err.name != module_name:
+                    raise
+        if name not in _REGISTRY:
+            # Could be a group name (e.g. "electron_phonon") whose member modules
+            # have different file names — import all to populate the full registry.
+            _ensure_all_quantities_imported()
+        if name in _REGISTRY:
+            entry = _REGISTRY[name]
+            if isinstance(entry, dict):
+                return Group(self._source, entry)
+            return entry(source=self._source, quantity_name=entry._quantity_name)
+        raise AttributeError(f"'Calculation' has no attribute '{name}'")
+
+    def __dir__(self):
+        names = set(super().__dir__())
+        names.update(_REGISTRY.keys())
+        return sorted(names)
 
     # Input files are not in current release
     # @property
@@ -345,269 +270,104 @@ instead of the constructor Calculation()."""
     # def POSCAR(self, poscar):
     #     self._POSCAR.write(str(poscar))
 
-    def _compute_database_data(
-        self, hdf5_path: pathlib.Path, fermi_energy: Optional[float] = None
-    ) -> Tuple[
-        dict[str, tuple[bool, list[str]]], dict[str, dict], dict[str, list[str]]
-    ]:
-        """Computes a dict of available py4vasp dataclasses and all available database data.
+    def _compute_database_data(self) -> dict:
+        """Iterate over all quantities in _REGISTRY and collect database properties.
 
-        Returns
-        -------
-        Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]
-            A tuple containing:
-            - dict[str, tuple[bool, list[str]]]
-                A dictionary indicating the availability of each quantity (and selection) in the calculation.
-                The keys may take the form 'group.quantity', 'quantity', 'group.quantity:selection', or 'quantity:selection'.
-                The default selection is always omitted from the key.
-                Also includes a list of aliases for each quantity/selection combination.
-            - dict[str, dict]
-                A dictionary containing all additional properties to be stored in the database.
-                The keys follow the same convention as above. The values are dictionaries with the actual data to be stored.
+        Returns a flat dict mapping property keys to handler result dicts.
+        Keys use the format:
+        - ``<quantity>`` for the default selection
+        - ``<quantity>_<selection>`` for non-default selections
+        - ``<group>_<quantity>`` / ``<group>_<quantity>_<selection>`` for groups
+        Leading underscores are stripped from private quantity names.
         """
-        available_quantities = {}
-        additional_properties = {}
-        encountered_errors = {}
+        _ensure_all_quantities_imported()
+        properties = {}
+        for entry in _REGISTRY.values():
+            members = entry.values() if isinstance(entry, dict) else [entry]
+            for dispatcher_cls in members:
+                _collect_to_database(dispatcher_cls, self._source, properties)
+        return properties
 
-        # clear cached calls to should_load
-        database.should_load.cache_clear()
 
-        # Obtain quantities
-        # --- MAIN LOOP FOR QUANTITIES ---
-        available_quantities, additional_properties = self._loop_quantities(
-            hdf5_path,
-            QUANTITIES,
-            available_quantities,
-            additional_properties,
-            encountered_errors,
-            fermi_energy=fermi_energy,
-        )
-        for group, quantities in GROUPS.items():
-            available_quantities, additional_properties = self._loop_quantities(
-                hdf5_path,
-                quantities,
-                available_quantities,
-                additional_properties,
-                encountered_errors,
-                group_name=group,
-                fermi_energy=fermi_energy,
-            )
-        # --------------------------------
-
-        # clear cached calls to should_load
-        database.should_load.cache_clear()
-
-        # post-process dictionary keys
-        available_quantities = database.clean_db_dict_keys(available_quantities)
-        additional_properties = database.clean_db_dict_keys(additional_properties)
-
-        return available_quantities, additional_properties, encountered_errors
-
-    def _loop_quantities(
-        self,
-        hdf5_path: pathlib.Path,
-        quantities,
-        available_quantities,
-        additional_properties,
-        encountered_errors,
-        group_name=None,
-        fermi_energy: Optional[float] = None,
-    ) -> Tuple[dict[str, tuple[bool, list[str]]], dict[str, dict]]:
-        group_instance = self if group_name is None else getattr(self, group_name)
-        for quantity in quantities:
-            try:
-                _selections = (
-                    unique_selections(quantity.lstrip("_"))
-                    if group_name is None
-                    else unique_selections(f"{group_name}_{quantity.lstrip('_')}")
-                )
-            except exception.FileAccessError:
-                _selections = ["default"]
-
-            for selection in _selections:
-                is_available, props, aliases_, additional_related_keys = (
-                    self._compute_quantity_db_data(
-                        hdf5_path,
-                        group_instance,
-                        selection,
-                        quantity,
-                        group_name,
-                        additional_properties,
-                        encountered_errors,
-                        fermi_energy=fermi_energy,
-                    )
-                )
-                availability_key, _ = database.construct_database_data_key(
-                    group_name, quantity, selection
-                )
-                available_quantities[availability_key] = (is_available, aliases_)
-                # fix data_factory linked quantities and their selections
-                for key in additional_related_keys:
-                    split1, split2 = key.rsplit(":", 1)
-                    actual_key = f"{split1}:{selection}"
-                    # fix only if not already present and the base quantity is available
-                    if (split1 in QUANTITIES or f"_{split1}" in QUANTITIES) and not (
-                        actual_key in available_quantities
-                    ):
-                        available_quantities[actual_key] = (is_available, aliases_)
-                if is_available:
-                    additional_properties = database.combine_db_dicts(
-                        additional_properties, props
-                    )
-        return available_quantities, additional_properties
-
-    def _compute_quantity_db_data(
-        self,
-        hdf5_path: pathlib.Path,
-        group,
-        selection: Optional[str],
-        quantity_name: str,
-        group_name: Optional[str] = None,
-        current_db: dict = {},
-        encountered_errors: Optional[dict[str, list[str]]] = None,
-        fermi_energy: Optional[float] = None,
-    ) -> Tuple[bool, dict, list[str]]:
-        "Compute additional data to be stored in the database."
-        is_available = False
-        schema_quantity_name = quantity_name.lstrip("_")
-        aliases_ = schema._aliases(
-            (
-                f"{group_name}_{schema_quantity_name}"
-                if group_name is not None
-                else schema_quantity_name
-            ),
-            selection,
-        )
-        additional_properties = {}
-        additional_related_keys = []
-        base_key, _ = database.construct_database_data_key(
-            group_name, quantity_name, selection
-        )
-
+def _ensure_all_quantities_imported():
+    """Import all quantity modules so that _REGISTRY is fully populated."""
+    calc_pkg = importlib.import_module("py4vasp._calculation")
+    calc_dir = pathlib.Path(calc_pkg.__file__).parent
+    for module_file in sorted(calc_dir.glob("*.py")):
+        name = module_file.stem
+        if name.startswith("__"):
+            continue
         try:
-            # check if readable
-            expected_key = (
-                f"{group_name}_{schema_quantity_name}"
-                if group_name is not None
-                else schema_quantity_name
-            )
-            should_load = False
-            with h5py.File(hdf5_path, "r") as h5file:
-                should_load, _, should_attempt_read, additional_related_keys = (
-                    database.should_load(expected_key, selection, h5file, schema)
-                )
-
-                if not (should_attempt_read):
-                    # we don't need to add these keys; they should automatically be considered --> clear list!
-                    # the list is passed one level up and may otherwise create duplicates or wrong keys
-                    additional_related_keys = []
-            # should_load = True
-            if should_load or should_attempt_read:
-                if should_attempt_read:
-                    # attempt to read; if it passes: available
-                    # this is relevant for quantities that read from files other than h5
-                    quantity_data = getattr(group, quantity_name).read(
-                        selection=str(selection)
-                    )
-                is_available = True
-            # attempt to compute additional properties if any are requested
-        except exception.NoData:
-            pass  # happens when some required data is missing
-        except exception.OutdatedVaspVersion:
-            pass  # happens when VASP version is too old for this quantity
-        except exception.FileAccessError:
-            pass  # happens when vaspout.h5 or vaspwave.h5 (where relevant) are missing
-        except Exception as e:
-            if encountered_errors is not None:
-                _append_database_error(
-                    encountered_errors,
-                    base_key,
-                    e,
-                    context="availability_check",
-                )
-            # print(
-            #     f"[CHECK] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection}:",
-            #     e,
-            # )
-            pass  # catch any other errors during reading
-
-        if is_available:
-            try:
-                additional_properties: dict[str, dict[str, Any]] = getattr(
-                    group, quantity_name
-                )._read_to_database(
-                    selection=str(selection),
-                    current_db=current_db,
-                    encountered_errors=encountered_errors,
-                    original_group_name=group_name,
-                    fermi_energy=fermi_energy,
-                )
-            except exception.OutdatedVaspVersion as e:
-                # print(
-                #     f"[ADD] VASP version too old for {quantity_name} (group={type(group)}) with selection {selection}. Got error: {e}"
-                # )
-                pass  # happens when VASP version is too old for this quantity
-            except Exception as e:
-                if encountered_errors is not None:
-                    _append_database_error(
-                        encountered_errors,
-                        base_key,
-                        e,
-                        context="read_to_database",
-                    )
-                # print(
-                #     f"[ADD] Unexpected error on {quantity_name} (group={type(group)}) with selection {selection} (please consider filing a bug report):",
-                #     e,
-                # )
-                pass  # catch any other errors during reading
-
-        return is_available, additional_properties, aliases_, additional_related_keys
+            importlib.import_module(f"py4vasp._calculation.{name}")
+        except Exception:
+            pass
 
 
-def _add_all_refinement_classes(calc):
-    for quantity in QUANTITIES:
-        setattr(calc, quantity, _make_property(quantity))
-    for group, quantities in GROUPS.items():
-        setattr(calc, group, _make_group(group, quantities))
-    return calc
+def _collect_to_database(dispatcher_cls, source, properties):
+    """Call dispatcher._to_database() and merge results into *properties*.
+
+    Each dispatcher already keys its results by the full quantity name; group members
+    use ``<group>_<member>`` via their ``_quantity_name`` (e.g. ``phonon_mode``), so the
+    results merge directly without any additional group prefix.
+    """
+    dispatcher = dispatcher_cls(
+        source=source, quantity_name=dispatcher_cls._quantity_name
+    )
+    if not hasattr(dispatcher, "_to_database"):
+        return
+    try:
+        result = dispatcher._to_database()
+    except _SUPPRESSED_DB_EXCEPTIONS:
+        return
+    except Exception:
+        return
+    properties.update(result)
 
 
-def _make_property(quantity):
-    # Be careful when refactoring this code, if the class_ is in a scope where it gets
-    # changed like in the _add_all_refinement_classes routine, it may overwrite the
-    # previous setting and all properties point to the same quantity.
-    class_name = convert.to_camelcase(quantity)
-    module = importlib.import_module(f"py4vasp._calculation.{quantity}")
-    class_ = getattr(module, class_name)
+def _rebuild_public_registry_views():
+    """Derive the public quantity/group views from the dispatcher ``_REGISTRY``.
 
-    def get_quantity(self):
-        if self._file is None:
-            return class_.from_path(self._path)
-        else:
-            return class_.from_file(self._file)
+    These module-level names drive documentation generation (``_sphinx``) and database
+    key extraction (``_util.database``). They are computed from ``_REGISTRY`` so that
+    every public dispatcher quantity is exposed without a separate hardcoded list.
+    Private quantities (leading-underscore registry keys) are excluded.
+    """
+    global QUANTITIES, GROUPS, GROUP_TYPE_ALIAS
+    global AUTOSUMMARY_QUANTITIES, AUTOSUMMARY_GROUPS, AUTOSUMMARIES, __all__
+    _ensure_all_quantities_imported()
+    QUANTITIES = tuple(
+        sorted(
+            name
+            for name, entry in _REGISTRY.items()
+            if not isinstance(entry, dict) and not name.startswith("_")
+        )
+    )
+    GROUPS = {
+        group: tuple(sorted(m for m in members if not m.startswith("_")))
+        for group, members in _REGISTRY.items()
+        if isinstance(members, dict) and not group.startswith("_")
+    }
+    GROUP_TYPE_ALIAS = {
+        convert.to_camelcase(f"{group}_{member}"): f"{group}.{member}"
+        for group, members in GROUPS.items()
+        for member in members
+    }
+    AUTOSUMMARY_QUANTITIES = [
+        (quantity, f"~py4vasp.Calculation.{quantity}") for quantity in QUANTITIES
+    ]
+    AUTOSUMMARY_GROUPS = [
+        (
+            f"{group}.{member}",
+            f"~py4vasp._calculation.{group}_{member}.{convert.to_camelcase(f'{group}_{member}')}",
+        )
+        for group, members in GROUPS.items()
+        for member in members
+    ]
+    AUTOSUMMARIES = sorted(AUTOSUMMARY_QUANTITIES + AUTOSUMMARY_GROUPS)
+    __all__ = QUANTITIES
 
-    return property(get_quantity, doc=class_.__doc__)
 
-
-def _make_group(group_name, quantities):
-    # The Group class for each group is constructed on the fly. Alternatively you could
-    # create a Group for every instance needed and construct the required properties as
-    # needed. It is important that they are distinct classes.
-    def get_group(self):
-        class Group:
-            def __init__(self, calculation):
-                self._path = calculation._path
-                self._file = calculation._file
-
-        for quantity in quantities:
-            full_name = f"{group_name}_{quantity}"
-            setattr(Group, quantity, _make_property(full_name))
-        return Group(self)
-
-    return property(get_group)
-
-
-Calculation = _add_all_refinement_classes(Calculation)
+_rebuild_public_registry_views()
 
 
 class DefaultCalculationFactory:

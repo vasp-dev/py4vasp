@@ -22,7 +22,8 @@ class ElectronPhononAccumulator:
     def __init__(self, parent, raw_data):
         self._parent = parent
         self._raw_data = raw_data
-        self._name = convert.quantity_name(parent.__class__.__name__)
+        class_name = parent.__class__.__name__.replace("Handler", "")
+        self._name = convert.quantity_name(class_name)
 
     def __str__(self):
         num_instances = len(self._parent)

@@ -5,16 +5,16 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp._calculation.force_constant import ForceConstant
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.force_constant import ForceConstant, ForceConstantHandler
+from py4vasp._calculation.structure import StructureHandler
 
 
 @pytest.fixture(params=("all atoms", "selective dynamics"))
 def Sr2TiO4(raw_data, request):
     raw_force_constants = raw_data.force_constant(f"Sr2TiO4 {request.param}")
-    force_constants = ForceConstant.from_data(raw_force_constants)
+    force_constants = ForceConstantHandler.from_data(raw_force_constants)
     force_constants.ref = types.SimpleNamespace()
-    structure = Structure.from_data(raw_force_constants.structure)
+    structure = StructureHandler.from_data(raw_force_constants.structure)
     force_constants.ref.structure = structure
     force_constants.ref.force_constants = raw_force_constants.force_constants
     if request.param == "all atoms":
@@ -27,8 +27,8 @@ def Sr2TiO4(raw_data, request):
 
 
 def test_Sr2TiO4_read(Sr2TiO4, Assert):
-    actual = Sr2TiO4.read()
-    reference_structure = Sr2TiO4.ref.structure.read()
+    actual = Sr2TiO4.to_dict()
+    reference_structure = Sr2TiO4.ref.structure.to_dict()
     Assert.same_structure(actual["structure"], reference_structure)
     Assert.allclose(actual["force_constants"], Sr2TiO4.ref.force_constants)
     if Sr2TiO4.ref.selective_dynamics is None:
@@ -37,9 +37,9 @@ def test_Sr2TiO4_read(Sr2TiO4, Assert):
         Assert.allclose(actual["selective_dynamics"], Sr2TiO4.ref.selective_dynamics)
 
 
-def test_Sr2TiO4_print(Sr2TiO4, format_):
-    actual, _ = format_(Sr2TiO4)
-    assert actual == Sr2TiO4.ref.format_output
+def test_Sr2TiO4_print(Sr2TiO4):
+    actual = str(Sr2TiO4)
+    assert actual == Sr2TiO4.ref.format_output["text/plain"]
 
 
 def get_format_output(selection):

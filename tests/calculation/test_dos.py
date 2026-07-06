@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.dos import Dos
+from py4vasp._calculation.dos import Dos, DosHandler
 from py4vasp._calculation.projector import SPIN_PROJECTION, Projector
 from py4vasp._raw.data_db import Dos_DB
 
@@ -22,6 +22,7 @@ def Sr2TiO4(raw_data):
     dos.ref.energies = raw_dos.energies - raw_dos.fermi_energy
     dos.ref.dos = raw_dos.dos[0]
     dos.ref.fermi_energy = raw_dos.fermi_energy
+    dos.ref.raw_data = raw_dos
     return dos
 
 
@@ -34,6 +35,7 @@ def Fe3O4(raw_data):
     dos.ref.dos_up = raw_dos.dos[0]
     dos.ref.dos_down = raw_dos.dos[1]
     dos.ref.fermi_energy = raw_dos.fermi_energy
+    dos.ref.raw_data = raw_dos
     return dos
 
 
@@ -82,6 +84,7 @@ def Ba2PbO4(raw_data):
     dos.ref.Pb = np.sum(raw_dos.projections[0, 2, :, :], axis=0)
     dos.ref.Pb_y = np.sum(raw_dos.projections[2, 2, :, :], axis=0)
     dos.ref.O_y = np.sum(raw_dos.projections[2, 3:7, :, :], axis=(0, 1))
+    dos.ref.raw_data = raw_dos
     return dos
 
 
@@ -341,9 +344,8 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def _check_to_database(dos, fermi_energy=None):
-    db_dict = dos._read_to_database(fermi_energy=fermi_energy)
-    assert "dos:default" in db_dict
-    dos_db: Dos_DB = db_dict["dos:default"]
+    handler = DosHandler.from_data(dos.ref.raw_data)
+    dos_db: Dos_DB = handler.to_database(fermi_energy=fermi_energy)
 
     assert isinstance(dos_db, Dos_DB)
 

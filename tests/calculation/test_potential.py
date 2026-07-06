@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import _config, exception, raw
-from py4vasp._calculation.potential import VALID_KINDS, Potential
+from py4vasp._calculation.potential import VALID_KINDS, Potential, PotentialHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._raw.data_db import Potential_DB
 from py4vasp._third_party.view import Isosurface
@@ -52,6 +52,7 @@ def make_reference_potential(raw_data, system, included_kinds):
     potential = Potential.from_data(raw_potential)
     potential.ref = types.SimpleNamespace()
     potential.ref.included_kinds = included_kinds
+    potential.ref.raw_potential = raw_potential
     potential.ref.output = get_expected_dict(raw_potential)
     potential.ref.string = get_expected_string(raw_potential, included_kinds)
     potential.ref.structure = Structure.from_data(raw_potential.structure)
@@ -372,7 +373,8 @@ def test_print(reference_potential, format_):
 
 
 def test_to_database(reference_potential):
-    db_data: Potential_DB = reference_potential._read_to_database()["potential:default"]
+    handler = PotentialHandler.from_data(reference_potential.ref.raw_potential)
+    db_data: Potential_DB = handler.to_database()
     assert isinstance(db_data, Potential_DB)
 
     ref_kind = reference_potential.ref.included_kinds

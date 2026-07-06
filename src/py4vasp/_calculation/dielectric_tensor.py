@@ -4,11 +4,18 @@ from typing import Optional
 
 import numpy as np
 
-from py4vasp import exception
-from py4vasp._calculation import base, cell
-from py4vasp._raw import data as raw_data
+from py4vasp import exception, raw
+from py4vasp._calculation.cell import CellHandler
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
 from py4vasp._raw.data_db import DielectricTensor_DB
-from py4vasp._util import check, convert
+from py4vasp._util import check, convert, error
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -19,19 +26,19 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
 )
 
 
-class DielectricTensor(base.Refinery):
-    """The dielectric tensor is the static limit of the :attr:`dielectric function<py4vasp.calculation.dielectric_function>`.
+class DielectricTensorHandler:
+    """Handler for the dielectric tensor quantity. Works with exactly one raw.DielectricTensor object."""
 
-    The dielectric tensor represents how a material's response to an external electric
-    field varies with direction. It is a symmetric 3x3 matrix, encapsulating the
-    anisotropic nature of a material's dielectric properties. Each element of the
-    tensor corresponds to the dielectric function along a specific crystallographic
-    axis."""
+    def __init__(self, raw_dielectric_tensor: raw.DielectricTensor):
+        self._raw_dielectric_tensor = raw_dielectric_tensor
 
-    _raw_data: raw_data.DielectricTensor
+    @classmethod
+    def from_data(
+        cls, raw_dielectric_tensor: raw.DielectricTensor
+    ) -> "DielectricTensorHandler":
+        return cls(raw_dielectric_tensor)
 
-    @base.data_access
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """Read the dielectric tensor into a dictionary.
 
         Returns
@@ -41,107 +48,13 @@ class DielectricTensor(base.Refinery):
             was obtained.
         """
         return {
-            "clamped_ion": self._raw_data.electron[:],
+            "clamped_ion": self._raw_dielectric_tensor.electron[:],
             "relaxed_ion": self._read_relaxed_ion(),
             "independent_particle": self._read_independent_particle(),
-            "method": convert.text_to_string(self._raw_data.method),
+            "method": convert.text_to_string(self._raw_dielectric_tensor.method),
         }
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        encountered_errors = kwargs.get("encountered_errors")
-        selection = kwargs.get("selection") or "default"
-        error_key = f"dielectric_tensor:{selection}"
-
-        tensor_reduced = [None, None, None]
-        isotropic_dielectric_constant = [None, None, None]
-        polarizability_2d = [None, None, None]
-
-        total_tensor, ionic_tensor, electronic_tensor = None, None, None
-        if not check.is_none(self._raw_data.electron):
-            electronic_tensor = self._raw_data.electron[:]
-        if not check.is_none(self._raw_data.ion):
-            ionic_tensor = self._raw_data.ion[:]
-        if not check.is_none(self._raw_data.ion) and not check.is_none(
-            self._raw_data.electron
-        ):
-            total_tensor = self._raw_data.electron[:] + self._raw_data.ion[:]
-
-        for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
-            with base.suppress_and_record(
-                encountered_errors,
-                error_key,
-                *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
-                context=f"to_database.tensor[{idt}]",
-            ):
-                tensor_reduced[idt] = list(symmetry_reduce(tensor.T))
-                (
-                    isotropic_dielectric_constant[idt],
-                    polarizability_2d[idt],
-                ) = self._calculate_dielectric_quantities(
-                    tensor,
-                    encountered_errors=encountered_errors,
-                    error_key=error_key,
-                )
-
-        method = (
-            convert.text_to_string(self._raw_data.method)
-            if not check.is_none(self._raw_data.method)
-            else None
-        )
-
-        dielectric_tensor_db = {
-            "dielectric_tensor": DielectricTensor_DB(
-                method=method,
-                total_3d_tensor=tensor_reduced[0],
-                total_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[0],
-                total_2d_polarizability=polarizability_2d[0],
-                ionic_3d_tensor=tensor_reduced[1],
-                ionic_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[1],
-                ionic_2d_polarizability=polarizability_2d[1],
-                electronic_3d_tensor=tensor_reduced[2],
-                electronic_3d_isotropic_dielectric_constant=isotropic_dielectric_constant[
-                    2
-                ],
-                electronic_2d_polarizability=polarizability_2d[2],
-            )
-        }
-        return dielectric_tensor_db
-
-    @base.data_access
-    def _calculate_dielectric_quantities(
-        self,
-        tensor: np.ndarray,
-        *,
-        encountered_errors: Optional[dict[str, list[str]]] = None,
-        error_key: Optional[str] = None,
-    ) -> float:
-        # 2D polarizability for slab systems
-        # TODO migrate finding vacuum direction to structure
-        polarizability_2d = None
-        with base.suppress_and_record(
-            encountered_errors,
-            error_key,
-            *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
-            context="calculate_dielectric_quantities",
-        ):
-            if not (check.is_none(self._raw_data.cell)):
-                final_cell = cell.Cell.from_data(self._raw_data.cell)
-                if final_cell:
-                    polarizability_2d = _calculate_2d_polarizability(
-                        tensor,
-                        final_cell,
-                        encountered_errors=encountered_errors,
-                        error_key=error_key,
-                    )
-
-        # 3D isotropic dielectric constant
-        isotropic_dielectric_constant = None
-        isotropic_dielectric_constant = float(np.mean(np.diag(tensor)))
-        return isotropic_dielectric_constant, polarizability_2d
-
-    @base.data_access
-    def __str__(self):
+    def __str__(self) -> str:
         data = self.to_dict()
         return f"""
 Macroscopic static dielectric tensor (dimensionless)
@@ -151,17 +64,176 @@ Macroscopic static dielectric tensor (dimensionless)
 {_dielectric_tensor_string(data["relaxed_ion"], "relaxed-ion")}
 """.strip()
 
+    def to_database(self) -> dict:
+        encountered_errors = {}
+        error_key = "dielectric_tensor:default"
+
+        tensor_reduced = [None, None, None]
+        isotropic_constant = [None, None, None]
+        polarizability_2d = [None, None, None]
+
+        total_tensor, ionic_tensor, electronic_tensor = None, None, None
+        if not check.is_none(self._raw_dielectric_tensor.electron):
+            electronic_tensor = self._raw_dielectric_tensor.electron[:]
+        if not check.is_none(self._raw_dielectric_tensor.ion):
+            ionic_tensor = self._raw_dielectric_tensor.ion[:]
+        if not check.is_none(self._raw_dielectric_tensor.ion) and not check.is_none(
+            self._raw_dielectric_tensor.electron
+        ):
+            total_tensor = (
+                self._raw_dielectric_tensor.electron[:]
+                + self._raw_dielectric_tensor.ion[:]
+            )
+
+        for idt, tensor in enumerate([total_tensor, ionic_tensor, electronic_tensor]):
+            with error.suppress_and_record(
+                encountered_errors,
+                error_key,
+                *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
+                context=f"to_database.tensor[{idt}]",
+            ):
+                tensor_reduced[idt] = list(symmetry_reduce(tensor.T))
+                (
+                    isotropic_constant[idt],
+                    polarizability_2d[idt],
+                ) = self._calculate_dielectric_quantities(
+                    tensor,
+                    encountered_errors=encountered_errors,
+                    error_key=error_key,
+                )
+
+        method = (
+            convert.text_to_string(self._raw_dielectric_tensor.method)
+            if not check.is_none(self._raw_dielectric_tensor.method)
+            else None
+        )
+
+        return DielectricTensor_DB(
+            method=method,
+            total_3d_tensor=tensor_reduced[0],
+            total_3d_isotropic_dielectric_constant=isotropic_constant[0],
+            total_2d_polarizability=polarizability_2d[0],
+            ionic_3d_tensor=tensor_reduced[1],
+            ionic_3d_isotropic_dielectric_constant=isotropic_constant[1],
+            ionic_2d_polarizability=polarizability_2d[1],
+            electronic_3d_tensor=tensor_reduced[2],
+            electronic_3d_isotropic_dielectric_constant=isotropic_constant[2],
+            electronic_2d_polarizability=polarizability_2d[2],
+        )
+
+    # --- Private helpers ---
+
     def _read_relaxed_ion(self):
-        if check.is_none(self._raw_data.ion):
+        if check.is_none(self._raw_dielectric_tensor.ion):
             return None
         else:
-            return self._raw_data.electron[:] + self._raw_data.ion[:]
+            return (
+                self._raw_dielectric_tensor.electron[:]
+                + self._raw_dielectric_tensor.ion[:]
+            )
 
     def _read_independent_particle(self):
-        if check.is_none(self._raw_data.independent_particle):
+        if check.is_none(self._raw_dielectric_tensor.independent_particle):
             return None
         else:
-            return self._raw_data.independent_particle[:]
+            return self._raw_dielectric_tensor.independent_particle[:]
+
+    def _calculate_dielectric_quantities(
+        self,
+        tensor: np.ndarray,
+        *,
+        encountered_errors: Optional[dict[str, list[str]]] = None,
+        error_key: Optional[str] = None,
+    ) -> tuple:
+        polarizability_2d = None
+        with error.suppress_and_record(
+            encountered_errors,
+            error_key,
+            *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,
+            context="calculate_dielectric_quantities",
+        ):
+            if not (check.is_none(self._raw_dielectric_tensor.cell)):
+                final_cell = CellHandler.from_data(
+                    self._raw_dielectric_tensor.cell, steps=-1
+                )
+                if final_cell:
+                    polarizability_2d = _calculate_2d_polarizability(
+                        tensor,
+                        final_cell,
+                        encountered_errors=encountered_errors,
+                        error_key=error_key,
+                    )
+
+        isotropic_dielectric_constant = float(np.mean(np.diag(tensor)))
+        return isotropic_dielectric_constant, polarizability_2d
+
+
+@quantity("dielectric_tensor")
+class DielectricTensor:
+    """The dielectric tensor is the static limit of the :attr:`dielectric function<py4vasp.calculation.dielectric_function>`.
+
+    The dielectric tensor represents how a material's response to an external electric
+    field varies with direction. It is a symmetric 3x3 matrix, encapsulating the
+    anisotropic nature of a material's dielectric properties. Each element of the
+    tensor corresponds to the dielectric function along a specific crystallographic
+    axis.
+    """
+
+    def __init__(self, source, quantity_name: str = "dielectric_tensor"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(
+        cls, raw_dielectric_tensor: raw.DielectricTensor
+    ) -> "DielectricTensor":
+        """Create a DielectricTensor dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_dielectric_tensor))
+
+    def _handler_factory(self, raw_data):
+        return DielectricTensorHandler.from_data(raw_data)
+
+    def read(self) -> dict:
+        """Read the dielectric tensor into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the dielectric tensor and a string describing the method it
+            was obtained.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            DielectricTensorHandler.to_dict,
+        )
+
+    def to_dict(self) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read()
+
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DielectricTensorHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            DielectricTensorHandler.from_data,
+            DielectricTensorHandler.to_database,
+        )
 
 
 def _dielectric_tensor_string(tensor, label):
@@ -187,7 +259,7 @@ def _description(method):
 
 def _calculate_2d_polarizability(
     dielectric_tensor: np.ndarray,
-    cell_: cell.Cell,
+    cell_: CellHandler,
     *,
     encountered_errors: Optional[dict[str, list[str]]] = None,
     error_key: Optional[str] = None,
@@ -195,7 +267,7 @@ def _calculate_2d_polarizability(
     """
     Compute 2D polarizability (alpha_2D) for a slab system with unknown vacuum direction.
     """
-    with base.suppress_and_record(
+    with error.suppress_and_record(
         encountered_errors,
         error_key,
         *_TO_DATABASE_SUPPRESSED_EXCEPTIONS,

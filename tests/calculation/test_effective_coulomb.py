@@ -9,7 +9,10 @@ import numpy as np
 import pytest
 
 from py4vasp import exception, interpolate
-from py4vasp._calculation.effective_coulomb import EffectiveCoulomb
+from py4vasp._calculation.effective_coulomb import (
+    EffectiveCoulomb,
+    EffectiveCoulombHandler,
+)
 from py4vasp._raw.data_db import EffectiveCoulomb_DB
 from py4vasp._third_party import numeric
 from py4vasp._util import check, convert
@@ -506,14 +509,18 @@ def test_selections(effective_coulomb):
         assert set(selections["spin"]) == {"total"}
 
 
-def test_to_database(effective_coulomb, Assert):
-    data: EffectiveCoulomb_DB = effective_coulomb._read_to_database()[
-        "effective_coulomb:default"
-    ]
-    assert isinstance(data, EffectiveCoulomb_DB)
-    for key in effective_coulomb.ref.overview_data.keys():
-        assert hasattr(data, key)
-        Assert.allclose(getattr(data, key), effective_coulomb.ref.overview_data[key])
+def test_to_database(raw_data, Assert):
+    for param in ("crpa", "crpa_two_center", "crpar", "crpar_two_center"):
+        raw_coulomb = raw_data.effective_coulomb(param)
+        handler = EffectiveCoulombHandler.from_data(raw_coulomb)
+        data: EffectiveCoulomb_DB = handler.to_database()
+        assert isinstance(data, EffectiveCoulomb_DB)
+        setup = determine_setup(raw_coulomb)
+        read_data = setup_read_data(setup, raw_coulomb)
+        expected = setup_overview_data(setup, read_data)
+        for key in expected.keys():
+            assert hasattr(data, key)
+            Assert.allclose(getattr(data, key), expected[key])
 
 
 def test_print(effective_coulomb, format_):

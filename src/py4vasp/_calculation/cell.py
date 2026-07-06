@@ -5,9 +5,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import exception
-from py4vasp._calculation import base, slice_
-from py4vasp._raw import data as raw_data
+from py4vasp import exception, raw
 from py4vasp._util import check, reader
 
 _VACUUM_RATIO = 2.5
@@ -21,22 +19,28 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
 )
 
 
-class Cell(slice_.Mixin, base.Refinery):
-    """Cell parameters of the simulation cell."""
+class CellHandler:
+    """Processes cell data from a single raw.Cell object."""
 
-    _raw_data: raw_data.Cell
+    def __init__(self, raw_cell: raw.Cell, steps=None):
+        self._raw_cell = raw_cell
+        self._steps = steps
+
+    @classmethod
+    def from_data(cls, raw_cell: raw.Cell, steps=None) -> "CellHandler":
+        return cls(raw_cell, steps=steps)
 
     def lattice_vectors(self):
         """Lattice vectors of the simulation cell for all selected steps."""
-        lattice_vectors = _LatticeVectors(self._raw_data.lattice_vectors)
+        lattice_vectors = _LatticeVectors(self._raw_cell.lattice_vectors)
         return self.scale() * lattice_vectors[self._get_steps()]
 
     def scale(self):
         """Scale factor of the simulation cell."""
-        if isinstance(self._raw_data.scale, np.float64):
-            return self._raw_data.scale
-        if not check.is_none(self._raw_data.scale):
-            return self._raw_data.scale[()]
+        if isinstance(self._raw_cell.scale, np.float64):
+            return self._raw_cell.scale
+        if not check.is_none(self._raw_cell.scale):
+            return self._raw_cell.scale[()]
         else:
             return 1.0
 
@@ -100,21 +104,19 @@ class Cell(slice_.Mixin, base.Refinery):
         """Determine if the system is 2D based on the lattice vectors."""
         lengths = self.lengths()
         dipole_direction = _idipol_to_direction(
-            self._raw_data.idipol, self._raw_data.ldipol
+            self._raw_cell.idipol, self._raw_cell.ldipol
         )
         if lengths.ndim == 2:
             return np.array([_is_suspected_2d(l, dipole_direction) for l in lengths])
         else:
-            lengths = self.lengths()
             return _is_suspected_2d(lengths, dipole_direction)
 
-    @base.data_access
     def _area_2d(self) -> tuple[Union[float, np.ndarray], Union[str, list[str]]]:
         """Area of the 2D cell if the system is 2D."""
         lattices = self.lattice_vectors()
         lengths = self.lengths()
         idipol_direction = _idipol_to_direction(
-            self._raw_data.idipol, self._raw_data.ldipol
+            self._raw_cell.idipol, self._raw_cell.ldipol
         )
         if lattices.ndim == 3:
             area_list = [
@@ -127,19 +129,12 @@ class Cell(slice_.Mixin, base.Refinery):
         else:
             return _get_area_2d(lattices, lengths, idipol_direction)
 
-    def _get_steps(self):
-        return self._steps if self._is_trajectory else ()
-
-    @property
-    def _is_trajectory(self):
-        return self._raw_data.lattice_vectors.ndim == 3
-
     def _find_likely_vacuum_direction(self):
-        """Identify likeliest vacuum direction as the lattice vector with the largest length, or from IDIPOL flag."""
+        """Identify likeliest vacuum direction."""
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             lattice_vectors = self.lattice_vectors()
             dipole_direction = _idipol_to_direction(
-                self._raw_data.idipol, self._raw_data.ldipol
+                self._raw_cell.idipol, self._raw_cell.ldipol
             )
             if lattice_vectors.ndim == 3:
                 if dipole_direction is not None:
@@ -151,8 +146,14 @@ class Cell(slice_.Mixin, base.Refinery):
                 return dipole_direction or int(
                     np.argmax(np.linalg.norm(lattice_vectors, axis=-1))
                 )
-
         return None
+
+    def _get_steps(self):
+        return self._steps if self._is_trajectory else ()
+
+    @property
+    def _is_trajectory(self):
+        return self._raw_cell.lattice_vectors.ndim == 3
 
 
 def _is_suspected_2d(

@@ -1,9 +1,20 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import copy
+
 import numpy as np
 
-from py4vasp._calculation import base, slice_
-from py4vasp._raw import data as raw_data
+from py4vasp import raw
+from py4vasp._calculation import slice_
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_graphs,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
 from py4vasp._raw.data_db import Energy_DB
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
@@ -63,7 +74,150 @@ _DB_KEYS = {
 
 
 @documentation.format(examples=slice_.examples("energy"))
-class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
+class EnergyHandler:
+    """Handler for energy data — performs all data access and transformation logic."""
+
+    def __init__(self, raw_energy: raw.Energy, steps=None):
+        self._raw_energy = raw_energy
+        self._steps = steps
+
+    @classmethod
+    def from_data(cls, raw_energy: raw.Energy, steps=None) -> "EnergyHandler":
+        return cls(raw_energy, steps)
+
+    def __str__(self) -> str:
+        text = f"Energies at {self._step_string()}:"
+        values = self._raw_energy.values[self._last_step_in_slice]
+        for label, value in zip(self._raw_energy.labels, values):
+            label_str = f"{convert.text_to_string(label):23.23}"
+            text += f"\n   {label_str}={value:17.6f}"
+        return text
+
+    def to_dict(self, selection=None) -> dict:
+        if selection is None:
+            return self._default_dict()
+        tree = select.Tree.from_selection(selection)
+        return dict(self._read_data(tree, self._steps_or_last))
+
+    def to_graph(self, selection="TOTEN") -> graph.Graph:
+        tree = select.Tree.from_selection(selection)
+        yaxes = _YAxes(tree)
+        return graph.Graph(
+            series=self._make_series(yaxes, tree),
+            xlabel="Step",
+            ylabel=yaxes.ylabel,
+            y2label=yaxes.y2label,
+        )
+
+    def to_numpy(self, selection="TOTEN") -> np.ndarray:
+        tree = select.Tree.from_selection(selection)
+        return np.squeeze(
+            [values for _, values in self._read_data(tree, self._steps_or_last)]
+        )
+
+    def selections(self) -> dict:
+        components = list(self._init_selection_dict().keys())
+        return {"energy": [], "component": components}
+
+    def to_database(self) -> dict:
+        default_dict = self._default_dict_all()
+        energy_dict = {}
+        for original_label, db_key in _DB_KEYS.items():
+            v = default_dict.get(original_label, None)
+            if v is not None:
+                v = np.array(v)
+            energy_dict[f"{db_key}_initial"] = None if v is None else float(v[0])
+            if (db_key != "step") and (v is not None):
+                energy_dict[f"{db_key}_min"] = float(np.min(v))
+                energy_dict[f"{db_key}_step_min"] = int(np.argmin(v))
+            energy_dict[f"{db_key}_final"] = None if v is None else float(v[-1])
+        extra_dict = {}
+        for k, v in default_dict.items():
+            if k not in _DB_KEYS:
+                vs = np.array(v) if v is not None else None
+                key = convert.text_to_string(k).strip().lower().replace(" ", "_")
+                extra_dict[f"{key}_initial"] = None if vs is None else float(vs[0])
+                extra_dict[f"{key}_min"] = None if vs is None else float(np.min(vs))
+                extra_dict[f"{key}_step_min"] = (
+                    None if vs is None else int(np.argmin(vs))
+                )
+                extra_dict[f"{key}_final"] = None if vs is None else float(vs[-1])
+        return Energy_DB(**energy_dict, other_energy_data=extra_dict)
+
+    @property
+    def _steps_or_last(self):
+        if self._steps is None:
+            return -1
+        return self._steps
+
+    @property
+    def _last_step_in_slice(self):
+        if self._steps is None or self._steps == -1:
+            return -1
+        if isinstance(self._steps, slice):
+            return (self._steps.stop or 0) - 1
+        return self._steps
+
+    @property
+    def _to_slice(self):
+        if self._steps is None or self._steps == -1:
+            return slice(-1, None)
+        if isinstance(self._steps, slice):
+            return self._steps
+        return slice(self._steps, self._steps + 1)
+
+    def _step_string(self):
+        if isinstance(self._steps, slice):
+            n = len(self._raw_energy.values)
+            range_ = range(n)[self._steps]
+            start = range_.start + 1
+            stop = range_.stop
+            return f"step {stop} of range {start}:{stop}"
+        elif self._steps == -1 or self._steps is None:
+            return "final step"
+        else:
+            return f"step {self._steps + 1}"
+
+    def _default_dict(self):
+        raw_values = np.array(self._raw_energy.values).T
+        return {
+            convert.text_to_string(label).strip(): value[self._steps_or_last]
+            for label, value in zip(self._raw_energy.labels, raw_values)
+        }
+
+    def _default_dict_all(self):
+        raw_values = np.array(self._raw_energy.values).T
+        return {
+            convert.text_to_string(label).strip(): value[:]
+            for label, value in zip(self._raw_energy.labels, raw_values)
+        }
+
+    def _read_data(self, tree, steps):
+        maps = {1: self._init_selection_dict()}
+        selector = index.Selector(maps, self._raw_energy.values)
+        for selection in tree.selections():
+            yield selector.label(selection), selector[selection][steps]
+
+    def _init_selection_dict(self):
+        return {
+            selection: idx
+            for idx, label in enumerate(self._raw_energy.labels)
+            for selection in _SELECTIONS.get(convert.text_to_string(label).strip(), ())
+        }
+
+    def _make_series(self, yaxes, tree):
+        n = len(self._raw_energy.values)
+        slice_ = self._to_slice
+        steps = np.arange(n)[slice_] + 1
+        return [
+            graph.Series(x=steps, y=values, label=label, y2=yaxes.use_y2(label))
+            for label, values in self._read_data(tree, slice_)
+        ]
+
+
+@quantity("energy")
+@documentation.format(examples=slice_.examples("energy"))
+class Energy(graph.Mixin):
     """The energy data for one or several steps of a relaxation or MD simulation.
 
     You can use this class to inspect how the ionic relaxation converges or
@@ -80,34 +234,29 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
     {examples}
     """
 
-    _raw_data: raw_data.Energy
+    def __init__(self, source, quantity_name: str = "energy", steps=None):
+        self._source = source
+        self._quantity_name = quantity_name
+        self._steps = steps
 
-    @base.data_access
-    def __str__(self):
-        text = f"Energies at {self._step_string()}:"
-        values = self._raw_data.values[self._last_step_in_slice]
-        for label, value in zip(self._raw_data.labels, values):
-            label = f"{convert.text_to_string(label):23.23}"
-            text += f"\n   {label}={value:17.6f}"
-        return text
+    @classmethod
+    def from_data(cls, raw_energy: raw.Energy):
+        """Create an Energy dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_energy))
 
-    def _step_string(self):
-        if self._is_slice:
-            range_ = range(len(self._raw_data.values))[self._slice]
-            start = range_.start + 1  # convert to Fortran index
-            stop = range_.stop
-            return f"step {stop} of range {start}:{stop}"
-        elif self._steps == -1:
-            return "final step"
-        else:
-            return f"step {self._steps + 1}"
+    def __getitem__(self, steps) -> "Energy":
+        new = copy.copy(self)
+        new._steps = steps
+        return new
 
-    @base.data_access
+    def _handler_factory(self, raw_data):
+        return EnergyHandler.from_data(raw_data, steps=self._steps)
+
     @documentation.format(
         selection=_selection_string("all energies"),
         examples=slice_.examples("energy", "to_dict"),
     )
-    def to_dict(self, selection=None):
+    def read(self, selection=None) -> dict:
         """Read the energy data and store it in a dictionary.
 
         Parameters
@@ -122,65 +271,23 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
-        if selection is None:
-            return self._default_dict()
-        tree = select.Tree.from_selection(selection)
-        return dict(self._read_data(tree, self._steps))
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EnergyHandler.to_dict,
+        )
 
-    def _default_dict(self):
-        raw_values = np.array(self._raw_data.values).T
-        return {
-            convert.text_to_string(label).strip(): value[self._steps]
-            for label, value in zip(self._raw_data.labels, raw_values)
-        }
+    def to_dict(self, selection=None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection=selection)
 
-    def _default_dict_all(self):
-        raw_values = np.array(self._raw_data.values).T
-        return {
-            convert.text_to_string(label).strip(): value[:]
-            for label, value in zip(self._raw_data.labels, raw_values)
-        }
-
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        default_dict = self._default_dict_all()
-        energy_dict = {}
-
-        # Loop over known DB keys to ensure consistent key extraction
-        for original_label, db_key in _DB_KEYS.items():
-            v = default_dict.get(original_label, None)
-            if v is not None:
-                v = np.array(v)
-
-            energy_dict[f"{db_key}_initial"] = None if v is None else float(v[0])
-            if (db_key != "step") and (v is not None):
-                energy_dict[f"{db_key}_min"] = None if v is None else float(np.min(v))
-                energy_dict[f"{db_key}_step_min"] = (
-                    None if v is None else int(np.argmin(v))
-                )
-            energy_dict[f"{db_key}_final"] = None if v is None else float(v[-1])
-
-        # Handle any additional keys not in _DB_KEYS
-        extra_dict = {}
-        for k, v in default_dict.items():
-            if k not in _DB_KEYS:
-                vs = np.array(v) if v is not None else None
-                key = convert.text_to_string(k).strip().lower().replace(" ", "_")
-                extra_dict[f"{key}_initial"] = None if v is None else float(vs[0])
-                extra_dict[f"{key}_min"] = None if v is None else float(np.min(vs))
-                extra_dict[f"{key}_step_min"] = (
-                    None if v is None else int(np.argmin(vs))
-                )
-                extra_dict[f"{key}_final"] = None if v is None else float(vs[-1])
-
-        return {"energy": Energy_DB(**energy_dict, other_energy_data=extra_dict)}
-
-    @base.data_access
     @documentation.format(
         selection=_selection_string("the total energy"),
         examples=slice_.examples("energy", "to_graph"),
     )
-    def to_graph(self, selection="TOTEN"):
+    def to_graph(self, selection="TOTEN") -> graph.Graph:
         """Read the energy data and generate a figure of the selected components.
 
         Parameters
@@ -194,21 +301,19 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
-        tree = select.Tree.from_selection(selection)
-        yaxes = _YAxes(tree)
-        return graph.Graph(
-            series=self._make_series(yaxes, tree),
-            xlabel="Step",
-            ylabel=yaxes.ylabel,
-            y2label=yaxes.y2label,
+        return merge_graphs(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EnergyHandler.to_graph,
         )
 
-    @base.data_access
     @documentation.format(
         selection=_selection_string("the total energy"),
         examples=slice_.examples("energy", "to_numpy"),
     )
-    def to_numpy(self, selection="TOTEN"):
+    def to_numpy(self, selection="TOTEN") -> np.ndarray:
         """Read the energy of the selected steps.
 
         Parameters
@@ -224,41 +329,50 @@ class Energy(slice_.Mixin, base.Refinery, graph.Mixin):
 
         {examples}
         """
-        tree = select.Tree.from_selection(selection)
-        return np.squeeze([values for _, values in self._read_data(tree, self._steps)])
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EnergyHandler.to_numpy,
+        )
 
-    @base.data_access
-    def selections(self) -> dict[str, list[str]]:
+    def selections(self, selection: str | None = None) -> dict:
         """Return a dictionary describing what kind of energies are available.
 
         Returns
         -------
         -
             Dictionary containing available selection options with their possible values.
-            Keys include the selection criteria "energy" and "component".
         """
-        components = list(self._init_selection_dict().keys())
-        return {**super().selections(), "component": components}
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EnergyHandler.selections,
+        )
 
-    def _read_data(self, tree, steps_or_slice):
-        maps = {1: self._init_selection_dict()}
-        selector = index.Selector(maps, self._raw_data.values)
-        for selection in tree.selections():
-            yield selector.label(selection), selector[selection][steps_or_slice]
+    def __str__(self, selection: str | None = None) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            EnergyHandler.__str__,
+        )
 
-    def _init_selection_dict(self):
-        return {
-            selection: index
-            for index, label in enumerate(self._raw_data.labels)
-            for selection in _SELECTIONS.get(convert.text_to_string(label).strip(), ())
-        }
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self) if not cycle else "...")
 
-    def _make_series(self, yaxes, tree):
-        steps = np.arange(len(self._raw_data.values))[self._slice] + 1
-        return [
-            graph.Series(x=steps, y=values, label=label, y2=yaxes.use_y2(label))
-            for label, values in self._read_data(tree, self._slice)
-        ]
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            self._handler_factory,
+            EnergyHandler.to_database,
+        )
 
 
 class _YAxes:

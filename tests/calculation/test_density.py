@@ -58,8 +58,9 @@ def make_reference_density(raw_data, selection, source=None):
     density.ref.output = get_expected_dict(raw_density.charge, source)
     density.ref.string = get_expected_string(selection, source)
     density.ref.selections = get_expected_selections(raw_density.charge)
-    density._data_context.selection = source
     density.ref.source = source or "charge"
+    if source:
+        density = density[source]
     return density
 
 

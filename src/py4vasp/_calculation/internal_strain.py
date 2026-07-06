@@ -1,10 +1,60 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import base, structure
-from py4vasp._raw import data as raw_data
+
+from py4vasp import raw
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
+from py4vasp._calculation.structure import StructureHandler
 
 
-class InternalStrain(base.Refinery, structure.Mixin):
+class InternalStrainHandler:
+    """The internal strain is the derivative of energy with respect to displacement and strain."""
+
+    def __init__(self, raw_internal_strain: raw.InternalStrain):
+        self._raw_internal_strain = raw_internal_strain
+
+    @classmethod
+    def from_data(
+        cls, raw_internal_strain: raw.InternalStrain
+    ) -> "InternalStrainHandler":
+        return cls(raw_internal_strain)
+
+    def __str__(self) -> str:
+        result = """
+Internal strain tensor (eV/Å):
+ ion  displ     X           Y           Z          XY          YZ          ZX
+---------------------------------------------------------------------------------
+"""
+        for ion, tensor in enumerate(self._raw_internal_strain.internal_strain):
+            ion_string = f"{ion + 1:4d}"
+            for displacement, matrix in zip("xyz", tensor):
+                result += _add_matrix_string(ion_string, displacement, matrix)
+                ion_string = "    "
+        return result.strip()
+
+    def to_dict(self) -> dict:
+        """Read the internal strain to a dictionary.
+
+        Returns
+        -------
+        dict
+            The dictionary contains the structure of the system. As well as the internal
+            strain tensor for all ions. The internal strain is the derivative of the
+            energy with respect to ionic position and strain of the cell.
+        """
+        structure = StructureHandler.from_data(self._raw_internal_strain.structure)
+        return {
+            "structure": structure.to_dict(),
+            "internal_strain": self._raw_internal_strain.internal_strain[:],
+        }
+
+
+@quantity("internal_strain")
+class InternalStrain:
     """The internal strain is the derivative of energy with respect to displacement and strain.
 
     The internal strain tensor characterizes the deformation within a material at
@@ -15,24 +65,25 @@ class InternalStrain(base.Refinery, structure.Mixin):
     with linear response and this class provides access to the resulting data.
     """
 
-    _raw_data: raw_data.InternalStrain
+    def __init__(self, source, quantity_name: str = "internal_strain"):
+        self._source = source
+        self._quantity_name = quantity_name
 
-    @base.data_access
-    def __str__(self):
-        result = """
-Internal strain tensor (eV/Å):
- ion  displ     X           Y           Z          XY          YZ          ZX
----------------------------------------------------------------------------------
-"""
-        for ion, tensor in enumerate(self._raw_data.internal_strain):
-            ion_string = f"{ion + 1:4d}"
-            for displacement, matrix in zip("xyz", tensor):
-                result += _add_matrix_string(ion_string, displacement, matrix)
-                ion_string = "    "
-        return result.strip()
+    @classmethod
+    def from_data(cls, raw_internal_strain: raw.InternalStrain) -> "InternalStrain":
+        """Create an InternalStrain dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_internal_strain))
 
-    @base.data_access
-    def to_dict(self):
+    def __str__(self, selection=None) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            InternalStrainHandler.from_data,
+            InternalStrainHandler.__str__,
+        )
+
+    def read(self) -> dict:
         """Read the internal strain to a dictionary.
 
         Returns
@@ -42,10 +93,17 @@ Internal strain tensor (eV/Å):
             strain tensor for all ions. The internal strain is the derivative of the
             energy with respect to ionic position and strain of the cell.
         """
-        return {
-            "structure": self._structure.read(),
-            "internal_strain": self._raw_data.internal_strain[:],
-        }
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            InternalStrainHandler.from_data,
+            InternalStrainHandler.to_dict,
+        )
+
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read()
 
 
 def _add_matrix_string(ion_string, displacement, matrix):

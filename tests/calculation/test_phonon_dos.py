@@ -6,7 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp._calculation.phonon_dos import PhononDos
+from py4vasp._calculation.phonon_dos import PhononDos, PhononDosHandler
 from py4vasp._raw.data_db import PhononDos_DB
 
 
@@ -21,6 +21,7 @@ def phonon_dos(raw_data):
     dos.ref.Ti_x = raw_dos.projections[2, 0]
     dos.ref.y_45 = np.sum(raw_dos.projections[3:5, 1], axis=0)
     dos.ref.z = np.sum(raw_dos.projections[:, 2], axis=0)
+    dos.ref.raw_data = raw_dos
     return dos
 
 
@@ -107,7 +108,8 @@ phonon DOS:
 
 
 def test_to_database(phonon_dos):
-    db_data: PhononDos_DB = phonon_dos._read_to_database()["phonon_dos:default"]
+    handler = PhononDosHandler.from_data(phonon_dos.ref.raw_data)
+    db_data: PhononDos_DB = handler.to_database()
     assert isinstance(db_data, PhononDos_DB)
     assert db_data.energy_min == float(phonon_dos.ref.energies[0])
     assert db_data.energy_max == float(phonon_dos.ref.energies[-1])

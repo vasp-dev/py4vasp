@@ -1,12 +1,22 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import pathlib
 from contextlib import suppress
 
 import numpy as np
 
 from py4vasp import exception
-from py4vasp._calculation import base, projector
-from py4vasp._raw import data as raw_data
+from py4vasp._calculation import projector
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
+from py4vasp._calculation.projector import ProjectorHandler
+from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Dos_DB
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
@@ -24,14 +34,156 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
 )
 
 
-class Dos(base.Refinery, graph.Mixin):
+class DosHandler:
+    """Handler for density of states data."""
+
+    def __init__(self, raw_dos: raw.Dos):
+        self._raw_dos = raw_dos
+
+    @classmethod
+    def from_data(cls, raw_dos: raw.Dos) -> "DosHandler":
+        return cls(raw_dos)
+
+    def __str__(self):
+        energies = self._raw_dos.energies
+        if self._is_collinear():
+            label = "collinear Dos"
+        elif self._is_noncollinear():
+            label = "noncollinear Dos"
+        else:
+            label = "Dos"
+        return f"""\
+{label}:
+    energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
+{str(self._projector())}"""
+
+    def to_dict(self, selection=None) -> dict:
+        data = self._read_data(selection)
+        data.pop(projector.SPIN_PROJECTION, None)
+        return {**data, "fermi_energy": self._raw_dos.fermi_energy}
+
+    def to_database(self, fermi_energy=None) -> dict:
+        raw_fermi_energy = (
+            self._raw_dos.fermi_energy
+            if not check.is_none(self._raw_dos.fermi_energy)
+            else None
+        )
+        dos_at_fermi_dict = self._dos_at_energy(fermi_energy or raw_fermi_energy)
+        dos_at_raw_fermi_dict = self._dos_at_energy(raw_fermi_energy)
+
+        dos_at_fermi_total = dos_at_fermi_dict.get("total", None)
+        dos_at_raw_fermi_total = dos_at_raw_fermi_dict.get("total", None)
+        dos_at_fermi_up = dos_at_fermi_dict.get("up", None)
+        dos_at_fermi_down = dos_at_fermi_dict.get("down", None)
+        dos_at_raw_fermi_up = dos_at_raw_fermi_dict.get("up", None)
+        dos_at_raw_fermi_down = dos_at_raw_fermi_dict.get("down", None)
+
+        return Dos_DB(
+            dos_at_fermi_total=dos_at_fermi_total,
+            dos_at_fermi_up=dos_at_fermi_up,
+            dos_at_fermi_down=dos_at_fermi_down,
+            dos_at_raw_fermi_total=dos_at_raw_fermi_total,
+            dos_at_raw_fermi_up=dos_at_raw_fermi_up,
+            dos_at_raw_fermi_down=dos_at_raw_fermi_down,
+            energy_min=(
+                float(np.min(self._raw_dos.energies[:]))
+                if not check.is_none(self._raw_dos.energies)
+                else None
+            ),
+            energy_max=(
+                float(np.max(self._raw_dos.energies[:]))
+                if not check.is_none(self._raw_dos.energies)
+                else None
+            ),
+        )
+
+    def to_graph(self, selection=None) -> graph.Graph:
+        data = self._read_data(selection)
+        energies = data.pop("energies")
+        data.pop(projector.SPIN_PROJECTION, None)
+        return graph.Graph(
+            series=list(_series(energies, data)),
+            xlabel="Energy (eV)",
+            ylabel="DOS (1/eV)",
+        )
+
+    def to_frame(self, selection=None):
+        data = self._read_data(selection)
+        data.pop(projector.SPIN_PROJECTION, None)
+        df = pd.DataFrame(data)
+        df.fermi_energy = self._raw_dos.fermi_energy
+        return df
+
+    def selections(self) -> dict:
+        return self._projector().selections()
+
+    def _is_collinear(self):
+        return len(self._raw_dos.dos) == 2
+
+    def _is_noncollinear(self):
+        return len(self._raw_dos.dos) == 4
+
+    def _projector(self):
+        return ProjectorHandler.from_data(self._raw_dos.projectors)
+
+    def _read_data(self, selection):
+        return {
+            **self._read_energies(),
+            **self._read_total_dos(),
+            **self._projector().project(selection, self._raw_dos.projections),
+        }
+
+    def _read_energies(self):
+        return {"energies": self._raw_dos.energies[:] - self._raw_dos.fermi_energy}
+
+    def _read_total_dos(self):
+        if self._is_collinear():
+            return {"up": self._raw_dos.dos[0, :], "down": self._raw_dos.dos[1, :]}
+        else:
+            return {"total": self._raw_dos.dos[0, :]}
+
+    def _dos_at_energy(self, energy):
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            energies = self._raw_dos.energies[:]
+            dos_dict = self._read_total_dos()
+            dos_at_energy = {}
+            for key, dos in dos_dict.items():
+                idx = (np.abs(energies - energy)).argmin()
+                if energies[idx] == energy:
+                    dos_at_energy[key] = float(dos[idx])
+                else:
+                    if energies[idx] < energy:
+                        idx_low = idx
+                        idx_high = idx + 1
+                    else:
+                        idx_low = idx - 1
+                        idx_high = idx
+                    if (idx_low < 0) or (idx_high >= len(energies)):
+                        dos_at_energy[key] = None
+                        continue
+                    dos_low = dos[idx_low]
+                    dos_high = dos[idx_high]
+                    energy_low = energies[idx_low]
+                    energy_high = energies[idx_high]
+                    dos_at_energy[key] = float(
+                        dos_low
+                        + (dos_high - dos_low)
+                        * (energy - energy_low)
+                        / (energy_high - energy_low)
+                    )
+            return dos_at_energy
+        return {}
+
+
+@quantity("dos")
+class Dos(graph.Mixin):
     """The density of states (DOS) describes the number of states per energy.
 
     The DOS quantifies the distribution of electronic states within an energy range
     in a material. It provides information about the number of electronic states at
-    each energy level and offers insights into the material's electronic structure.
-    On-site projections near the atoms (projected DOS) offer a more detailed view.
-    This analysis breaks down the DOS contributions by atom, orbital and spin.
+    each energy level and offers insights into the material's electronic
+    structure. On-site projections near the atoms (projected DOS) offer a more detailed
+    view. This analysis breaks down the DOS contributions by atom, orbital and spin.
     Investigating the projected DOS is often a useful step to understand the
     electronic properties because it shows how different orbitals and elements
     contribute and influence the material's properties.
@@ -73,26 +225,31 @@ class Dos(base.Refinery, graph.Mixin):
     {'dos': ['default', 'kpoints_opt'], 'atom': [...], 'orbital': [...], 'spin': [...]}
     """
 
-    _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
-    _raw_data: raw_data.Dos
+    def __init__(self, source, quantity_name="dos"):
+        self._source = source
+        self._quantity_name = quantity_name
 
-    @base.data_access
-    def __str__(self):
-        energies = self._raw_data.energies
-        if self._is_collinear():
-            label = "collinear Dos"
-        elif self._is_noncollinear():
-            label = "noncollinear Dos"
-        else:
-            label = "Dos"
-        return f"""\
-{label}:
-    energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
-{pretty.pretty(self._projector())}"""
+    @classmethod
+    def from_data(cls, raw_dos):
+        return cls(source=DataSource(raw_dos))
 
-    @base.data_access
+    def _handler_factory(self, raw):
+        return DosHandler.from_data(raw)
+
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DosHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_dict(self, selection=None):
+    def read(self, selection=None) -> dict:
         """Read the DOS into a dictionary.
 
         You will always get an "energies" component that describes the energy mesh for
@@ -133,18 +290,18 @@ class Dos(base.Refinery, graph.Mixin):
         do not need any arguments. For :tag:`ISPIN` = 2, this will "up" and "down"
         DOS as two separate entries.
 
-        >>> calculation.dos.to_dict()
+        >>> calculation.dos.read()
         {{'energies': array(...), 'total': array(...), 'fermi_energy': ...}}
 
         Select the p orbitals of the first atom in the POSCAR file:
 
-        >>> calculation.dos.to_dict(selection="1(p)")
+        >>> calculation.dos.read(selection="1(p)")
         {{'energies': array(...), 'total': array(...), 'Sr_1_p': array(...),
             'fermi_energy': ...}}
 
         Select the d orbitals of Sr and Ti:
 
-        >>> calculation.dos.to_dict("d(Sr, Ti)")
+        >>> calculation.dos.read("d(Sr, Ti)")
         {{'energies': array(...), 'total': array(...), 'Sr_d': array(...),
             'Ti_d': array(...), 'fermi_energy': ...}}
 
@@ -156,121 +313,50 @@ class Dos(base.Refinery, graph.Mixin):
         You can also select spin contribution of specific atoms or orbitals, e.g. the
         spin-up contribution of the first three atoms combined
 
-        >>> collinear_calculation.dos.to_dict("up(1:3)")
+        >>> collinear_calculation.dos.read("up(1:3)")
         {{'energies': array(...), 'up': array(...), 'down': array(...),
             '1:3_up': array(...), 'fermi_energy': ...}}
 
         Noncollinear calculations contain four spin components but by default only
         the total DOS is shown
 
-        >>> noncollinear_calculation.dos.to_dict()
+        >>> noncollinear_calculation.dos.read()
         {{'energies': array(...), 'total': array(...), 'fermi_energy': ...}}
 
         You can select specific spin components if you want, e.g. the spin projection
         along the z axis
 
-        >>> noncollinear_calculation.dos.to_dict("sigma_z")
+        >>> noncollinear_calculation.dos.read("sigma_z")
         {{'energies': array(...), 'total': array(...), 'sigma_z': array(...),
             'fermi_energy': ...}}
 
         You can also use simple addition and subtraction to combine the contributions of
         different orbitals, e.g. add the contribution of three d orbitals
 
-        >>> calculation.dos.to_dict("dxy + dxz + dyz")
+        >>> calculation.dos.read("dxy + dxz + dyz")
         {{'energies': array(...), 'total': array(...), 'dxy + dxz + dyz': array(...),
             'fermi_energy': ...}}
 
         Read the density of states generated by the '''k'''-point mesh in the KPOINTS_OPT
         file (analogously for KPOINTS_WAN)
 
-        >>> calculation.dos.to_dict("kpoints_opt")
+        >>> calculation.dos.read("kpoints_opt")
         {{'energies': array(...), 'total': array(...), 'fermi_energy': ...}}
         """
-        data = self._read_data(selection)
-        data.pop(projector.SPIN_PROJECTION, None)
-        return {**data, "fermi_energy": self._raw_data.fermi_energy}
-
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        import numpy as np
-
-        fermi_energy = kwargs.get("fermi_energy", None)
-        raw_fermi_energy = (
-            self._raw_data.fermi_energy
-            if not check.is_none(self._raw_data.fermi_energy)
-            else None
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DosHandler.to_dict,
         )
 
-        dos_at_fermi_dict = self._dos_at_energy(fermi_energy or raw_fermi_energy)
-        dos_at_raw_fermi_dict = self._dos_at_energy(raw_fermi_energy)
+    def to_dict(self, selection=None) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection=selection)
 
-        dos_at_fermi_total = dos_at_fermi_dict.get("total", None)
-        dos_at_raw_fermi_total = dos_at_raw_fermi_dict.get("total", None)
-
-        dos_at_fermi_up = dos_at_fermi_dict.get("up", None)
-        dos_at_fermi_down = dos_at_fermi_dict.get("down", None)
-
-        dos_at_raw_fermi_up = dos_at_raw_fermi_dict.get("up", None)
-        dos_at_raw_fermi_down = dos_at_raw_fermi_dict.get("down", None)
-
-        return {
-            "dos": Dos_DB(
-                dos_at_fermi_total=dos_at_fermi_total,
-                dos_at_fermi_up=dos_at_fermi_up,
-                dos_at_fermi_down=dos_at_fermi_down,
-                dos_at_raw_fermi_total=dos_at_raw_fermi_total,
-                dos_at_raw_fermi_up=dos_at_raw_fermi_up,
-                dos_at_raw_fermi_down=dos_at_raw_fermi_down,
-                energy_min=(
-                    float(np.min(self._raw_data.energies[:]))
-                    if not check.is_none(self._raw_data.energies)
-                    else None
-                ),
-                energy_max=(
-                    float(np.max(self._raw_data.energies[:]))
-                    if not check.is_none(self._raw_data.energies)
-                    else None
-                ),
-            )
-        }
-
-    def _dos_at_energy(self, energy):
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            energies = self._raw_data.energies[:]
-            dos_dict = self._read_total_dos()
-            # interpolate between DOS at closest energies
-            dos_at_energy = {}
-            for key, dos in dos_dict.items():
-                idx = (np.abs(energies - energy)).argmin()
-                if energies[idx] == energy:
-                    dos_at_energy[key] = float(dos[idx])
-                else:
-                    if energies[idx] < energy:
-                        idx_low = idx
-                        idx_high = idx + 1
-                    else:
-                        idx_low = idx - 1
-                        idx_high = idx
-                    if (idx_low < 0) or (idx_high >= len(energies)):
-                        dos_at_energy[key] = None  # energy outside range
-                        continue
-                    dos_low = dos[idx_low]
-                    dos_high = dos[idx_high]
-                    energy_low = energies[idx_low]
-                    energy_high = energies[idx_high]
-                    # linear interpolation
-                    dos_at_energy[key] = float(
-                        dos_low
-                        + (dos_high - dos_low)
-                        * (energy - energy_low)
-                        / (energy_high - energy_low)
-                    )
-            return dos_at_energy
-        return {}
-
-    @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
-    def to_graph(self, selection=None):
+    def to_graph(self, selection=None) -> graph.Graph:
         """Read the DOS and convert it into a graph.
 
         The x axis is the energy mesh used in the calculation shifted such that the
@@ -304,6 +390,7 @@ class Dos(base.Refinery, graph.Mixin):
 
         Examples
         --------
+
         For the total DOS, you do not need any arguments. py4vasp will automatically
         use two separate lines, if you used :tag:`ISPIN` = 2 in the VASP calculation
 
@@ -344,13 +431,15 @@ class Dos(base.Refinery, graph.Mixin):
         along the z axis
 
         >>> noncollinear_calculation.dos.to_graph("sigma_z")
-        Graph(series=[Series(..., label='total', ...), Series(..., label='sigma_z', ...)], ...)
+        Graph(series=[Series(..., label='total', ...), Series(..., label='sigma_z', ...)],
+        ...)
 
         You can also use simple addition and subtraction to combine the contributions of
         different orbitals, e.g. add the contribution of three d orbitals
 
         >>> calculation.dos.to_graph("dxy + dxz + dyz")
-        Graph(series=[Series(..., label='total', ...), Series(..., label='dxy + dxz + dyz', ...)], ...)
+        Graph(series=[Series(..., label='total', ...), Series(..., label='dxy + dxz + dyz',
+        ...)], ...)
 
         Read the density of states generated by the '''k'''-point mesh in the KPOINTS_OPT
         file (analogously for KPOINTS_WAN)
@@ -358,16 +447,14 @@ class Dos(base.Refinery, graph.Mixin):
         >>> calculation.dos.to_graph("kpoints_opt")
         Graph(series=[Series(..., label='total', ...)], ...)
         """
-        data = self._read_data(selection)
-        energies = data.pop("energies")
-        data.pop(projector.SPIN_PROJECTION, None)
-        return graph.Graph(
-            series=list(_series(energies, data)),
-            xlabel="Energy (eV)",
-            ylabel="DOS (1/eV)",
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DosHandler.to_graph,
         )
 
-    @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
     def to_frame(self, selection=None):
         """Read the data into a pandas DataFrame.
@@ -396,6 +483,7 @@ class Dos(base.Refinery, graph.Mixin):
 
         Examples
         --------
+
         >>> calculation.dos.to_frame()
            energies  total
         0  ...
@@ -442,8 +530,6 @@ class Dos(base.Refinery, graph.Mixin):
         You can also use simple addition and subtraction to combine the contributions of
         different orbitals, e.g. add the contribution of three d orbitals
 
-        Add the contribution of three d orbitals
-
         >>> calculation.dos.to_frame("dxy + dxz + dyz")
            energies  total  dxy + dxz + dyz
         0  ...
@@ -455,40 +541,35 @@ class Dos(base.Refinery, graph.Mixin):
            energies  total
         0  ...
         """
-        data = self._read_data(selection)
-        data.pop(projector.SPIN_PROJECTION, None)
-        df = pd.DataFrame(data)
-        df.fermi_energy = self._raw_data.fermi_energy
-        return df
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DosHandler.to_frame,
+        )
 
-    @base.data_access
-    def selections(self):
-        return {**super().selections(), **self._projector().selections()}
+    def selections(self, selection=None) -> dict:
+        from py4vasp._raw import definition as raw_module
 
-    def _is_collinear(self):
-        return len(self._raw_data.dos) == 2
+        handler_selections = merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DosHandler.selections,
+        )
+        sources = list(raw_module.selections(self._quantity_name))
+        return {self._quantity_name: sources, **handler_selections}
 
-    def _is_noncollinear(self):
-        return len(self._raw_data.dos) == 4
-
-    def _projector(self):
-        return projector.Projector.from_data(self._raw_data.projectors)
-
-    def _read_data(self, selection):
-        return {
-            **self._read_energies(),
-            **self._read_total_dos(),
-            **self._projector().project(selection, self._raw_data.projections),
-        }
-
-    def _read_energies(self):
-        return {"energies": self._raw_data.energies[:] - self._raw_data.fermi_energy}
-
-    def _read_total_dos(self):
-        if self._is_collinear():
-            return {"up": self._raw_data.dos[0, :], "down": self._raw_data.dos[1, :]}
-        else:
-            return {"total": self._raw_data.dos[0, :]}
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            DosHandler.from_data,
+            DosHandler.to_database,
+        )
 
 
 def _series(energies, data):

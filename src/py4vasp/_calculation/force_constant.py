@@ -5,85 +5,80 @@ import itertools
 
 import numpy as np
 
-from py4vasp._calculation import base, structure
-from py4vasp._raw import data as raw_data
+from py4vasp import raw
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._util import check
 
+_A_TO_BOHR = 0.529177210544
 
-class ForceConstant(base.Refinery, structure.Mixin):
-    """Force constants are the 2nd derivatives of the energy with respect to displacement.
 
-    Force constants quantify the strength of interactions between atoms in a crystal
-    lattice. They describe how the potential energy of the system changes with atomic
-    displacements. Specifically they are the second derivative of the energy with
-    respect to a displacement from their equilibrium positions. Force constants are a
-    key component in determining the vibrational modes of a crystal lattice (phonon
-    dispersion). Phonon calculations involve the computation of these force constants.
-    Keep in mind that they are the second derivative at the equilibrium position so
-    a careful relaxation is required to eliminate the first derivative (i.e. forces).
-    """
+class ForceConstantHandler:
+    """Force constants are the 2nd derivatives of the energy with respect to displacement."""
 
-    _raw_data: raw_data.ForceConstant
+    def __init__(self, raw_force_constant: raw.ForceConstant):
+        self._raw_force_constant = raw_force_constant
 
-    @base.data_access
-    def __str__(self):
-        result = """
-Force constants (eV/Å²):
-atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     zi,xj     zi,yj     zi,zj
-----------------------------------------------------------------------------------------------------------
-""".strip()
-        number_ions = self._structure.number_atoms()
-        force_constants = self._raw_data.force_constants[:]
+    @classmethod
+    def from_data(cls, raw_force_constant: raw.ForceConstant) -> "ForceConstantHandler":
+        return cls(raw_force_constant)
+
+    def __str__(self) -> str:
+        structure = StructureHandler.from_data(self._raw_force_constant.structure)
+        number_ions = structure.number_atoms()
+        force_constants = self._raw_force_constant.force_constants[:]
         force_constants = 0.5 * (force_constants + force_constants.T)
-        if check.is_none(self._raw_data.selective_dynamics):
+        if check.is_none(self._raw_force_constant.selective_dynamics):
             selective_dynamics = np.ones((number_ions, 3), dtype=np.bool_)
         else:
-            selective_dynamics = self._raw_data.selective_dynamics[:]
+            selective_dynamics = self._raw_force_constant.selective_dynamics[:]
         return str(_StringFormatter(number_ions, force_constants, selective_dynamics))
 
-    @base.data_access
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """Read structure information and force constants into a dictionary.
-
-        The structural information is added to inform about which atoms are included
-        in the array. The force constants array contains the second derivatives with
-        respect to atomic displacement for all atoms and directions.
 
         Returns
         -------
         dict
             Contains structural information as well as the raw force constant data.
         """
-        return {
-            "structure": self._structure.read(),
-            "force_constants": self._raw_data.force_constants[:],
-            **self._read_selective_dynamics(),
+        structure = StructureHandler.from_data(self._raw_force_constant.structure)
+        result = {
+            "structure": structure.to_dict(),
+            "force_constants": self._raw_force_constant.force_constants[:],
         }
+        if not check.is_none(self._raw_force_constant.selective_dynamics):
+            result["selective_dynamics"] = self._raw_force_constant.selective_dynamics[
+                :
+            ]
+        return result
 
-    def _read_selective_dynamics(self):
-        if not check.is_none(self._raw_data.selective_dynamics):
-            return {"selective_dynamics": self._raw_data.selective_dynamics[:]}
-        else:
-            return {}
-
-    @base.data_access
     def eigenvectors(self):
         """Compute the eigenvectors of the force constant matrix."""
         return self._diagonalize()[1]
 
     def _diagonalize(self):
-        eigenvalues, eigenvectors = np.linalg.eigh(-self._raw_data.force_constants)
+        eigenvalues, eigenvectors = np.linalg.eigh(
+            -self._raw_force_constant.force_constants
+        )
         eigenvectors = eigenvectors.T
-        if check.is_none(self._raw_data.selective_dynamics):
+        if check.is_none(self._raw_force_constant.selective_dynamics):
             return eigenvalues, eigenvectors.reshape(len(eigenvectors), -1, 3)
-        number_ions = self._structure.number_atoms()
+        structure = StructureHandler.from_data(self._raw_force_constant.structure)
+        number_ions = structure.number_atoms()
         unpacked_eigenvectors = np.zeros((len(eigenvectors), number_ions, 3))
-        selective_dynamics = self._raw_data.selective_dynamics[:].astype(np.bool_)
+        selective_dynamics = self._raw_force_constant.selective_dynamics[:].astype(
+            np.bool_
+        )
         unpacked_eigenvectors[:, selective_dynamics] = eigenvectors
         return eigenvalues, unpacked_eigenvectors
 
-    @base.data_access
-    def to_molden(self):
+    def to_molden(self) -> str:
         """Convert the eigenvectors of the force constant into molden format.
 
         Keep in mind that the eigenvectors indicate the direction of the forces and do
@@ -107,10 +102,10 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
 """
 
     def _format_coordinates(self):
-        A_to_bohr = 0.529177210544
+        structure = StructureHandler.from_data(self._raw_force_constant.structure)
         element_positions = zip(
-            self._structure._stoichiometry().elements(),
-            self._structure.cartesian_positions() / A_to_bohr,
+            structure._stoichiometry().elements(),
+            structure.cartesian_positions() / _A_TO_BOHR,
         )
         return "\n".join(
             f"{element:2} {self._format_vector(position)}"
@@ -133,6 +128,92 @@ atom(i)  atom(j)   xi,xj     xi,yj     xi,zj     yi,xj     yi,yj     yi,zj     z
     def _format_vector(self, vector):
         replace_nearly_zeros = lambda x: 0 if np.isclose(x, 0, atol=1e-9) else x
         return " ".join(f"{replace_nearly_zeros(x):12.6f}" for x in vector)
+
+
+@quantity("force_constant")
+class ForceConstant:
+    """Force constants are the 2nd derivatives of the energy with respect to displacement.
+
+    Force constants quantify the strength of interactions between atoms in a crystal
+    lattice. They describe how the potential energy of the system changes with atomic
+    displacements. Specifically they are the second derivative of the energy with
+    respect to a displacement from their equilibrium positions. Force constants are a
+    key component in determining the vibrational modes of a crystal lattice (phonon
+    dispersion). Phonon calculations involve the computation of these force constants.
+    Keep in mind that they are the second derivative at the equilibrium position so
+    a careful relaxation is required to eliminate the first derivative (i.e. forces).
+    """
+
+    def __init__(self, source, quantity_name: str = "force_constant"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(cls, raw_force_constant: raw.ForceConstant) -> "ForceConstant":
+        """Create a ForceConstant dispatcher from raw data (convenience for testing)."""
+        return cls(source=DataSource(raw_force_constant))
+
+    def __str__(self, selection=None) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            ForceConstantHandler.from_data,
+            ForceConstantHandler.__str__,
+        )
+
+    def read(self) -> dict:
+        """Read structure information and force constants into a dictionary.
+
+        The structural information is added to inform about which atoms are included
+        in the array. The force constants array contains the second derivatives with
+        respect to atomic displacement for all atoms and directions.
+
+        Returns
+        -------
+        dict
+            Contains structural information as well as the raw force constant data.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            ForceConstantHandler.from_data,
+            ForceConstantHandler.to_dict,
+        )
+
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read()
+
+    def eigenvectors(self):
+        """Compute the eigenvectors of the force constant matrix."""
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            ForceConstantHandler.from_data,
+            ForceConstantHandler.eigenvectors,
+        )
+
+    def to_molden(self) -> str:
+        """Convert the eigenvectors of the force constant into molden format.
+
+        Keep in mind that the eigenvectors indicate the direction of the forces and do
+        not take into account the masses of the atom.
+
+        Returns
+        -------
+        str
+            String describing the structure and eigenvectors in molden format.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            ForceConstantHandler.from_data,
+            ForceConstantHandler.to_molden,
+        )
 
 
 @dataclasses.dataclass

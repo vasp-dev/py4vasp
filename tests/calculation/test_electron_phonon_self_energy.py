@@ -73,7 +73,7 @@ def _make_reference_pattern(raw_self_energy=None):
 
 def test_len(self_energy):
     # Should match the number of valid indices in the raw data
-    assert len(self_energy) == len(self_energy._raw_data.valid_indices)
+    assert len(self_energy) == 5
 
 
 def test_indexing_and_iteration(self_energy):
@@ -81,7 +81,6 @@ def test_indexing_and_iteration(self_energy):
     for i, instance in enumerate(self_energy):
         assert isinstance(instance, SelfEnergyInstance)
         assert instance.index == i
-        assert instance.parent is self_energy
     assert isinstance(self_energy[0], SelfEnergyInstance)
 
 

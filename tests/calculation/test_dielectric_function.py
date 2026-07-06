@@ -8,7 +8,10 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.dielectric_function import DielectricFunction
+from py4vasp._calculation.dielectric_function import (
+    DielectricFunction,
+    DielectricFunctionHandler,
+)
 from py4vasp._raw.data_db import DielectricFunction_DB
 
 
@@ -17,6 +20,7 @@ def electronic(raw_data):
     raw_electronic = raw_data.dielectric_function("electron")
     electronic = DielectricFunction.from_data(raw_electronic)
     electronic.ref = types.SimpleNamespace()
+    electronic.ref.raw_data = raw_electronic
     electronic.ref.energies = raw_electronic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
     electronic.ref.dielectric_function = to_complex(raw_electronic.dielectric_function)
@@ -29,6 +33,7 @@ def ionic(raw_data):
     raw_ionic = raw_data.dielectric_function("ion")
     ionic = DielectricFunction.from_data(raw_ionic)
     ionic.ref = types.SimpleNamespace()
+    ionic.ref.raw_data = raw_ionic
     ionic.ref.energies = raw_ionic.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
     ionic.ref.dielectric_function = to_complex(raw_ionic.dielectric_function)
@@ -423,9 +428,8 @@ dielectric function:
 
 
 def _check_to_database(dielectric_function):
-    database_data = dielectric_function._read_to_database()
-    assert "dielectric_function:default" in database_data
-    db_data: DielectricFunction_DB = database_data["dielectric_function:default"]
+    handler = DielectricFunctionHandler.from_data(dielectric_function.ref.raw_data)
+    db_data: DielectricFunction_DB = handler.to_database()
     assert isinstance(db_data, DielectricFunction_DB)
     assert db_data.energy_min == float(np.min(dielectric_function.ref.energies))
     assert db_data.energy_max == float(np.max(dielectric_function.ref.energies))

@@ -8,7 +8,10 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.electronic_minimization import ElectronicMinimization
+from py4vasp._calculation.electronic_minimization import (
+    ElectronicMinimization,
+    ElectronicMinimizationHandler,
+)
 from py4vasp._raw.data_db import ElectronicMinimization_DB
 
 
@@ -101,10 +104,10 @@ def test_is_converged(electronic_minimization):
     assert actual == expected
 
 
-def test_to_database(electronic_minimization):
-    database_data: ElectronicMinimization_DB = (
-        electronic_minimization._read_to_database()["electronic_minimization:default"]
-    )
+def test_to_database(electronic_minimization, raw_data):
+    raw_elmin = raw_data.electronic_minimization()
+    handler = ElectronicMinimizationHandler.from_data(raw_elmin)
+    database_data: ElectronicMinimization_DB = handler.to_database()
     overview_data = electronic_minimization.ref.overview_data
 
     assert isinstance(database_data, ElectronicMinimization_DB)
@@ -128,6 +131,6 @@ def test_to_database(electronic_minimization):
             ), f"{k} has unexpected type {type(v)}: {v}"
 
 
-# def test_factory_methods(raw_data, check_factory_methods):
-#     data = raw_data.electronic_minimization()
-#     check_factory_methods(ElectronicMinimization, data)
+def test_factory_methods(raw_data, check_factory_methods):
+    data = raw_data.electronic_minimization()
+    check_factory_methods(ElectronicMinimization, data)

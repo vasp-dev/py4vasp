@@ -202,48 +202,17 @@ def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):
     assert isinstance(demo_calc_db, _DatabaseData)
     assert demo_calc_db.metadata is not None
     assert isinstance(demo_calc_db.metadata, CalculationMetaData)
-    assert isinstance(demo_calc_db.available_quantities, dict)
-    assert isinstance(demo_calc_db.additional_properties, dict)
+    assert isinstance(demo_calc_db.properties, dict)
 
     # Check metadata fields
-    assert isinstance(demo_calc_db.metadata.hdf5_original_path, Path)
+    assert isinstance(demo_calc_db.metadata.path, Path)
 
-    # Check that available_quantities has correct structure
-    # and that the loaded data is non-trivial
-    true_counter = 0
-    has_non_default_selections = False
-    for key, value in demo_calc_db.available_quantities.items():
-        available, aliases = value
-        assert isinstance(available, bool)
-        assert isinstance(aliases, list)
-        assert len(aliases) >= 1
-        assert isinstance(aliases[0], str)
-        true_counter += int(available)
-        if ":" in key and not key.endswith(f":{DEFAULT_SOURCE}"):
-            has_non_default_selections = True
-    assert has_non_default_selections
-    assert true_counter > minimum_counter
-
-    # Check that additional_properties has correct structure and
-    # Check that additional_properties has only entries that are listed in available_quantities
-    non_empty_counter = 0
-    for key in demo_calc_db.additional_properties:
-        if not (key in demo_calc_db.available_quantities):
-            if not (key.startswith("cell")):
-                raise AssertionError(
-                    f"Key {key} in additional_properties missing from available_quantities"
-                )
-        elif not demo_calc_db.available_quantities[key][0]:
-            raise AssertionError(
-                f"Key {key} in additional_properties marked as unavailable in available_quantities"
-            )
-
-        if demo_calc_db.additional_properties[key] not in (None, {}, []):
-            non_empty_counter += 1
+    # Check that properties has enough non-empty entries
+    non_empty_counter = sum(
+        1 for v in demo_calc_db.properties.values() if v not in (None, {}, [])
+    )
     assert non_empty_counter > minimum_counter
-
-    assert demo_calc_db.available_quantities.get("run_info", (False, []))[0]
-    assert "run_info" in demo_calc_db.additional_properties
+    assert "run_info" in demo_calc_db.properties
 
 
 @pytest.mark.parametrize(
@@ -258,14 +227,15 @@ def test_demo_db(tmp_path, selection, minimum_counter):
     basic_db_checks(demo_calc_db, minimum_counter=minimum_counter)
 
 
-@pytest.mark.parametrize("tags", [None, "test", ["test", "demo"]])
-def test_demo_db_with_tags(tags, tmp_path):
-    """Check _to_database functionality with tags on demo calculation."""
-    actual_path = tmp_path / "demo_calculation"
-    demo_calc = demo.calculation(actual_path)
-    demo_calc_db = demo_calc._to_database(tags=tags)
-    basic_db_checks(demo_calc_db)
-    assert demo_calc_db.metadata.tags == tags
+def test_demo_db_no_longer_accepts_tags(tmp_path):
+    """_to_database() no longer accepts tags or fermi_energy arguments."""
+    import inspect
+
+    from py4vasp._calculation import Calculation
+
+    sig = inspect.signature(Calculation._to_database)
+    params = [name for name in sig.parameters if name != "self"]
+    assert params == []
 
 
 def test_no_vaspdata_in_db():

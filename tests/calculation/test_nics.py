@@ -9,7 +9,7 @@ import numpy.testing as npt
 import pytest
 
 from py4vasp import _config, exception
-from py4vasp._calculation.nics import Nics
+from py4vasp._calculation.nics import Nics, NicsHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._raw.data_db import Nics_DB
 from py4vasp._third_party import view
@@ -33,6 +33,7 @@ def nics_at_points(raw_data):
 def make_nics(raw_nics):
     nics = Nics.from_data(raw_nics)
     nics.ref = types.SimpleNamespace()
+    nics.ref.raw_data = raw_nics
     nics.ref.structure = Structure.from_data(raw_nics.structure)
     if raw_nics.positions.is_none():
         transposed_nics = np.array(raw_nics.nics_grid).T
@@ -522,7 +523,8 @@ def test_print(nics, format_):
 
 
 def test_to_database(nics):
-    db_data: Nics_DB = nics._read_to_database()["nics:default"]
+    handler = NicsHandler.from_data(nics.ref.raw_data)
+    db_data: Nics_DB = handler.to_database()
     assert isinstance(db_data, Nics_DB)
     assert db_data.method == nics.ref.output["method"]
 

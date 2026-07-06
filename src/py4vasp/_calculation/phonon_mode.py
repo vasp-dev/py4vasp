@@ -2,25 +2,31 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp._calculation import base, structure
-from py4vasp._raw import data as raw_data
+from py4vasp import raw
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    _dispatch,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.data_db import PhononMode_DB
 from py4vasp._util import check, convert
 
 
-class PhononMode(base.Refinery, structure.Mixin):
-    """Describes a collective vibration of atoms in a crystal.
+class PhononModeHandler:
+    """Handler for phonon mode data — performs all data access and transformation logic."""
 
-    A phonon mode represents a specific way in which atoms in a solid oscillate
-    around their equilibrium positions. Each mode is characterized by a frequency
-    and a displacement pattern that shows how atoms move relative to each other.
-    Low-frequency modes correspond to long-wavelength vibrations, while
-    high-frequency modes involve more localized atomic motion."""
+    def __init__(self, raw_phonon_mode: raw.PhononMode):
+        self._raw_phonon_mode = raw_phonon_mode
 
-    _raw_data: raw_data.PhononMode
+    @classmethod
+    def from_data(cls, raw_phonon_mode: raw.PhononMode) -> "PhononModeHandler":
+        return cls(raw_phonon_mode)
 
-    @base.data_access
-    def __str__(self):
+    def __str__(self) -> str:
         phonon_frequencies = "\n".join(
             self._frequency_to_string(index, frequency)
             for index, frequency in enumerate(self.frequencies())
@@ -31,7 +37,38 @@ class PhononMode(base.Refinery, structure.Mixin):
 {phonon_frequencies}
 """
 
-    def _frequency_to_string(self, index, frequency):
+    def to_dict(self) -> dict:
+        return {
+            "structure": self._structure().to_dict(),
+            "frequencies": self.frequencies(),
+            "eigenvectors": self._raw_phonon_mode.eigenvectors[:],
+        }
+
+    def to_database(self) -> dict:
+        frequencies = (
+            self.frequencies()
+            if not check.is_none(self._raw_phonon_mode.frequencies)
+            else None
+        )
+        frequencies_real_max = (
+            float(np.max(frequencies.real)) if frequencies is not None else None
+        )
+        frequencies_imag_max = (
+            float(np.max(frequencies.imag)) if frequencies is not None else None
+        )
+        return PhononMode_DB(
+            frequencies_real_max=frequencies_real_max,
+            frequencies_imag_max=frequencies_imag_max,
+        )
+
+    def frequencies(self) -> np.ndarray:
+        """Read the phonon frequencies as a numpy array."""
+        return convert.to_complex(self._raw_phonon_mode.frequencies[:])
+
+    def _structure(self) -> StructureHandler:
+        return StructureHandler.from_data(self._raw_phonon_mode.structure)
+
+    def _frequency_to_string(self, index, frequency) -> str:
         if frequency.real >= frequency.imag:
             label = f"{index + 1:4} f  "
         else:
@@ -45,8 +82,41 @@ class PhononMode(base.Refinery, structure.Mixin):
         freq_cm1 = f"{frequency * eV_to_cm1:12.6f} cm-1"
         return f"{label}= {freq_THz} {freq_2PiTHz}{freq_cm1} {freq_meV}"
 
-    @base.data_access
-    def to_dict(self):
+
+@quantity("mode", group="phonon")
+class PhononMode:
+    """Describes a collective vibration of atoms in a crystal.
+
+    A phonon mode represents a specific way in which atoms in a solid oscillate
+    around their equilibrium positions. Each mode is characterized by a frequency
+    and a displacement pattern that shows how atoms move relative to each other.
+    Low-frequency modes correspond to long-wavelength vibrations, while
+    high-frequency modes involve more localized atomic motion."""
+
+    def __init__(self, source, quantity_name: str = "phonon_mode"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(cls, raw_phonon_mode: raw.PhononMode) -> "PhononMode":
+        return cls(source=DataSource(raw_phonon_mode))
+
+    def _handler_factory(self, raw):
+        return PhononModeHandler.from_data(raw)
+
+    def __str__(self, selection=None) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            PhononModeHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self) -> dict:
         """Read structure data and properties of the phonon mode into a dictionary.
 
         The frequency and eigenvector describe with how atoms move under the influence
@@ -58,35 +128,33 @@ class PhononMode(base.Refinery, structure.Mixin):
         dict
             Structural information, phonon frequencies and eigenvectors.
         """
-        return {
-            "structure": self._structure.read(),
-            "frequencies": self.frequencies(),
-            "eigenvectors": self._raw_data.eigenvectors[:],
-        }
-
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        frequencies = (
-            self.frequencies()
-            if not check.is_none(self._raw_data.frequencies)
-            else None
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononModeHandler.to_dict,
         )
 
-        frequencies_real_max = (
-            float(np.max(frequencies.real)) if frequencies is not None else None
-        )
-        frequencies_imag_max = (
-            float(np.max(frequencies.imag)) if frequencies is not None else None
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read()
+
+    def frequencies(self) -> np.ndarray:
+        """Read the phonon frequencies as a numpy array."""
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononModeHandler.frequencies,
         )
 
-        return {
-            "phonon_mode": PhononMode_DB(
-                frequencies_real_max=frequencies_real_max,
-                frequencies_imag_max=frequencies_imag_max,
-            )
-        }
-
-    @base.data_access
-    def frequencies(self):
-        "Read the phonon frequencies as a numpy array."
-        return convert.to_complex(self._raw_data.frequencies[:])
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            PhononModeHandler.from_data,
+            PhononModeHandler.to_database,
+        )

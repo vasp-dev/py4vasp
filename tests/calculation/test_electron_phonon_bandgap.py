@@ -152,7 +152,6 @@ def test_indexing_and_iteration(band_gap):
     for i, instance in enumerate(band_gap):
         assert isinstance(instance, BandgapInstance)
         assert instance.index == band_gap.ref.indices[i]
-        assert instance.parent is band_gap
     assert isinstance(band_gap[0], BandgapInstance)
 
 

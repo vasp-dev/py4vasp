@@ -13,11 +13,6 @@ __SCHEMA_VERSION__ = "0.1.0"
 class _DBDataMixin:
     """Mixin for dataclasses that will be stored in the database."""
 
-    __schema_version__: str = field(
-        init=False, default_factory=lambda: __SCHEMA_VERSION__
-    )
-    """The version of the database data schema. This can be used to track changes in the data structure and ensure compatibility when reading from the database."""
-
     def __post_init__(self):
         for field_name, field_value in self.__dict__.items():
             if isinstance(field_value, VaspData):

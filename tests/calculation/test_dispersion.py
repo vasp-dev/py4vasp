@@ -6,7 +6,7 @@ from dataclasses import fields
 import numpy as np
 import pytest
 
-from py4vasp._calculation._dispersion import Dispersion
+from py4vasp._calculation._dispersion import Dispersion, DispersionHandler
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import SPIN_PROJECTION
 from py4vasp._raw.data_db import Dispersion_DB
@@ -23,6 +23,7 @@ def dispersion(raw_data, request):
     dispersion.ref.spin_polarized = spin_polarized
     dispersion.ref.labels = ("up", "down") if spin_polarized else ("bands",)
     dispersion.ref.xticks = expected_xticks(request.param)
+    dispersion.ref.raw_data = raw_dispersion
     return dispersion
 
 
@@ -117,8 +118,8 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def _check_to_database(dispersion_):
-    data = dispersion_._read_to_database()
-    db_data: Dispersion_DB = data["dispersion:default"]
+    handler = DispersionHandler.from_data(dispersion_.ref.raw_data)
+    db_data: Dispersion_DB = handler.to_database()
     assert isinstance(db_data, Dispersion_DB)
 
     eigenvalues = dispersion_.ref.eigenvalues

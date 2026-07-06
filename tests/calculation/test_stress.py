@@ -5,7 +5,7 @@ import types
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.stress import Stress
+from py4vasp._calculation.stress import Stress, StressHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._raw.data_db import Stress_DB
 
@@ -17,6 +17,7 @@ def Sr2TiO4(raw_data):
     stress.ref = types.SimpleNamespace()
     stress.ref.structure = Structure.from_data(raw_stress.structure)
     stress.ref.stress = raw_stress.stress
+    stress.ref.raw_data = raw_stress
     return stress
 
 
@@ -27,6 +28,7 @@ def Fe3O4(raw_data):
     stress.ref = types.SimpleNamespace()
     stress.ref.structure = Structure.from_data(raw_stress.structure)
     stress.ref.stress = raw_stress.stress
+    stress.ref.raw_data = raw_stress
     return stress
 
 
@@ -37,6 +39,7 @@ def stresses(request, raw_data):
     stress.ref = types.SimpleNamespace()
     stress.ref.structure = Structure.from_data(raw_stress.structure)
     stress.ref.stress = raw_stress.stress
+    stress.ref.raw_data = raw_stress
     return stress
 
 
@@ -97,7 +100,8 @@ in kB      18.00000    22.00000    26.00000    20.00000    24.00000    22.00000
 
 
 def test_to_database(stresses, Assert):
-    db_data: Stress_DB = stresses._read_to_database()["stress:default"]
+    handler = StressHandler.from_data(stresses.ref.raw_data)
+    db_data: Stress_DB = handler.to_database()
     assert isinstance(db_data, Stress_DB)
     initial_tensor = stresses.ref.stress[0]
     final_tensor = stresses.ref.stress[-1]

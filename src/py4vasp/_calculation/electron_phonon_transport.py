@@ -1,18 +1,23 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import pathlib
 from collections import abc
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike
 
-from py4vasp import exception
-from py4vasp._calculation import base
+from py4vasp import exception, raw
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
-from py4vasp._raw import data as raw_data
 from py4vasp._third_party import graph
-from py4vasp._util import index, select
+from py4vasp._util import convert, index, select
 
 DIRECTIONS = {
     None: [0, 4, 8],
@@ -73,8 +78,6 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
     and visualization of transport properties for a given calculation index.
     """
 
-    _raw_data: raw_data.ElectronPhononTransport
-
     def __str__(self):
         """
         Returns a string representation of the transport instance, including chemical
@@ -82,11 +85,7 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
         """
         return f"Electron-phonon transport instance {self.index + 1}:\n{self._metadata_string()}"
 
-    def read(self, selection=None):
-        "Convenient wrapper around to_dict. Check that function for examples and optional arguments."
-        return self.to_dict(selection=selection)
-
-    def to_dict(self, selection=None) -> Dict[str, Any]:
+    def read(self, selection=None) -> Dict[str, Any]:
         """Returns a dictionary with selected transport properties for this instance.
 
         Returns
@@ -114,6 +113,10 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
         result = {name: self._get_data(name, selection=selection) for name in names}
         result["metadata"] = self.read_metadata()
         return result
+
+    def to_dict(self, selection=None) -> Dict[str, Any]:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read(selection=selection)
 
     def temperatures(self) -> np.ndarray:
         """Returns the temperatures at which transport properties are computed.
@@ -385,46 +388,32 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
         return graph.Graph(series, xlabel="Temperature (K)", ylabel=builder.ylabel)
 
 
-class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
-    """
-    Provides access to electron-phonon transport data and selection utilities.
-    This class serves as an interface to electron-phonon transport calculations,
-    allowing users to query and select transport coefficients and related properties.
-    It supports selection based on various criteria such as
-    the number of bands, scattering approximation, broadening parameter (delta),
-    and chemical potential.
-    """
+class ElectronPhononTransportHandler(abc.Sequence):
+    """Handler for electron-phonon transport data."""
+
+    def __init__(self, raw_data: raw.ElectronPhononTransport):
+        self._raw_data = raw_data
+
+    @classmethod
+    def from_data(
+        cls, raw_data: raw.ElectronPhononTransport
+    ) -> "ElectronPhononTransportHandler":
+        return cls(raw_data)
 
     def _accumulator(self):
         return ElectronPhononAccumulator(self, self._raw_data)
 
-    @base.data_access
     def __str__(self):
         return str(self._accumulator())
 
-    @base.data_access
     def to_dict(self) -> Dict[str, Any]:
-        """Return a dictionary that lists how many accumulators are available
-
-        Returns
-        -------
-        -
-            Dictionary containing information about the available accumulators.
-        """
         return self._accumulator().to_dict()
 
-    @base.data_access
     def selections(self) -> Dict[str, Any]:
-        """Return a dictionary describing what options are available to read the transport.
-
-        Returns
-        -------
-        -
-            Dictionary containing available selection options with their possible values.
-            Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
-        """
         base_selections = {
-            **super().selections(),
+            convert.quantity_name(self.__class__.__name__.replace("Handler", "")): [
+                "default"
+            ],
             "transport": list(UNITS.keys()),
         }
         if self._has_spin_data():
@@ -438,6 +427,127 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
     @property
     def units(self) -> Dict[str, str]:
+        """Return a dictionary with the physical units for each transport quantity."""
+        return UNITS
+
+    def chemical_potential_mu_tag(self) -> tuple[str, np.ndarray]:
+        return self._accumulator().chemical_potential_mu_tag()
+
+    def _get_data(self, name, index, selection=None):
+        if selection is not None:
+            raise exception.IncorrectUsage(
+                "Creating ElectronPhononTransport.from_data does not allow to select a source."
+            )
+        return self._accumulator().get_data(name, index)
+
+    def select(self, selection: str) -> List[TransportInstance]:
+        return self._select_instances(selection)
+
+    def _select_instances(self, selection, filter_keys=()):
+        indices = self._accumulator().select_indices(selection, *filter_keys)
+        return [TransportInstance(self, index) for index in indices]
+
+    def to_graph(self, selection: str) -> graph.Graph:
+        builder = _SeriesBuilderMapping()
+        series_list = [
+            series
+            for sel in select.Tree.from_selection(selection).selections()
+            for series in builder.build(sel, self._get_instances(sel))
+        ]
+        xlabel = self._accumulator().chemical_potential_label()
+        return graph.Graph(series_list, xlabel=xlabel, ylabel=builder.ylabel)
+
+    def _get_instances(self, selection):
+        selection_string = select.selections_to_string((selection,))
+        filter_keys = (
+            UNITS.keys() | DIRECTIONS.keys() | SPINS.keys() | {"T", "temperature"}
+        )
+        return self._select_instances(selection_string, filter_keys)
+
+    def __getitem__(self, key):
+        if 0 <= key < len(self._raw_data.valid_indices):
+            return TransportInstance(self, key)
+        raise IndexError("Index out of range for electron-phonon transport instance.")
+
+    def __len__(self):
+        return len(self._raw_data.valid_indices)
+
+
+@quantity("transport", group="electron_phonon")
+class ElectronPhononTransport(abc.Sequence, graph.Mixin):
+    """
+    Provides access to electron-phonon transport data and selection utilities.
+    This class serves as an interface to electron-phonon transport calculations,
+    allowing users to query and select transport coefficients and related properties.
+    It supports selection based on various criteria such as
+    the number of bands, scattering approximation, broadening parameter (delta),
+    and chemical potential.
+    """
+
+    def __init__(self, source, quantity_name: str = "electron_phonon_transport"):
+        self._source = source
+        self._quantity_name = quantity_name
+
+    @classmethod
+    def from_data(
+        cls, raw_data: raw.ElectronPhononTransport
+    ) -> "ElectronPhononTransport":
+        return cls(source=DataSource(raw_data))
+
+    def _handler_factory(self, raw):
+        return ElectronPhononTransportHandler.from_data(raw)
+
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononTransportHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self, selection=None) -> Dict[str, Any]:
+        """Return a dictionary that lists how many accumulators are available
+
+        Returns
+        -------
+        -
+            Dictionary containing information about the available accumulators.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononTransportHandler.to_dict,
+        )
+
+    def to_dict(self, selection=None) -> Dict[str, Any]:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read(selection=selection)
+
+    def selections(self, selection=None) -> Dict[str, Any]:
+        """Return a dictionary describing what options are available to read the transport.
+
+        Returns
+        -------
+        -
+            Dictionary containing available selection options with their possible values.
+            Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononTransportHandler.selections,
+        )
+
+    @property
+    def units(self) -> Dict[str, str]:
         """Return a dictionary with the physical units for each transport quantity.
 
         Returns
@@ -448,8 +558,7 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
         """
         return UNITS
 
-    @base.data_access
-    def chemical_potential_mu_tag(self) -> tuple[str, np.ndarray]:
+    def chemical_potential_mu_tag(self, selection=None) -> tuple[str, np.ndarray]:
         """Retrieves the INCAR tag that was used to set the chemical potential as well
         as its values.
 
@@ -459,13 +568,14 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
             The INCAR tag name and its corresponding value as set in the calculation.
             Possible tags are 'selfen_carrier_den', 'selfen_mu', or 'selfen_carrier_per_cell'.
         """
-        return self._accumulator().chemical_potential_mu_tag()
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononTransportHandler.chemical_potential_mu_tag,
+        )
 
-    @base.data_access
-    def _get_data(self, name, index):
-        return self._accumulator().get_data(name, index)
-
-    @base.data_access
     def select(self, selection: str) -> List[TransportInstance]:
         """Return a list of ElectronPhononSelfEnergyInstance objects matching the selection.
 
@@ -497,13 +607,9 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         >>> calculation.electron_phonon.transport.select("nbands_sum=800(selfen_delta=0.1)")
         """
-        return self._select_instances(selection)
+        with self._source.access(self._quantity_name) as raw:
+            return self._handler_factory(raw).select(selection)
 
-    def _select_instances(self, selection, filter_keys=()):
-        indices = self._accumulator().select_indices(selection, *filter_keys)
-        return [TransportInstance(self, index) for index in indices]
-
-    @base.data_access
     def to_graph(self, selection: str) -> graph.Graph:
         """
         Plot a particular transport coefficient as a function of the chemical potential tag.
@@ -546,31 +652,16 @@ class ElectronPhononTransport(base.Refinery, abc.Sequence, graph.Mixin):
 
         >>> calculation.electron_phonon.transport.to_graph("electronic_conductivity(nbands_sum=800(selfen_delta=0.1))")
         """
-        builder = _SeriesBuilderMapping()
-        series_list = [
-            series
-            for selection in select.Tree.from_selection(selection).selections()
-            for series in builder.build(selection, self._get_instances(selection))
-        ]
-        xlabel = self._accumulator().chemical_potential_label()
-        return graph.Graph(series_list, xlabel=xlabel, ylabel=builder.ylabel)
+        with self._source.access(self._quantity_name) as raw:
+            return self._handler_factory(raw).to_graph(selection)
 
-    def _get_instances(self, selection):
-        selection_string = select.selections_to_string((selection,))
-        filter_keys = (
-            UNITS.keys() | DIRECTIONS.keys() | SPINS.keys() | {"T", "temperature"}
-        )
-        return self._select_instances(selection_string, filter_keys)
-
-    @base.data_access
     def __getitem__(self, key):
-        if 0 <= key < len(self._raw_data.valid_indices):
-            return TransportInstance(self, key)
-        raise IndexError("Index out of range for electron-phonon transport instance.")
+        with self._source.access(self._quantity_name) as raw:
+            return self._handler_factory(raw)[key]
 
-    @base.data_access
     def __len__(self):
-        return len(self._raw_data.valid_indices)
+        with self._source.access(self._quantity_name) as raw:
+            return len(self._handler_factory(raw))
 
 
 class _SeriesBuilderBase:

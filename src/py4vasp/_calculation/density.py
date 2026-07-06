@@ -1,14 +1,24 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import copy
+import itertools
 from typing import Optional, Union
 
 import numpy as np
 
 from py4vasp import _config, exception
-from py4vasp._calculation import _stoichiometry, base, structure
-from py4vasp._raw import data as raw_data
+from py4vasp import raw as raw_module
+from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
+from py4vasp._calculation.structure import StructureHandler
+from py4vasp._raw import data as raw
 from py4vasp._third_party import graph, view
-from py4vasp._util import database, documentation, import_, index, select, slicing
+from py4vasp._util import documentation, import_, index, select, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
@@ -39,7 +49,220 @@ def _join_with_emphasis(data):
     return ", ".join(emph_data)
 
 
-class Density(base.Refinery, structure.Mixin, view.Mixin):
+class DensityHandler:
+    """Handler for density data — performs all data access and transformation."""
+
+    def __init__(self, raw_density: raw.Density, selection_name=None):
+        self._raw_density = raw_density
+        self._selection_name = selection_name
+
+    @classmethod
+    def from_data(
+        cls, raw_density: raw.Density, selection_name=None
+    ) -> "DensityHandler":
+        return cls(raw_density, selection_name=selection_name)
+
+    def __str__(self) -> str:
+        _raise_error_if_no_data(self._raw_density.charge)
+        grid = self._raw_density.charge.shape[1:]
+        raw_stoichiometry = self._raw_density.structure.stoichiometry
+        stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
+        if self._selection == "kinetic_energy":
+            name = "Kinetic energy"
+        elif self.is_nonpolarized():
+            name = "Nonpolarized"
+        elif self.is_collinear():
+            name = "Collinear"
+        else:
+            name = "Noncollinear"
+        return f"""{name} density:
+    structure: {pretty.pretty(stoichiometry)}
+    grid: {grid[2]}, {grid[1]}, {grid[0]}"""
+
+    def to_dict(self) -> dict:
+        _raise_error_if_no_data(self._raw_density.charge)
+        result = {"structure": self._structure().to_dict()}
+        result.update(self._read_density())
+        return result
+
+    def selections(self) -> dict:
+        if self._raw_density.charge.is_none():
+            return {}
+        if self.is_nonpolarized():
+            components = [_COMPONENTS[0][_DEFAULT]]
+        elif self.is_collinear():
+            components = [_COMPONENTS[0][_DEFAULT], _COMPONENTS[3][_DEFAULT]]
+        else:
+            components = [_COMPONENTS[i][_DEFAULT] for i in range(4)]
+        return {"component": components}
+
+    def to_numpy(self):
+        return np.moveaxis(self._raw_density.charge, 0, -1).T
+
+    def to_view(
+        self,
+        component: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+        **user_options,
+    ) -> view.View:
+        _raise_error_if_no_data(self._raw_density.charge)
+        map_ = self._create_map()
+        selector = index.Selector({0: map_}, self._raw_density.charge)
+        component = component or _INTERNAL
+        tree = select.Tree.from_selection(component)
+        selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
+        structure_handler = self._structure()
+        viewer = structure_handler.to_view(supercell)
+        viewer.grid_scalars = [
+            view.GridQuantity(
+                quantity=selector[sel].T[np.newaxis],
+                label=self._label(selector.label(sel)),
+                isosurfaces=self._grid_quantity_properties(
+                    selector, sel, map_, user_options
+                ),
+            )
+            for sel in selections
+        ]
+        return viewer
+
+    def to_contour(
+        self,
+        component: Optional[str] = None,
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+    ) -> graph.Graph:
+        map_ = self._create_map()
+        selector = index.Selector({0: map_}, self._raw_density.charge)
+        component = component or _INTERNAL
+        tree = select.Tree.from_selection(component)
+        selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
+        visualizer = Visualizer(self._structure())
+        dataDict = {
+            (self._label(selector.label(sel)) or "charge"): selector[sel].T
+            for sel in selections
+        }
+        return visualizer.to_contour(
+            dataDict, SliceArguments(a, b, c, normal, supercell)
+        )
+
+    def to_quiver(
+        self,
+        *,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        c: Optional[float] = None,
+        normal: Optional[str] = None,
+        supercell: Optional[Union[int, np.ndarray]] = None,
+    ) -> graph.Graph:
+        if self.is_collinear():
+            data = self._raw_density.charge[1].T
+        else:
+            data = self.to_numpy()[1:]
+        visualizer = Visualizer(self._structure())
+        dataDict = {(self._selection or "magnetization"): data}
+        return visualizer.to_quiver(
+            dataDict, SliceArguments(a, b, c, normal, supercell)
+        )
+
+    def is_nonpolarized(self):
+        return len(self._raw_density.charge) == 1
+
+    def is_collinear(self):
+        return len(self._raw_density.charge) == 2
+
+    def is_noncollinear(self):
+        return len(self._raw_density.charge) == 4
+
+    @property
+    def _selection(self):
+        selection_map = {
+            "kinetic_energy": "kinetic_energy",
+            "kinetic_energy_density": "kinetic_energy",
+        }
+        return selection_map.get(self._selection_name)
+
+    def _structure(self):
+        return StructureHandler.from_data(self._raw_density.structure)
+
+    def _read_density(self):
+        density = self.to_numpy()
+        if self._selection:
+            yield self._selection, density
+        else:
+            yield "charge", density[0]
+            if self.is_collinear():
+                yield "magnetization", density[1]
+            elif self.is_noncollinear():
+                yield "magnetization", density[1:]
+
+    def _filter_noncollinear_magnetization_from_selections(self, tree):
+        if self._selection or not self.is_noncollinear():
+            yield from tree.selections()
+        else:
+            filtered_selections = tree.selections(filter=set(_MAGNETIZATION))
+            for filtered, unfiltered in zip(filtered_selections, tree.selections()):
+                if filtered != unfiltered and len(filtered) != 1:
+                    _raise_component_not_specified_error(unfiltered)
+                yield filtered
+
+    def _create_map(self):
+        map_ = {
+            choice: self._index_component(component)
+            for component, choices in _COMPONENTS.items()
+            for choice in choices
+        }
+        self._add_magnetization_for_charge_and_collinear(map_)
+        return map_
+
+    def _index_component(self, component):
+        if self.is_collinear():
+            component = (0, 2, 3, 1)[component]
+        return component
+
+    def _add_magnetization_for_charge_and_collinear(self, map_):
+        if self._selection or not self.is_collinear():
+            return
+        for key in _MAGNETIZATION:
+            map_[key] = 1
+
+    def _grid_quantity_properties(self, selector, selection, map_, user_options):
+        component_label = selector.label(selection)
+        component = map_.get(component_label, -1)
+        return self._isosurfaces(component, **user_options)
+
+    def _label(self, component_label):
+        if component_label == _INTERNAL:
+            return self._selection or "charge"
+        elif self._selection:
+            return f"{self._selection}({component_label})"
+        else:
+            return component_label
+
+    def _isosurfaces(self, component, isolevel=0.2, color=None, opacity=0.6):
+        if self._use_symmetric_isosurface(component):
+            _raise_error_if_color_is_specified(color)
+            return [
+                view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity),
+                view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
+            ]
+        else:
+            color = color or _config.VASP_COLORS["cyan"]
+            return [view.Isosurface(isolevel, color, opacity)]
+
+    def _use_symmetric_isosurface(self, component):
+        if component > 0 and self.is_nonpolarized():
+            _raise_is_nonpolarized_error()
+        if component > 1 and self.is_collinear():
+            _raise_is_collinear_error()
+        return component > 0
+
+
+@quantity("density")
+class Density(view.Mixin):
     """This class accesses various densities (charge, magnetization, ...) of VASP.
 
     The charge density is one key quantity optimized by VASP. With this class you
@@ -83,7 +306,8 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     >>> calculation.density.to_numpy()
     array([[[[...]]]], ...)
 
-    It is also possible to test for non-polarized, collinear, and noncollinear calculations with:
+    It is also possible to test for non-polarized, collinear, and noncollinear calculations
+    with:
 
     >>> calculation.density.is_nonpolarized()
     True
@@ -106,28 +330,66 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
     >>> calculation_nc.density.to_quiver(c=0, supercell=2)
     Graph(series=[Contour(data=array([[[...]]]), ..., cut='c', ...)], ...)
 
-    Please check the documentation of these methods for more details on how to use them and which options they provide.
+    Please check the documentation of these methods for more details on how to use them
+    and which options they provide.
     """
 
-    _raw_data: raw_data.Density
+    def __init__(self, source, quantity_name="density", selection_name=None):
+        self._source = source
+        self._quantity_name = quantity_name
+        self._selection_name = selection_name
 
-    @base.data_access
-    def __str__(self):
-        _raise_error_if_no_data(self._raw_data.charge)
-        grid = self._raw_data.charge.shape[1:]
-        raw_stoichiometry = self._raw_data.structure.stoichiometry
-        stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
-        if self._selection == "kinetic_energy":
-            name = "Kinetic energy"
-        elif self.is_nonpolarized():
-            name = "Nonpolarized"
-        elif self.is_collinear():
-            name = "Collinear"
-        else:
-            name = "Noncollinear"
-        return f"""{name} density:
-    structure: {pretty.pretty(stoichiometry)}
-    grid: {grid[2]}, {grid[1]}, {grid[0]}"""
+    @classmethod
+    def from_data(cls, raw_density):
+        return cls(source=DataSource(raw_density))
+
+    def __getitem__(self, selection_name) -> "Density":
+        new = copy.copy(self)
+        new._selection_name = selection_name
+        return new
+
+    def _handler_factory(self, raw):
+        return DensityHandler.from_data(raw, selection_name=self._selection_name)
+
+    def __str__(self, selection=None):
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection or self._selection_name,
+            self._handler_factory,
+            DensityHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def read(self) -> dict:
+        """Read the density into a dictionary.
+
+        Parameters
+        ----------
+        selection : str
+            VASP computes different densities depending on the INCAR settings. With this
+            parameter, you can control which one of them is returned. Please use the
+            `selections` routine to get a list of all possible choices.
+
+        Returns
+        -------
+        dict
+            Contains the structure information as well as the density represented
+            on a grid in the unit cell.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            self._selection_name,
+            self._handler_factory,
+            DensityHandler.to_dict,
+        )
+
+    def to_dict(self) -> dict:
+        """Convenient alias for :py:meth:`read`."""
+        return self.read()
 
     @documentation.format(
         component0=_join_with_emphasis(_COMPONENTS[0]),
@@ -135,8 +397,7 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         component2=_join_with_emphasis(_COMPONENTS[2]),
         component3=_join_with_emphasis(_COMPONENTS[3]),
     )
-    @base.data_access
-    def selections(self):
+    def selections(self) -> dict:
         """Returns possible densities VASP can produce along with all available components.
 
         In the dictionary, the key *density* lists all different densities you can access
@@ -172,7 +433,8 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         Returns
         -------
         dict
-            Possible densities and components to pass as selection in other functions on density.
+            Possible densities and components to pass as selection in other functions
+            on density.
 
         Notes
         -----
@@ -189,51 +451,16 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         >>> calculation.density.plot("n m(1,2) mag(sigma_z)")
         """
-        sources = super().selections()
-        if self._raw_data.charge.is_none():
-            return sources
-        if self.is_nonpolarized():
-            components = [_COMPONENTS[0][_DEFAULT]]
-        elif self.is_collinear():
-            components = [_COMPONENTS[0][_DEFAULT], _COMPONENTS[3][_DEFAULT]]
-        else:
-            components = [_COMPONENTS[i][_DEFAULT] for i in range(4)]
-        return {**sources, "component": components}
-
-    @base.data_access
-    def to_dict(self):
-        """Read the density into a dictionary.
-
-        Parameters
-        ----------
-        selection : str
-            VASP computes different densities depending on the INCAR settings. With this
-            parameter, you can control which one of them is returned. Please use the
-            `selections` routine to get a list of all possible choices.
-
-        Returns
-        -------
-        dict
-            Contains the structure information as well as the density represented
-            on a grid in the unit cell.
-        """
-        _raise_error_if_no_data(self._raw_data.charge)
-        result = {"structure": self._structure.read()}
-        result.update(self._read_density())
+        result = merge_default(
+            self._source,
+            self._quantity_name,
+            self._selection_name,
+            self._handler_factory,
+            DensityHandler.selections,
+        )
+        result["density"] = list(raw_module.selections(self._quantity_name))
         return result
 
-    def _read_density(self):
-        density = self.to_numpy()
-        if self._selection:
-            yield self._selection, density
-        else:
-            yield "charge", density[0]
-            if self.is_collinear():
-                yield "magnetization", density[1]
-            elif self.is_noncollinear():
-                yield "magnetization", density[1:]
-
-    @base.data_access
     def to_numpy(self):
         """Convert the density to a numpy array.
 
@@ -246,9 +473,14 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
         np.ndarray
             All components of the selected density.
         """
-        return np.moveaxis(self._raw_data.charge, 0, -1).T
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            self._selection_name,
+            self._handler_factory,
+            DensityHandler.to_numpy,
+        )
 
-    @base.data_access
     def to_view(
         self,
         selection: Optional[str] = None,
@@ -298,94 +530,17 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         >>> calculation.density.plot("m(3)")
         """
-        _raise_error_if_no_data(self._raw_data.charge)
-        # build selector
-        map_ = self._create_map()
-        selector = index.Selector({0: map_}, self._raw_data.charge)
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            self._selection_name,
+            self._handler_factory,
+            DensityHandler.to_view,
+            selection,
+            supercell=supercell,
+            **user_options,
+        )
 
-        # define selections
-        selection = selection or _INTERNAL
-        tree = select.Tree.from_selection(selection)
-        selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
-
-        # set up visualizer
-        visualizer = Visualizer(self._structure)
-        dataDict = {
-            self._label(selector.label(sel)): (selector[sel].T) for sel in selections
-        }
-        viewer = visualizer.to_view(dataDict, supercell=supercell)
-
-        # adjust viewer
-        for scalar, sel in zip(viewer.grid_scalars, selections):
-            isosurfaces = self._grid_quantity_properties(
-                selector, sel, map_, user_options
-            )
-            scalar.isosurfaces = isosurfaces
-        return viewer
-
-    def _filter_noncollinear_magnetization_from_selections(self, tree):
-        if self._selection or not self.is_noncollinear():
-            yield from tree.selections()
-        else:
-            filtered_selections = tree.selections(filter=set(_MAGNETIZATION))
-            for filtered, unfiltered in zip(filtered_selections, tree.selections()):
-                if filtered != unfiltered and len(filtered) != 1:
-                    _raise_component_not_specified_error(unfiltered)
-                yield filtered
-
-    def _create_map(self):
-        map_ = {
-            choice: self._index_component(component)
-            for component, choices in _COMPONENTS.items()
-            for choice in choices
-        }
-        self._add_magnetization_for_charge_and_collinear(map_)
-        return map_
-
-    def _index_component(self, component):
-        if self.is_collinear():
-            component = (0, 2, 3, 1)[component]
-        return component
-
-    def _add_magnetization_for_charge_and_collinear(self, map_):
-        if self._selection or not self.is_collinear():
-            return
-        for key in _MAGNETIZATION:
-            map_[key] = 1
-
-    def _grid_quantity_properties(self, selector, selection, map_, user_options):
-        component_label = selector.label(selection)
-        component = map_.get(component_label, -1)
-        isosurfaces = self._isosurfaces(component, **user_options)
-        return isosurfaces
-
-    def _label(self, component_label):
-        if component_label == _INTERNAL:
-            return self._selection or "charge"
-        elif self._selection:
-            return f"{self._selection}({component_label})"
-        else:
-            return component_label
-
-    def _isosurfaces(self, component, isolevel=0.2, color=None, opacity=0.6):
-        if self._use_symmetric_isosurface(component):
-            _raise_error_if_color_is_specified(color)
-            return [
-                view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity),
-                view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
-            ]
-        else:
-            color = color or _config.VASP_COLORS["cyan"]
-            return [view.Isosurface(isolevel, color, opacity)]
-
-    def _use_symmetric_isosurface(self, component):
-        if component > 0 and self.is_nonpolarized():
-            _raise_is_nonpolarized_error()
-        if component > 1 and self.is_collinear():
-            _raise_is_collinear_error()
-        return component > 0
-
-    @base.data_access
     @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
     def to_contour(
         self,
@@ -433,29 +588,20 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         >>> calculation.density.to_contour("kinetic_energy", a=0.3, normal="x")
         """
-        # build selector
-        map_ = self._create_map()
-        selector = index.Selector({0: map_}, self._raw_data.charge)
-
-        # build selections
-        selection = selection or _INTERNAL
-        tree = select.Tree.from_selection(selection)
-        selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
-
-        # set up visualizer
-        visualizer = Visualizer(
-            self._structure,
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            self._selection_name,
+            self._handler_factory,
+            DensityHandler.to_contour,
+            selection,
+            a=a,
+            b=b,
+            c=c,
+            normal=normal,
+            supercell=supercell,
         )
-        dataDict = {
-            (self._label(selector.label(sel)) or "charge"): selector[sel].T
-            for sel in selections
-        }
-        contour = visualizer.to_contour(
-            dataDict, SliceArguments(a, b, c, normal, supercell)
-        )
-        return contour
 
-    @base.data_access
     @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
     def to_quiver(
         self,
@@ -502,42 +648,48 @@ class Density(base.Refinery, structure.Mixin, view.Mixin):
 
         >>> calculation.density.to_quiver("kinetic_energy", a=0.3, normal="x")
         """
-        # set up data
-        if self.is_collinear():
-            data = self._raw_data.charge[1].T
-            data = self._raw_data.charge[1].T
-        else:
-            data = self.to_numpy()[1:]
-
-        # set up visualizer
-        visualizer = Visualizer(self._structure)
-        dataDict = {(self._selection or "magnetization"): data}
-        return visualizer.to_quiver(
-            dataDict, SliceArguments(a, b, c, normal, supercell)
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            self._selection_name,
+            self._handler_factory,
+            DensityHandler.to_quiver,
+            a=a,
+            b=b,
+            c=c,
+            normal=normal,
+            supercell=supercell,
         )
 
-    @base.data_access
-    def is_nonpolarized(self):
+    def is_nonpolarized(self, selection=None):
         "Returns whether the density is not spin polarized."
-        return len(self._raw_data.charge) == 1
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            self._selection_name,
+            self._handler_factory,
+            DensityHandler.is_nonpolarized,
+        )
 
-    @base.data_access
-    def is_collinear(self):
+    def is_collinear(self, selection=None):
         "Returns whether the density has a collinear magnetization."
-        return len(self._raw_data.charge) == 2
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            self._selection_name,
+            self._handler_factory,
+            DensityHandler.is_collinear,
+        )
 
-    @base.data_access
-    def is_noncollinear(self):
+    def is_noncollinear(self, selection=None):
         "Returns whether the density has a noncollinear magnetization."
-        return len(self._raw_data.charge) == 4
-
-    @property
-    def _selection(self):
-        selection_map = {
-            "kinetic_energy": "kinetic_energy",
-            "kinetic_energy_density": "kinetic_energy",
-        }
-        return selection_map.get(super()._selection)
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            self._selection_name,
+            self._handler_factory,
+            DensityHandler.is_noncollinear,
+        )
 
 
 def _raise_error_if_color_is_specified(color):

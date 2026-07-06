@@ -3,12 +3,14 @@
 import types
 from dataclasses import fields
 
+import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.cell import Cell
+from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dielectric_tensor import (
     DielectricTensor,
+    DielectricTensorHandler,
     _calculate_2d_polarizability,
 )
 from py4vasp._raw.data_db import DielectricTensor_DB
@@ -49,6 +51,7 @@ def make_reference(raw_data, method, expected_description):
     raw_tensor = raw_data.dielectric_tensor(method)
     tensor = DielectricTensor.from_data(raw_tensor)
     tensor.ref = types.SimpleNamespace()
+    tensor.ref.raw_tensor = raw_tensor
     tensor.ref.clamped_ion = raw_tensor.electron
     if raw_tensor.ion.is_none():
         tensor.ref.relaxed_ion = None
@@ -58,7 +61,7 @@ def make_reference(raw_data, method, expected_description):
     tensor.ref.polarizability_2d = None
     tensor.ref.polarizability_2d_ionic = None
     if not (check.is_none(raw_tensor.cell)):
-        tensor.ref.cell = Cell.from_data(raw_tensor.cell)
+        tensor.ref.cell = CellHandler.from_data(raw_tensor.cell, steps=-1)
 
         tensor.ref.polarizability_2d = _calculate_2d_polarizability(
             tensor.ref.relaxed_ion, tensor.ref.cell
@@ -106,7 +109,7 @@ def check_read_dielectric_tensor(dielectric_tensor, Assert):
 def test_unknown_method(raw_data):
     raw_tensor = raw_data.dielectric_tensor("unknown_method with_ion")
     with pytest.raises(exception.NotImplemented):
-        DielectricTensor.from_data(raw_tensor).print()
+        str(DielectricTensor.from_data(raw_tensor))
 
 
 def test_print_dft_tensor(dft_tensor, format_):
@@ -124,7 +127,7 @@ def test_print_scf_tensor(scf_tensor, format_):
     check_print_dielectric_tensor(actual, scf_tensor.ref)
 
 
-def test_print_dft_tensor(nscf_tensor, format_):
+def test_print_nscf_tensor(nscf_tensor, format_):
     actual, _ = format_(nscf_tensor)
     check_print_dielectric_tensor(actual, nscf_tensor.ref)
 
@@ -158,12 +161,11 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def _check_to_database(tensor, Assert):
-    actual = tensor._read_to_database()
-    db_data: DielectricTensor_DB = actual["dielectric_tensor:default"]
+    handler = DielectricTensorHandler.from_data(tensor.ref.raw_tensor)
+    db_data: DielectricTensor_DB = handler.to_database()
     assert isinstance(db_data, DielectricTensor_DB)
 
     assert db_data.method == tensor.ref.method
-    import numpy as np
 
     # check tensors
     relaxed_ion_expected_list = [9.0, 17.0, 25.0, 13.0, 21.0, 17.0]

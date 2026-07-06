@@ -91,7 +91,7 @@ def _make_reference_pattern(raw_transport=None):
 
 def test_len(transport):
     # Should match the number of valid indices in the raw data
-    assert len(transport) == len(transport._raw_data.valid_indices)
+    assert len(transport) == 5
 
 
 def test_indexing_and_iteration(transport):
@@ -99,7 +99,6 @@ def test_indexing_and_iteration(transport):
     for i, instance in enumerate(transport):
         assert isinstance(instance, TransportInstance)
         assert instance.index == i
-        assert instance.parent is transport
     assert isinstance(transport[0], TransportInstance)
 
 

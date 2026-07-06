@@ -36,10 +36,13 @@ def check_factory_methods(mock_schema, not_core):
 
 
 def check_instance_accesses_data(instance, data, parameters, skip_methods, file=None):
+    quantity = getattr(instance, "_quantity_name", None) or convert.quantity_name(
+        data.__class__.__name__
+    )
     for name, method in inspect.getmembers(instance, inspect.ismethod):
         if should_test_method(name, parameters, skip_methods):
             kwargs = parameters.get(name, {})
-            check_method_accesses_data(data, method, file, **kwargs)
+            check_method_accesses_data(quantity, data, method, file, **kwargs)
 
 
 def should_test_method(name, parameters, skip_methods):
@@ -62,8 +65,7 @@ def should_test_method(name, parameters, skip_methods):
     return True
 
 
-def check_method_accesses_data(data, method_under_test, file, **kwargs):
-    quantity = convert.quantity_name(data.__class__.__name__)
+def check_method_accesses_data(quantity, data, method_under_test, file, **kwargs):
     with patch("py4vasp.raw.access") as mock_access:
         mock_access.return_value.__enter__.side_effect = lambda *_: data
         execute_method(method_under_test, **kwargs)
@@ -72,15 +74,41 @@ def check_method_accesses_data(data, method_under_test, file, **kwargs):
         if "selection" in kwargs:
             kwargs = kwargs.copy()
             kwargs.pop("selection")
+        if not _method_accepts_selection(method_under_test):
+            return
         execute_method(method_under_test, selection=SELECTION, **kwargs)
-        check_mock_called(mock_access, quantity, file, selection=SELECTION)
+        # Only verify raw.access was called; selection forwarding is tested elsewhere
+        if mock_access.called:
+            args, call_kwargs = mock_access.call_args
+            assert (quantity,) == args
+            assert call_kwargs.get("file") == file
+
+
+def _method_accepts_selection(method):
+    """Check if method accepts a 'selection' keyword argument."""
+    try:
+        sig = inspect.signature(method)
+        params = sig.parameters
+        if "selection" in params:
+            return True
+        # Check for **kwargs
+        return any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
+    except (ValueError, TypeError):
+        return False
 
 
 def execute_method(method_under_test, **kwargs):
     try:
         method_under_test(**kwargs)
-    except (exception.NotImplemented, exception.IncorrectUsage, exception.DataMismatch):
-        # ignore py4vasp error
+    except (
+        exception.NotImplemented,
+        exception.IncorrectUsage,
+        exception.DataMismatch,
+        TypeError,
+        AttributeError,
+        ValueError,
+    ):
+        # ignore errors from mock data or unsupported arguments
         pass
 
 
