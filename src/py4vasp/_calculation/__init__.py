@@ -279,7 +279,7 @@ instead of the constructor Calculation()."""
         Get only loadable quantities and their loadable selections:
 
         >>> calculation.selections(only_available=True)
-        {'band': ['default', 'kpoints_opt'], 'density': ['default', 'tau'], ...}
+        {'band': ['default', 'kpoints_opt'], 'density': ['default'], ...}
 
         Combine both options to restrict to loadable quantities implementing a method:
 
