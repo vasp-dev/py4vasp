@@ -54,8 +54,8 @@ def _all_calculation_examples():
 
 
 # Examples that rely on an optional package (e.g. scipy for the color pipeline) which is
-# not part of the py4vasp-core installation. They run in test_calculation_full guarded by
-# the not_core fixture; everything else runs in test_calculation.
+# not part of the py4vasp-core installation. They run in test_calculation_full which skips
+# via importorskip when the package is missing; everything else runs in test_calculation.
 _FULL_INSTALL_EXAMPLES = ("py4vasp._calculation.optics.Optics.color",)
 
 
@@ -103,7 +103,8 @@ def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
 @pytest.mark.parametrize(
     "example", get_full_calculation_examples(), ids=lambda example: example.name
 )
-def test_calculation_full(example: doctest.DocTest, tmp_path: pathlib.Path, not_core):
+def test_calculation_full(example: doctest.DocTest, tmp_path: pathlib.Path):
+    pytest.importorskip("scipy")
     _run_calculation_example(example, tmp_path)
 
 
@@ -135,7 +136,8 @@ def get_graph_examples():
 @pytest.mark.parametrize(
     "example", get_graph_examples(), ids=lambda example: example.name
 )
-def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path, not_core):
+def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path):
+    pytest.importorskip("plotly")
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["np"] = np

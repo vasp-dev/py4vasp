@@ -141,7 +141,8 @@ def complex_quiver():
         "negative",
     ],
 )
-def test_contour_color_scheme(color_scheme, not_core):
+def test_contour_color_scheme(color_scheme):
+    pytest.importorskip("plotly")
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -189,7 +190,8 @@ def test_contour_color_scheme(color_scheme, not_core):
 
 @pytest.mark.xfail
 @pytest.mark.parametrize("contrast_mode", [True, False])
-def test_contour_contrast_mode(contrast_mode, not_core):
+def test_contour_contrast_mode(contrast_mode):
+    pytest.importorskip("plotly")
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -205,7 +207,8 @@ def test_contour_contrast_mode(contrast_mode, not_core):
 @pytest.mark.parametrize(
     "color_limits", [None, (None, None), (-9, None), (None, 9), (-11, 11)]
 )
-def test_contour_color_limits(color_limits, not_core):
+def test_contour_color_limits(color_limits):
+    pytest.importorskip("plotly")
     contour = Contour(
         data=np.linspace(-10, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -229,7 +232,8 @@ def test_contour_color_limits(color_limits, not_core):
 
 
 @pytest.mark.parametrize("units", ["", None, "px", "m/s"])
-def test_contour_colorbar_label(units, not_core):
+def test_contour_colorbar_label(units):
+    pytest.importorskip("plotly")
     contour = Contour(
         data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
         lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
@@ -246,14 +250,16 @@ def test_contour_colorbar_label(units, not_core):
         assert fig.data[0].colorbar.title.text == None
 
 
-def test_basic_graph(parabola, Assert, not_core):
+def test_basic_graph(parabola, Assert):
+    pytest.importorskip("plotly")
     graph = Graph(parabola)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
     compare_series(fig.data[0], parabola, Assert)
 
 
-def test_two_series(parabola, sine, Assert, not_core):
+def test_two_series(parabola, sine, Assert):
+    pytest.importorskip("plotly")
     for graph in (Graph([parabola, sine]), Graph(parabola) + Graph(sine)):
         fig = graph.to_plotly()
         assert len(fig.data) == 2
@@ -267,7 +273,8 @@ def compare_series(converted, original, Assert):
     assert converted.name == original.label
 
 
-def test_axis_label(parabola, not_core):
+def test_axis_label(parabola):
+    pytest.importorskip("plotly")
     graph = Graph(parabola)
     graph.xlabel = "xaxis label"
     graph.ylabel = "yaxis label"
@@ -276,7 +283,8 @@ def test_axis_label(parabola, not_core):
     assert fig.layout.yaxis.title.text == graph.ylabel
 
 
-def test_secondary_yaxis(parabola, sine, Assert, not_core):
+def test_secondary_yaxis(parabola, sine, Assert):
+    pytest.importorskip("plotly")
     sine.y2 = True
     graph = Graph([parabola, sine])
     graph.y2label = "secondary yaxis label"
@@ -291,7 +299,8 @@ def check_legend_group(converted, original, first_trace):
     assert converted.showlegend == first_trace
 
 
-def test_two_lines(two_lines, Assert, not_core):
+def test_two_lines(two_lines, Assert):
+    pytest.importorskip("plotly")
     graph = Graph(two_lines)
     fig = graph.to_plotly()
     assert len(fig.data) == 2
@@ -324,13 +333,15 @@ def compare_series_with_weight(converted, original, Assert):
     assert converted.opacity == 0.5
 
 
-def test_fatband(fatband, Assert, not_core):
+def test_fatband(fatband, Assert):
+    pytest.importorskip("plotly")
     graph = Graph(fatband)
     fig = graph.to_plotly()
     compare_series_with_weight(fig.data[0], fatband, Assert)
 
 
-def test_two_fatbands(two_fatbands, Assert, not_core):
+def test_two_fatbands(two_fatbands, Assert):
+    pytest.importorskip("plotly")
     graph = Graph(two_fatbands)
     fig = graph.to_plotly()
     assert len(fig.data) == 2
@@ -346,7 +357,8 @@ def test_two_fatbands(two_fatbands, Assert, not_core):
         first_trace = False
 
 
-def test_simple_with_marker(sine, not_core):
+def test_simple_with_marker(sine):
+    pytest.importorskip("plotly")
     graph = Graph(sine)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
@@ -354,7 +366,8 @@ def test_simple_with_marker(sine, not_core):
     assert fig.data[0].marker.size is None
 
 
-def test_fatband_with_marker(fatband, Assert, not_core):
+def test_fatband_with_marker(fatband, Assert):
+    pytest.importorskip("plotly")
     with_marker = dataclasses.replace(fatband, marker="o")
     graph = Graph(with_marker)
     fig = graph.to_plotly()
@@ -366,7 +379,8 @@ def test_fatband_with_marker(fatband, Assert, not_core):
     Assert.allclose(fig.data[0].marker.size, fatband.weight)
 
 
-def test_two_fatband_with_marker(two_fatbands, Assert, not_core):
+def test_two_fatband_with_marker(two_fatbands, Assert):
+    pytest.importorskip("plotly")
     with_marker = dataclasses.replace(two_fatbands, marker="o")
     graph = Graph(with_marker)
     fig = graph.to_plotly()
@@ -379,7 +393,8 @@ def test_two_fatband_with_marker(two_fatbands, Assert, not_core):
         Assert.allclose(converted.marker.size, w)
 
 
-def test_weight_mode_color(two_fatbands, Assert, not_core):
+def test_weight_mode_color(two_fatbands, Assert):
+    pytest.importorskip("plotly")
     fatbands = dataclasses.replace(two_fatbands, marker="o", weight_mode="color")
     graph = Graph(fatbands)
     fig = graph.to_plotly()
@@ -393,7 +408,8 @@ def test_weight_mode_color(two_fatbands, Assert, not_core):
         assert converted.marker.coloraxis == "coloraxis"
 
 
-def test_custom_xticks(parabola, not_core):
+def test_custom_xticks(parabola):
+    pytest.importorskip("plotly")
     graph = Graph(parabola)
     graph.xticks = {0.1: "X", 0.3: "Y", 0.4: "", 0.8: "Z"}
     fig = graph.to_plotly()
@@ -403,7 +419,8 @@ def test_custom_xticks(parabola, not_core):
     # empty ticks should be replace by " " because otherwise plotly will replace them
 
 
-def test_title(parabola, not_core):
+def test_title(parabola):
+    pytest.importorskip("plotly")
     graph = Graph(parabola)
     graph.title = "title"
     fig = graph.to_plotly()
@@ -447,7 +464,8 @@ def test_merging_of_numpy_field_values(parabola):
         graph1 + Graph(parabola, xrange=np.array([0.0, 2.0]))
 
 
-def test_subplot(subplot, not_core):
+def test_subplot(subplot):
+    pytest.importorskip("plotly")
     graph = Graph(subplot)
     graph.xlabel = ("first x-axis", "second x-axis")
     graph.ylabel = ("first y-axis", "second y-axis")
@@ -474,7 +492,8 @@ def test_mixture_subplot_raises_error(parabola, subplot):
         Graph((parabola,) + subplot)
 
 
-def test_non_numpy_data(non_numpy, Assert, not_core):
+def test_non_numpy_data(non_numpy, Assert):
+    pytest.importorskip("plotly")
     graph = Graph(non_numpy)
     fig = graph.to_plotly()
     assert len(fig.data) == len(non_numpy)
@@ -503,7 +522,8 @@ def test_add_label_to_multiple_lines(parabola, sine, Assert):
     assert graph.series[1].label == "new label sine"
 
 
-def test_annotations(parabola, Assert, not_core):
+def test_annotations(parabola, Assert):
+    pytest.importorskip("plotly")
     num_points = len(parabola.x)
     metadata = np.linspace(-1, 1, num_points)
     parabola.annotations = {
@@ -527,14 +547,16 @@ def test_incorrect_annotations_length():
         Series(x, y, annotations=annotations)
 
 
-def test_convert_parabola_to_frame(parabola, Assert, not_core):
+def test_convert_parabola_to_frame(parabola, Assert):
+    pytest.importorskip("pandas")
     graph = Graph(parabola)
     df = graph.to_frame()
     Assert.allclose(df["parabola.x"], parabola.x)
     Assert.allclose(df["parabola.y"], parabola.y)
 
 
-def test_convert_sequence_parabola_to_frame(parabola, sine, Assert, not_core):
+def test_convert_sequence_parabola_to_frame(parabola, sine, Assert):
+    pytest.importorskip("pandas")
     sequence = [parabola, sine]
     graph = Graph(sequence)
     df = graph.to_frame()
@@ -544,7 +566,8 @@ def test_convert_sequence_parabola_to_frame(parabola, sine, Assert, not_core):
     Assert.allclose(df["sine.y"], sine.y)
 
 
-def test_convert_multiple_lines(two_lines, Assert, not_core):
+def test_convert_multiple_lines(two_lines, Assert):
+    pytest.importorskip("pandas")
     graph = Graph(two_lines)
     df = graph.to_frame()
     assert len(df.columns) == 3
@@ -553,7 +576,8 @@ def test_convert_multiple_lines(two_lines, Assert, not_core):
     Assert.allclose(df["two_lines.y1"], two_lines.y[1])
 
 
-def test_convert_two_fatbands_to_frame(two_fatbands, Assert, not_core):
+def test_convert_two_fatbands_to_frame(two_fatbands, Assert):
+    pytest.importorskip("pandas")
     graph = Graph(two_fatbands)
     df = graph.to_frame()
     Assert.allclose(df["two_fatbands.x"], two_fatbands.x)
@@ -563,7 +587,8 @@ def test_convert_two_fatbands_to_frame(two_fatbands, Assert, not_core):
     Assert.allclose(df["two_fatbands.weight1"], two_fatbands.weight[1])
 
 
-def test_write_csv(tmp_path, two_fatbands, non_numpy, Assert, not_core):
+def test_write_csv(tmp_path, two_fatbands, non_numpy, Assert):
+    pytest.importorskip("pandas")
     import pandas as pd
 
     sequence = [two_fatbands, *non_numpy]
@@ -576,9 +601,8 @@ def test_write_csv(tmp_path, two_fatbands, non_numpy, Assert, not_core):
     Assert.allclose(ref_rounded, actual_rounded)
 
 
-def test_convert_different_length_series_to_frame(
-    parabola, two_lines, Assert, not_core
-):
+def test_convert_different_length_series_to_frame(parabola, two_lines, Assert):
+    pytest.importorskip("pandas")
     sequence = [two_lines, parabola]
     graph = Graph(sequence)
     df = graph.to_frame()
@@ -594,18 +618,20 @@ def test_convert_different_length_series_to_frame(
     Assert.allclose(df["two_lines.y1"], padded_two_lines_y[1])
 
 
-@patch("plotly.graph_objs.Figure._ipython_display_")
-def test_ipython_display(mock_display, parabola, not_core):
-    graph = Graph(parabola)
-    graph._ipython_display_()
-    mock_display.assert_called_once()
+def test_ipython_display(parabola):
+    pytest.importorskip("plotly")
+    with patch("plotly.graph_objs.Figure._ipython_display_") as mock_display:
+        graph = Graph(parabola)
+        graph._ipython_display_()
+        mock_display.assert_called_once()
 
 
-@patch("plotly.graph_objs.Figure.show")
-def test_show(mock_show, parabola, not_core):
-    graph = Graph(parabola)
-    graph.show()
-    mock_show.assert_called_once()
+def test_show(parabola):
+    pytest.importorskip("plotly")
+    with patch("plotly.graph_objs.Figure.show") as mock_show:
+        graph = Graph(parabola)
+        graph.show()
+        mock_show.assert_called_once()
 
 
 def test_nonexisting_attribute_raises_error(parabola):
@@ -616,7 +642,8 @@ def test_nonexisting_attribute_raises_error(parabola):
         graph.nonexisting = "not possible"
 
 
-def test_normal_series_does_not_set_contour_layout(parabola, not_core):
+def test_normal_series_does_not_set_contour_layout(parabola):
+    pytest.importorskip("plotly")
     graph = Graph(parabola)
     fig = graph.to_plotly()
     assert fig.layout.xaxis.visible is None
@@ -624,7 +651,8 @@ def test_normal_series_does_not_set_contour_layout(parabola, not_core):
     assert fig.layout.yaxis.scaleanchor is None
 
 
-def test_contour(rectangle_contour, Assert, not_core):
+def test_contour(rectangle_contour, Assert):
+    pytest.importorskip("plotly")
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
     assert len(fig.data) == 1
@@ -644,7 +672,8 @@ def test_contour(rectangle_contour, Assert, not_core):
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
-def test_contour_with_periodic_traces(rectangle_contour, Assert, not_core):
+def test_contour_with_periodic_traces(rectangle_contour, Assert):
+    pytest.importorskip("plotly")
     rectangle_contour.traces_as_periodic = True
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
@@ -662,7 +691,8 @@ def test_contour_with_periodic_traces(rectangle_contour, Assert, not_core):
     check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
 
 
-def test_contour_supercell(rectangle_contour, Assert, not_core):
+def test_contour_supercell(rectangle_contour, Assert):
+    pytest.importorskip("plotly")
     supercell = np.asarray((3, 5))
     rectangle_contour.supercell = supercell
     graph = Graph(rectangle_contour)
@@ -677,7 +707,8 @@ def test_contour_supercell(rectangle_contour, Assert, not_core):
     check_annotations(rectangle_contour.lattice, fig.layout.annotations, Assert)
 
 
-def test_contour_supercell_with_periodic_traces(rectangle_contour, Assert, not_core):
+def test_contour_supercell_with_periodic_traces(rectangle_contour, Assert):
+    pytest.importorskip("plotly")
     supercell = np.asarray((3, 5))
     rectangle_contour.traces_as_periodic = True
     rectangle_contour.supercell = supercell
@@ -697,7 +728,8 @@ def test_contour_supercell_with_periodic_traces(rectangle_contour, Assert, not_c
 
 
 @pytest.mark.parametrize("show_contour_values", [True, False, None])
-def test_contour_show_contour_values(rectangle_contour, show_contour_values, not_core):
+def test_contour_show_contour_values(rectangle_contour, show_contour_values):
+    pytest.importorskip("plotly")
     rectangle_contour.show_contour_values = show_contour_values
     graph = Graph(rectangle_contour)
     fig = graph.to_plotly()
@@ -705,7 +737,8 @@ def test_contour_show_contour_values(rectangle_contour, show_contour_values, not
     assert fig.data[0].contours.showlabels == show_contour_values
 
 
-def test_legend_positioning(parabola, sine, Assert, not_core):
+def test_legend_positioning(parabola, sine, Assert):
+    pytest.importorskip("plotly")
     graph = Graph([sine, parabola])
     fig = graph.to_plotly()
     assert len(fig.data) == 2
@@ -714,7 +747,8 @@ def test_legend_positioning(parabola, sine, Assert, not_core):
     )  # actually at 1.02, but plotly does not expose this until set explicitly
 
 
-def test_contour_legend_with_colorbar(rectangle_contour, parabola, Assert, not_core):
+def test_contour_legend_with_colorbar(rectangle_contour, parabola, Assert):
+    pytest.importorskip("plotly")
     graph = Graph([rectangle_contour, parabola])
     fig = graph.to_plotly()
     assert len(fig.data) == 2
@@ -743,7 +777,7 @@ def check_annotations(lattice, annotations, Assert):
         sign *= -1
 
 
-def check_colorscale(fig, data, expect_diverging, Assert, not_core):
+def check_colorscale(fig, data, expect_diverging, Assert):
     tolerance = 1e-10
     if expect_diverging:
         expected_colorscale = px.colors.diverging.RdBu_r
@@ -768,7 +802,7 @@ def check_colorscale(fig, data, expect_diverging, Assert, not_core):
 
 
 def check_basic_tilted_contour(
-    curr_contour, with_periodic_traces: bool, Assert, not_core, expected_lengths=[]
+    curr_contour, with_periodic_traces: bool, Assert, expected_lengths=[]
 ) -> Graph:
     curr_contour.traces_as_periodic = with_periodic_traces
     curr_contour.color_scheme = "auto"
@@ -811,40 +845,43 @@ def check_basic_tilted_contour(
     return fig, expected_data
 
 
-def test_contour_interpolate(tilted_contour, Assert, not_core):
+def test_contour_interpolate(tilted_contour, Assert):
+    pytest.importorskip("plotly")
     fig, expected_data = check_basic_tilted_contour(
-        tilted_contour, False, Assert, not_core, expected_lengths=[6, 9]
+        tilted_contour, False, Assert, expected_lengths=[6, 9]
     )
-    check_colorscale(fig, expected_data, False, Assert, not_core)
+    check_colorscale(fig, expected_data, False, Assert)
 
 
 # @pytest.mark.xfail
-def test_contour_interpolate_with_periodic_traces(tilted_contour, Assert, not_core):
-    fig, expected_data = check_basic_tilted_contour(
-        tilted_contour, True, Assert, not_core
-    )
-    check_colorscale(fig, expected_data, False, Assert, not_core)
+def test_contour_interpolate_with_periodic_traces(tilted_contour, Assert):
+    pytest.importorskip("plotly")
+    fig, expected_data = check_basic_tilted_contour(tilted_contour, True, Assert)
+    check_colorscale(fig, expected_data, False, Assert)
 
 
 def test_contour_interpolate_with_periodic_function(
-    tilted_contour_with_sin_cos, Assert, not_core
+    tilted_contour_with_sin_cos, Assert
 ):
+    pytest.importorskip("plotly")
     fig, expected_data = check_basic_tilted_contour(
-        tilted_contour_with_sin_cos, False, Assert, not_core, expected_lengths=[8, 16]
+        tilted_contour_with_sin_cos, False, Assert, expected_lengths=[8, 16]
     )
-    check_colorscale(fig, expected_data, False, Assert, not_core)
+    check_colorscale(fig, expected_data, False, Assert)
 
 
 def test_contour_interpolate_with_periodic_function_and_traces(
-    tilted_contour_with_sin_cos, Assert, not_core
+    tilted_contour_with_sin_cos, Assert
 ):
+    pytest.importorskip("plotly")
     fig, expected_data = check_basic_tilted_contour(
-        tilted_contour_with_sin_cos, True, Assert, not_core
+        tilted_contour_with_sin_cos, True, Assert
     )
-    check_colorscale(fig, expected_data, False, Assert, not_core)
+    check_colorscale(fig, expected_data, False, Assert)
 
 
-def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
+def test_mix_contour_and_series(two_lines, rectangle_contour):
+    pytest.importorskip("plotly")
     graph = Graph([rectangle_contour, two_lines])
     fig = graph.to_plotly()
     assert len(fig.data) == 3
@@ -853,7 +890,8 @@ def test_mix_contour_and_series(two_lines, rectangle_contour, not_core):
     assert fig.layout.yaxis.scaleanchor == "x"
 
 
-def test_simple_quiver(simple_quiver, Assert, not_core):
+def test_simple_quiver(simple_quiver, Assert):
+    pytest.importorskip("plotly")
     graph = Graph(simple_quiver)
     assert simple_quiver.max_number_arrows is None
     expected_positions, dx, dy = compute_positions(simple_quiver)
@@ -877,7 +915,8 @@ def test_simple_quiver(simple_quiver, Assert, not_core):
     Assert.allclose(actual.barb_length, expected_barb_length)
 
 
-def test_simple_quiver_with_periodic_traces(simple_quiver, Assert, not_core):
+def test_simple_quiver_with_periodic_traces(simple_quiver, Assert):
+    pytest.importorskip("plotly")
     simple_quiver.traces_as_periodic = True
     graph = Graph(simple_quiver)
     assert simple_quiver.max_number_arrows is None
@@ -907,7 +946,8 @@ def test_simple_quiver_with_periodic_traces(simple_quiver, Assert, not_core):
 
 
 @pytest.mark.parametrize("max_number_arrows", (1025, 1024, 680))
-def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
+def test_dense_quiver(dense_quiver, max_number_arrows, Assert):
+    pytest.importorskip("plotly")
     dense_quiver.max_number_arrows = max_number_arrows
     if max_number_arrows == 1024:
         expected_shape = (28, 25)
@@ -941,9 +981,8 @@ def test_dense_quiver(dense_quiver, max_number_arrows, Assert, not_core):
 
 
 @pytest.mark.parametrize("max_number_arrows", (1025, 1024, 680))
-def test_dense_quiver_with_periodic_traces(
-    dense_quiver, max_number_arrows, Assert, not_core
-):
+def test_dense_quiver_with_periodic_traces(dense_quiver, max_number_arrows, Assert):
+    pytest.importorskip("plotly")
     dense_quiver.traces_as_periodic = True
     dense_quiver.max_number_arrows = max_number_arrows
     if max_number_arrows == 1024:
@@ -985,7 +1024,8 @@ def test_dense_quiver_with_periodic_traces(
     Assert.allclose(actual.barb_length, expected_barb_length)
 
 
-def test_complex_quiver(complex_quiver, Assert, not_core):
+def test_complex_quiver(complex_quiver, Assert):
+    pytest.importorskip("plotly")
     graph = Graph(complex_quiver)
     expected_scale = 0.10015332542313245
     work = expected_scale * complex_quiver.data
@@ -1006,7 +1046,8 @@ def test_complex_quiver(complex_quiver, Assert, not_core):
     assert len(fig.layout.annotations) == 0
 
 
-def test_complex_quiver_with_periodic_traces(complex_quiver, Assert, not_core):
+def test_complex_quiver_with_periodic_traces(complex_quiver, Assert):
+    pytest.importorskip("plotly")
     complex_quiver.traces_as_periodic = True
     graph = Graph(complex_quiver)
     expected_scale = 0.10015332542313245
@@ -1036,7 +1077,8 @@ def test_complex_quiver_with_periodic_traces(complex_quiver, Assert, not_core):
     assert len(fig.layout.annotations) == 0
 
 
-def test_width_and_height(parabola, not_core):
+def test_width_and_height(parabola):
+    pytest.importorskip("plotly")
     fig = Graph(parabola).to_plotly()
     assert fig.layout.width == 720
     assert fig.layout.height == 540
@@ -1045,7 +1087,8 @@ def test_width_and_height(parabola, not_core):
     assert fig.layout.height == 600
 
 
-def test_range_for_x_and_y_axis(parabola, Assert, not_core):
+def test_range_for_x_and_y_axis(parabola, Assert):
+    pytest.importorskip("plotly")
     fig = Graph(parabola).to_plotly()
     assert fig.layout.xaxis.range is None
     assert fig.layout.yaxis.range is None

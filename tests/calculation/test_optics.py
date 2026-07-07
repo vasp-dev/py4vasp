@@ -288,7 +288,8 @@ def _reference_color(eps, energies, spectrum="reflectivity", **kwargs):
     return color.spectrum_to_rgb(wavelengths[order], coefficient[mask][order], **kwargs)
 
 
-def test_color_default(visible, Assert, not_core):
+def test_color_default(visible, Assert):
+    pytest.importorskip("scipy")
     eps = isotropic(visible.ref.dielectric_function)
     expected = _reference_color(eps, visible.ref.energies)
     result = visible.color()
@@ -297,17 +298,20 @@ def test_color_default(visible, Assert, not_core):
     Assert.allclose(result.rgb, expected)
 
 
-def test_color_defaults_match_explicit(visible, not_core):
+def test_color_defaults_match_explicit(visible):
+    pytest.importorskip("scipy")
     assert visible.color() == visible.color(illuminant="D65", cmf="1931_2")
 
 
-def test_color_range(visible, not_core):
+def test_color_range(visible):
+    pytest.importorskip("scipy")
     color = visible.color("xx")
     assert len(color.rgb) == 3
     assert all(0 <= channel <= 1 for channel in color.rgb)
 
 
-def test_color_from_transmission(visible, Assert, not_core):
+def test_color_from_transmission(visible, Assert):
+    pytest.importorskip("scipy")
     # the coefficient is now part of the selection, defaulting to reflectivity
     eps = isotropic(visible.ref.dielectric_function)
     expected = _reference_color(eps, visible.ref.energies, spectrum="transmission")
@@ -316,26 +320,30 @@ def test_color_from_transmission(visible, Assert, not_core):
     Assert.allclose(result.rgb, expected)
 
 
-def test_color_component_switch_changes_result(visible, not_core):
+def test_color_component_switch_changes_result(visible):
+    pytest.importorskip("scipy")
     reflectivity = visible.color("reflectivity").rgb
     transmission = visible.color("transmission").rgb
     assert not np.allclose(reflectivity, transmission)
 
 
-def test_color_list_selection(visible, not_core):
+def test_color_list_selection(visible):
+    pytest.importorskip("scipy")
     result = visible.color("xx, yy")
     assert set(result) == {"reflectivity_xx", "reflectivity_yy"}
     assert all(isinstance(color, Color) for color in result.values())
     assert result["reflectivity_xx"].label() == "reflectivity_xx"
 
 
-def test_color_multiple_components(visible, Assert, not_core):
+def test_color_multiple_components(visible, Assert):
+    pytest.importorskip("scipy")
     result = visible.color("reflectivity, transmission")
     assert set(result) == {"reflectivity", "transmission"}
     Assert.allclose(result["transmission"].rgb, visible.color("transmission").rgb)
 
 
-def test_color_invalid_illuminant_raises_error(visible, not_core):
+def test_color_invalid_illuminant_raises_error(visible):
+    pytest.importorskip("scipy")
     # the illuminant is validated only after scipy interpolates the spectrum, so this
     # path requires the full (not core) installation
     with pytest.raises(exception.IncorrectUsage):
@@ -348,7 +356,8 @@ def test_color_invalid_cmf_raises_error(visible):
         visible.color(cmf="does-not-exist")
 
 
-def test_to_database(visible, Assert, not_core):
+def test_to_database(visible, Assert):
+    pytest.importorskip("scipy")
     from py4vasp._raw.data_db import Optics_DB
 
     handler = OpticsHandler.from_data(visible.ref.raw_data)
@@ -378,7 +387,8 @@ def test_to_database(visible, Assert, not_core):
     assert isinstance(db_data.color_hex, str)
 
 
-def test_to_database_keyed_by_optics(visible, not_core):
+def test_to_database_keyed_by_optics(visible):
+    pytest.importorskip("scipy")
     from py4vasp._raw.data_db import Optics_DB
 
     result = visible._to_database()

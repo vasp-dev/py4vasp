@@ -8,7 +8,7 @@ application = pytest.importorskip("sphinx.application")
 
 
 @pytest.fixture(scope="module")
-def sphinx_app(tmp_path_factory, not_core):
+def sphinx_app(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp("sphinx")
     srcdir = "tests/sphinx/core"
     confdir = "tests/sphinx/core"

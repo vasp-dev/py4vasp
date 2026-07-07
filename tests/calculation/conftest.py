@@ -23,7 +23,7 @@ def mock_schema():
 
 
 @pytest.fixture
-def check_factory_methods(mock_schema, not_core):
+def check_factory_methods(mock_schema):
     def inner(cls, data, parameters={}, skip_methods=[]):
         instance = cls.from_path()
         check_instance_accesses_data(instance, data, parameters, skip_methods)
@@ -68,7 +68,8 @@ def should_test_method(name, parameters, skip_methods):
 def check_method_accesses_data(quantity, data, method_under_test, file, **kwargs):
     with patch("py4vasp.raw.access") as mock_access:
         mock_access.return_value.__enter__.side_effect = lambda *_: data
-        execute_method(method_under_test, **kwargs)
+        if not execute_method(method_under_test, **kwargs):
+            return  # optional package missing, cannot verify data access
         check_mock_called(mock_access, quantity, file)
         mock_access.reset_mock()
         if "selection" in kwargs:
@@ -100,6 +101,9 @@ def _method_accepts_selection(method):
 def execute_method(method_under_test, **kwargs):
     try:
         method_under_test(**kwargs)
+    except exception.ModuleNotInstalled:
+        # optional package not available, so this method cannot be tested
+        return False
     except (
         exception.NotImplemented,
         exception.IncorrectUsage,
@@ -110,6 +114,7 @@ def execute_method(method_under_test, **kwargs):
     ):
         # ignore errors from mock data or unsupported arguments
         pass
+    return True
 
 
 def check_mock_called(mock_access, quantity, file, selection=None):
@@ -121,5 +126,6 @@ def check_mock_called(mock_access, quantity, file, selection=None):
 
 
 @pytest.fixture
-def format_(not_core):
+def format_():
+    pytest.importorskip("IPython")
     return formatters.DisplayFormatter().format

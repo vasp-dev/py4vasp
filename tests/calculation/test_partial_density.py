@@ -107,7 +107,7 @@ def make_reference_partial_density(raw_data, selection):
     return parchg
 
 
-def test_read(AnyPartialDensity, Assert, not_core):
+def test_read(AnyPartialDensity, Assert):
     actual = AnyPartialDensity.read()
     expected = AnyPartialDensity.ref
     Assert.allclose(actual["bands"], expected.bands)
@@ -118,32 +118,32 @@ def test_read(AnyPartialDensity, Assert, not_core):
     Assert.same_structure(actual["structure"], expected.structure.read())
 
 
-def test_stoichiometry(AnyPartialDensity, not_core):
+def test_stoichiometry(AnyPartialDensity):
     actual = AnyPartialDensity._stoichiometry()
     expected = str(AnyPartialDensity.ref.structure_handler._stoichiometry())
     assert actual == expected
 
 
-def test_bands(AnyPartialDensity, Assert, not_core):
+def test_bands(AnyPartialDensity, Assert):
     actual = AnyPartialDensity.bands()
     expected = AnyPartialDensity.ref.bands
     Assert.allclose(actual, expected)
 
 
-def test_kpoints(AnyPartialDensity, Assert, not_core):
+def test_kpoints(AnyPartialDensity, Assert):
     actual = AnyPartialDensity.kpoints()
     expected = AnyPartialDensity.ref.kpoints
     Assert.allclose(actual, expected)
 
 
-def test_grid(AnyPartialDensity, Assert, not_core):
+def test_grid(AnyPartialDensity, Assert):
     actual = AnyPartialDensity.grid()
     expected = AnyPartialDensity.ref.grid
     Assert.allclose(actual, expected)
 
 
 @pytest.mark.parametrize("selection", (None, "total", "up", "down"))
-def test_plot(PolarizedNonSplitPartialDensity, selection, Assert, not_core):
+def test_plot(PolarizedNonSplitPartialDensity, selection, Assert):
     if selection is not None:
         view = PolarizedNonSplitPartialDensity.plot(selection)
         expected_density = PolarizedNonSplitPartialDensity.to_numpy(selection)
@@ -166,7 +166,7 @@ def test_plot(PolarizedNonSplitPartialDensity, selection, Assert, not_core):
     assert isosurface.opacity == 0.6
 
 
-def test_plot_with_options(NonSplitPartialDensity, Assert, not_core):
+def test_plot_with_options(NonSplitPartialDensity, Assert):
     view = NonSplitPartialDensity.plot(supercell=(1, 2, 3), isolevel=0.6, color="red")
     Assert.allclose(view.supercell, (1, 2, 3))
     assert len(view.grid_scalars) == 1
@@ -177,7 +177,7 @@ def test_plot_with_options(NonSplitPartialDensity, Assert, not_core):
     assert isosurface.color == "red"
 
 
-def test_non_split_to_numpy(PolarizedNonSplitPartialDensity, Assert, not_core):
+def test_non_split_to_numpy(PolarizedNonSplitPartialDensity, Assert):
     actual = PolarizedNonSplitPartialDensity.to_numpy("total")
     expected = PolarizedNonSplitPartialDensity.ref.partial_density
     Assert.allclose(actual, expected[0, 0, 0].T)
@@ -189,7 +189,7 @@ def test_non_split_to_numpy(PolarizedNonSplitPartialDensity, Assert, not_core):
     Assert.allclose(actual, 0.5 * (expected[0, 0, 0].T - expected[0, 0, 1].T))
 
 
-def test_split_to_numpy(PolarizedAllSplitPartialDensity, Assert, not_core):
+def test_split_to_numpy(PolarizedAllSplitPartialDensity, Assert):
     bands = PolarizedAllSplitPartialDensity.ref.bands
     kpoints = PolarizedAllSplitPartialDensity.ref.kpoints
     for band_index, band in enumerate(bands):
@@ -215,15 +215,13 @@ def test_split_to_numpy(PolarizedAllSplitPartialDensity, Assert, not_core):
     assert msg in str(excinfo.value)
 
 
-def test_non_polarized_to_numpy(NonSplitPartialDensity, spin, Assert, not_core):
+def test_non_polarized_to_numpy(NonSplitPartialDensity, spin, Assert):
     actual = NonSplitPartialDensity.to_numpy(selection=spin)
     expected = NonSplitPartialDensity.ref.partial_density
     Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, 0, 0])
 
 
-def test_split_bands_to_numpy(
-    NonPolarizedBandSplitPartialDensity, spin, Assert, not_core
-):
+def test_split_bands_to_numpy(NonPolarizedBandSplitPartialDensity, spin, Assert):
     bands = NonPolarizedBandSplitPartialDensity.ref.bands
     for band_index, band in enumerate(bands):
         actual = NonPolarizedBandSplitPartialDensity.to_numpy(spin, band=band)
@@ -231,14 +229,14 @@ def test_split_bands_to_numpy(
     Assert.allclose(actual, np.asarray(expected).T[:, :, :, 0, band_index, 0])
 
 
-def test_to_stm_split(PolarizedAllSplitPartialDensity, not_core):
+def test_to_stm_split(PolarizedAllSplitPartialDensity):
     msg = "set LSEPK and LSEPB to .FALSE. in the INCAR file."
     with pytest.raises(NotImplemented) as excinfo:
         PolarizedAllSplitPartialDensity.to_stm(selection="constant_current")
     assert msg in str(excinfo.value)
 
 
-def test_to_stm_nonsplit_tip_to_high(NonSplitPartialDensity, not_core):
+def test_to_stm_nonsplit_tip_to_high(NonSplitPartialDensity):
     actual = NonSplitPartialDensity
     tip_height = 8.4
     error = f"""The tip position at {tip_height:.2f} is above half of the
@@ -250,7 +248,6 @@ def test_to_stm_nonsplit_tip_to_high(NonSplitPartialDensity, not_core):
 
 def test_to_stm_nonsplit_not_orthogonal_no_vacuum(
     PolarizedNonSplitPartialDensitySr2TiO4,
-    not_core,
 ):
     msg = "The vacuum region in your cell is too small for STM simulations."
     with pytest.raises(IncorrectUsage) as excinfo:
@@ -258,20 +255,20 @@ def test_to_stm_nonsplit_not_orthogonal_no_vacuum(
     assert msg in str(excinfo.value)
 
 
-def test_to_stm_wrong_spin_nonsplit(PolarizedNonSplitPartialDensity, not_core):
+def test_to_stm_wrong_spin_nonsplit(PolarizedNonSplitPartialDensity):
     msg = "'up', 'down', or 'total'"
     with pytest.raises(IncorrectUsage) as excinfo:
         PolarizedNonSplitPartialDensity.to_stm(selection="all")
     assert msg in str(excinfo.value)
 
 
-def test_to_stm_wrong_mode(PolarizedNonSplitPartialDensity, not_core):
+def test_to_stm_wrong_mode(PolarizedNonSplitPartialDensity):
     with pytest.raises(IncorrectUsage) as excinfo:
         PolarizedNonSplitPartialDensity.to_stm(selection="stm")
     assert "STM mode" in str(excinfo.value)
 
 
-def test_wrong_vacuum_direction(NonSplitPartialDensityNi_100, not_core):
+def test_wrong_vacuum_direction(NonSplitPartialDensityNi_100):
     msg = """The vacuum region in your cell is not located along
         the third lattice vector."""
     with pytest.raises(NotImplemented) as excinfo:
@@ -281,8 +278,9 @@ def test_wrong_vacuum_direction(NonSplitPartialDensityNi_100, not_core):
 
 @pytest.mark.parametrize("alias", ("constant_height", "ch", "height"))
 def test_to_stm_nonsplit_constant_height(
-    PolarizedNonSplitPartialDensity, alias, spin, Assert, not_core
+    PolarizedNonSplitPartialDensity, alias, spin, Assert
 ):
+    pytest.importorskip("scipy")
     supercell = 3
     actual = PolarizedNonSplitPartialDensity.to_stm(
         selection=f"{alias}({spin})", tip_height=2.0, supercell=supercell
@@ -304,8 +302,9 @@ def test_to_stm_nonsplit_constant_height(
 
 @pytest.mark.parametrize("alias", ("constant_current", "cc", "current"))
 def test_to_stm_nonsplit_constant_current(
-    PolarizedNonSplitPartialDensity, alias, spin, Assert, not_core
+    PolarizedNonSplitPartialDensity, alias, spin, Assert
 ):
+    pytest.importorskip("scipy")
     current = 5
     supercell = np.asarray([2, 4])
     actual = PolarizedNonSplitPartialDensity.to_stm(
@@ -330,8 +329,9 @@ def test_to_stm_nonsplit_constant_current(
 
 @pytest.mark.parametrize("alias", ("constant_current", "cc", "current"))
 def test_to_stm_nonsplit_constant_current_non_ortho(
-    NonSplitPartialDensityCaAs3_110, alias, spin, Assert, not_core
+    NonSplitPartialDensityCaAs3_110, alias, spin, Assert
 ):
+    pytest.importorskip("scipy")
     current = 5
     supercell = np.asarray([2, 4])
     actual = NonSplitPartialDensityCaAs3_110.to_stm(
@@ -354,7 +354,8 @@ def test_to_stm_nonsplit_constant_current_non_ortho(
     assert f"{current:.2f}" in actual.title
 
 
-def test_stm_default_settings(PolarizedNonSplitPartialDensity, not_core):
+def test_stm_default_settings(PolarizedNonSplitPartialDensity):
+    pytest.importorskip("scipy")
     actual = dataclasses.asdict(PolarizedNonSplitPartialDensity.stm_settings)
     defaults = {
         "sigma_xy": 4.0,
@@ -375,7 +376,8 @@ def test_stm_default_settings(PolarizedNonSplitPartialDensity, not_core):
     assert graph.series.settings == modified
 
 
-def test_smoothening_change(PolarizedNonSplitPartialDensity, not_core):
+def test_smoothening_change(PolarizedNonSplitPartialDensity):
+    pytest.importorskip("scipy")
     mod_settings = PartialDensity.STM_settings(sigma_xy=2.0, sigma_z=2.0, truncate=1.0)
     data = PolarizedNonSplitPartialDensity.to_numpy("total", band=0, kpoint=0)
     default_smoothed_density = PolarizedNonSplitPartialDensity._smooth_stm_data(
@@ -387,7 +389,8 @@ def test_smoothening_change(PolarizedNonSplitPartialDensity, not_core):
     assert not np.allclose(default_smoothed_density, new_smoothed_density)
 
 
-def test_enhancement_setting_change(PolarizedNonSplitPartialDensity, Assert, not_core):
+def test_enhancement_setting_change(PolarizedNonSplitPartialDensity, Assert):
+    pytest.importorskip("scipy")
     enhance_settings = PartialDensity.STM_settings(
         enhancement_factor=PartialDensity.STM_settings().enhancement_factor / 2.0
     )
@@ -398,7 +401,8 @@ def test_enhancement_setting_change(PolarizedNonSplitPartialDensity, Assert, not
     Assert.allclose(graph_def.series.data, graph_less_enhanced.series.data * 2)
 
 
-def test_interpolation_setting_change(PolarizedNonSplitPartialDensity, not_core):
+def test_interpolation_setting_change(PolarizedNonSplitPartialDensity):
+    pytest.importorskip("scipy")
     interp_settings = PartialDensity.STM_settings(
         interpolation_factor=PartialDensity.STM_settings().interpolation_factor / 4.0
     )
@@ -409,6 +413,6 @@ def test_interpolation_setting_change(PolarizedNonSplitPartialDensity, not_core)
     assert not np.allclose(graph_def.series.data, graph_less_interp_points.series.data)
 
 
-def test_factory_methods(raw_data, check_factory_methods, not_core):
+def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.partial_density("spin_polarized")
     check_factory_methods(PartialDensity, data)

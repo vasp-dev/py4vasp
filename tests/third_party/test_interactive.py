@@ -11,8 +11,9 @@ from py4vasp._calculation.dos import Dos
 
 
 @pytest.fixture
-def ipython(not_core):
+def ipython():
     """Mock IPython for testing purposes."""
+    pytest.importorskip("IPython")
     import IPython
 
     shell = IPython.terminal.interactiveshell.TerminalInteractiveShell()
@@ -47,7 +48,8 @@ def test_py4vasp_inherits_error_handling(ipython):
     assert ipython.custom_exceptions == ()
 
 
-def test_py4vasp_error_handling(raw_data, capsys, not_core):
+def test_py4vasp_error_handling(raw_data, capsys):
+    pytest.importorskip("IPython")
     interactive.set_error_handling("Plain")
     raw_dos = raw_data.dos("Sr2TiO4 with_projectors")
     try:

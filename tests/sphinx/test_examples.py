@@ -8,7 +8,7 @@ application = pytest.importorskip("sphinx.application")
 
 
 @pytest.fixture(scope="module")
-def sphinx_app(tmp_path_factory, not_core):
+def sphinx_app(tmp_path_factory):
     if sys.version_info < (3, 12):
         pytest.skip("Sphinx example tests require Python 3.12 or higher.")
     tmp_path = tmp_path_factory.mktemp("sphinx")

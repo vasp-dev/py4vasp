@@ -286,7 +286,8 @@ def test_plot_invalid_selection(nonpolarized_crpar, selection):
         effective_coulomb.plot(selection)
 
 
-def test_plot_with_analytic_continuation(nonpolarized_crpar, not_core, Assert):
+def test_plot_with_analytic_continuation(nonpolarized_crpar, Assert):
+    pytest.importorskip("scipy")
     omega_data = nonpolarized_crpar.ref.omega_data
     omega = np.linspace(0, 10, 20)
     expected_U = numeric.analytic_continuation(
@@ -302,9 +303,8 @@ def test_plot_with_analytic_continuation(nonpolarized_crpar, not_core, Assert):
     assert series.label == "screened U"
 
 
-def test_plot_with_analytic_continuation_and_spin_selection(
-    collinear_crpar, not_core, Assert
-):
+def test_plot_with_analytic_continuation_and_spin_selection(collinear_crpar, Assert):
+    pytest.importorskip("scipy")
     omega_data = collinear_crpar.ref.omega_data
     omega = np.linspace(0, 10, 20)
     expected_output = 2 * numeric.analytic_continuation(
@@ -318,9 +318,7 @@ def test_plot_with_analytic_continuation_and_spin_selection(
     assert series.label == "screened down~down"
 
 
-def test_plot_with_custom_analytic_continuation_parameters(
-    nonpolarized_crpar, not_core, Assert
-):
+def test_plot_with_custom_analytic_continuation_parameters(nonpolarized_crpar, Assert):
     config = interpolate.AAAConfig(
         rtol=1e-5, max_terms=50, clean_up=False, clean_up_tol=1e-6
     )
@@ -397,7 +395,8 @@ def test_plot_radial_invalid_selection(nonpolarized_crpar, selection):
         effective_coulomb.plot(selection, radius=...)
 
 
-def test_plot_radial_interpolation(nonpolarized_crpar, not_core, Assert):
+def test_plot_radial_interpolation(nonpolarized_crpar, Assert):
+    pytest.importorskip("scipy")
     radial_data = nonpolarized_crpar.ref.radial_data
     radius_in = radial_data["radius"]
     radius_out = np.linspace(0.0, np.max(radius_in), 30)
@@ -414,7 +413,8 @@ def test_plot_radial_interpolation(nonpolarized_crpar, not_core, Assert):
         assert series.marker is None
 
 
-def test_plot_radial_interpolation_with_cutoff(nonpolarized_crpar, not_core, Assert):
+def test_plot_radial_interpolation_with_cutoff(nonpolarized_crpar, Assert):
+    pytest.importorskip("scipy")
     radial_data = nonpolarized_crpar.ref.radial_data
     radius_in = radial_data["radius"][radial_data["radius"] < 10]
     radius_out = np.linspace(0.0, np.max(radius_in), 30)
@@ -431,7 +431,8 @@ def test_plot_radial_interpolation_with_cutoff(nonpolarized_crpar, not_core, Ass
         assert series.marker is None
 
 
-def test_plot_radial_interpolation_spin_selection(collinear_crpa, not_core, Assert):
+def test_plot_radial_interpolation_spin_selection(collinear_crpa, Assert):
+    pytest.importorskip("scipy")
     effective_coulomb = collinear_crpa
     radius_in = effective_coulomb.ref.radial_data["radius"]
     radius_out = np.linspace(0, 10)

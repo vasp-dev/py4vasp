@@ -45,7 +45,8 @@ def test_fatband_inconsistent_length():
         plot(x, y, weight=weight)
 
 
-def test_many_colors(not_core):
+def test_many_colors():
+    pytest.importorskip("plotly")
     data = np.random.random((10, 2, 50))
     plots = (plot(x, y) for x, y in data)
     graph = sum(plots, start=Graph([]))

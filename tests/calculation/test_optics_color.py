@@ -43,12 +43,14 @@ def test_xyz_to_srgb_primary_green():
     np.testing.assert_allclose(color.xyz_to_srgb(0, 1, 0), [0, 1, 0])
 
 
-def test_black_spectrum_is_black(not_core):
+def test_black_spectrum_is_black():
+    pytest.importorskip("scipy")
     rgb = color.spectrum_to_rgb(WAVELENGTHS, np.zeros_like(WAVELENGTHS))
     assert np.array_equal(rgb, [0, 0, 0])
 
 
-def test_spectrum_in_unit_range_gives_valid_rgb(not_core):
+def test_spectrum_in_unit_range_gives_valid_rgb():
+    pytest.importorskip("scipy")
     rng = np.random.default_rng(0)
     spectrum = rng.uniform(0, 1, WAVELENGTHS.shape)
     rgb = color.spectrum_to_rgb(WAVELENGTHS, spectrum)
@@ -57,14 +59,16 @@ def test_spectrum_in_unit_range_gives_valid_rgb(not_core):
 
 
 @pytest.mark.parametrize("peak, channel", [(615, 0), (530, 1), (465, 2)])
-def test_monochromatic_spectrum_has_expected_hue(peak, channel, not_core):
+def test_monochromatic_spectrum_has_expected_hue(peak, channel):
+    pytest.importorskip("scipy")
     # A spectrum peaked in the red/green/blue band lights up the R/G/B channel most.
     spectrum = np.exp(-((WAVELENGTHS - peak) ** 2) / (2 * 10**2))
     rgb = color.spectrum_to_rgb(WAVELENGTHS, spectrum, illuminant="E")
     assert np.argmax(rgb) == channel
 
 
-def test_unknown_illuminant_raises_error(not_core):
+def test_unknown_illuminant_raises_error():
+    pytest.importorskip("scipy")
     # the illuminant is validated only after the spectrum is interpolated with scipy,
     # so this path requires the full (not core) installation
     with pytest.raises(exception.IncorrectUsage):
