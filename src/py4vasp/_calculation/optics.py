@@ -14,6 +14,7 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
+from py4vasp._raw.definition import unique_selections as _schema_sources
 from py4vasp._third_party import graph
 from py4vasp._util import convert, index, select
 
@@ -163,8 +164,11 @@ class OpticsHandler:
         return name if direction == "isotropic" else f"{name}_{direction}"
 
     def selections(self) -> dict:
-        """Returns a dictionary of the directions along which optics can be evaluated."""
-        return {"directions": [key for key in self._init_directions_dict() if key]}
+        """Returns the dielectric function sources and directions that can be selected."""
+        return {
+            "optics": list(_schema_sources(_DATA_QUANTITY)),
+            "directions": [key for key in self._init_directions_dict() if key],
+        }
 
     def __str__(self) -> str:
         energies = self._raw_dielectric_function.energies

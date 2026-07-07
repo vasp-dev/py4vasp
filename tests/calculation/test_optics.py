@@ -11,6 +11,7 @@ from py4vasp import exception, raw
 from py4vasp._calculation import QUANTITIES, Calculation
 from py4vasp._calculation import _optics_color as color
 from py4vasp._calculation.optics import Optics, OpticsHandler
+from py4vasp._raw.definition import unique_selections
 
 HBAR_C = 1239.84  # eV·nm
 
@@ -84,8 +85,12 @@ def test_from_data_creates_dispatcher(electron):
 
 def test_selections(electron):
     assert electron.selections() == {
-        "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"]
+        "optics": list(unique_selections("dielectric_function")),
+        "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
     }
+    # the sources include the schema entries the optics quantity derives from
+    assert electron.selections()["optics"][0] == "default"
+    assert "bse" in electron.selections()["optics"]
 
 
 def check_coefficients(actual, eps, energies, Assert):
