@@ -253,11 +253,42 @@ optics:
 class Optics(graph.Mixin):
     """Optical properties of a material derived from its dielectric function.
 
-    From the complex dielectric function VASP computes, this quantity derives the
-    transmission, absorption, and reflectivity spectra as well as the perceived RGB
-    color of the material. Pass a ``selection`` to any method to choose which
-    dielectric function (e.g. ``bse``) and which direction (e.g. ``xx``, ``isotropic``)
-    you are interested in.
+    From the complex dielectric function :math:`\\varepsilon(\\omega)` that VASP computes,
+    this quantity derives the reflectivity :math:`R = |(\\sqrt\\varepsilon - 1) /
+    (\\sqrt\\varepsilon + 1)|^2` at normal incidence, the absorption, and the transmission,
+    as well as the perceived color of the material. The absorption is normalized to its
+    maximum and the transmission is estimated as :math:`T = 1 - R - A`, so it is a rough
+    indicator rather than a Beer--Lambert transmission through a sample of a given
+    thickness.
+
+    Every method accepts a ``selection`` string using the common py4vasp grammar. A
+    selection may combine three kinds of tokens:
+
+    * the dielectric function to use (e.g. ``bse``, ``ipa``, ``dft``); the available ones
+      depend on your calculation,
+    * the coefficient to evaluate (``transmission``, ``absorption``, ``reflectivity``),
+    * the direction (``isotropic`` (default), ``xx``, ``yy``, ``zz``, ``xy``, ``xz``,
+      ``yz``).
+
+    You can nest tokens (``bse(reflectivity(xx))``), list them with a comma to obtain
+    independent results (``xx, yy``), or add them to combine the dielectric function
+    before deriving the coefficient (``xx + yy``). Use the :meth:`selections` routine if
+    you are unsure which options are available.
+
+    Examples
+    --------
+    First, we create some example data so that we can illustrate how to use this class.
+    You can also use your own VASP calculation data if you have it available.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    The `selections` routine reports which dielectric functions, coefficients, and
+    directions you can select.
+
+    >>> calculation.optics.selections()
+    {'optics': [...], 'components': ['transmission', 'absorption', 'reflectivity'],
+        'directions': ['isotropic', 'xx', 'yy', 'zz', 'xy', 'xz', 'yz']}
     """
 
     def __init__(self, source, quantity_name: str = "optics"):
@@ -292,6 +323,23 @@ class Optics(graph.Mixin):
         dict
             Contains the energies and the transmission, absorption, and reflectivity
             spectra for the selected direction(s).
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Read the spectra of the isotropic average into a dictionary
+
+        >>> calculation.optics.read()
+        {'energies': array([...]), 'transmission': array([...]),
+            'absorption': array([...]), 'reflectivity': array([...])}
+
+        Select a specific direction instead of the isotropic average
+
+        >>> calculation.optics.read("xx")
+        {'energies': array([...]), 'transmission': array([...]),
+            'absorption': array([...]), 'reflectivity': array([...])}
         """
         return merge_default(
             self._source,
@@ -306,7 +354,7 @@ class Optics(graph.Mixin):
         return self.read(selection=selection)
 
     def reflectivity(self, selection: str | None = None) -> graph.Graph:
-        """Plot the reflectivity spectrum for the selected direction(s)."""
+        """Plot the reflectivity spectrum. See :meth:`transmission` for the arguments."""
         return merge_graphs(
             self._source,
             _DATA_QUANTITY,
@@ -316,7 +364,10 @@ class Optics(graph.Mixin):
         )
 
     def absorption(self, selection: str | None = None) -> graph.Graph:
-        """Plot the (max-normalized) absorption spectrum for the selected direction(s)."""
+        """Plot the absorption spectrum. See :meth:`transmission` for the arguments.
+
+        The absorption is normalized to its maximum along the selected direction.
+        """
         return merge_graphs(
             self._source,
             _DATA_QUANTITY,
@@ -326,7 +377,36 @@ class Optics(graph.Mixin):
         )
 
     def transmission(self, selection: str | None = None) -> graph.Graph:
-        """Plot the transmission spectrum for the selected direction(s)."""
+        """Plot the transmission spectrum for the selected direction(s).
+
+        Parameters
+        ----------
+        selection : str
+            Select which dielectric function and which direction(s) to evaluate.
+            Defaults to the isotropic average.
+
+        Returns
+        -------
+        Graph
+            A figure of the transmission for the selected direction(s).
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Plot the transmission of the isotropic average
+
+        >>> graph = calculation.optics.transmission()
+        >>> [series.label for series in graph.series]
+        ['transmission']
+
+        Compare the transmission along two Cartesian directions
+
+        >>> graph = calculation.optics.transmission("xx, zz")
+        >>> [series.label for series in graph.series]
+        ['transmission_xx', 'transmission_zz']
+        """
         return merge_graphs(
             self._source,
             _DATA_QUANTITY,
@@ -363,9 +443,27 @@ class Optics(graph.Mixin):
 
         Returns
         -------
-        np.ndarray
-            The sRGB color as a length-3 array in [0, 1]. If the selection resolves to
+        Color
+            A :class:`~py4vasp._util.color.Color` that renders as a labeled swatch in
+            Jupyter and exposes its HEX and sRGB values. If the selection resolves to
             multiple coefficients or directions, a dictionary of colors is returned.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Compute the perceived color from the reflectivity under the default D65 daylight
+
+        >>> color = calculation.optics.color()
+        >>> color.label()
+        'reflectivity'
+
+        Derive the color from the transmission and light it with an incandescent lamp
+
+        >>> color = calculation.optics.color("transmission", illuminant="A")
+        >>> color.label()
+        'transmission'
         """
         return merge_default(
             self._source,
@@ -380,17 +478,37 @@ class Optics(graph.Mixin):
     def to_graph(self, selection: str | None = None) -> graph.Graph:
         """Merge the transmission, absorption, and reflectivity into a single figure.
 
+        This is the routine behind :meth:`plot`. Restricting the selection to a single
+        coefficient yields the same figure as the dedicated method, e.g.
+        ``plot("transmission")`` is equivalent to ``transmission()``.
+
         Parameters
         ----------
         selection : str
-            Select which dielectric function and which direction(s) to evaluate.
-            Defaults to the isotropic average.
+            Select which dielectric function, coefficient(s), and direction(s) to
+            evaluate. Defaults to all three coefficients of the isotropic average.
 
         Returns
         -------
         Graph
-            A figure overlaying the transmission, absorption, and reflectivity spectra
-            for the selected direction(s).
+            A figure overlaying the selected coefficients for the selected direction(s).
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Overlay the transmission, absorption, and reflectivity
+
+        >>> graph = calculation.optics.plot()
+        >>> [series.label for series in graph.series]
+        ['transmission', 'absorption', 'reflectivity']
+
+        Restrict the figure to selected coefficients
+
+        >>> graph = calculation.optics.plot("absorption, reflectivity")
+        >>> [series.label for series in graph.series]
+        ['absorption', 'reflectivity']
         """
         return merge_graphs(
             self._source,
@@ -401,7 +519,7 @@ class Optics(graph.Mixin):
         )
 
     def selections(self, selection: str | None = None) -> dict:
-        """Returns a dictionary of the directions along which optics can be evaluated."""
+        """Return the dielectric functions, coefficients, and directions to select from."""
         return merge_default(
             self._source,
             _DATA_QUANTITY,

@@ -35,12 +35,34 @@ class Color:
     Construct it either from a sequence of three fractional sRGB values in [0, 1] or,
     using :meth:`from_hex`, from an HTML/HEX color code.
 
+    In a Jupyter notebook a color renders as a labeled swatch; the text on the swatch is
+    automatically black or white depending on the background so that it stays readable.
+
     Parameters
     ----------
     rgb : sequence of float
         The three fractional sRGB values in [0, 1].
     label : str
         An optional label describing the color.
+
+    Examples
+    --------
+    Create a color from fractional sRGB values or from an HTML/HEX code
+
+    >>> from py4vasp._util.color import Color
+    >>> Color([0.18, 0.71, 0.67])
+    Color((0.18, 0.71, 0.67))
+    >>> Color.from_hex("#2fb5ab").hex
+    '#2fb5ab'
+
+    Attach or replace a label; the original color is left unchanged because a color is
+    immutable
+
+    >>> teal = Color.from_hex("#2fb5ab", label="teal")
+    >>> teal.label()
+    'teal'
+    >>> teal.label("ocean").label()
+    'ocean'
     """
 
     rgb: tuple

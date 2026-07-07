@@ -15,10 +15,12 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     force,
     kpoint,
     local_moment,
+    optics,
     projector,
     structure,
     system,
 )
+from py4vasp._util import color as _util_color
 
 
 def test_creating_default_calculation(tmp_path):
@@ -43,9 +45,11 @@ def get_calculation_examples():
         + find_examples(_calculation.force)
         + find_examples(_calculation.kpoint)
         + find_examples(_calculation.local_moment)
+        + find_examples(_calculation.optics)
         + find_examples(_calculation.projector)
         + find_examples(_calculation.structure)
         + find_examples(_calculation.system)
+        + find_examples(_util_color)
     )
     return [example for example in examples if interesting_example(example)]
 
