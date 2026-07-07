@@ -49,7 +49,6 @@ def get_calculation_examples():
         + find_examples(_calculation.projector)
         + find_examples(_calculation.structure)
         + find_examples(_calculation.system)
-        + find_examples(_util_color)
     )
     return [example for example in examples if interesting_example(example)]
 
@@ -74,6 +73,22 @@ def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["py4vasp"] = py4vasp
     example.globs["path"] = tmp_path / example.name.replace(".", "_")
+    result = runner.run(example)
+    assert result.failed == 0
+    assert result.attempted > 0
+
+
+def get_util_examples():
+    examples = find_examples(_util_color)
+    return [example for example in examples if interesting_example(example)]
+
+
+@pytest.mark.parametrize(
+    "example", get_util_examples(), ids=lambda example: example.name
+)
+def test_util(example: doctest.DocTest):
+    optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+    runner = doctest.DocTestRunner(optionflags=optionflags)
     result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0
