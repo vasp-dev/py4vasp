@@ -9,6 +9,7 @@ from py4vasp import exception, raw
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
+    merge_graphs,
     merge_strings,
     quantity,
 )
@@ -43,6 +44,14 @@ def _transmission(epsilon, energies):
     reflectivity = _reflectivity(epsilon)
     absorption = _absorption(epsilon, energies)
     return np.clip(1 - reflectivity - absorption, 0, 1)
+
+
+# Maps each optical coefficient to a callable(epsilon, energies) -> spectrum.
+_COEFFICIENTS = {
+    "transmission": _transmission,
+    "absorption": _absorption,
+    "reflectivity": lambda epsilon, energies: _reflectivity(epsilon),
+}
 
 
 class OpticsHandler:
@@ -80,6 +89,21 @@ class OpticsHandler:
         if len(results) == 1:
             return {"energies": energies, **next(iter(results.values()))}
         return {"energies": energies, **results}
+
+    def reflectivity_graph(self, selection=None) -> graph.Graph:
+        return self._coefficient_graph("reflectivity", selection)
+
+    def _coefficient_graph(self, name, selection) -> graph.Graph:
+        energies = self._energies()
+        coefficient = _COEFFICIENTS[name]
+        series = [
+            graph.Series(energies, coefficient(epsilon, energies), self._label(name, label))
+            for label, epsilon in self._dielectric_function(selection)
+        ]
+        return graph.Graph(series=series, xlabel="Energy (eV)", ylabel=name)
+
+    def _label(self, name, direction):
+        return name if direction == "isotropic" else f"{name}_{direction}"
 
     def selections(self) -> dict:
         """Returns a dictionary of the directions along which optics can be evaluated."""
@@ -201,6 +225,16 @@ class Optics(graph.Mixin):
     def to_dict(self, selection: str | None = None) -> dict:
         """Public alias for read(). Check that method for examples and optional arguments."""
         return self.read(selection=selection)
+
+    def reflectivity(self, selection: str | None = None) -> graph.Graph:
+        """Plot the reflectivity spectrum for the selected direction(s)."""
+        return merge_graphs(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            OpticsHandler.reflectivity_graph,
+        )
 
     def to_graph(self, selection: str | None = None) -> graph.Graph:
         raise NotImplementedError

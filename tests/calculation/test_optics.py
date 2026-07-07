@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import types
 
 import numpy as np
@@ -120,3 +121,29 @@ optics:
     energies: [0.00, 1.00] 50 points
     directions: isotropic, xx, yy, zz, xy, xz, yz"""
     assert actual == {"text/plain": reference}
+
+
+@dataclasses.dataclass
+class Plot:
+    x: np.ndarray
+    y: np.ndarray
+    label: str
+
+
+def check_graph(fig, references, ylabel, Assert):
+    assert fig.xlabel == "Energy (eV)"
+    assert fig.ylabel == ylabel
+    assert len(fig.series) == len(references)
+    for series, ref in zip(fig.series, references):
+        Assert.allclose(series.x, ref.x)
+        Assert.allclose(series.y, ref.y)
+        assert series.label == ref.label
+
+
+def test_reflectivity_graph(electron, Assert):
+    energies = electron.ref.energies
+    tensor = electron.ref.dielectric_function
+    default = [Plot(energies, _reflectivity(isotropic(tensor)), "reflectivity")]
+    check_graph(electron.reflectivity(), default, "reflectivity", Assert)
+    xx = [Plot(energies, _reflectivity(get_direction(tensor, "xx")), "reflectivity_xx")]
+    check_graph(electron.reflectivity("xx"), xx, "reflectivity", Assert)
