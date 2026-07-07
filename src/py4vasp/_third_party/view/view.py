@@ -35,7 +35,7 @@ class _Arrow3d(NamedTuple):
         return (
             list(self.tail),
             list(self.tip),
-            list(Color(self.color).rgb),
+            list(Color.from_hex(self.color).rgb),
             self.radius,
         )
 

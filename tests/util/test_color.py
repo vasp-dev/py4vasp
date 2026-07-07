@@ -31,15 +31,15 @@ REFERENCE_LAB = [
 
 def test_from_hex(Assert):
     for hex_code, expected in zip(REFERENCE_COLORS, REFERENCE_RGB):
-        Assert.allclose(Color(hex_code).rgb, expected)
+        Assert.allclose(Color.from_hex(hex_code).rgb, expected)
 
 
 def test_hex_is_case_insensitive(Assert):
-    Assert.allclose(Color("#2FB5AB").rgb, Color("#2fb5ab").rgb)
+    Assert.allclose(Color.from_hex("#2FB5AB").rgb, Color.from_hex("#2fb5ab").rgb)
 
 
 def test_hex_without_hash(Assert):
-    Assert.allclose(Color("2fb5ab").rgb, Color("#2fb5ab").rgb)
+    Assert.allclose(Color.from_hex("2fb5ab").rgb, Color.from_hex("#2fb5ab").rgb)
 
 
 def test_from_rgb():
@@ -50,7 +50,7 @@ def test_from_rgb():
 
 def test_hex_roundtrip():
     for hex_code in REFERENCE_COLORS:
-        assert Color(hex_code).hex == hex_code
+        assert Color.from_hex(hex_code).hex == hex_code
 
 
 def test_hex_clips_out_of_range():
@@ -59,24 +59,39 @@ def test_hex_clips_out_of_range():
 
 def test_to_lab(Assert):
     for hex_code, expected in zip(REFERENCE_COLORS, REFERENCE_LAB):
-        Assert.allclose(np.round(Color(hex_code).to_lab(), 3), np.array(expected))
+        Assert.allclose(np.round(Color.from_hex(hex_code).to_lab(), 3), np.array(expected))
 
 
 def test_label():
-    assert Color("#2fb5ab").label == ""
-    assert Color("#2fb5ab", label="teal").label == "teal"
+    assert Color.from_hex("#2fb5ab").label() == ""
+    assert Color.from_hex("#2fb5ab", label="teal").label() == "teal"
+
+
+def test_relabel_returns_new_color():
+    original = Color.from_hex("#2fb5ab", label="teal")
+    relabeled = original.label("ocean")
+    assert relabeled.label() == "ocean"
+    assert relabeled.rgb == original.rgb
+    # the original is unchanged (Color is immutable)
+    assert original.label() == "teal"
+
+
+def test_repr_roundtrips():
+    color = Color([0.5, 0.25, 0.75], label="violet")
+    assert eval(repr(color)) == color
+    assert eval(repr(Color([0.5, 0.25, 0.75]))) == Color([0.5, 0.25, 0.75])
 
 
 def test_str():
-    text = str(Color("#2fb5ab", label="teal"))
+    text = str(Color.from_hex("#2fb5ab", label="teal"))
     assert "teal" in text
     assert "#2fb5ab" in text
-    text_without_label = str(Color("#2fb5ab"))
+    text_without_label = str(Color.from_hex("#2fb5ab"))
     assert text_without_label.startswith("#2fb5ab")
 
 
 def test_repr_html_contains_information():
-    html = Color("#2fb5ab", label="teal")._repr_html_()
+    html = Color.from_hex("#2fb5ab", label="teal")._repr_html_()
     assert "teal" in html
     assert "#2fb5ab" in html
     assert "sRGB" in html
@@ -85,15 +100,15 @@ def test_repr_html_contains_information():
 
 def test_repr_html_text_color_is_readable():
     # dark background -> white text, light background -> black text
-    assert "color:#ffffff" in Color("#000000")._repr_html_()
-    assert "color:#000000" in Color("#ffffff")._repr_html_()
+    assert "color:#ffffff" in Color.from_hex("#000000")._repr_html_()
+    assert "color:#000000" in Color.from_hex("#ffffff")._repr_html_()
 
 
 def test_invalid_hex_raises_error():
     with pytest.raises(exception.IncorrectUsage):
-        Color("#12")
+        Color.from_hex("#12")
     with pytest.raises(exception.IncorrectUsage):
-        Color("#gggggg")
+        Color.from_hex("#gggggg")
 
 
 def test_invalid_rgb_length_raises_error():
@@ -102,12 +117,12 @@ def test_invalid_rgb_length_raises_error():
 
 
 def test_color_is_frozen():
-    color = Color("#2fb5ab")
+    color = Color.from_hex("#2fb5ab")
     with pytest.raises(dataclasses.FrozenInstanceError):
-        color.label = "new"
+        color.rgb = (0, 0, 0)
 
 
 def test_color_equality_and_hash():
-    assert Color("#2fb5ab", label="teal") == Color("#2fb5ab", label="teal")
-    assert Color("#2fb5ab") != Color("#2fb5ab", label="teal")
-    assert len({Color("#2fb5ab"), Color("#2fb5ab")}) == 1
+    assert Color.from_hex("#2fb5ab", label="teal") == Color.from_hex("#2fb5ab", label="teal")
+    assert Color.from_hex("#2fb5ab") != Color.from_hex("#2fb5ab", label="teal")
+    assert len({Color.from_hex("#2fb5ab"), Color.from_hex("#2fb5ab")}) == 1

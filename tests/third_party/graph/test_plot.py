@@ -58,6 +58,6 @@ def test_many_colors(not_core):
 
 
 def color_distance(color1, color2):
-    lab1 = Color(color1).to_lab()
-    lab2 = Color(color2).to_lab()
+    lab1 = Color.from_hex(color1).to_lab()
+    lab2 = Color.from_hex(color2).to_lab()
     return np.linalg.norm(lab1 - lab2)

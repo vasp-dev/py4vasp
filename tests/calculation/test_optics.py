@@ -294,7 +294,7 @@ def test_color_default(visible, Assert):
     expected = _reference_color(eps, visible.ref.energies)
     result = visible.color()
     assert isinstance(result, Color)
-    assert result.label == "reflectivity"
+    assert result.label() == "reflectivity"
     Assert.allclose(result.rgb, expected)
 
 
@@ -313,7 +313,7 @@ def test_color_from_transmission(visible, Assert):
     eps = isotropic(visible.ref.dielectric_function)
     expected = _reference_color(eps, visible.ref.energies, spectrum="transmission")
     result = visible.color("transmission")
-    assert result.label == "transmission"
+    assert result.label() == "transmission"
     Assert.allclose(result.rgb, expected)
 
 
@@ -327,7 +327,7 @@ def test_color_list_selection(visible):
     result = visible.color("xx, yy")
     assert set(result) == {"reflectivity_xx", "reflectivity_yy"}
     assert all(isinstance(color, Color) for color in result.values())
-    assert result["reflectivity_xx"].label == "reflectivity_xx"
+    assert result["reflectivity_xx"].label() == "reflectivity_xx"
 
 
 def test_color_multiple_components(visible, Assert):

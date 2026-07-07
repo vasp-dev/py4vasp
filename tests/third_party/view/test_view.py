@@ -275,7 +275,7 @@ def test_ion_arrows(view_arrow, Assert):
             output_radius = msg_archive[4]
             Assert.allclose(expected_tip, output_tip)
             Assert.allclose(expected_tail, output_tail)
-            Assert.allclose(Color(expected_color).rgb, output_color)
+            Assert.allclose(Color.from_hex(expected_color).rgb, output_color)
             assert expected_radius == output_radius
             idx_msg += 1
 
@@ -311,7 +311,7 @@ def test_shifted_ion_arrows(view_arrow, Assert):
             output_radius = msg_archive[4]
             Assert.allclose(expected_tip, output_tip)
             Assert.allclose(expected_tail, output_tail)
-            Assert.allclose(Color(expected_color).rgb, output_color)
+            Assert.allclose(Color.from_hex(expected_color).rgb, output_color)
             assert expected_radius == output_radius
             idx_msg += 1
 

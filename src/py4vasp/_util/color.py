@@ -28,27 +28,39 @@ _WHITE_Z = 1.088840
 _CONTRAST_THRESHOLD = 0.179
 
 
-@dataclasses.dataclass(frozen=True, init=False)
+@dataclasses.dataclass(frozen=True, init=False, repr=False)
 class Color:
     """A color stored as fractional sRGB with an optional label.
 
+    Construct it either from a sequence of three fractional sRGB values in [0, 1] or,
+    using :meth:`from_hex`, from an HTML/HEX color code.
+
     Parameters
     ----------
-    color : str or sequence of float
-        Either an HTML/HEX color code (e.g. ``"#2fb5ab"``) or a sequence of three
-        fractional sRGB values in [0, 1].
+    rgb : sequence of float
+        The three fractional sRGB values in [0, 1].
     label : str
         An optional label describing the color.
     """
 
     rgb: tuple
     "The color as a tuple of three fractional sRGB values in [0, 1]."
-    label: str = ""
-    "An optional label describing the color."
+    _label: str = ""
 
-    def __init__(self, color, label=""):
-        object.__setattr__(self, "rgb", _parse_color(color))
-        object.__setattr__(self, "label", label)
+    def __init__(self, rgb, label=""):
+        object.__setattr__(self, "rgb", _to_rgb(rgb))
+        object.__setattr__(self, "_label", label)
+
+    @classmethod
+    def from_hex(cls, hex_code, label="") -> "Color":
+        "Create a color from an HTML/HEX color code such as ``'#2fb5ab'``."
+        return cls(_hex_to_rgb(hex_code), label)
+
+    def label(self, new_label=None):
+        "Return the label, or if *new_label* is given a copy of the color relabeled."
+        if new_label is None:
+            return self._label
+        return Color(self.rgb, new_label)
 
     @property
     def hex(self) -> str:
@@ -67,15 +79,20 @@ class Color:
         b = 200 * (f(y) - f(z / _WHITE_Z))
         return np.array((lightness, a, b))
 
+    def __repr__(self) -> str:
+        if self._label:
+            return f"Color({self.rgb!r}, label={self._label!r})"
+        return f"Color({self.rgb!r})"
+
     def __str__(self) -> str:
         rgb = ", ".join(f"{c:.3f}" for c in self.rgb)
-        prefix = f"{self.label}: " if self.label else ""
+        prefix = f"{self._label}: " if self._label else ""
         return f"{prefix}{self.hex} (sRGB: {rgb})"
 
     def _repr_html_(self) -> str:
         lines = []
-        if self.label:
-            lines.append(f"<strong>{self.label}</strong>")
+        if self._label:
+            lines.append(f"<strong>{self._label}</strong>")
         lines.append(self.hex)
         lines.append("sRGB " + ", ".join(f"{c:.2f}" for c in self.rgb))
         content = "<br>".join(lines)
@@ -96,10 +113,8 @@ class Color:
         return "#000000" if luminance > _CONTRAST_THRESHOLD else "#ffffff"
 
 
-def _parse_color(color):
-    if isinstance(color, str):
-        return _hex_to_rgb(color)
-    rgb = tuple(float(channel) for channel in color)
+def _to_rgb(rgb):
+    rgb = tuple(float(channel) for channel in rgb)
     if len(rgb) != 3:
         message = f"A color needs exactly three sRGB values but got {len(rgb)}."
         raise exception.IncorrectUsage(message)
