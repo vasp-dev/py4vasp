@@ -7,8 +7,9 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation import QUANTITIES, Calculation
+from py4vasp._calculation import _optics_color as color
 from py4vasp._calculation.optics import Optics, OpticsHandler
 
 HBAR_C = 1239.84  # eV·nm
@@ -49,6 +50,25 @@ def electron(raw_data):
     optics.ref.energies = raw_dielectric.energies
     to_complex = lambda data: data[..., 0] + 1j * data[..., 1]
     optics.ref.dielectric_function = to_complex(raw_dielectric.dielectric_function)
+    return optics
+
+
+@pytest.fixture
+def visible():
+    # The demo energies span 0-1 eV (infrared); the color requires energies in the
+    # visible range so we build a dedicated dielectric function here.
+    rng = np.random.default_rng(1)
+    energies = np.linspace(0.5, 4.0, 60)
+    data = 10 * rng.standard_normal((3, 3, len(energies), 2))
+    raw_dielectric = raw.DielectricFunction(
+        energies=energies,
+        dielectric_function=raw.VaspData(data),
+        current_current=raw.VaspData(None),
+    )
+    optics = Optics.from_data(raw_dielectric)
+    optics.ref = types.SimpleNamespace()
+    optics.ref.energies = energies
+    optics.ref.dielectric_function = data[..., 0] + 1j * data[..., 1]
     return optics
 
 
@@ -212,3 +232,68 @@ def check_to_image(optics, filename_argument, expected_filename):
 def test_to_image(electron):
     check_to_image(electron, None, "optics.png")
     check_to_image(electron, "custom.jpg", "custom.jpg")
+
+
+def _reference_color(eps, energies, spectrum="reflectivity", **kwargs):
+    if spectrum == "reflectivity":
+        coefficient = _reflectivity(eps)
+    else:
+        coefficient = _transmission(eps, energies)
+    mask = energies > 0
+    wavelengths = HBAR_C / energies[mask]
+    order = np.argsort(wavelengths)
+    return color.spectrum_to_rgb(
+        wavelengths[order], coefficient[mask][order], **kwargs
+    )
+
+
+def test_color_default(visible, Assert):
+    eps = isotropic(visible.ref.dielectric_function)
+    expected = _reference_color(eps, visible.ref.energies)
+    Assert.allclose(visible.color(), expected)
+
+
+def test_color_defaults_match_explicit(visible, Assert):
+    Assert.allclose(
+        visible.color(),
+        visible.color(illuminant="D65", cmf="1931_2", spectrum="reflectivity"),
+    )
+
+
+def test_color_range(visible):
+    rgb = visible.color("xx")
+    assert rgb.shape == (3,)
+    assert np.all(rgb >= 0) and np.all(rgb <= 1)
+
+
+def test_color_from_transmission(visible, Assert):
+    eps = isotropic(visible.ref.dielectric_function)
+    expected = _reference_color(eps, visible.ref.energies, spectrum="transmission")
+    Assert.allclose(visible.color(spectrum="transmission"), expected)
+
+
+def test_color_spectrum_switch_changes_result(visible):
+    reflectivity = visible.color(spectrum="reflectivity")
+    transmission = visible.color(spectrum="transmission")
+    assert not np.allclose(reflectivity, transmission)
+
+
+def test_color_list_selection(visible):
+    result = visible.color("xx, yy")
+    assert set(result) == {"xx", "yy"}
+    assert all(rgb.shape == (3,) for rgb in result.values())
+
+
+def test_color_invalid_illuminant_raises_error(visible):
+    with pytest.raises(exception.IncorrectUsage):
+        visible.color(illuminant="does-not-exist")
+
+
+def test_color_invalid_cmf_raises_error(visible):
+    with pytest.raises(exception.IncorrectUsage):
+        visible.color(cmf="does-not-exist")
+
+
+def test_color_invalid_spectrum_raises_error(visible):
+    with pytest.raises(exception.IncorrectUsage):
+        visible.color(spectrum="absorption")

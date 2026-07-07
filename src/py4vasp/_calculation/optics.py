@@ -6,6 +6,7 @@ the dielectric function that VASP computes."""
 import numpy as np
 
 from py4vasp import exception, raw
+from py4vasp._calculation import _optics_color
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
@@ -98,6 +99,42 @@ class OpticsHandler:
 
     def transmission_graph(self, selection=None) -> graph.Graph:
         return self._coefficient_graph("transmission", selection)
+
+    def color(
+        self, selection=None, *, illuminant="D65", cmf="1931_2", spectrum="reflectivity"
+    ):
+        """Perceived sRGB color(s) of the material for the selected direction(s)."""
+        coefficient = self._color_spectrum(spectrum)
+        energies = self._energies()
+        results = {
+            label: self._rgb(coefficient(epsilon, energies), energies, illuminant, cmf)
+            for label, epsilon in self._dielectric_function(selection)
+        }
+        if len(results) == 1:
+            return next(iter(results.values()))
+        return results
+
+    def _color_spectrum(self, spectrum):
+        if spectrum not in ("reflectivity", "transmission"):
+            message = (
+                f'The color cannot be derived from "{spectrum}". Please select either '
+                '"reflectivity" (default) or "transmission".'
+            )
+            raise exception.IncorrectUsage(message)
+        return _COEFFICIENTS[spectrum]
+
+    def _rgb(self, spectrum, energies, illuminant, cmf):
+        # Convert photon energies to wavelengths and sort them in ascending order as
+        # expected by the color-matching routine.
+        mask = energies > 0
+        wavelengths = HBAR_C / energies[mask]
+        order = np.argsort(wavelengths)
+        return _optics_color.spectrum_to_rgb(
+            wavelengths[order],
+            spectrum[mask][order],
+            illuminant=illuminant,
+            cmf=cmf,
+        )
 
     def to_graph(self, selection=None) -> graph.Graph:
         """Merge transmission, absorption, and reflectivity into a single figure."""
@@ -274,6 +311,50 @@ class Optics(graph.Mixin):
             selection,
             self._handler_factory,
             OpticsHandler.transmission_graph,
+        )
+
+    def color(
+        self,
+        selection: str | None = None,
+        *,
+        illuminant: str = "D65",
+        cmf: str = "1931_2",
+        spectrum: str = "reflectivity",
+    ):
+        """Compute the perceived sRGB color of the material.
+
+        The color is obtained by lighting the material's reflectivity (or transmission)
+        spectrum with a standard *illuminant* and integrating against the CIE color
+        matching function *cmf*.
+
+        Parameters
+        ----------
+        selection : str
+            Select which dielectric function and which direction(s) to evaluate.
+            Defaults to the isotropic average.
+        illuminant : str
+            Standard illuminant used to light the material (default "D65"). Use
+            :func:`py4vasp._calculation._optics_color.list_illuminants` for the options.
+        cmf : str
+            CIE color matching function / standard observer (default "1931_2").
+        spectrum : str
+            Whether to derive the color from "reflectivity" (default) or "transmission".
+
+        Returns
+        -------
+        np.ndarray
+            The sRGB color as a length-3 array in [0, 1]. If the selection resolves to
+            multiple directions, a dictionary of colors keyed by direction is returned.
+        """
+        return merge_default(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            OpticsHandler.color,
+            illuminant=illuminant,
+            cmf=cmf,
+            spectrum=spectrum,
         )
 
     def to_graph(self, selection: str | None = None) -> graph.Graph:
