@@ -15,6 +15,30 @@ from py4vasp._util import convert, index, select
 # entry, so a selection picks both the dielectric function source and the direction.
 _DATA_QUANTITY = "dielectric_function"
 
+# Planck constant times the speed of light, converts photon energy to wavelength via
+# λ[nm] = HBAR_C / E[eV].
+HBAR_C = 1239.84  # eV·nm
+
+
+def _reflectivity(epsilon):
+    """Fresnel reflectivity at normal incidence R = |(n - 1) / (n + 1)|²."""
+    n = np.sqrt(epsilon)
+    return np.abs((n - 1) / (n + 1)) ** 2
+
+
+def _absorption(epsilon, energies):
+    """Absorption coefficient α = 2kE/ħc, normalized to its maximum (see docstring)."""
+    extinction = np.sqrt(epsilon).imag
+    absorption = 2 * extinction * energies / HBAR_C
+    return absorption / np.max(absorption)
+
+
+def _transmission(epsilon, energies):
+    """Transmission estimate T = clip(1 - R - A, 0, 1) (energy conservation)."""
+    reflectivity = _reflectivity(epsilon)
+    absorption = _absorption(epsilon, energies)
+    return np.clip(1 - reflectivity - absorption, 0, 1)
+
 
 class OpticsHandler:
     """Transforms a single raw.DielectricFunction into optical properties."""
@@ -27,6 +51,30 @@ class OpticsHandler:
         cls, raw_dielectric_function: raw.DielectricFunction
     ) -> "OpticsHandler":
         return cls(raw_dielectric_function)
+
+    def to_dict(self, selection=None) -> dict:
+        """Read transmission, absorption, and reflectivity into a dictionary.
+
+        Returns
+        -------
+        dict
+            Contains the energies and the transmission, absorption, and reflectivity
+            spectra for the selected direction (default: isotropic). If the selection
+            resolves to multiple directions, the spectra are nested under each direction
+            label.
+        """
+        energies = self._energies()
+        results = {
+            label: {
+                "transmission": _transmission(epsilon, energies),
+                "absorption": _absorption(epsilon, energies),
+                "reflectivity": _reflectivity(epsilon),
+            }
+            for label, epsilon in self._dielectric_function(selection)
+        }
+        if len(results) == 1:
+            return {"energies": energies, **next(iter(results.values()))}
+        return {"energies": energies, **results}
 
     def selections(self) -> dict:
         """Returns a dictionary of the directions along which optics can be evaluated."""
@@ -112,6 +160,34 @@ class Optics(graph.Mixin):
 
     def _handler_factory(self, raw_data):
         return OpticsHandler.from_data(raw_data)
+
+    def read(self, selection: str | None = None) -> dict:
+        """Read transmission, absorption, and reflectivity into a dictionary.
+
+        Parameters
+        ----------
+        selection : str
+            Select which dielectric function and which direction(s) to evaluate.
+            Defaults to the isotropic average. Use the `selections` routine to discover
+            the available options.
+
+        Returns
+        -------
+        dict
+            Contains the energies and the transmission, absorption, and reflectivity
+            spectra for the selected direction(s).
+        """
+        return merge_default(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            OpticsHandler.to_dict,
+        )
+
+    def to_dict(self, selection: str | None = None) -> dict:
+        """Public alias for read(). Check that method for examples and optional arguments."""
+        return self.read(selection=selection)
 
     def to_graph(self, selection: str | None = None) -> graph.Graph:
         raise NotImplementedError

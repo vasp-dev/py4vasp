@@ -64,3 +64,50 @@ def test_selections(electron):
     assert electron.selections() == {
         "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"]
     }
+
+
+def check_coefficients(actual, eps, energies, Assert):
+    Assert.allclose(actual["reflectivity"], _reflectivity(eps))
+    Assert.allclose(actual["absorption"], _absorption(eps, energies))
+    Assert.allclose(actual["transmission"], _transmission(eps, energies))
+
+
+def test_read_default(electron, Assert):
+    energies = electron.ref.energies
+    eps = isotropic(electron.ref.dielectric_function)
+    for method in (electron.read, electron.to_dict):
+        actual = method()
+        Assert.allclose(actual["energies"], energies)
+        check_coefficients(actual, eps, energies, Assert)
+
+
+def test_read_direction(electron, Assert):
+    energies = electron.ref.energies
+    for direction in ("xx", "yy", "zz", "xy", "xz", "yz"):
+        eps = get_direction(electron.ref.dielectric_function, direction)
+        check_coefficients(electron.read(direction), eps, energies, Assert)
+
+
+def test_read_combined_selection(electron, Assert):
+    # "xx + yy" combines the two directions into a single spectrum via the Selector
+    energies = electron.ref.energies
+    tensor = electron.ref.dielectric_function
+    eps = get_direction(tensor, "xx") + get_direction(tensor, "yy")
+    check_coefficients(electron.read("xx + yy"), eps, energies, Assert)
+
+
+def test_read_list_selection(electron, Assert):
+    # "xx, yy" yields two independent results keyed by direction label
+    energies = electron.ref.energies
+    tensor = electron.ref.dielectric_function
+    actual = electron.read("xx, yy")
+    Assert.allclose(actual["energies"], energies)
+    for direction in ("xx", "yy"):
+        eps = get_direction(tensor, direction)
+        check_coefficients(actual[direction], eps, energies, Assert)
+
+
+def test_read_scalar_dielectric_function_raises_error(raw_data):
+    optics = Optics.from_data(raw_data.dielectric_function("q_point"))
+    with pytest.raises(exception.IncorrectUsage):
+        optics.read()
