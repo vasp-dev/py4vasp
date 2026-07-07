@@ -1,0 +1,410 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.7, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\mschl\miniconda3\envs\p4v\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: C:\Users\mschl\Documents\code\python\py4vasp
+configfile: pyproject.toml
+plugins: anyio-4.12.0, hypothesis-6.148.5, cov-7.0.0, timeout-2.4.0
+collecting ... collected 204 items
+
+tests/calculation/test_electron_phonon_chemical_potential.py::test_read[carrier_den] PASSED [  0%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_read[mu] PASSED [  0%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_read[carrier_per_cell] PASSED [  1%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_label[carrier_den] PASSED [  1%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_label[mu] PASSED [  2%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_label[carrier_per_cell] PASSED [  2%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_mu_tag[carrier_den] PASSED [  3%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_mu_tag[mu] PASSED [  3%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_mu_tag[carrier_per_cell] PASSED [  4%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_print[carrier_den] PASSED [  4%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_print[mu] PASSED [  5%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_print[carrier_per_cell] PASSED [  5%]
+tests/calculation/test_electron_phonon_chemical_potential.py::test_factory_methods SKIPPED [  6%]
+tests/calculation/test_electron_phonon_bandgap.py::test_len[nonpolarized] PASSED [  6%]
+tests/calculation/test_electron_phonon_bandgap.py::test_len[collinear] PASSED [  7%]
+tests/calculation/test_electron_phonon_bandgap.py::test_indexing_and_iteration[nonpolarized] FAILED [  7%]
+tests/calculation/test_electron_phonon_bandgap.py::test_indexing_and_iteration[collinear] FAILED [  8%]
+tests/calculation/test_electron_phonon_bandgap.py::test_read_mapping[nonpolarized] PASSED [  8%]
+tests/calculation/test_electron_phonon_bandgap.py::test_read_mapping[collinear] PASSED [  9%]
+tests/calculation/test_electron_phonon_bandgap.py::test_read_instance[nonpolarized] PASSED [  9%]
+tests/calculation/test_electron_phonon_bandgap.py::test_read_instance[collinear] PASSED [ 10%]
+tests/calculation/test_electron_phonon_bandgap.py::test_read_instance_metadata[nonpolarized] PASSED [ 10%]
+tests/calculation/test_electron_phonon_bandgap.py::test_read_instance_metadata[collinear] PASSED [ 11%]
+tests/calculation/test_electron_phonon_bandgap.py::test_plot_instance[nonpolarized] PASSED [ 11%]
+tests/calculation/test_electron_phonon_bandgap.py::test_plot_instance[collinear] PASSED [ 12%]
+tests/calculation/test_electron_phonon_bandgap.py::test_plot_multiple_selections[nonpolarized] PASSED [ 12%]
+tests/calculation/test_electron_phonon_bandgap.py::test_plot_multiple_selections[collinear] PASSED [ 13%]
+tests/calculation/test_electron_phonon_bandgap.py::test_plot_direct_gap_renormalization[nonpolarized] PASSED [ 13%]
+tests/calculation/test_electron_phonon_bandgap.py::test_plot_direct_gap_renormalization[collinear] PASSED [ 14%]
+tests/calculation/test_electron_phonon_bandgap.py::test_selections[nonpolarized-carrier_den] PASSED [ 14%]
+tests/calculation/test_electron_phonon_bandgap.py::test_selections[nonpolarized-carrier_per_cell] PASSED [ 15%]
+tests/calculation/test_electron_phonon_bandgap.py::test_selections[nonpolarized-mu] PASSED [ 15%]
+tests/calculation/test_electron_phonon_bandgap.py::test_selections[collinear-carrier_den] PASSED [ 16%]
+tests/calculation/test_electron_phonon_bandgap.py::test_selections[collinear-carrier_per_cell] PASSED [ 16%]
+tests/calculation/test_electron_phonon_bandgap.py::test_selections[collinear-mu] PASSED [ 17%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_returns_instances[nonpolarized-nbands_sum] PASSED [ 17%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_returns_instances[nonpolarized-selfen_delta] PASSED [ 18%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_returns_instances[nonpolarized-selfen_carrier_den] PASSED [ 18%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_returns_instances[collinear-nbands_sum] PASSED [ 19%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_returns_instances[collinear-selfen_delta] PASSED [ 19%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_returns_instances[collinear-selfen_carrier_den] PASSED [ 20%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_non_SERTA_returns_empty[nonpolarized] PASSED [ 20%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_non_SERTA_returns_empty[collinear] PASSED [ 21%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_multiple[nonpolarized] PASSED [ 21%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_multiple[collinear] PASSED [ 22%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_nested[nonpolarized] PASSED [ 22%]
+tests/calculation/test_electron_phonon_bandgap.py::test_select_nested[collinear] PASSED [ 23%]
+tests/calculation/test_electron_phonon_bandgap.py::test_incorrect_selection[nonpolarized-invalid_selection=0.01] FAILED [ 23%]
+tests/calculation/test_electron_phonon_bandgap.py::test_incorrect_selection[nonpolarized-nbands_sum:0.01] PASSED [ 24%]
+tests/calculation/test_electron_phonon_bandgap.py::test_incorrect_selection[nonpolarized-selfen_delta] PASSED [ 24%]
+tests/calculation/test_electron_phonon_bandgap.py::test_incorrect_selection[collinear-invalid_selection=0.01] FAILED [ 25%]
+tests/calculation/test_electron_phonon_bandgap.py::test_incorrect_selection[collinear-nbands_sum:0.01] PASSED [ 25%]
+tests/calculation/test_electron_phonon_bandgap.py::test_incorrect_selection[collinear-selfen_delta] PASSED [ 25%]
+tests/calculation/test_electron_phonon_bandgap.py::test_print_mapping[nonpolarized] FAILED [ 26%]
+tests/calculation/test_electron_phonon_bandgap.py::test_print_mapping[collinear] FAILED [ 26%]
+tests/calculation/test_electron_phonon_bandgap.py::test_print_instance[nonpolarized] PASSED [ 27%]
+tests/calculation/test_electron_phonon_bandgap.py::test_print_instance[collinear] PASSED [ 27%]
+tests/calculation/test_electron_phonon_bandgap.py::test_factory_methods SKIPPED [ 28%]
+tests/calculation/test_electron_phonon_self_energy.py::test_len FAILED   [ 28%]
+tests/calculation/test_electron_phonon_self_energy.py::test_indexing_and_iteration FAILED [ 29%]
+tests/calculation/test_electron_phonon_self_energy.py::test_read_mapping PASSED [ 29%]
+tests/calculation/test_electron_phonon_self_energy.py::test_read_instance PASSED [ 30%]
+tests/calculation/test_electron_phonon_self_energy.py::test_read_instance_metadata PASSED [ 30%]
+tests/calculation/test_electron_phonon_self_energy.py::test_selections[carrier_den] PASSED [ 31%]
+tests/calculation/test_electron_phonon_self_energy.py::test_selections[carrier_per_cell] PASSED [ 31%]
+tests/calculation/test_electron_phonon_self_energy.py::test_selections[mu] PASSED [ 32%]
+tests/calculation/test_electron_phonon_self_energy.py::test_select_returns_instances[nbands_sum] PASSED [ 32%]
+tests/calculation/test_electron_phonon_self_energy.py::test_select_returns_instances[selfen_delta] PASSED [ 33%]
+tests/calculation/test_electron_phonon_self_energy.py::test_select_returns_instances[selfen_carrier_den] PASSED [ 33%]
+tests/calculation/test_electron_phonon_self_energy.py::test_select_returns_instances[scattering_approx] PASSED [ 34%]
+tests/calculation/test_electron_phonon_self_energy.py::test_select_multiple PASSED [ 34%]
+tests/calculation/test_electron_phonon_self_energy.py::test_select_nested PASSED [ 35%]
+tests/calculation/test_electron_phonon_self_energy.py::test_incorrect_selection[invalid_selection=0.01] FAILED [ 35%]
+tests/calculation/test_electron_phonon_self_energy.py::test_incorrect_selection[nbands_sum:0.01] PASSED [ 36%]
+tests/calculation/test_electron_phonon_self_energy.py::test_incorrect_selection[selfen_delta] PASSED [ 36%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_valid_and_invalid_access[valid_indices0-10.0] PASSED [ 37%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_valid_and_invalid_access[valid_indices1-20.0] PASSED [ 37%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_valid_and_invalid_access[valid_indices2-30.0] PASSED [ 38%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_negative_indices[negative_indices0-30.0] PASSED [ 38%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_negative_indices[negative_indices1-10.0] PASSED [ 39%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_negative_indices[negative_indices2-20.0] PASSED [ 39%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_valid_bands PASSED [ 40%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_invalid_access[invalid_indices0] PASSED [ 40%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_invalid_access[invalid_indices1] PASSED [ 41%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_invalid_access[invalid_indices2] PASSED [ 41%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_out_of_bounds_access[out_of_bounds_indices0] PASSED [ 42%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_out_of_bounds_access[out_of_bounds_indices1] PASSED [ 42%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_incorrect_arguments PASSED [ 43%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_should_only_succeed_if_index_is_valid PASSED [ 43%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_self_energy[fan] PASSED [ 44%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_self_energy[debye_waller] PASSED [ 44%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_self_energy[self_energy] PASSED [ 45%]
+tests/calculation/test_electron_phonon_self_energy.py::test_sparse_tensor_self_energy[energies] PASSED [ 45%]
+tests/calculation/test_electron_phonon_self_energy.py::test_eigenvalues PASSED [ 46%]
+tests/calculation/test_electron_phonon_self_energy.py::test_print_mapping FAILED [ 46%]
+tests/calculation/test_electron_phonon_self_energy.py::test_print_instance PASSED [ 47%]
+tests/calculation/test_electron_phonon_self_energy.py::test_factory_methods SKIPPED [ 47%]
+tests/calculation/test_electron_phonon_transport.py::test_len FAILED     [ 48%]
+tests/calculation/test_electron_phonon_transport.py::test_indexing_and_iteration FAILED [ 48%]
+tests/calculation/test_electron_phonon_transport.py::test_read_mapping PASSED [ 49%]
+tests/calculation/test_electron_phonon_transport.py::test_read_instance PASSED [ 49%]
+tests/calculation/test_electron_phonon_transport.py::test_read_instance_metadata PASSED [ 50%]
+tests/calculation/test_electron_phonon_transport.py::test_read_instance_metadata_CRTA PASSED [ 50%]
+tests/calculation/test_electron_phonon_transport.py::test_selections[carrier_den] PASSED [ 50%]
+tests/calculation/test_electron_phonon_transport.py::test_selections[carrier_per_cell] PASSED [ 51%]
+tests/calculation/test_electron_phonon_transport.py::test_selections[mu] PASSED [ 51%]
+tests/calculation/test_electron_phonon_transport.py::test_selections_CRTA PASSED [ 52%]
+tests/calculation/test_electron_phonon_transport.py::test_select_returns_instances[nbands_sum] PASSED [ 52%]
+tests/calculation/test_electron_phonon_transport.py::test_select_returns_instances[selfen_delta] PASSED [ 53%]
+tests/calculation/test_electron_phonon_transport.py::test_select_returns_instances[selfen_carrier_den] PASSED [ 53%]
+tests/calculation/test_electron_phonon_transport.py::test_select_returns_instances[scattering_approx] PASSED [ 54%]
+tests/calculation/test_electron_phonon_transport.py::test_select_multiple PASSED [ 54%]
+tests/calculation/test_electron_phonon_transport.py::test_select_nested PASSED [ 55%]
+tests/calculation/test_electron_phonon_transport.py::test_select_missing PASSED [ 55%]
+tests/calculation/test_electron_phonon_transport.py::test_incorrect_selection[invalid_selection=0.01] FAILED [ 56%]
+tests/calculation/test_electron_phonon_transport.py::test_incorrect_selection[nbands_sum:0.01] PASSED [ 56%]
+tests/calculation/test_electron_phonon_transport.py::test_incorrect_selection[selfen_delta] PASSED [ 57%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping[electronic_conductivity] PASSED [ 57%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping[mobility] PASSED [ 58%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping[seebeck] PASSED [ 58%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping[peltier] PASSED [ 59%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping[electronic_thermal_conductivity] PASSED [ 59%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_with_direction[None-expected0] PASSED [ 60%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_with_direction[isotropic-expected1] PASSED [ 60%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_with_direction[xx-0] PASSED [ 61%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_with_direction[yy-4] PASSED [ 61%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_with_direction[zz-8] PASSED [ 62%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_with_direction[xy-expected5] PASSED [ 62%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_with_direction[xz-expected6] PASSED [ 63%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_with_direction[yz-expected7] PASSED [ 63%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_multiple_directions PASSED [ 64%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_select_scattering_approx PASSED [ 64%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_select_temperature[T=300, T=400] PASSED [ 65%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_select_temperature[temperature=300, temperature=400] PASSED [ 65%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_complex_selection[mobility(zz(nbands_sum=32(T=200)))] PASSED [ 66%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_complex_selection[T=200(mobility(zz(nbands_sum=32)))] PASSED [ 66%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_complex_selection[zz(T=200(mobility(nbands_sum=32)))] PASSED [ 67%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_complex_selection[nbands_sum=32(zz(T=200(mobility)))] PASSED [ 67%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_chemical_potential[carrier_den] PASSED [ 68%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_chemical_potential[carrier_per_cell] PASSED [ 68%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_chemical_potential[mu] PASSED [ 69%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_CRTA PASSED [ 69%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_incorrect_selection[unknown_selection] PASSED [ 70%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_incorrect_selection[mobility(seebeck)] PASSED [ 70%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_incorrect_selection[seebeck, peltier] PASSED [ 71%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_incorrect_selection[mobility(xx(yy))] PASSED [ 71%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance[electronic_conductivity] PASSED [ 72%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance[mobility] PASSED [ 72%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance[seebeck] PASSED [ 73%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance[peltier] PASSED [ 73%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance[electronic_thermal_conductivity] PASSED [ 74%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_direction[None-expected0] PASSED [ 74%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_direction[isotropic-expected1] PASSED [ 75%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_direction[xx-0] PASSED [ 75%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_direction[yy-4] PASSED [ 75%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_direction[zz-8] PASSED [ 76%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_direction[xy-expected5] PASSED [ 76%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_direction[xz-expected6] PASSED [ 77%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_direction[yz-expected7] PASSED [ 77%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_multiple_directions PASSED [ 78%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_incorrect_selection[unknown_selection] PASSED [ 78%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_incorrect_selection[seebeck(peltier)] PASSED [ 79%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_incorrect_selection[seebeck, peltier] PASSED [ 79%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_incorrect_selection[seebeck(xx(yy))] PASSED [ 80%]
+tests/calculation/test_electron_phonon_transport.py::test_figure_of_merit PASSED [ 80%]
+tests/calculation/test_electron_phonon_transport.py::test_figure_of_merit_with_argument[1.0] PASSED [ 81%]
+tests/calculation/test_electron_phonon_transport.py::test_figure_of_merit_with_argument[kappa_lattice1] PASSED [ 81%]
+tests/calculation/test_electron_phonon_transport.py::test_figure_of_merit_with_wrong_size_argument PASSED [ 82%]
+tests/calculation/test_electron_phonon_transport.py::test_print_mapping FAILED [ 82%]
+tests/calculation/test_electron_phonon_transport.py::test_print_instance PASSED [ 83%]
+tests/calculation/test_electron_phonon_transport.py::test_factory_methods SKIPPED [ 83%]
+tests/calculation/test_electron_phonon_transport.py::test_read_instance_spin PASSED [ 84%]
+tests/calculation/test_electron_phonon_transport.py::test_read_instance_source_selection_forwarded PASSED [ 84%]
+tests/calculation/test_electron_phonon_transport.py::test_selections_spin PASSED [ 85%]
+tests/calculation/test_electron_phonon_transport.py::test_selections_no_spin PASSED [ 85%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_default_sums[electronic_conductivity] PASSED [ 86%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_default_sums[mobility] PASSED [ 86%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_default_sums[seebeck] PASSED [ 87%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_default_sums[peltier] PASSED [ 87%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_default_sums[electronic_thermal_conductivity] PASSED [ 88%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_selection[up-0] PASSED [ 88%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_selection[down-1] PASSED [ 89%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_and_direction PASSED [ 89%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_both_spins PASSED [ 90%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_spin_default_sums[electronic_conductivity] PASSED [ 90%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_spin_default_sums[mobility] PASSED [ 91%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_spin_default_sums[seebeck] PASSED [ 91%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_spin_default_sums[peltier] PASSED [ 92%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_spin_default_sums[electronic_thermal_conductivity] PASSED [ 92%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_spin_selection[up-0] PASSED [ 93%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_spin_selection[down-1] PASSED [ 93%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_source_prefix_with_spin_data[electronic_conductivity] PASSED [ 94%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_source_prefix_with_spin_data[mobility] PASSED [ 94%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_source_prefix_with_spin_data[seebeck] PASSED [ 95%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_source_prefix_with_spin_data[peltier] PASSED [ 95%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_source_prefix_with_spin_data[electronic_thermal_conductivity] PASSED [ 96%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_source_prefix_non_spin_data_raises PASSED [ 96%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_no_spin_data_spin_selection_raises PASSED [ 97%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_no_spin_data_mapping_spin_selection_raises PASSED [ 97%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_mobility_selection[up-0] PASSED [ 98%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_instance_spin_mobility_selection[down-1] PASSED [ 98%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_spin_mobility_selection[up-0] PASSED [ 99%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_mapping_spin_mobility_selection[down-1] PASSED [ 99%]
+tests/calculation/test_electron_phonon_transport.py::test_plot_no_spin_data_mobility_spin_selection_raises PASSED [100%]
+
+================================== FAILURES ===================================
+__________________ test_indexing_and_iteration[nonpolarized] __________________
+tests\calculation\test_electron_phonon_bandgap.py:155: in test_indexing_and_iteration
+    assert instance.parent is band_gap
+E   assert <py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgapHandler object at 0x000001D7481E9850> is <py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgap object at 0x000001D7481EA150>
+E    +  where <py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgapHandler object at 0x000001D7481E9850> = <py4vasp._calculation.electron_phonon_bandgap.BandgapInstance object at 0x000001D7481E9CD0>.parent
+___________________ test_indexing_and_iteration[collinear] ____________________
+tests\calculation\test_electron_phonon_bandgap.py:155: in test_indexing_and_iteration
+    assert instance.parent is band_gap
+E   assert <py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgapHandler object at 0x000001D7481EAF60> is <py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgap object at 0x000001D7481E9AF0>
+E    +  where <py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgapHandler object at 0x000001D7481EAF60> = <py4vasp._calculation.electron_phonon_bandgap.BandgapInstance object at 0x000001D7481E9F70>.parent
+________ test_incorrect_selection[nonpolarized-invalid_selection=0.01] ________
+tests\calculation\test_electron_phonon_bandgap.py:290: in test_incorrect_selection
+    band_gap.select(selection)
+src\py4vasp\_calculation\electron_phonon_bandgap.py:281: in select
+    return self._handler_factory(raw).select(selection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_bandgap.py:161: in select
+    indices = self._accumulator().select_indices(
+src\py4vasp\_calculation\electron_phonon_accumulator.py:70: in select_indices
+    for index_ in self._filter_indices(selection, kwargs_filters)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:82: in _filter_indices
+    remaining_indices = list(remaining_indices)
+                        ^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:94: in _filter_assignment
+    if self._match_key_value(index_, key, str(value)):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:98: in _match_key_value
+    instance_value = self.get_data(key, index_)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:114: in get_data
+    self._raise_error_if_not_present(name, expected_name=mu_tag)
+src\py4vasp\_calculation\electron_phonon_accumulator.py:122: in _raise_error_if_not_present
+    valid_names.remove(self._name)
+E   KeyError: 'electron_phonon_bandgap_handler'
+_________ test_incorrect_selection[collinear-invalid_selection=0.01] __________
+tests\calculation\test_electron_phonon_bandgap.py:290: in test_incorrect_selection
+    band_gap.select(selection)
+src\py4vasp\_calculation\electron_phonon_bandgap.py:281: in select
+    return self._handler_factory(raw).select(selection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_bandgap.py:161: in select
+    indices = self._accumulator().select_indices(
+src\py4vasp\_calculation\electron_phonon_accumulator.py:70: in select_indices
+    for index_ in self._filter_indices(selection, kwargs_filters)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:82: in _filter_indices
+    remaining_indices = list(remaining_indices)
+                        ^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:94: in _filter_assignment
+    if self._match_key_value(index_, key, str(value)):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:98: in _match_key_value
+    instance_value = self.get_data(key, index_)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:114: in get_data
+    self._raise_error_if_not_present(name, expected_name=mu_tag)
+src\py4vasp\_calculation\electron_phonon_accumulator.py:122: in _raise_error_if_not_present
+    valid_names.remove(self._name)
+E   KeyError: 'electron_phonon_bandgap_handler'
+______________________ test_print_mapping[nonpolarized] _______________________
+tests\calculation\test_electron_phonon_bandgap.py:295: in test_print_mapping
+    assert re.search(band_gap.ref.mapping_pattern, str(band_gap), re.MULTILINE)
+E   assert None
+E    +  where None = <function search at 0x000001D73A1C9580>('Electron-phonon bandgap with 4 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]', "Electron-phonon bandgap handler with 4 instance(s):\n    selfen_carrier_den: [-6.36030311 -5.5779426  19.38344019]\n    nbands_sum: [ 10  32  55  77 100]\n    selfen_delta: [-10.32472187  -2.04940455  -1.76249068   2.18068674   2.66918125]\n    scattering_approx: ['MRTA_TAU' 'SERTA']", re.MULTILINE)
+E    +    where <function search at 0x000001D73A1C9580> = re.search
+E    +    and   'Electron-phonon bandgap with 4 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]' = namespace(naccumulators=4, indices=array([0, 1, 3, 4]), fundamental=VaspData(array([[ -0.69872384],\n       [ 15.58191799],\n       [ 18.25777394],\n       [ -8.13746226],\n       [-23.00295462]])), fundamental_renorm=VaspData(array([[[-11.6337025 ,  -4.75260521,  12.07693774,   5.84548688,\n           1.08609908,  -2.60714231]],\n\n       [[-15.03548617, -11.31805403, -13.29097232,   3.33615862,\n         -20.08308288,  -0.51522233]],\n\n       [[  0.6111418 ,   0.14682233,   6.97069027,   4.9531376 ,\n           8.74394084, -10.71490414]],\n\n       [[-10.11716136,  -5.45067988,  15.25316052,  17.3255197 ,\n         -17.69116922,  17.14170855]],\n\n       [[ 19.16866672,  -1.94130858,  -7.67335238,  -0.98434872,\n           8.16793369,  -1.32801036]]])), direct=VaspData(array([[ 2.50305504],\n       [-6.98645358],\n       [-5.53612536],\n       [ 1.25674325],\n       [-2.71784768]])), direct_renorm=VaspData(array([[[-18.09883575,  -4.05034335,  -6.73639966,  -5.22773509,\n          24.23612535,   4.4686224 ]],\n\n       [[-17.21288603,   7.98867433,  19.12149503,  -1.3036616 ,\n          -9.06741626,  -6.57431361]],\n\n       [[ 13.44805744,  13.72748006,   4.4024852 , -15.78610124,\n          13.0366001 ...} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n\nFundamental gap:\n   Temperature \\(K\\)         KS gap \\(eV\\)         QP gap \\(eV\\)     KS-QP gap \\(meV\\)\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}').mapping_pattern
+E    +      where namespace(naccumulators=4, indices=array([0, 1, 3, 4]), fundamental=VaspData(array([[ -0.69872384],\n       [ 15.58191799],\n       [ 18.25777394],\n       [ -8.13746226],\n       [-23.00295462]])), fundamental_renorm=VaspData(array([[[-11.6337025 ,  -4.75260521,  12.07693774,   5.84548688,\n           1.08609908,  -2.60714231]],\n\n       [[-15.03548617, -11.31805403, -13.29097232,   3.33615862,\n         -20.08308288,  -0.51522233]],\n\n       [[  0.6111418 ,   0.14682233,   6.97069027,   4.9531376 ,\n           8.74394084, -10.71490414]],\n\n       [[-10.11716136,  -5.45067988,  15.25316052,  17.3255197 ,\n         -17.69116922,  17.14170855]],\n\n       [[ 19.16866672,  -1.94130858,  -7.67335238,  -0.98434872,\n           8.16793369,  -1.32801036]]])), direct=VaspData(array([[ 2.50305504],\n       [-6.98645358],\n       [-5.53612536],\n       [ 1.25674325],\n       [-2.71784768]])), direct_renorm=VaspData(array([[[-18.09883575,  -4.05034335,  -6.73639966,  -5.22773509,\n          24.23612535,   4.4686224 ]],\n\n       [[-17.21288603,   7.98867433,  19.12149503,  -1.3036616 ,\n          -9.06741626,  -6.57431361]],\n\n       [[ 13.44805744,  13.72748006,   4.4024852 , -15.78610124,\n          13.0366001 ...} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n\nFundamental gap:\n   Temperature \\(K\\)         KS gap \\(eV\\)         QP gap \\(eV\\)     KS-QP gap \\(meV\\)\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}') = <py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgap object at 0x000001D7482D22A0>.ref
+E    +    and   "Electron-phonon bandgap handler with 4 instance(s):\n    selfen_carrier_den: [-6.36030311 -5.5779426  19.38344019]\n    nbands_sum: [ 10  32  55  77 100]\n    selfen_delta: [-10.32472187  -2.04940455  -1.76249068   2.18068674   2.66918125]\n    scattering_approx: ['MRTA_TAU' 'SERTA']" = str(<py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgap object at 0x000001D7482D22A0>)
+E    +    and   re.MULTILINE = re.MULTILINE
+________________________ test_print_mapping[collinear] ________________________
+tests\calculation\test_electron_phonon_bandgap.py:295: in test_print_mapping
+    assert re.search(band_gap.ref.mapping_pattern, str(band_gap), re.MULTILINE)
+E   assert None
+E    +  where None = <function search at 0x000001D73A1C9580>('Electron-phonon bandgap with 4 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]', "Electron-phonon bandgap handler with 4 instance(s):\n    selfen_carrier_den: [-6.36030311 -5.5779426  19.38344019]\n    nbands_sum: [ 10  32  55  77 100]\n    selfen_delta: [-10.32472187  -2.04940455  -1.76249068   2.18068674   2.66918125]\n    scattering_approx: ['MRTA_TAU' 'SERTA']", re.MULTILINE)
+E    +    where <function search at 0x000001D73A1C9580> = re.search
+E    +    and   'Electron-phonon bandgap with 4 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]' = namespace(naccumulators=4, indices=array([0, 1, 3, 4]), fundamental=VaspData(array([[ -3.44616154, -19.7728207 ,  22.11833881],\n       [ -8.54658364, -18.30250658, -15.54715963],\n       [ -0.42216143,   8.6986917 ,  -7.30986158],\n       [ -6.76019621,   1.50705188,  -1.2590991 ],\n       [  1.09588539,   0.62770383,   2.89870303]])), fundamental_renorm=VaspData(array([[[  1.31447368,   2.82453526,  -2.94655269,   0.31682863,\n          19.32203649,   2.29440329],\n        [  0.93448729,   2.57937955,   1.19506417,   1.30644151,\n           8.56364231,  -0.27896706],\n        [  1.03527326,   6.10915995,   9.01056266,  -8.2157778 ,\n           5.22714501,   3.18536412]],\n\n       [[  5.48283599,   4.19715567,   4.44685687,   6.43824551,\n          -5.52373766,   8.18635823],\n        [-13.55073087,   1.22158398,  13.60890006, -16.40893432,\n         -26.9191767 ,   3.2260027 ],\n        [ 28.24687453,  15.48433366,   2.05068837, -15.5690078 ,\n           3.02198295,  -4.42156019]],\n\n       [[  0.46848899,   9.64431376, -10.9034597 ,   7.77889988,\n         -10.92221812,  17.93433268],\n        [ -5.97143202,   5.60993696,   8.29856501,  -2.96932009,\n           6.38247299,   6.95287228],\n       ...} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n\nFundamental gap:\n   Temperature \\(K\\)         KS gap \\(eV\\)         QP gap \\(eV\\)     KS-QP gap \\(meV\\)\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}').mapping_pattern
+E    +      where namespace(naccumulators=4, indices=array([0, 1, 3, 4]), fundamental=VaspData(array([[ -3.44616154, -19.7728207 ,  22.11833881],\n       [ -8.54658364, -18.30250658, -15.54715963],\n       [ -0.42216143,   8.6986917 ,  -7.30986158],\n       [ -6.76019621,   1.50705188,  -1.2590991 ],\n       [  1.09588539,   0.62770383,   2.89870303]])), fundamental_renorm=VaspData(array([[[  1.31447368,   2.82453526,  -2.94655269,   0.31682863,\n          19.32203649,   2.29440329],\n        [  0.93448729,   2.57937955,   1.19506417,   1.30644151,\n           8.56364231,  -0.27896706],\n        [  1.03527326,   6.10915995,   9.01056266,  -8.2157778 ,\n           5.22714501,   3.18536412]],\n\n       [[  5.48283599,   4.19715567,   4.44685687,   6.43824551,\n          -5.52373766,   8.18635823],\n        [-13.55073087,   1.22158398,  13.60890006, -16.40893432,\n         -26.9191767 ,   3.2260027 ],\n        [ 28.24687453,  15.48433366,   2.05068837, -15.5690078 ,\n           3.02198295,  -4.42156019]],\n\n       [[  0.46848899,   9.64431376, -10.9034597 ,   7.77889988,\n         -10.92221812,  17.93433268],\n        [ -5.97143202,   5.60993696,   8.29856501,  -2.96932009,\n           6.38247299,   6.95287228],\n       ...} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n\nFundamental gap:\n   Temperature \\(K\\)         KS gap \\(eV\\)         QP gap \\(eV\\)     KS-QP gap \\(meV\\)\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}\n^\\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6} \\s*[-+]?\\d*\\.\\d{6}') = <py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgap object at 0x000001D7482D0AA0>.ref
+E    +    and   "Electron-phonon bandgap handler with 4 instance(s):\n    selfen_carrier_den: [-6.36030311 -5.5779426  19.38344019]\n    nbands_sum: [ 10  32  55  77 100]\n    selfen_delta: [-10.32472187  -2.04940455  -1.76249068   2.18068674   2.66918125]\n    scattering_approx: ['MRTA_TAU' 'SERTA']" = str(<py4vasp._calculation.electron_phonon_bandgap.ElectronPhononBandgap object at 0x000001D7482D0AA0>)
+E    +    and   re.MULTILINE = re.MULTILINE
+__________________________________ test_len ___________________________________
+tests\calculation\test_electron_phonon_self_energy.py:76: in test_len
+    assert len(self_energy) == len(self_energy._raw_data.valid_indices)
+                                   ^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ElectronPhononSelfEnergy' object has no attribute '_raw_data'. Did you mean: 'from_data'?
+_________________________ test_indexing_and_iteration _________________________
+tests\calculation\test_electron_phonon_self_energy.py:84: in test_indexing_and_iteration
+    assert instance.parent is self_energy
+E   assert <py4vasp._calculation.electron_phonon_self_energy.ElectronPhononSelfEnergyHandler object at 0x000001D748197680> is <py4vasp._calculation.electron_phonon_self_energy.ElectronPhononSelfEnergy object at 0x000001D7482D2D20>
+E    +  where <py4vasp._calculation.electron_phonon_self_energy.ElectronPhononSelfEnergyHandler object at 0x000001D748197680> = <py4vasp._calculation.electron_phonon_self_energy.SelfEnergyInstance object at 0x000001D7482D32F0>.parent
+______________ test_incorrect_selection[invalid_selection=0.01] _______________
+tests\calculation\test_electron_phonon_self_energy.py:189: in test_incorrect_selection
+    self_energy.select(selection)
+src\py4vasp\_calculation\electron_phonon_self_energy.py:268: in select
+    return self._handler_factory(raw).select(selection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_self_energy.py:146: in select
+    indices = self._accumulator().select_indices(selection)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:70: in select_indices
+    for index_ in self._filter_indices(selection, kwargs_filters)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:82: in _filter_indices
+    remaining_indices = list(remaining_indices)
+                        ^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:94: in _filter_assignment
+    if self._match_key_value(index_, key, str(value)):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:98: in _match_key_value
+    instance_value = self.get_data(key, index_)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:114: in get_data
+    self._raise_error_if_not_present(name, expected_name=mu_tag)
+src\py4vasp\_calculation\electron_phonon_accumulator.py:122: in _raise_error_if_not_present
+    valid_names.remove(self._name)
+E   KeyError: 'electron_phonon_self_energy_handler'
+_____________________________ test_print_mapping ______________________________
+tests\calculation\test_electron_phonon_self_energy.py:297: in test_print_mapping
+    assert re.search(self_energy.ref.mapping_pattern, str(self_energy), re.MULTILINE)
+E   assert None
+E    +  where None = <function search at 0x000001D73A1C9580>('Electron-phonon self energy with 5 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]\n    scattering_approx: \\[.*\\]', "Electron-phonon self energy handler with 5 instance(s):\n    selfen_carrier_den: [-6.36030311 -5.5779426  19.38344019]\n    nbands_sum: [ 10  32  55  77 100]\n    selfen_delta: [-17.56267884  -3.48848823  -1.21504499  -0.88958779  15.72487319]\n    scattering_approx: ['ERTA_LAMDBA' 'ERTA_TAU' 'MRTA_LAMDBA' 'MRTA_TAU' 'SERTA']", re.MULTILINE)
+E    +    where <function search at 0x000001D73A1C9580> = re.search
+E    +    and   'Electron-phonon self energy with 5 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]\n    scattering_approx: \\[.*\\]' = namespace(eigenvalues=VaspData(array([[[-22.28086492, -13.44773874,   6.37013305],\n        [ -3.16280893,   2.81173559,   9.45560547]]])), debye_waller=[VaspData(array([[ 18.50255584,  -2.32783758,  -2.44522187,   4.18892759,\n          3.00522566, -11.05302037],\n       [ 11.1971278 ,  -4.23930254,   8.08694161, -12.87336232,\n         -7.13644385, -15.236876  ],\n       [ -7.38825141, -12.71905563,  -8.68076598,   7.10879028,\n         -3.25210494,   8.57039399],\n       [ 22.63794676,   0.03810305, -25.51197157,  -4.39087399,\n        -12.49321278,  -3.46921214]])), VaspData(array([[-16.32009748, -16.43011758,   7.17237632, -25.09938666,\n         -1.15079951, -22.15912346],\n       [ 17.33743882,   7.85606244,  -1.86667992,   8.68090268,\n        -19.30600361,  11.67069982],\n       [ 21.01959234, -23.25641919,   2.83647841,   4.37003266,\n         -3.77920659,   0.11964196],\n       [ -1.73235908, -18.2956165 , -24.02048028, -14.15643366,\n         -6.37199616,   7.2418473 ]])), VaspData(array([[ 15.31673414,  -4.84879213,  13.97888424, -11.84389321,\n          3.01939204,   0.40476462],\n       [  1.53360069,  -2.58918443,  -6.0906334 ,   1.61116058,\n        -10.60330148,  -2.6566004 ],\n  ...   [-14.11826492, -17.65226479,   1.84485202,  12.07865246,\n         -1.21460353,   5.71945807],\n       [-20.46553369,   5.41503234,   5.36529188,   2.16660472,\n          3.90267067,  13.10348344]])), nbands_sum=VaspData(array([ 10,  32,  55,  77, 100], dtype=int32)), selfen_delta=VaspData(array([ -1.21504499,  -0.88958779,  -3.48848823, -17.56267884,\n        15.72487319])), selfen_carrier_den=array([-5.5779426 , -6.36030311, 19.38344019, -5.5779426 , -6.36030311]), scattering_approx=VaspData(array(['SERTA', 'ERTA_LAMDBA', 'ERTA_TAU', 'MRTA_LAMDBA', 'MRTA_TAU'],\n      dtype='<U11')), band_kpoint_spin_index=[array([[[-1,  1,  2],\n        [ 3, -1,  4]]]), array([[[-1,  1,  2],\n        [ 3, -1,  4]]]), array([[[-1,  1,  2],\n        [ 3, -1,  4]]]), array([[[-1,  1,  2],\n        [ 3, -1,  4]]]), array([[[-1,  1,  2],\n        [ 3, -1,  4]]])], mapping_pattern='Electron-phonon self energy with 5 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]\n    scattering_approx: \\[.*\\]', instance_pattern='Electron-phonon self-energy instance 1:\n    selfen_carrier_den: .*\n    nbands_sum: .*\n    selfen_delta: .*\n    scattering_approx: .*').mapping_pattern
+E    +      where namespace(eigenvalues=VaspData(array([[[-22.28086492, -13.44773874,   6.37013305],\n        [ -3.16280893,   2.81173559,   9.45560547]]])), debye_waller=[VaspData(array([[ 18.50255584,  -2.32783758,  -2.44522187,   4.18892759,\n          3.00522566, -11.05302037],\n       [ 11.1971278 ,  -4.23930254,   8.08694161, -12.87336232,\n         -7.13644385, -15.236876  ],\n       [ -7.38825141, -12.71905563,  -8.68076598,   7.10879028,\n         -3.25210494,   8.57039399],\n       [ 22.63794676,   0.03810305, -25.51197157,  -4.39087399,\n        -12.49321278,  -3.46921214]])), VaspData(array([[-16.32009748, -16.43011758,   7.17237632, -25.09938666,\n         -1.15079951, -22.15912346],\n       [ 17.33743882,   7.85606244,  -1.86667992,   8.68090268,\n        -19.30600361,  11.67069982],\n       [ 21.01959234, -23.25641919,   2.83647841,   4.37003266,\n         -3.77920659,   0.11964196],\n       [ -1.73235908, -18.2956165 , -24.02048028, -14.15643366,\n         -6.37199616,   7.2418473 ]])), VaspData(array([[ 15.31673414,  -4.84879213,  13.97888424, -11.84389321,\n          3.01939204,   0.40476462],\n       [  1.53360069,  -2.58918443,  -6.0906334 ,   1.61116058,\n        -10.60330148,  -2.6566004 ],\n  ...   [-14.11826492, -17.65226479,   1.84485202,  12.07865246,\n         -1.21460353,   5.71945807],\n       [-20.46553369,   5.41503234,   5.36529188,   2.16660472,\n          3.90267067,  13.10348344]])), nbands_sum=VaspData(array([ 10,  32,  55,  77, 100], dtype=int32)), selfen_delta=VaspData(array([ -1.21504499,  -0.88958779,  -3.48848823, -17.56267884,\n        15.72487319])), selfen_carrier_den=array([-5.5779426 , -6.36030311, 19.38344019, -5.5779426 , -6.36030311]), scattering_approx=VaspData(array(['SERTA', 'ERTA_LAMDBA', 'ERTA_TAU', 'MRTA_LAMDBA', 'MRTA_TAU'],\n      dtype='<U11')), band_kpoint_spin_index=[array([[[-1,  1,  2],\n        [ 3, -1,  4]]]), array([[[-1,  1,  2],\n        [ 3, -1,  4]]]), array([[[-1,  1,  2],\n        [ 3, -1,  4]]]), array([[[-1,  1,  2],\n        [ 3, -1,  4]]]), array([[[-1,  1,  2],\n        [ 3, -1,  4]]])], mapping_pattern='Electron-phonon self energy with 5 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]\n    scattering_approx: \\[.*\\]', instance_pattern='Electron-phonon self-energy instance 1:\n    selfen_carrier_den: .*\n    nbands_sum: .*\n    selfen_delta: .*\n    scattering_approx: .*') = <py4vasp._calculation.electron_phonon_self_energy.ElectronPhononSelfEnergy object at 0x000001D748349A00>.ref
+E    +    and   "Electron-phonon self energy handler with 5 instance(s):\n    selfen_carrier_den: [-6.36030311 -5.5779426  19.38344019]\n    nbands_sum: [ 10  32  55  77 100]\n    selfen_delta: [-17.56267884  -3.48848823  -1.21504499  -0.88958779  15.72487319]\n    scattering_approx: ['ERTA_LAMDBA' 'ERTA_TAU' 'MRTA_LAMDBA' 'MRTA_TAU' 'SERTA']" = str(<py4vasp._calculation.electron_phonon_self_energy.ElectronPhononSelfEnergy object at 0x000001D748349A00>)
+E    +    and   re.MULTILINE = re.MULTILINE
+__________________________________ test_len ___________________________________
+tests\calculation\test_electron_phonon_transport.py:94: in test_len
+    assert len(transport) == len(transport._raw_data.valid_indices)
+                                 ^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ElectronPhononTransport' object has no attribute '_raw_data'. Did you mean: 'from_data'?
+_________________________ test_indexing_and_iteration _________________________
+tests\calculation\test_electron_phonon_transport.py:102: in test_indexing_and_iteration
+    assert instance.parent is transport
+E   assert <py4vasp._calculation.electron_phonon_transport.ElectronPhononTransportHandler object at 0x000001D7481EB500> is <py4vasp._calculation.electron_phonon_transport.ElectronPhononTransport object at 0x000001D7481EB710>
+E    +  where <py4vasp._calculation.electron_phonon_transport.ElectronPhononTransportHandler object at 0x000001D7481EB500> = <py4vasp._calculation.electron_phonon_transport.TransportInstance object at 0x000001D7481EAA20>.parent
+______________ test_incorrect_selection[invalid_selection=0.01] _______________
+tests\calculation\test_electron_phonon_transport.py:240: in test_incorrect_selection
+    transport.select(selection)
+src\py4vasp\_calculation\electron_phonon_transport.py:588: in select
+    return self._handler_factory(raw).select(selection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_transport.py:435: in select
+    return self._select_instances(selection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_transport.py:438: in _select_instances
+    indices = self._accumulator().select_indices(selection, *filter_keys)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:70: in select_indices
+    for index_ in self._filter_indices(selection, kwargs_filters)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:82: in _filter_indices
+    remaining_indices = list(remaining_indices)
+                        ^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:94: in _filter_assignment
+    if self._match_key_value(index_, key, str(value)):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:98: in _match_key_value
+    instance_value = self.get_data(key, index_)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\py4vasp\_calculation\electron_phonon_accumulator.py:114: in get_data
+    self._raise_error_if_not_present(name, expected_name=mu_tag)
+src\py4vasp\_calculation\electron_phonon_accumulator.py:122: in _raise_error_if_not_present
+    valid_names.remove(self._name)
+E   KeyError: 'electron_phonon_transport_handler'
+_____________________________ test_print_mapping ______________________________
+tests\calculation\test_electron_phonon_transport.py:475: in test_print_mapping
+    assert re.search(transport.ref.mapping_pattern, str(transport), re.MULTILINE)
+E   assert None
+E    +  where None = <function search at 0x000001D73A1C9580>('Electron-phonon transport with 5 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]\n    scattering_approx: \\[.*\\]', "Electron-phonon transport handler with 5 instance(s):\n    selfen_carrier_den: [-6.36030311 -5.5779426  19.38344019]\n    nbands_sum: [ 10  32  55  77 100]\n    selfen_delta: [-12.92537023 -12.23327944  -0.80108729   2.50646113   4.48223526]\n    scattering_approx: ['ERTA_LAMDBA' 'ERTA_TAU' 'MRTA_LAMDBA' 'MRTA_TAU' 'SERTA']", re.MULTILINE)
+E    +    where <function search at 0x000001D73A1C9580> = re.search
+E    +    and   'Electron-phonon transport with 5 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]\n    scattering_approx: \\[.*\\]' = namespace(temperatures=[array([  0., 100., 200., 300., 400., 500.]), array([  0., 100., 200., 300., 400., 500.]), array([  0., 100., 200., 300., 400., 500.]), array([  0., 100., 200., 300., 400., 500.]), array([  0., 100., 200., 300., 400., 500.])], transport_function=VaspData(array([[[[[ 1.15343871e+01,  1.68943639e+00, -7.73719181e+00],\n          [ 9.65690947e-01,  1.09984259e+00, -1.94316235e+01],\n          [ 5.45903778e+00, -6.53401072e+00, -4.43117265e+00]]],\n\n\n        [[[-8.09099478e+00,  4.04558188e+00, -5.29574115e+00],\n          [-2.98109677e+00, -1.47448176e+01,  5.66315102e+00],\n          [ 4.93091927e+00, -1.64873748e+00, -1.29851841e+01]]],\n\n\n        [[[-2.21505214e+00, -4.36085105e+00, -4.13211413e+00],\n          [ 1.43926980e+01,  1.74190427e+01, -1.95044529e+01],\n          [-4.52561695e-01,  6.31034463e+00, -1.35175447e+01]]],\n\n\n        [[[ 1.24624771e+01,  3.17625040e+00, -3.28898994e+00],\n          [ 2.05378283e+01,  8.52035417e+00, -5.39064904e+00],\n          [-5.46238893e+00, -1.59451253e+01, -2.73101037e+00]]],\n\n\n        [[[-3.77560680e+01, -8.23405969e-01,  6.87442062e+00],\n          [-4.68548642e+00,  1.35430371e+01,  5.05370359e+00],\n          [-9.20683484... ,  -9.72899234,  13.46365511],\n         [-12.64648487, -12.35115495,  -1.24292951],\n         [  5.34700525,  -3.01601544,  -6.29660417]],\n\n        [[ 25.71840452,   3.39929278,  33.03263486],\n         [  5.50923261,  -1.86665229, -10.14702271],\n         [  3.4960591 ,  10.38981741,   5.21138046]],\n\n        [[ -3.69250954,   1.98888583,  -3.10555872],\n         [-18.33541568,  14.65312972,  -5.75947149],\n         [  6.6587165 , -11.57366396,  12.92265024]]]])), nbands_sum=VaspData(array([ 10,  32,  55,  77, 100], dtype=int32)), selfen_delta=VaspData(array([  2.50646113,  -0.80108729, -12.23327944,   4.48223526,\n       -12.92537023])), selfen_carrier_den=array([-5.5779426 , -6.36030311, 19.38344019, -5.5779426 , -6.36030311]), scattering_approx=VaspData(array(['SERTA', 'ERTA_LAMDBA', 'ERTA_TAU', 'MRTA_LAMDBA', 'MRTA_TAU'],\n      dtype='<U11')), mapping_pattern='Electron-phonon transport with 5 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]\n    scattering_approx: \\[.*\\]', instance_pattern='Electron-phonon transport instance 1:\n    selfen_carrier_den: .*\n    nbands_sum: .*\n    selfen_delta: .*\n    scattering_approx: .*').mapping_pattern
+The system cannot find the path specified.
+
+E    +      where namespace(temperatures=[array([  0., 100., 200., 300., 400., 500.]), array([  0., 100., 200., 300., 400., 500.]), array([  0., 100., 200., 300., 400., 500.]), array([  0., 100., 200., 300., 400., 500.]), array([  0., 100., 200., 300., 400., 500.])], transport_function=VaspData(array([[[[[ 1.15343871e+01,  1.68943639e+00, -7.73719181e+00],\n          [ 9.65690947e-01,  1.09984259e+00, -1.94316235e+01],\n          [ 5.45903778e+00, -6.53401072e+00, -4.43117265e+00]]],\n\n\n        [[[-8.09099478e+00,  4.04558188e+00, -5.29574115e+00],\n          [-2.98109677e+00, -1.47448176e+01,  5.66315102e+00],\n          [ 4.93091927e+00, -1.64873748e+00, -1.29851841e+01]]],\n\n\n        [[[-2.21505214e+00, -4.36085105e+00, -4.13211413e+00],\n          [ 1.43926980e+01,  1.74190427e+01, -1.95044529e+01],\n          [-4.52561695e-01,  6.31034463e+00, -1.35175447e+01]]],\n\n\n        [[[ 1.24624771e+01,  3.17625040e+00, -3.28898994e+00],\n          [ 2.05378283e+01,  8.52035417e+00, -5.39064904e+00],\n          [-5.46238893e+00, -1.59451253e+01, -2.73101037e+00]]],\n\n\n        [[[-3.77560680e+01, -8.23405969e-01,  6.87442062e+00],\n          [-4.68548642e+00,  1.35430371e+01,  5.05370359e+00],\n          [-9.20683484... ,  -9.72899234,  13.46365511],\n         [-12.64648487, -12.35115495,  -1.24292951],\n         [  5.34700525,  -3.01601544,  -6.29660417]],\n\n        [[ 25.71840452,   3.39929278,  33.03263486],\n         [  5.50923261,  -1.86665229, -10.14702271],\n         [  3.4960591 ,  10.38981741,   5.21138046]],\n\n        [[ -3.69250954,   1.98888583,  -3.10555872],\n         [-18.33541568,  14.65312972,  -5.75947149],\n         [  6.6587165 , -11.57366396,  12.92265024]]]])), nbands_sum=VaspData(array([ 10,  32,  55,  77, 100], dtype=int32)), selfen_delta=VaspData(array([  2.50646113,  -0.80108729, -12.23327944,   4.48223526,\n       -12.92537023])), selfen_carrier_den=array([-5.5779426 , -6.36030311, 19.38344019, -5.5779426 , -6.36030311]), scattering_approx=VaspData(array(['SERTA', 'ERTA_LAMDBA', 'ERTA_TAU', 'MRTA_LAMDBA', 'MRTA_TAU'],\n      dtype='<U11')), mapping_pattern='Electron-phonon transport with 5 instance\\(s\\):\n    selfen_carrier_den: \\[.*\\]\n    nbands_sum: \\[.*\\]\n    selfen_delta: \\[.*\\]\n    scattering_approx: \\[.*\\]', instance_pattern='Electron-phonon transport instance 1:\n    selfen_carrier_den: .*\n    nbands_sum: .*\n    selfen_delta: .*\n    scattering_approx: .*') = <py4vasp._calculation.electron_phonon_transport.ElectronPhononTransport object at 0x000001D748368920>.ref
+E    +    and   "Electron-phonon transport handler with 5 instance(s):\n    selfen_carrier_den: [-6.36030311 -5.5779426  19.38344019]\n    nbands_sum: [ 10  32  55  77 100]\n    selfen_delta: [-12.92537023 -12.23327944  -0.80108729   2.50646113   4.48223526]\n    scattering_approx: ['ERTA_LAMDBA' 'ERTA_TAU' 'MRTA_LAMDBA' 'MRTA_TAU' 'SERTA']" = str(<py4vasp._calculation.electron_phonon_transport.ElectronPhononTransport object at 0x000001D748368920>)
+E    +    and   re.MULTILINE = re.MULTILINE
+=========================== short test summary info ===========================
+FAILED tests/calculation/test_electron_phonon_bandgap.py::test_indexing_and_iteration[nonpolarized]
+FAILED tests/calculation/test_electron_phonon_bandgap.py::test_indexing_and_iteration[collinear]
+FAILED tests/calculation/test_electron_phonon_bandgap.py::test_incorrect_selection[nonpolarized-invalid_selection=0.01]
+FAILED tests/calculation/test_electron_phonon_bandgap.py::test_incorrect_selection[collinear-invalid_selection=0.01]
+FAILED tests/calculation/test_electron_phonon_bandgap.py::test_print_mapping[nonpolarized]
+FAILED tests/calculation/test_electron_phonon_bandgap.py::test_print_mapping[collinear]
+FAILED tests/calculation/test_electron_phonon_self_energy.py::test_len - Attr...
+FAILED tests/calculation/test_electron_phonon_self_energy.py::test_indexing_and_iteration
+FAILED tests/calculation/test_electron_phonon_self_energy.py::test_incorrect_selection[invalid_selection=0.01]
+FAILED tests/calculation/test_electron_phonon_self_energy.py::test_print_mapping
+FAILED tests/calculation/test_electron_phonon_transport.py::test_len - Attrib...
+FAILED tests/calculation/test_electron_phonon_transport.py::test_indexing_and_iteration
+FAILED tests/calculation/test_electron_phonon_transport.py::test_incorrect_selection[invalid_selection=0.01]
+FAILED tests/calculation/test_electron_phonon_transport.py::test_print_mapping
+================== 14 failed, 186 passed, 4 skipped in 6.29s ==================
+ERROR conda.cli.main_run:execute(127): `conda run pytest tests/calculation/test_electron_phonon_chemical_potential.py tests/calculation/test_electron_phonon_bandgap.py tests/calculation/test_electron_phonon_self_energy.py tests/calculation/test_electron_phonon_transport.py -v --tb=short` failed. (See above for error)
+

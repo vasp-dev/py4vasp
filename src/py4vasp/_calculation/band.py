@@ -2,8 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from __future__ import annotations
 
-import pathlib
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -13,7 +12,6 @@ from py4vasp._calculation import projector
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
-    _dispatch,
     merge_default,
     merge_strings,
     merge_to_database,

@@ -4,20 +4,20 @@ import itertools
 import os
 import tempfile
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import NamedTuple, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
 
 from py4vasp import exception
-from py4vasp._util import import_
+from py4vasp._util import import_, merge
 from py4vasp._util.color import Color
 
 ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
 nglview = import_.optional("nglview")
-vaspview = import_.optional("vasp_viewer")
+vaspview = import_.optional("vasp.viewer")
 
 CUBE_FILENAME = "quantity.cube"
 
@@ -275,6 +275,17 @@ class View:
     def __post_init__(self):
         self._verify()
 
+    def __add__(self, other):
+        if not isinstance(other, View):
+            return NotImplemented
+        merged = _merge_view_fields(self, other)
+        # Construct without calling __post_init__: validation is intentionally
+        # deferred to viewer conversion (to_ngl / to_vasp_viewer).
+        combined = object.__new__(View)
+        for field in fields(View):
+            setattr(combined, field.name, merged[field.name])
+        return combined
+
     def _ipython_display_(self, mode: str = "auto"):
         if mode == "auto":
             if import_.is_imported(vaspview):
@@ -290,7 +301,10 @@ class View:
             widget = self.to_ngl()
             widget._ipython_display_()
         elif mode == "vasp_viewer":
+            import IPython.display
+
             widget = self.to_vasp_viewer()
+            IPython.display.display(widget)
         else:
             raise exception.IncorrectUsage(
                 f"Mode '{mode}' is not supported. Choose either 'auto', 'ngl' or 'vasp_viewer'."
@@ -330,7 +344,18 @@ class View:
 
         This method creates the widget required to view a structure, isosurfaces and
         arrows at atom centers. The attributes of View are added to a dictionary with which
-        to call initialize a VASP Viewer widget."""
+        to initialize a VASP Viewer widget."""
+        structure = self.to_vasp_viewer_config()
+        widget = vaspview.Widget(structure)
+        return widget
+
+    def to_vasp_viewer_config(self):
+        """Create a dictionary with the configuration for VASP Viewer
+
+        This method creates a dictionary with the configuration required to view a
+        structure, isosurfaces and arrows at atom centers. The attributes of View are
+        added to a dictionary with which to initialize a VASP Viewer widget.
+        """
         self._verify()
         structure: dict = {
             "atoms_trajectory": self._convert_to_list(self.positions),
@@ -339,8 +364,7 @@ class View:
         }
 
         # === Atoms options ===
-        if self.atom_radius is not None:
-            structure["selections_atom_radius"] = self.atom_radius
+        structure["selections_atom_radius"] = self.atom_radius or 1.0
 
         # === Vector Group options ===
         if self.ion_arrows is not None:
@@ -354,30 +378,44 @@ class View:
                 for arrow in self.ion_arrows
             ]
         if self.grid_scalars is not None:
-            # TODO merge isosurface branch
-            # TODO handle list of grid scalars instead of single grid scalar only
-            # TODO adjust UI to support this
-            structure["grid_scalar_groups"] = [
-                {
-                    "label": grid_quantity.label,
-                    "data": grid_quantity.quantity,  # TODO check type
-                    "isosurfaces": [  # TODO hook this list to isosurface settings
+            # TODO allow time-dependent isosurfaces (viewer-side requirement)
+            # TODO allow multiple isolevels for the same volume dataset (viewer-side requirement)
+            structure["volume_datasets"] = []
+            for grid_quantity in self.grid_scalars:
+                if len(grid_quantity.isosurfaces) > 0:
+                    structure["volume_datasets"].extend(
                         {
-                            "isolevel": isosurface.isolevel,
-                            "color": isosurface.color,  # TODO interpret this as base color of isosurface
-                            "opacity": isosurface.opacity,  # TODO tie this to opacity on isosurface
+                            "label": grid_quantity.label + f" ({idi})",
+                            "data": self._convert_to_list(grid_quantity.quantity[0]),
+                            "grid": grid_quantity.quantity.shape[1:],
+                            "initial_iso_value": isosurface.isolevel,
+                            "color_surface": isosurface.color,
                         }
-                        for isosurface in grid_quantity.isosurfaces
-                    ],
-                }
-                for grid_quantity in self.grid_scalars
-            ]
+                        for idi, isosurface in enumerate(grid_quantity.isosurfaces)
+                    )
+                else:
+                    structure["volume_datasets"].append(
+                        {
+                            "label": grid_quantity.label,
+                            "data": self._convert_to_list(grid_quantity.quantity[0]),
+                            "grid": grid_quantity.quantity.shape[1:],
+                        }
+                    )
 
         # === Lattice options ===
         if self.shift is not None:
             structure["selections_constant_shift"] = self._convert_to_list(self.shift)
         if self.supercell is not None:
-            structure["selections_supercell"] = self._convert_to_list(self.supercell)
+            supercell_list = self._convert_to_list(self.supercell)
+            if len(supercell_list) == 1:
+                supercell_list = supercell_list * 3
+            elif len(supercell_list) == 2:
+                if supercell_list[0] != supercell_list[1]:
+                    supercell_list = supercell_list + [1]
+                else:
+                    supercell_list = supercell_list + [supercell_list[0]]
+            supercell_list = [0, 0, 0] + supercell_list
+            structure["selections_bounds"] = supercell_list
 
         # === Visualization options ===
         if self.camera is not None:
@@ -385,10 +423,7 @@ class View:
         if self.show_cell is not None:
             structure["selections_show_lattice"] = self.show_cell
         if self.show_axes is not None:
-            structure["selections_show_xyz"] = False
             structure["selections_show_abc"] = self.show_axes
-            structure["selections_show_xyz_aside"] = self.show_axes
-            structure["selections_show_abc_aside"] = self.show_axes
         if self.show_axes_at is not None:
             structure["selections_axes_abc_shift"] = self._convert_to_list(
                 self.show_axes_at
@@ -401,7 +436,7 @@ class View:
         if self.structure_title:
             structure["selections_descriptor"] = self.structure_title
 
-        return vaspview.Widget(structure)
+        return structure
 
     def _verify(self, mode=None):
         self._raise_error_if_present_on_multiple_steps(self.grid_scalars, mode)
@@ -541,3 +576,50 @@ class View:
                     transformation,
                 )
                 widget.shape.add_arrow(*(arrow_3d.to_serializable()))
+
+
+def _merge_view_fields(left_view, right_view):
+    merged = {}
+    for field in fields(View):
+        if field.name in ("grid_scalars", "ion_arrows"):
+            merged[field.name] = _merge_special_sequence(
+                getattr(left_view, field.name),
+                getattr(right_view, field.name),
+            )
+            continue
+        merged[field.name] = _merge_view_field(
+            left_view,
+            right_view,
+            field.name,
+        )
+    return merged
+
+
+def _merge_special_sequence(left_values, right_values):
+    return merge.merge_unique_sequences(left_values, right_values, _entries_equal)
+
+
+def _entries_equal(left_entry, right_entry):
+    if left_entry is right_entry:
+        return True
+    if type(left_entry) is not type(right_entry):
+        return False
+    if hasattr(left_entry, "__dataclass_fields__"):
+        for field in fields(left_entry):
+            if not _values_equal(
+                getattr(left_entry, field.name),
+                getattr(right_entry, field.name),
+            ):
+                return False
+        return True
+    return _values_equal(left_entry, right_entry)
+
+
+def _merge_view_field(left_view, right_view, field_name):
+    left_field = getattr(left_view, field_name)
+    right_field = getattr(right_view, field_name)
+    return merge.merge_field_or_raise(left_field, right_field, field_name, "views")
+
+
+def _values_equal(left_value, right_value):
+    return merge.values_equal(left_value, right_value)
