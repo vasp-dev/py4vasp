@@ -549,6 +549,38 @@ class Nics_DB(_DBDataMixin):
 
 
 @dataclass
+class Optics_DB(_DBDataMixin):
+    """Data class for storing optical properties in the database.
+
+    The optical properties are derived from the dielectric function. All spectra
+    refer to the isotropic average and the color is computed from the reflectivity
+    under the default D65 illuminant and the CIE 1931 2° observer."""
+
+    energy_min: Optional[float] = None
+    """The minimum photon energy at which the optical properties were evaluated, in eV."""
+    energy_max: Optional[float] = None
+    """The maximum photon energy at which the optical properties were evaluated, in eV."""
+
+    reflectivity_min: Optional[float] = None
+    """The minimum reflectivity across the evaluated energy range."""
+    reflectivity_max: Optional[float] = None
+    """The maximum reflectivity across the evaluated energy range."""
+    absorption_min: Optional[float] = None
+    """The minimum absorption across the evaluated energy range (absorption is normalized to its maximum)."""
+    absorption_max: Optional[float] = None
+    """The maximum absorption across the evaluated energy range (equals 1 because the absorption is max-normalized)."""
+    transmission_min: Optional[float] = None
+    """The minimum transmission across the evaluated energy range."""
+    transmission_max: Optional[float] = None
+    """The maximum transmission across the evaluated energy range."""
+
+    color_rgb: Optional[List[float]] = field(default_factory=lambda: None)
+    """The perceived color of the material as fractional sRGB values in [0, 1]."""
+    color_hex: Optional[str] = None
+    """The perceived color of the material as an HTML/HEX color code, e.g. '#2fb5ab'."""
+
+
+@dataclass
 class PairCorrelation_DB(_DBDataMixin):
     """Data class for storing pair correlation function data in the database."""
 

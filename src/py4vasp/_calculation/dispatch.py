@@ -349,7 +349,9 @@ class SuppressErrorsSourceWrapper:
         return getattr(self._source, name)
 
 
-def merge_to_database(source, quantity_name, handler_factory, method, *args, **kwargs):
+def merge_to_database(
+    source, quantity_name, handler_factory, method, *args, key_name=None, **kwargs
+):
     """Collect database results across all of a quantity's sources.
 
     Database collection is internal and never user-selected, so this enumerates
@@ -359,6 +361,11 @@ def merge_to_database(source, quantity_name, handler_factory, method, *args, **k
     name and every other source to ``quantity_source``. Leading underscores are
     stripped from *quantity_name* so private quantities (``_CONTCAR``,
     ``_stoichiometry``) appear without the underscore prefix.
+
+    A derived quantity accesses the schema and raw data under one name but should
+    store its results under another (e.g. ``optics`` derives from
+    ``dielectric_function``). Pass *key_name* to override the name used for the
+    result keys while still looking up data under *quantity_name*.
 
     Sources without data are dropped (errors are suppressed via
     :class:`SuppressErrorsSourceWrapper`). A source whose result merely duplicates
@@ -387,8 +394,8 @@ def merge_to_database(source, quantity_name, handler_factory, method, *args, **k
         (other sources) to each handler result.
     """
     wrapped_source = SuppressErrorsSourceWrapper(source)
-    base = quantity_name.lstrip("_")
-    selection = _all_sources_selection(base)
+    base = (key_name or quantity_name).lstrip("_")
+    selection = _all_sources_selection(quantity_name.lstrip("_"))
     raw_results = _dispatch(
         wrapped_source,
         quantity_name,

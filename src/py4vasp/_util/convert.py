@@ -2,7 +2,6 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import fractions
 import re
-import textwrap
 
 import numpy as np
 
@@ -85,34 +84,6 @@ def to_camelcase(string: str, uppercase_first_letter: bool = True) -> str:
         return re.sub(r"(?:_|^)(.)", lambda m: m.group(1).upper(), string)
     else:
         return string[0].lower() + to_camelcase(string)[1:]
-
-
-def to_rgb(hex):
-    "Convert a HEX color code to fractional RGB."
-    hex = hex.lstrip("#")
-    return np.array([int(part, 16) for part in textwrap.wrap(hex, 2)]) / 255
-
-
-def to_lab(hex):
-    "Convert a HEX color code to CIELAB color space."
-    rgb = to_rgb(hex)
-    rgb_to_xyz = np.array(
-        (
-            [0.4124564, 0.3575761, 0.1804375],
-            [0.2126729, 0.7151522, 0.0721750],
-            [0.0193339, 0.1191920, 0.9503041],
-        )
-    )
-    rgb = np.where(rgb > 0.04045, ((rgb + 0.055) / 1.055) ** 2.4, rgb / 12.92)
-    x, y, z = rgb_to_xyz @ rgb
-    xn = 0.950489
-    zn = 1.088840
-    t0 = (6 / 29) ** 3
-    f = lambda t: t ** (1 / 3) if t > t0 else 2 / 29 * (t / t0 + 2)
-    l = 116 * f(y) - 16
-    a = 500 * (f(x / xn) - f(y))
-    b = 200 * (f(y) - f(z / zn))
-    return np.array((l, a, b))
 
 
 class Fraction:

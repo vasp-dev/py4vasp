@@ -15,10 +15,12 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     force,
     kpoint,
     local_moment,
+    optics,
     projector,
     structure,
     system,
 )
+from py4vasp._util import color as _util_color
 
 
 def test_creating_default_calculation(tmp_path):
@@ -35,7 +37,7 @@ def find_examples(obj):
         return []
 
 
-def get_calculation_examples():
+def _all_calculation_examples():
     examples = (
         find_examples(_calculation)
         + find_examples(_calculation.band)
@@ -43,11 +45,30 @@ def get_calculation_examples():
         + find_examples(_calculation.force)
         + find_examples(_calculation.kpoint)
         + find_examples(_calculation.local_moment)
+        + find_examples(_calculation.optics)
         + find_examples(_calculation.projector)
         + find_examples(_calculation.structure)
         + find_examples(_calculation.system)
     )
     return [example for example in examples if interesting_example(example)]
+
+
+# Examples that rely on an optional package (e.g. scipy for the color pipeline) which is
+# not part of the py4vasp-core installation. They run in test_calculation_full guarded by
+# the not_core fixture; everything else runs in test_calculation.
+_FULL_INSTALL_EXAMPLES = ("py4vasp._calculation.optics.Optics.color",)
+
+
+def _requires_full_install(example):
+    return example.name in _FULL_INSTALL_EXAMPLES
+
+
+def get_calculation_examples():
+    return [e for e in _all_calculation_examples() if not _requires_full_install(e)]
+
+
+def get_full_calculation_examples():
+    return [e for e in _all_calculation_examples() if _requires_full_install(e)]
 
 
 def interesting_example(example):
@@ -62,14 +83,41 @@ def interesting_example(example):
     return suffix not in skipped_suffixes
 
 
-@pytest.mark.parametrize(
-    "example", get_calculation_examples(), ids=lambda example: example.name
-)
-def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
+def _run_calculation_example(example, tmp_path):
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["py4vasp"] = py4vasp
     example.globs["path"] = tmp_path / example.name.replace(".", "_")
+    result = runner.run(example)
+    assert result.failed == 0
+    assert result.attempted > 0
+
+
+@pytest.mark.parametrize(
+    "example", get_calculation_examples(), ids=lambda example: example.name
+)
+def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
+    _run_calculation_example(example, tmp_path)
+
+
+@pytest.mark.parametrize(
+    "example", get_full_calculation_examples(), ids=lambda example: example.name
+)
+def test_calculation_full(example: doctest.DocTest, tmp_path: pathlib.Path, not_core):
+    _run_calculation_example(example, tmp_path)
+
+
+def get_util_examples():
+    examples = find_examples(_util_color)
+    return [example for example in examples if interesting_example(example)]
+
+
+@pytest.mark.parametrize(
+    "example", get_util_examples(), ids=lambda example: example.name
+)
+def test_util(example: doctest.DocTest):
+    optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+    runner = doctest.DocTestRunner(optionflags=optionflags)
     result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0
