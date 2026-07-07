@@ -10,10 +10,14 @@ matching functions use the analytic Gaussian approximation of Wyman, Sloan, and 
 """
 
 import numpy as np
-from scipy.interpolate import interp1d
 
 from py4vasp import exception
+from py4vasp._util import import_
 from py4vasp._util.suggest import did_you_mean
+
+# scipy is only required for the full (not core) installation, so import it lazily; the
+# color-matching routines below raise exception.ModuleNotInstalled if it is missing.
+interpolate = import_.optional("scipy.interpolate")
 
 # Wavelength grid on which the color matching and illuminant spectra are evaluated.
 _WAVELENGTHS = np.linspace(380, 780, 401)  # nm, 1 nm resolution
@@ -53,7 +57,7 @@ def illuminant_spectrum(name="D65", wavelengths=None):
     if wavelengths is None:
         wavelengths = _WAVELENGTHS
     wl_data, power_data = _select(name, _ILLUMINANTS, "illuminant")()
-    power = interp1d(
+    power = interpolate.interp1d(
         wl_data, power_data, kind="cubic", bounds_error=False, fill_value="extrapolate"
     )(wavelengths)
     return np.maximum(power, 0)
@@ -90,7 +94,7 @@ def spectrum_to_rgb(wavelengths, spectrum, *, illuminant="D65", cmf="1931_2"):
         The sRGB color as a length-3 array in [0, 1].
     """
     cmf_wl, x_bar, y_bar, z_bar = color_matching_function(cmf)
-    spectrum_on_grid = interp1d(
+    spectrum_on_grid = interpolate.interp1d(
         wavelengths, spectrum, kind="linear", bounds_error=False, fill_value=0.0
     )(cmf_wl)
     illuminant_on_grid = illuminant_spectrum(illuminant, cmf_wl)

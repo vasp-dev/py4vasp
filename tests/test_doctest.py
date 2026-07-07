@@ -37,7 +37,7 @@ def find_examples(obj):
         return []
 
 
-def get_calculation_examples():
+def _all_calculation_examples():
     examples = (
         find_examples(_calculation)
         + find_examples(_calculation.band)
@@ -53,6 +53,24 @@ def get_calculation_examples():
     return [example for example in examples if interesting_example(example)]
 
 
+# Examples that rely on an optional package (e.g. scipy for the color pipeline) which is
+# not part of the py4vasp-core installation. They run in test_calculation_full guarded by
+# the not_core fixture; everything else runs in test_calculation.
+_FULL_INSTALL_EXAMPLES = ("py4vasp._calculation.optics.Optics.color",)
+
+
+def _requires_full_install(example):
+    return example.name in _FULL_INSTALL_EXAMPLES
+
+
+def get_calculation_examples():
+    return [e for e in _all_calculation_examples() if not _requires_full_install(e)]
+
+
+def get_full_calculation_examples():
+    return [e for e in _all_calculation_examples() if _requires_full_install(e)]
+
+
 def interesting_example(example):
     suffix = example.name.split(".")[-1]
     if len(example.examples) == 0:
@@ -65,10 +83,7 @@ def interesting_example(example):
     return suffix not in skipped_suffixes
 
 
-@pytest.mark.parametrize(
-    "example", get_calculation_examples(), ids=lambda example: example.name
-)
-def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
+def _run_calculation_example(example, tmp_path):
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["py4vasp"] = py4vasp
@@ -76,6 +91,20 @@ def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
     result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0
+
+
+@pytest.mark.parametrize(
+    "example", get_calculation_examples(), ids=lambda example: example.name
+)
+def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
+    _run_calculation_example(example, tmp_path)
+
+
+@pytest.mark.parametrize(
+    "example", get_full_calculation_examples(), ids=lambda example: example.name
+)
+def test_calculation_full(example: doctest.DocTest, tmp_path: pathlib.Path, not_core):
+    _run_calculation_example(example, tmp_path)
 
 
 def get_util_examples():
