@@ -107,7 +107,9 @@ class OpticsHandler:
         energies = self._energies()
         series = []
         shown = set()
-        for component, label, epsilon in self._components(selection, default_components):
+        for component, label, epsilon in self._components(
+            selection, default_components
+        ):
             shown.add(component)
             spectrum = _COEFFICIENTS[component](epsilon, energies)
             series.append(

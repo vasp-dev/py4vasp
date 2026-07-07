@@ -18,8 +18,19 @@ def test_list_illuminants():
     assert "D65" in illuminants
     assert "E" in illuminants
     assert set(illuminants) == {
-        "A", "C", "D50", "D55", "D65", "D75", "E",
-        "FL1", "FL2", "FL3", "FL4", "FL5", "FL6",
+        "A",
+        "C",
+        "D50",
+        "D55",
+        "D65",
+        "D75",
+        "E",
+        "FL1",
+        "FL2",
+        "FL3",
+        "FL4",
+        "FL5",
+        "FL6",
     }
 
 

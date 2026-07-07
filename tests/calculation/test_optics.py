@@ -285,9 +285,7 @@ def _reference_color(eps, energies, spectrum="reflectivity", **kwargs):
     mask = energies > 0
     wavelengths = HBAR_C / energies[mask]
     order = np.argsort(wavelengths)
-    return color.spectrum_to_rgb(
-        wavelengths[order], coefficient[mask][order], **kwargs
-    )
+    return color.spectrum_to_rgb(wavelengths[order], coefficient[mask][order], **kwargs)
 
 
 def test_color_default(visible, Assert, not_core):
@@ -372,9 +370,10 @@ def test_to_database(visible, Assert, not_core):
     Assert.allclose(db_data.color_rgb, list(expected_color.rgb))
     assert db_data.color_hex == expected_color.hex
     # scalar fields are plain floats and the color is stored as a list / hex string
-    assert all(isinstance(getattr(db_data, name), float) for name in (
-        "energy_min", "reflectivity_max", "transmission_min"
-    ))
+    assert all(
+        isinstance(getattr(db_data, name), float)
+        for name in ("energy_min", "reflectivity_max", "transmission_min")
+    )
     assert isinstance(db_data.color_rgb, list)
     assert isinstance(db_data.color_hex, str)
 
