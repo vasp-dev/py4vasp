@@ -396,6 +396,10 @@ def get_all_possible_keys(
             if sel in GROUPS.keys():
                 output_type_dict[f"{sel}._{k}"] = dataclass_name
         if len(selections_list) == 0:
+            # Derived quantities such as `optics` have no schema/raw data of their own
+            # and therefore no database representation; still record them (with no output
+            # type) so the mapping stays complete, but drop them from the storage keys.
+            output_type_dict[constructed_key] = dataclass_name
             all_keys.pop(k)
         else:
             selections_list = [
