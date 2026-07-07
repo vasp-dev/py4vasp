@@ -15,7 +15,7 @@ from py4vasp._config import VASP_COLORS
 from py4vasp._third_party.graph.contour import Contour
 from py4vasp._third_party.graph.series import Series
 from py4vasp._third_party.graph.trace import Trace
-from py4vasp._util import import_
+from py4vasp._util import import_, merge
 
 go = import_.optional("plotly.graph_objects")
 subplots = import_.optional("plotly.subplots")
@@ -564,13 +564,4 @@ def _merge_fields(left_graph, right_graph):
 def _merge_field(left_graph, right_graph, field_name):
     left_field = getattr(left_graph, field_name)
     right_field = getattr(right_graph, field_name)
-    if not left_field:
-        return right_field
-    if not right_field:
-        return left_field
-    if left_field != right_field:
-        message = f"""Cannot combine two graphs with incompatible {field_name}:
-    left: {left_field}
-    right: {right_field}"""
-        raise exception.IncorrectUsage(message)
-    return left_field
+    return merge.merge_field_or_raise(left_field, right_field, field_name, "graphs")

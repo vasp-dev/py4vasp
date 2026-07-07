@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import contextlib
 import importlib
 import pathlib
 from typing import Any, List, Optional, Tuple, Union
@@ -8,7 +9,7 @@ from py4vasp import exception
 from py4vasp._calculation.dispatch import _REGISTRY, FileSource, Group
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.data_db import __SCHEMA_VERSION__
-from py4vasp._util import convert, import_
+from py4vasp._util import convert, import_, loadable
 
 
 def _append_database_error(
@@ -212,6 +213,112 @@ instead of the constructor Calculation()."""
         "Return the path in which the calculation is run."
         return self._path
 
+    def selections(
+        self, method: Optional[str] = None, only_available: bool = False
+    ) -> dict[str, list[str]]:
+        """Determine which quantities and selections can be loaded for this calculation.
+
+        This inspects the VASP output files of the calculation and compares them against
+        the schema defined in :mod:`py4vasp._raw.definition`. For every quantity that
+        py4vasp can access (e.g. ``"structure"``, ``"band"``, or grouped quantities like
+        ``"exciton.density"``) it collects all selections (sources) whose data is
+        present and loadable.
+
+        By default (``only_available=False``), the result reports all schema-defined
+        selections for each quantity. If *method* is provided, quantities are still
+        restricted to those implementing that method, but the returned selections are
+        not filtered by runtime availability.
+
+        When ``only_available=True``, candidate selections are first filtered cheaply
+        against the schema (only the existence of the relevant datasets is checked).
+        Every remaining candidate is then confirmed by genuinely invoking the requested
+        method, so the result only lists selections that truly load. Selections whose
+        data is present but too large to load raise an out-of-memory error; these are
+        not reported as loadable. Instead their messages are collected and printed once
+        at the end, so a single oversized quantity never aborts the inspection.
+
+        Parameters
+        ----------
+        method : str, optional
+            The method to restrict to. Pass e.g. ``"to_view"`` to only include
+            quantities that implement visualization. Defaults to ``"read"`` which is
+            implemented by all quantities. When combined with ``only_available=True``,
+            the method is also used to confirm runtime loadability.
+        only_available : bool, optional
+            If False (default), return all public quantities with their schema-defined
+            selections. If True, only return quantities for which at least one selection
+            can be loaded; when *method* is provided, only quantities implementing
+            that method are included.
+
+        Returns
+        -------
+        dict[str, list[str]]
+            Maps each quantity call name to a list of selection names (the default
+            source is reported as ``"default"``). When ``only_available=True``, only
+            actually loadable selections are included, and quantities with no loadable
+            selections are omitted.
+
+        Examples
+        --------
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Get all public quantities and their schema-defined selections (default):
+
+        >>> calculation.selections()
+        {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
+         'bandgap': ['default', 'kpoint'],
+         ...}
+
+        Restrict to quantities implementing a specific method:
+
+        >>> calculation.selections(method="to_view")
+        {'density': ['default', 'tau'], 'exciton.density': ['default'], ...}
+
+        Get only loadable quantities and their loadable selections:
+
+        >>> calculation.selections(only_available=True)
+        {'band': ['default', 'kpoints_opt'], 'density': ['default'], ...}
+
+        Combine both options to restrict to loadable quantities implementing a method:
+
+        >>> calculation.selections(method="to_view", only_available=True)
+        {'density': ['default'], 'exciton.density': ['default'], ...}
+        """
+        _ensure_all_quantities_imported()
+        result = {}
+        errors = []
+        all_quantities = list(_public_quantities())
+        with contextlib.ExitStack() as stack:
+            open_files = {}
+            cache = {}
+            for call_name, schema_name in all_quantities:
+                if only_available:
+                    sources = loadable.loadable_sources(
+                        self,
+                        call_name,
+                        schema_name,
+                        method,
+                        open_files,
+                        stack,
+                        cache,
+                        QUANTITIES,
+                        errors,
+                    )
+                    if sources:
+                        result[call_name] = sources
+                elif method is None or loadable.implements_method(
+                    self, call_name, method
+                ):
+                    # only_available=False never loads data; it only checks whether
+                    # the quantity implements the requested method.
+                    result[call_name] = loadable.possible_sources(schema_name)
+        if errors:
+            header = "Some quantities are available but could not be loaded:"
+            print("\n".join([header, *errors]))
+        return dict(sorted(result.items()))
+
     def __getattr__(self, name):
         # Resolves a quantity (or group) by name from the dispatcher _REGISTRY. Called
         # only when normal attribute lookup has already failed.
@@ -287,6 +394,30 @@ instead of the constructor Calculation()."""
             for dispatcher_cls in members:
                 _collect_to_database(dispatcher_cls, self._source, properties)
         return properties
+
+
+def _public_quantities():
+    """List (call_name, schema_name) pairs for all user-facing quantities.
+
+    Combines the dispatcher registry (new architecture) with the legacy ``QUANTITIES``
+    that are not yet ported. Private quantities (leading underscore) are excluded.
+    """
+    pairs = []
+    for key, entry in _REGISTRY.items():
+        if key.startswith("_"):
+            continue
+        if isinstance(entry, dict):  # group of quantities, e.g. exciton.density
+            for member, dispatcher_cls in entry.items():
+                if member.startswith("_"):
+                    continue
+                pairs.append((f"{key}.{member}", dispatcher_cls._quantity_name))
+        else:
+            pairs.append((key, entry._quantity_name))
+    for quantity in QUANTITIES:
+        if quantity.startswith("_") or quantity in _REGISTRY:
+            continue
+        pairs.append((quantity, quantity))
+    return pairs
 
 
 def _ensure_all_quantities_imported():

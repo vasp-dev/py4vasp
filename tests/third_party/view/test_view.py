@@ -416,3 +416,163 @@ def test_incorrect_shape_raises_error(view):
     incorrect_unit_cell = np.zeros((len(view.lattice_vectors), 2, 4))
     with pytest.raises(exception.IncorrectUsage):
         View(view.elements, incorrect_unit_cell, view.positions)
+
+
+def test_add_requires_compatible_trajectory_fields(not_core):
+    left = View(**base_input_view(is_structure=False))
+    right = View(**base_input_view(is_structure=False))
+
+    combined = left + right
+
+    assert np.array_equal(combined.positions, left.positions)
+    assert np.array_equal(combined.lattice_vectors, left.lattice_vectors)
+    assert np.array_equal(combined.elements, left.elements)
+
+    with pytest.raises(exception.IncorrectUsage):
+        left + View(**base_input_view(is_structure=True))
+
+
+def test_add_merges_scalar_fields_and_raises_on_conflict(not_core):
+    left = View(structure_title="left title", atom_radius=0.8, **base_input_view(False))
+    right = View(structure_title=None, atom_radius=0.8, **base_input_view(False))
+
+    combined = left + right
+
+    assert combined.structure_title == "left title"
+    assert combined.atom_radius == 0.8
+
+    with pytest.raises(exception.IncorrectUsage):
+        left + View(camera="perspective", **base_input_view(False))
+
+
+def test_add_combines_grid_scalars_and_ion_arrows(not_core):
+    number_atoms = len(base_input_view(False)["elements"][0])
+    shared_grid = GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "shared")
+    extra_grid = GridQuantity(np.ones((1, 2, 2, 2)), "extra")
+    shared_arrow = IonArrow(
+        quantity=np.ones((1, number_atoms, 3)),
+        label="forces",
+        color="#2FB5AB",
+        radius=0.1,
+    )
+    extra_arrow = IonArrow(
+        quantity=np.zeros((1, number_atoms, 3)),
+        label="moments",
+        color="#4C265F",
+        radius=0.2,
+    )
+
+    left = View(
+        grid_scalars=[shared_grid],
+        ion_arrows=[shared_arrow],
+        **base_input_view(False),
+    )
+    right = View(
+        grid_scalars=[copy.deepcopy(shared_grid), extra_grid],
+        ion_arrows=[copy.deepcopy(shared_arrow), extra_arrow],
+        **base_input_view(False),
+    )
+
+    combined = left + right
+
+    assert len(combined.grid_scalars) == 2
+    assert len(combined.ion_arrows) == 2
+    assert combined.grid_scalars[0].label == "shared"
+    assert combined.grid_scalars[1].label == "extra"
+    assert combined.ion_arrows[0].label == "forces"
+    assert combined.ion_arrows[1].label == "moments"
+
+
+def test_add_combines_special_sequences_as_sequences(not_core):
+    number_atoms = len(base_input_view(False)["elements"][0])
+    grid_left = GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "left")
+    grid_right = GridQuantity(np.ones((1, 2, 2, 2)), "right")
+    arrow_left = IonArrow(
+        quantity=np.ones((1, number_atoms, 3)),
+        label="left",
+        color="#2FB5AB",
+        radius=0.1,
+    )
+    arrow_right = IonArrow(
+        quantity=np.zeros((1, number_atoms, 3)),
+        label="right",
+        color="#4C265F",
+        radius=0.2,
+    )
+
+    left = View(
+        grid_scalars=(grid_left,),
+        ion_arrows=(arrow_left,),
+        **base_input_view(False),
+    )
+    right = View(
+        grid_scalars=(copy.deepcopy(grid_left), grid_right),
+        ion_arrows=(copy.deepcopy(arrow_left), arrow_right),
+        **base_input_view(False),
+    )
+
+    combined = left + right
+
+    assert isinstance(combined.grid_scalars, tuple)
+    assert isinstance(combined.ion_arrows, tuple)
+    assert tuple(grid.label for grid in combined.grid_scalars) == ("left", "right")
+    assert tuple(arrow.label for arrow in combined.ion_arrows) == ("left", "right")
+
+
+def test_add_special_sequence_preserves_left_sequence_type(not_core):
+    number_atoms = len(base_input_view(False)["elements"][0])
+    left_grid = [GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "left")]
+    right_grid = (
+        GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "left"),
+        GridQuantity(np.ones((1, 2, 2, 2)), "right"),
+    )
+    left_arrow = [
+        IonArrow(
+            quantity=np.ones((1, number_atoms, 3)),
+            label="left",
+            color="#2FB5AB",
+            radius=0.1,
+        )
+    ]
+    right_arrow = (
+        IonArrow(
+            quantity=np.ones((1, number_atoms, 3)),
+            label="left",
+            color="#2FB5AB",
+            radius=0.1,
+        ),
+        IonArrow(
+            quantity=np.zeros((1, number_atoms, 3)),
+            label="right",
+            color="#4C265F",
+            radius=0.2,
+        ),
+    )
+
+    left = View(grid_scalars=left_grid, ion_arrows=left_arrow, **base_input_view(False))
+    right = View(
+        grid_scalars=right_grid,
+        ion_arrows=right_arrow,
+        **base_input_view(False),
+    )
+
+    combined = left + right
+
+    assert isinstance(combined.grid_scalars, list)
+    assert isinstance(combined.ion_arrows, list)
+    assert [grid.label for grid in combined.grid_scalars] == ["left", "right"]
+    assert [arrow.label for arrow in combined.ion_arrows] == ["left", "right"]
+
+
+def test_add_does_not_trigger_validation(not_core, monkeypatch):
+    left = View(**base_input_view(False))
+    right = View(**base_input_view(False))
+
+    def _raise_if_called(*_, **__):
+        raise RuntimeError("validation should not run during View combination")
+
+    monkeypatch.setattr(View, "_verify", _raise_if_called)
+
+    combined = left + right
+
+    assert np.array_equal(combined.positions, left.positions)

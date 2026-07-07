@@ -217,7 +217,6 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                 fracture_toughness = elastic_tensor.get_fracture_toughness(
                     volume_per_atom
                 )
-                vickers_hardness = elastic_tensor.get_hardness()
 
         return (
             bulk_modulus,

@@ -10,13 +10,11 @@ from py4vasp import exception, raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
-    _dispatch,
     merge_default,
     merge_graphs,
     merge_strings,
     merge_to_database,
     quantity,
-    slice_steps,
 )
 from py4vasp._raw.data_db import Bandgap_DB
 from py4vasp._third_party import graph

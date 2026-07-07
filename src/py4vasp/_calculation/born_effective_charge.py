@@ -6,7 +6,6 @@ import numpy as np
 from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     DataSource,
-    _dispatch,
     merge_default,
     merge_strings,
     merge_to_database,
