@@ -183,7 +183,8 @@ def test_absorption_graph(electron, Assert):
 def test_transmission_graph(electron, Assert):
     energies = electron.ref.energies
     tensor = electron.ref.dielectric_function
-    default = [Plot(energies, _transmission(isotropic(tensor), energies), "transmission")]
+    eps = isotropic(tensor)
+    default = [Plot(energies, _transmission(eps, energies), "transmission")]
     check_graph(electron.transmission(), default, "transmission", Assert)
     eps_xx = get_direction(tensor, "xx")
     xx = [Plot(energies, _transmission(eps_xx, energies), "transmission_xx")]
@@ -297,3 +298,23 @@ def test_color_invalid_cmf_raises_error(visible):
 def test_color_invalid_spectrum_raises_error(visible):
     with pytest.raises(exception.IncorrectUsage):
         visible.color(spectrum="absorption")
+
+
+def test_factory_methods_read_dielectric_function(raw_data):
+    # Optics owns no data of its own; from_path/from_file must access the dielectric
+    # function in the schema rather than a nonexistent "optics" entry.
+    data = raw_data.dielectric_function("electron")
+    instances = (Optics.from_path(), Optics.from_file("vaspout.h5"))
+    calls = (
+        lambda optics: optics.read(),
+        lambda optics: optics.reflectivity(),
+        lambda optics: optics.selections(),
+        lambda optics: str(optics),
+    )
+    for optics in instances:
+        for call in calls:
+            with patch("py4vasp.raw.access") as mock_access:
+                mock_access.return_value.__enter__.return_value = data
+                call(optics)
+                mock_access.assert_called_once()
+                assert mock_access.call_args.args[0] == "dielectric_function"

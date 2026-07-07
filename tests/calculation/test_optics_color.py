@@ -28,7 +28,7 @@ def test_xyz_to_srgb_black():
 
 
 def test_xyz_to_srgb_primary_green():
-    # X=0, Y=1, Z=0 lies well outside the sRGB gamut on the green axis and clips to pure green
+    # X=0, Y=1, Z=0 lies outside the sRGB gamut and clips to pure green
     np.testing.assert_allclose(color.xyz_to_srgb(0, 1, 0), [0, 1, 0])
 
 
@@ -47,7 +47,7 @@ def test_spectrum_in_unit_range_gives_valid_rgb():
 
 @pytest.mark.parametrize("peak, channel", [(615, 0), (530, 1), (465, 2)])
 def test_monochromatic_spectrum_has_expected_hue(peak, channel):
-    # A spectrum peaked in the red/green/blue band should light up the R/G/B channel most.
+    # A spectrum peaked in the red/green/blue band lights up the R/G/B channel most.
     spectrum = np.exp(-((WAVELENGTHS - peak) ** 2) / (2 * 10**2))
     rgb = color.spectrum_to_rgb(WAVELENGTHS, spectrum, illuminant="E")
     assert np.argmax(rgb) == channel

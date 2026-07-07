@@ -280,7 +280,7 @@ class Optics(graph.Mixin):
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Public alias for read(). Check that method for examples and optional arguments."""
+        """Public alias for read(). See that method for the optional arguments."""
         return self.read(selection=selection)
 
     def reflectivity(self, selection: str | None = None) -> graph.Graph:
