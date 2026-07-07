@@ -69,6 +69,7 @@ def visible():
     )
     optics = Optics.from_data(raw_dielectric)
     optics.ref = types.SimpleNamespace()
+    optics.ref.raw_data = raw_dielectric
     optics.ref.energies = energies
     optics.ref.dielectric_function = data[..., 0] + 1j * data[..., 1]
     return optics
@@ -344,6 +345,54 @@ def test_color_invalid_illuminant_raises_error(visible):
 def test_color_invalid_cmf_raises_error(visible):
     with pytest.raises(exception.IncorrectUsage):
         visible.color(cmf="does-not-exist")
+
+
+def test_to_database(visible, Assert):
+    from py4vasp._raw.data_db import Optics_DB
+
+    handler = OpticsHandler.from_data(visible.ref.raw_data)
+    db_data = handler.to_database()
+    assert isinstance(db_data, Optics_DB)
+
+    energies = visible.ref.energies
+    eps = isotropic(visible.ref.dielectric_function)
+    assert db_data.energy_min == float(np.min(energies))
+    assert db_data.energy_max == float(np.max(energies))
+    Assert.allclose(db_data.reflectivity_min, np.min(_reflectivity(eps)))
+    Assert.allclose(db_data.reflectivity_max, np.max(_reflectivity(eps)))
+    Assert.allclose(db_data.absorption_min, np.min(_absorption(eps, energies)))
+    Assert.allclose(db_data.absorption_max, np.max(_absorption(eps, energies)))
+    Assert.allclose(db_data.transmission_min, np.min(_transmission(eps, energies)))
+    Assert.allclose(db_data.transmission_max, np.max(_transmission(eps, energies)))
+
+    expected_color = Color(_reference_color(eps, energies))
+    Assert.allclose(db_data.color_rgb, list(expected_color.rgb))
+    assert db_data.color_hex == expected_color.hex
+    # scalar fields are plain floats and the color is stored as a list / hex string
+    assert all(isinstance(getattr(db_data, name), float) for name in (
+        "energy_min", "reflectivity_max", "transmission_min"
+    ))
+    assert isinstance(db_data.color_rgb, list)
+    assert isinstance(db_data.color_hex, str)
+
+
+def test_to_database_keyed_by_optics(visible):
+    from py4vasp._raw.data_db import Optics_DB
+
+    result = visible._to_database()
+    assert isinstance(result, dict)
+    # the DataSource ignores the selection, so all sources collapse to a single "optics"
+    assert "optics" in result
+    assert isinstance(result["optics"], Optics_DB)
+    # keys are derived from "optics", never from the underlying "dielectric_function"
+    assert not any(key.startswith("dielectric_function") for key in result)
+
+
+def test_to_database_scalar_dielectric_function_is_skipped(raw_data):
+    optics = Optics.from_data(raw_data.dielectric_function("q_point"))
+    # scalar dielectric functions cannot yield directional optics; database collection
+    # must swallow the error and simply omit the quantity rather than propagate it
+    assert optics._to_database() == {}
 
 
 def test_factory_methods_read_dielectric_function(raw_data):

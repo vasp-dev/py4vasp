@@ -12,8 +12,10 @@ from py4vasp._calculation.dispatch import (
     merge_default,
     merge_graphs,
     merge_strings,
+    merge_to_database,
     quantity,
 )
+from py4vasp._raw.data_db import Optics_DB
 from py4vasp._raw.definition import unique_selections as _schema_sources
 from py4vasp._third_party import graph
 from py4vasp._util import convert, index, select
@@ -143,6 +145,28 @@ class OpticsHandler:
         if len(results) == 1:
             return next(iter(results.values()))
         return results
+
+    def to_database(self) -> Optics_DB:
+        """Serialize scalar optical properties for database storage.
+
+        Extracts the energy range and the range of each coefficient for the isotropic
+        average, along with the perceived color (from the isotropic reflectivity under
+        the default illuminant and observer) as sRGB and HEX.
+        """
+        data = self.to_dict()
+        color = self.color()
+        return Optics_DB(
+            energy_min=float(np.min(data["energies"])),
+            energy_max=float(np.max(data["energies"])),
+            reflectivity_min=float(np.min(data["reflectivity"])),
+            reflectivity_max=float(np.max(data["reflectivity"])),
+            absorption_min=float(np.min(data["absorption"])),
+            absorption_max=float(np.max(data["absorption"])),
+            transmission_min=float(np.min(data["transmission"])),
+            transmission_max=float(np.max(data["transmission"])),
+            color_rgb=[float(channel) for channel in color.rgb],
+            color_hex=color.hex,
+        )
 
     def _components(self, selection, default_components):
         """Yield ``(component, direction_label, epsilon)`` for each selected combination.
@@ -539,3 +563,17 @@ class Optics(graph.Mixin):
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
+
+    def _to_database(self) -> dict:
+        """Return {optics[_selection]: handler_result} for database storage.
+
+        The optics quantity derives from the dielectric function, so data is looked up
+        under "dielectric_function" but stored under the "optics" key.
+        """
+        return merge_to_database(
+            self._source,
+            _DATA_QUANTITY,
+            OpticsHandler.from_data,
+            OpticsHandler.to_database,
+            key_name="optics",
+        )
