@@ -157,3 +157,13 @@ def test_absorption_graph(electron, Assert):
     eps_xx = get_direction(tensor, "xx")
     xx = [Plot(energies, _absorption(eps_xx, energies), "absorption_xx")]
     check_graph(electron.absorption("xx"), xx, "absorption", Assert)
+
+
+def test_transmission_graph(electron, Assert):
+    energies = electron.ref.energies
+    tensor = electron.ref.dielectric_function
+    default = [Plot(energies, _transmission(isotropic(tensor), energies), "transmission")]
+    check_graph(electron.transmission(), default, "transmission", Assert)
+    eps_xx = get_direction(tensor, "xx")
+    xx = [Plot(energies, _transmission(eps_xx, energies), "transmission_xx")]
+    check_graph(electron.transmission("xx"), xx, "transmission", Assert)
