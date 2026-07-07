@@ -219,6 +219,40 @@ def test_plot_direction(electron, Assert):
     check_graph(electron.plot("xx"), refs, "coefficient", Assert)
 
 
+def test_plot_single_component(electron, Assert):
+    # selecting a coefficient plots only that coefficient and labels the axis with it
+    energies = electron.ref.energies
+    eps = isotropic(electron.ref.dielectric_function)
+    expected = [Plot(energies, _transmission(eps, energies), "transmission")]
+    check_graph(electron.plot("transmission"), expected, "transmission", Assert)
+
+
+def test_plot_component_equivalent_to_method(electron):
+    # plot("transmission") is equivalent to transmission()
+    from_plot = electron.plot("transmission")
+    from_method = electron.transmission()
+    assert [s.label for s in from_plot.series] == [s.label for s in from_method.series]
+    assert from_plot.ylabel == from_method.ylabel
+
+
+def test_plot_multiple_components(electron, Assert):
+    energies = electron.ref.energies
+    eps = isotropic(electron.ref.dielectric_function)
+    expected = [
+        Plot(energies, _transmission(eps, energies), "transmission"),
+        Plot(energies, _reflectivity(eps), "reflectivity"),
+    ]
+    fig = electron.plot("transmission, reflectivity")
+    check_graph(fig, expected, "coefficient", Assert)
+
+
+def test_plot_component_with_direction(electron, Assert):
+    energies = electron.ref.energies
+    eps = get_direction(electron.ref.dielectric_function, "xx")
+    expected = [Plot(energies, _reflectivity(eps), "reflectivity_xx")]
+    check_graph(electron.plot("reflectivity(xx)"), expected, "reflectivity", Assert)
+
+
 def test_to_plotly(electron):
     with patch.object(Optics, "to_graph") as mock_graph:
         fig = electron.to_plotly("xx")
@@ -262,7 +296,7 @@ def test_color_default(visible, Assert):
 def test_color_defaults_match_explicit(visible, Assert):
     Assert.allclose(
         visible.color(),
-        visible.color(illuminant="D65", cmf="1931_2", spectrum="reflectivity"),
+        visible.color(illuminant="D65", cmf="1931_2"),
     )
 
 
@@ -273,21 +307,26 @@ def test_color_range(visible):
 
 
 def test_color_from_transmission(visible, Assert):
+    # the coefficient is now part of the selection, defaulting to reflectivity
     eps = isotropic(visible.ref.dielectric_function)
     expected = _reference_color(eps, visible.ref.energies, spectrum="transmission")
-    Assert.allclose(visible.color(spectrum="transmission"), expected)
+    Assert.allclose(visible.color("transmission"), expected)
 
 
-def test_color_spectrum_switch_changes_result(visible):
-    reflectivity = visible.color(spectrum="reflectivity")
-    transmission = visible.color(spectrum="transmission")
-    assert not np.allclose(reflectivity, transmission)
+def test_color_component_switch_changes_result(visible):
+    assert not np.allclose(visible.color("reflectivity"), visible.color("transmission"))
 
 
 def test_color_list_selection(visible):
     result = visible.color("xx, yy")
-    assert set(result) == {"xx", "yy"}
+    assert set(result) == {"reflectivity_xx", "reflectivity_yy"}
     assert all(rgb.shape == (3,) for rgb in result.values())
+
+
+def test_color_multiple_components(visible, Assert):
+    result = visible.color("reflectivity, transmission")
+    assert set(result) == {"reflectivity", "transmission"}
+    Assert.allclose(result["transmission"], visible.color("transmission"))
 
 
 def test_color_invalid_illuminant_raises_error(visible):
@@ -298,11 +337,6 @@ def test_color_invalid_illuminant_raises_error(visible):
 def test_color_invalid_cmf_raises_error(visible):
     with pytest.raises(exception.IncorrectUsage):
         visible.color(cmf="does-not-exist")
-
-
-def test_color_invalid_spectrum_raises_error(visible):
-    with pytest.raises(exception.IncorrectUsage):
-        visible.color(spectrum="absorption")
 
 
 def test_factory_methods_read_dielectric_function(raw_data):

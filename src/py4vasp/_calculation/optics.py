@@ -92,37 +92,72 @@ class OpticsHandler:
             return {"energies": energies, **next(iter(results.values()))}
         return {"energies": energies, **results}
 
-    def reflectivity_graph(self, selection=None) -> graph.Graph:
-        return self._coefficient_graph("reflectivity", selection)
+    def to_graph(self, selection=None, default_components=None) -> graph.Graph:
+        """Plot the selected optical coefficients.
 
-    def absorption_graph(self, selection=None) -> graph.Graph:
-        return self._coefficient_graph("absorption", selection)
+        The selection chooses the coefficient (``transmission``, ``absorption``,
+        ``reflectivity``) in addition to the direction. If no coefficient is part of the
+        selection, *default_components* is used (all three by default). The y label is
+        the coefficient name when only a single coefficient is shown and "coefficient"
+        otherwise.
+        """
+        energies = self._energies()
+        series = []
+        shown = set()
+        for component, label, epsilon in self._components(selection, default_components):
+            shown.add(component)
+            spectrum = _COEFFICIENTS[component](epsilon, energies)
+            series.append(
+                graph.Series(energies, spectrum, self._label(component, label))
+            )
+        ylabel = shown.pop() if len(shown) == 1 else "coefficient"
+        return graph.Graph(series=series, xlabel="Energy (eV)", ylabel=ylabel)
 
     def transmission_graph(self, selection=None) -> graph.Graph:
-        return self._coefficient_graph("transmission", selection)
+        return self.to_graph(selection, default_components=["transmission"])
 
-    def color(
-        self, selection=None, *, illuminant="D65", cmf="1931_2", spectrum="reflectivity"
-    ):
-        """Perceived sRGB color(s) of the material for the selected direction(s)."""
-        coefficient = self._color_spectrum(spectrum)
+    def absorption_graph(self, selection=None) -> graph.Graph:
+        return self.to_graph(selection, default_components=["absorption"])
+
+    def reflectivity_graph(self, selection=None) -> graph.Graph:
+        return self.to_graph(selection, default_components=["reflectivity"])
+
+    def color(self, selection=None, *, illuminant="D65", cmf="1931_2"):
+        """Perceived sRGB color(s) for the selected coefficient(s) and direction(s).
+
+        Uses the same selection logic as :meth:`to_graph`, but derives the color from a
+        single coefficient defaulting to the reflectivity. Selecting several coefficients
+        or directions returns a dictionary of colors keyed by the selection.
+        """
         energies = self._energies()
-        results = {
-            label: self._rgb(coefficient(epsilon, energies), energies, illuminant, cmf)
-            for label, epsilon in self._dielectric_function(selection)
-        }
+        results = {}
+        for component, label, epsilon in self._components(selection, ["reflectivity"]):
+            spectrum = _COEFFICIENTS[component](epsilon, energies)
+            results[self._label(component, label)] = self._rgb(
+                spectrum, energies, illuminant, cmf
+            )
         if len(results) == 1:
             return next(iter(results.values()))
         return results
 
-    def _color_spectrum(self, spectrum):
-        if spectrum not in ("reflectivity", "transmission"):
-            message = (
-                f'The color cannot be derived from "{spectrum}". Please select either '
-                '"reflectivity" (default) or "transmission".'
-            )
-            raise exception.IncorrectUsage(message)
-        return _COEFFICIENTS[spectrum]
+    def _components(self, selection, default_components):
+        """Yield ``(component, direction_label, epsilon)`` for each selected combination.
+
+        The coefficient tokens are filtered out of the selection to obtain the direction,
+        which the Selector reduces on the complex dielectric function. A coefficient
+        present in a branch overrides *default_components* for that branch.
+        """
+        default_components = default_components or list(_COEFFICIENTS)
+        selector = self._make_selector()
+        tree = select.Tree.from_selection(selection or "")
+        branches = list(tree.selections())
+        directions = list(tree.selections(filter=set(_COEFFICIENTS)))
+        for branch, direction in zip(branches, directions):
+            components = [c for c in _COEFFICIENTS if select.contains(branch, c)]
+            epsilon = convert.to_complex(np.ascontiguousarray(selector[direction]))
+            label = selector.label(direction) or "isotropic"
+            for component in components or default_components:
+                yield component, label, epsilon
 
     def _rgb(self, spectrum, energies, illuminant, cmf):
         # Convert photon energies to wavelengths and sort them in ascending order as
@@ -136,29 +171,6 @@ class OpticsHandler:
             illuminant=illuminant,
             cmf=cmf,
         )
-
-    def to_graph(self, selection=None) -> graph.Graph:
-        """Merge transmission, absorption, and reflectivity into a single figure."""
-        energies = self._energies()
-        series = [
-            graph.Series(
-                energies, coefficient(epsilon, energies), self._label(name, label)
-            )
-            for label, epsilon in self._dielectric_function(selection)
-            for name, coefficient in _COEFFICIENTS.items()
-        ]
-        return graph.Graph(series=series, xlabel="Energy (eV)", ylabel="coefficient")
-
-    def _coefficient_graph(self, name, selection) -> graph.Graph:
-        energies = self._energies()
-        coefficient = _COEFFICIENTS[name]
-        series = [
-            graph.Series(
-                energies, coefficient(epsilon, energies), self._label(name, label)
-            )
-            for label, epsilon in self._dielectric_function(selection)
-        ]
-        return graph.Graph(series=series, xlabel="Energy (eV)", ylabel=name)
 
     def _label(self, name, direction):
         return name if direction == "isotropic" else f"{name}_{direction}"
@@ -191,9 +203,10 @@ optics:
         behave exactly as for the dielectric function itself.
         """
         selector = self._make_selector()
-        for sel in select.Tree.from_selection(selection or "").selections():
-            epsilon = convert.to_complex(np.ascontiguousarray(selector[sel]))
-            label = selector.label(sel) or "isotropic"
+        tree = select.Tree.from_selection(selection or "")
+        for direction in tree.selections(filter=set(_COEFFICIENTS)):
+            epsilon = convert.to_complex(np.ascontiguousarray(selector[direction]))
+            label = selector.label(direction) or "isotropic"
             yield label, epsilon
 
     def _make_selector(self):
@@ -323,32 +336,31 @@ class Optics(graph.Mixin):
         *,
         illuminant: str = "D65",
         cmf: str = "1931_2",
-        spectrum: str = "reflectivity",
     ):
         """Compute the perceived sRGB color of the material.
 
-        The color is obtained by lighting the material's reflectivity (or transmission)
-        spectrum with a standard *illuminant* and integrating against the CIE color
-        matching function *cmf*.
+        The color is obtained by lighting a spectrum of the material with a standard
+        *illuminant* and integrating against the CIE color matching function *cmf*.
+        The selection chooses the coefficient (defaulting to the reflectivity) and the
+        direction, using the same grammar as :meth:`plot`.
 
         Parameters
         ----------
         selection : str
-            Select which dielectric function and which direction(s) to evaluate.
-            Defaults to the isotropic average.
+            Select the dielectric function, the coefficient (``reflectivity``,
+            ``transmission``, ``absorption``), and the direction(s) to evaluate.
+            Defaults to the reflectivity of the isotropic average.
         illuminant : str
             Standard illuminant used to light the material (default "D65"). Use
             :func:`py4vasp._calculation._optics_color.list_illuminants` for the options.
         cmf : str
             CIE color matching function / standard observer (default "1931_2").
-        spectrum : str
-            Whether to derive the color from "reflectivity" (default) or "transmission".
 
         Returns
         -------
         np.ndarray
             The sRGB color as a length-3 array in [0, 1]. If the selection resolves to
-            multiple directions, a dictionary of colors keyed by direction is returned.
+            multiple coefficients or directions, a dictionary of colors is returned.
         """
         return merge_default(
             self._source,
@@ -358,7 +370,6 @@ class Optics(graph.Mixin):
             OpticsHandler.color,
             illuminant=illuminant,
             cmf=cmf,
-            spectrum=spectrum,
         )
 
     def to_graph(self, selection: str | None = None) -> graph.Graph:
