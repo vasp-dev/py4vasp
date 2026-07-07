@@ -111,3 +111,12 @@ def test_read_scalar_dielectric_function_raises_error(raw_data):
     optics = Optics.from_data(raw_data.dielectric_function("q_point"))
     with pytest.raises(exception.IncorrectUsage):
         optics.read()
+
+
+def test_print(electron, format_):
+    actual, _ = format_(electron)
+    reference = """\
+optics:
+    energies: [0.00, 1.00] 50 points
+    directions: isotropic, xx, yy, zz, xy, xz, yz"""
+    assert actual == {"text/plain": reference}

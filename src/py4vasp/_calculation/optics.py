@@ -6,7 +6,12 @@ the dielectric function that VASP computes."""
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._calculation.dispatch import DataSource, merge_default, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._third_party import graph
 from py4vasp._util import convert, index, select
 
@@ -79,6 +84,14 @@ class OpticsHandler:
     def selections(self) -> dict:
         """Returns a dictionary of the directions along which optics can be evaluated."""
         return {"directions": [key for key in self._init_directions_dict() if key]}
+
+    def __str__(self) -> str:
+        energies = self._raw_dielectric_function.energies
+        directions = ", ".join(key for key in self._init_directions_dict() if key)
+        return f"""\
+optics:
+    energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
+    directions: {directions}"""
 
     def _energies(self):
         return self._raw_dielectric_function.energies[:]
@@ -200,6 +213,15 @@ class Optics(graph.Mixin):
             selection,
             self._handler_factory,
             OpticsHandler.selections,
+        )
+
+    def __str__(self, selection: str | None = None) -> str:
+        return merge_strings(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            OpticsHandler.__str__,
         )
 
     def _repr_pretty_(self, p, cycle):
