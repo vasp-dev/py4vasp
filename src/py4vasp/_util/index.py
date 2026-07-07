@@ -127,14 +127,14 @@ class Selector:
     def _make_label(self, map_, number, index, size):
         if not self._use_number_labels:
             return number
-        indices = range(size)
-        index, *rest = list(indices[_make_slice(index)])
+        indices = np.arange(size)
+        index, *rest = indices[_make_slice(index)].tolist()
         message = f"Integer label {number} maps to more than a single index."
         _raise_error_if_list_not_empty(rest, message)
         for key, value in map_.items():
             if key.isdecimal():
                 continue
-            range_ = indices[_make_slice(value)]
+            range_ = indices[_make_slice(value)].tolist()
             if index in range_:
                 return f"{key}_{range_.index(index) + 1}"
         return number

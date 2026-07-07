@@ -453,6 +453,18 @@ def test_labels_without_number_labels():
     assert selector.label(("0",)) == "0"
 
 
+@pytest.mark.parametrize(
+    "selection, label",
+    [("1", "A_1"), ("2", "B_1"), ("3", "A_2")],
+)
+def test_number_labels_with_noncontiguous_indices(selection, label):
+    # an element with non-contiguous atoms (e.g. POSCAR order A B A) maps a key
+    # to a list of indices, which _make_slice turns into a numpy array
+    map_ = {0: {"A": [0, 2], "B": [1], "1": 0, "2": 1, "3": 2}}
+    selector = index.Selector(map_, np.zeros(3), use_number_labels=True)
+    assert selector.label((selection,)) == label
+
+
 def test_error_when_duplicate_key():
     with pytest.raises(exception._Py4VaspInternalError):
         index.Selector({0: {"A": 1}, 1: {"A": 2}}, None)
