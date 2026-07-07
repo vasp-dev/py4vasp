@@ -107,9 +107,8 @@ class OpticsHandler:
         energies = self._energies()
         series = []
         shown = set()
-        for component, label, epsilon in self._components(
-            selection, default_components
-        ):
+        components = self._components(selection, default_components)
+        for component, label, epsilon in components:
             shown.add(component)
             spectrum = _COEFFICIENTS[component](epsilon, energies)
             series.append(
@@ -137,9 +136,8 @@ class OpticsHandler:
         """
         energies = self._energies()
         results = {}
-        for component, direction_label, epsilon in self._components(
-            selection, ["reflectivity"]
-        ):
+        components = self._components(selection, ["reflectivity"])
+        for component, direction_label, epsilon in components:
             spectrum = _COEFFICIENTS[component](epsilon, energies)
             rgb = self._rgb(spectrum, energies, illuminant, cmf)
             label = self._label(component, direction_label)

@@ -9,19 +9,17 @@ from py4vasp import exception
 from py4vasp._util.color import Color
 
 REFERENCE_COLORS = ("#4c265f", "#2fb5ab", "#2c68fc", "#a82c35", "#808080", "#212529")
-REFERENCE_RGB = (
-    np.array(
-        [
-            [76, 38, 95],
-            [47, 181, 171],
-            [44, 104, 252],
-            [168, 44, 53],
-            [128, 128, 128],
-            [33, 37, 41],
-        ]
-    )
-    / 255
+_REFERENCE_RGB_255 = np.array(
+    [
+        [76, 38, 95],
+        [47, 181, 171],
+        [44, 104, 252],
+        [168, 44, 53],
+        [128, 128, 128],
+        [33, 37, 41],
+    ]
 )
+REFERENCE_RGB = _REFERENCE_RGB_255 / 255
 REFERENCE_LAB = [
     (22.824, 28.808, -26.898),
     (66.968, -37.078, -5.109),
@@ -62,9 +60,8 @@ def test_hex_clips_out_of_range():
 
 def test_to_lab(Assert):
     for hex_code, expected in zip(REFERENCE_COLORS, REFERENCE_LAB):
-        Assert.allclose(
-            np.round(Color.from_hex(hex_code).to_lab(), 3), np.array(expected)
-        )
+        actual = np.round(Color.from_hex(hex_code).to_lab(), 3)
+        Assert.allclose(actual, np.array(expected))
 
 
 def test_label():
@@ -128,8 +125,7 @@ def test_color_is_frozen():
 
 
 def test_color_equality_and_hash():
-    assert Color.from_hex("#2fb5ab", label="teal") == Color.from_hex(
-        "#2fb5ab", label="teal"
-    )
-    assert Color.from_hex("#2fb5ab") != Color.from_hex("#2fb5ab", label="teal")
+    teal = Color.from_hex("#2fb5ab", label="teal")
+    assert teal == Color.from_hex("#2fb5ab", label="teal")
+    assert Color.from_hex("#2fb5ab") != teal
     assert len({Color.from_hex("#2fb5ab"), Color.from_hex("#2fb5ab")}) == 1

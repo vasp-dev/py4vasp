@@ -144,18 +144,13 @@ def _to_rgb(rgb):
 
 
 def _hex_to_rgb(hex_code):
+    message = f'"{hex_code}" is not a valid HTML color code (expected e.g. "#2fb5ab").'
     digits = hex_code.lstrip("#")
     if len(digits) != 6:
-        message = (
-            f'"{hex_code}" is not a valid HTML color code (expected e.g. "#2fb5ab").'
-        )
         raise exception.IncorrectUsage(message)
     try:
         channels = [int(digits[i : i + 2], 16) for i in (0, 2, 4)]
     except ValueError:
-        message = (
-            f'"{hex_code}" is not a valid HTML color code (expected e.g. "#2fb5ab").'
-        )
         raise exception.IncorrectUsage(message) from None
     return tuple(channel / 255 for channel in channels)
 
