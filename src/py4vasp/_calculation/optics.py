@@ -93,6 +93,9 @@ class OpticsHandler:
     def reflectivity_graph(self, selection=None) -> graph.Graph:
         return self._coefficient_graph("reflectivity", selection)
 
+    def absorption_graph(self, selection=None) -> graph.Graph:
+        return self._coefficient_graph("absorption", selection)
+
     def _coefficient_graph(self, name, selection) -> graph.Graph:
         energies = self._energies()
         coefficient = _COEFFICIENTS[name]
@@ -234,6 +237,16 @@ class Optics(graph.Mixin):
             selection,
             self._handler_factory,
             OpticsHandler.reflectivity_graph,
+        )
+
+    def absorption(self, selection: str | None = None) -> graph.Graph:
+        """Plot the (max-normalized) absorption spectrum for the selected direction(s)."""
+        return merge_graphs(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            OpticsHandler.absorption_graph,
         )
 
     def to_graph(self, selection: str | None = None) -> graph.Graph:

@@ -147,3 +147,13 @@ def test_reflectivity_graph(electron, Assert):
     check_graph(electron.reflectivity(), default, "reflectivity", Assert)
     xx = [Plot(energies, _reflectivity(get_direction(tensor, "xx")), "reflectivity_xx")]
     check_graph(electron.reflectivity("xx"), xx, "reflectivity", Assert)
+
+
+def test_absorption_graph(electron, Assert):
+    energies = electron.ref.energies
+    tensor = electron.ref.dielectric_function
+    default = [Plot(energies, _absorption(isotropic(tensor), energies), "absorption")]
+    check_graph(electron.absorption(), default, "absorption", Assert)
+    eps_xx = get_direction(tensor, "xx")
+    xx = [Plot(energies, _absorption(eps_xx, energies), "absorption_xx")]
+    check_graph(electron.absorption("xx"), xx, "absorption", Assert)
