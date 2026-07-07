@@ -11,7 +11,8 @@ import numpy as np
 import numpy.typing as npt
 
 from py4vasp import exception
-from py4vasp._util import convert, import_
+from py4vasp._util import import_
+from py4vasp._util.color import Color
 
 ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
@@ -34,7 +35,7 @@ class _Arrow3d(NamedTuple):
         return (
             list(self.tail),
             list(self.tip),
-            list(convert.to_rgb(self.color)),
+            list(Color(self.color).rgb),
             self.radius,
         )
 

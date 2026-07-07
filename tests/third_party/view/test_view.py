@@ -13,7 +13,8 @@ import pytest
 from py4vasp import exception
 from py4vasp._third_party.view import View
 from py4vasp._third_party.view.view import GridQuantity, IonArrow, Isosurface
-from py4vasp._util import convert, import_
+from py4vasp._util import import_
+from py4vasp._util.color import Color
 
 ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
@@ -274,7 +275,7 @@ def test_ion_arrows(view_arrow, Assert):
             output_radius = msg_archive[4]
             Assert.allclose(expected_tip, output_tip)
             Assert.allclose(expected_tail, output_tail)
-            Assert.allclose(convert.to_rgb(expected_color), output_color)
+            Assert.allclose(Color(expected_color).rgb, output_color)
             assert expected_radius == output_radius
             idx_msg += 1
 
@@ -310,7 +311,7 @@ def test_shifted_ion_arrows(view_arrow, Assert):
             output_radius = msg_archive[4]
             Assert.allclose(expected_tip, output_tip)
             Assert.allclose(expected_tail, output_tail)
-            Assert.allclose(convert.to_rgb(expected_color), output_color)
+            Assert.allclose(Color(expected_color).rgb, output_color)
             assert expected_radius == output_radius
             idx_msg += 1
 

@@ -7,7 +7,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._third_party.graph import Graph, Series, plot
-from py4vasp._util import convert
+from py4vasp._util.color import Color
 
 
 def test_plot():
@@ -58,6 +58,6 @@ def test_many_colors(not_core):
 
 
 def color_distance(color1, color2):
-    lab1 = convert.to_lab(color1)
-    lab2 = convert.to_lab(color2)
+    lab1 = Color(color1).to_lab()
+    lab2 = Color(color2).to_lab()
     return np.linalg.norm(lab1 - lab2)
