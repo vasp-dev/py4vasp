@@ -86,6 +86,7 @@ def test_from_data_creates_dispatcher(electron):
 def test_selections(electron):
     assert electron.selections() == {
         "optics": list(unique_selections("dielectric_function")),
+        "components": ["transmission", "absorption", "reflectivity"],
         "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
     }
     # the sources include the schema entries the optics quantity derives from

@@ -176,9 +176,10 @@ class OpticsHandler:
         return name if direction == "isotropic" else f"{name}_{direction}"
 
     def selections(self) -> dict:
-        """Returns the dielectric function sources and directions that can be selected."""
+        """Returns the sources, components, and directions that can be selected."""
         return {
             "optics": list(_schema_sources(_DATA_QUANTITY)),
+            "components": list(_COEFFICIENTS),
             "directions": [key for key in self._init_directions_dict() if key],
         }
 
