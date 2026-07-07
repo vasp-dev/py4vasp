@@ -58,3 +58,9 @@ def test_optics_is_registered_and_resolves():
 
 def test_from_data_creates_dispatcher(electron):
     assert isinstance(electron, Optics)
+
+
+def test_selections(electron):
+    assert electron.selections() == {
+        "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"]
+    }

@@ -3,9 +3,12 @@
 """Optical properties (transmission, absorption, reflectivity, color) derived from
 the dielectric function that VASP computes."""
 
-from py4vasp import raw
-from py4vasp._calculation.dispatch import DataSource, quantity
+import numpy as np
+
+from py4vasp import exception, raw
+from py4vasp._calculation.dispatch import DataSource, merge_default, quantity
 from py4vasp._third_party import graph
+from py4vasp._util import convert, index, select
 
 # The optics quantity owns no raw data of its own; it derives every quantity from the
 # dielectric function. Dispatch therefore accesses the "dielectric_function" schema
@@ -20,8 +23,66 @@ class OpticsHandler:
         self._raw_dielectric_function = raw_dielectric_function
 
     @classmethod
-    def from_data(cls, raw_dielectric_function: raw.DielectricFunction) -> "OpticsHandler":
+    def from_data(
+        cls, raw_dielectric_function: raw.DielectricFunction
+    ) -> "OpticsHandler":
         return cls(raw_dielectric_function)
+
+    def selections(self) -> dict:
+        """Returns a dictionary of the directions along which optics can be evaluated."""
+        return {"directions": [key for key in self._init_directions_dict() if key]}
+
+    def _energies(self):
+        return self._raw_dielectric_function.energies[:]
+
+    def _dielectric_function(self, selection):
+        """Complex dielectric function ε along each selected direction.
+
+        Yields ``(label, epsilon)`` where *epsilon* is the complex ε spectrum for the
+        selected direction (default: isotropic average of the diagonal). The selection
+        is routed through the standard ``select.Tree``/``index.Selector`` machinery so
+        that combinations (``"xx + yy"``), lists (``"xx, yy"``) and the named directions
+        behave exactly as for the dielectric function itself.
+        """
+        selector = self._make_selector()
+        for sel in select.Tree.from_selection(selection or "").selections():
+            epsilon = convert.to_complex(np.ascontiguousarray(selector[sel]))
+            label = selector.label(sel) or "isotropic"
+            yield label, epsilon
+
+    def _make_selector(self):
+        maps = {0: self._init_directions_dict()}
+        return index.Selector(maps, self._get_data(), reduction=np.average)
+
+    def _init_directions_dict(self):
+        return {
+            None: [0, 4, 8],
+            "isotropic": [0, 4, 8],
+            "xx": 0,
+            "yy": 4,
+            "zz": 8,
+            "xy": [1, 3],
+            "xz": [2, 6],
+            "yz": [5, 7],
+        }
+
+    def _get_data(self):
+        if not self._has_tensor_data():
+            message = (
+                "Optical properties require a dielectric function with directional "
+                "(3x3 tensor) data, but the selected dielectric function is a scalar."
+            )
+            raise exception.IncorrectUsage(message)
+        *_, number_points, complex_ = (
+            self._raw_dielectric_function.dielectric_function.shape
+        )
+        new_shape = (9, number_points, complex_)
+        return np.reshape(
+            np.array(self._raw_dielectric_function.dielectric_function), new_shape
+        )
+
+    def _has_tensor_data(self):
+        return self._raw_dielectric_function.dielectric_function.ndim == 4
 
 
 @quantity("optics")
@@ -54,6 +115,16 @@ class Optics(graph.Mixin):
 
     def to_graph(self, selection: str | None = None) -> graph.Graph:
         raise NotImplementedError
+
+    def selections(self, selection: str | None = None) -> dict:
+        """Returns a dictionary of the directions along which optics can be evaluated."""
+        return merge_default(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            OpticsHandler.selections,
+        )
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
