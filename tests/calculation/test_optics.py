@@ -12,6 +12,7 @@ from py4vasp._calculation import QUANTITIES, Calculation
 from py4vasp._calculation import _optics_color as color
 from py4vasp._calculation.optics import Optics, OpticsHandler
 from py4vasp._raw.definition import unique_selections
+from py4vasp._util.color import Color
 
 HBAR_C = 1239.84  # eV·nm
 
@@ -291,43 +292,48 @@ def _reference_color(eps, energies, spectrum="reflectivity", **kwargs):
 def test_color_default(visible, Assert):
     eps = isotropic(visible.ref.dielectric_function)
     expected = _reference_color(eps, visible.ref.energies)
-    Assert.allclose(visible.color(), expected)
+    result = visible.color()
+    assert isinstance(result, Color)
+    assert result.label == "reflectivity"
+    Assert.allclose(result.rgb, expected)
 
 
-def test_color_defaults_match_explicit(visible, Assert):
-    Assert.allclose(
-        visible.color(),
-        visible.color(illuminant="D65", cmf="1931_2"),
-    )
+def test_color_defaults_match_explicit(visible):
+    assert visible.color() == visible.color(illuminant="D65", cmf="1931_2")
 
 
 def test_color_range(visible):
-    rgb = visible.color("xx")
-    assert rgb.shape == (3,)
-    assert np.all(rgb >= 0) and np.all(rgb <= 1)
+    color = visible.color("xx")
+    assert len(color.rgb) == 3
+    assert all(0 <= channel <= 1 for channel in color.rgb)
 
 
 def test_color_from_transmission(visible, Assert):
     # the coefficient is now part of the selection, defaulting to reflectivity
     eps = isotropic(visible.ref.dielectric_function)
     expected = _reference_color(eps, visible.ref.energies, spectrum="transmission")
-    Assert.allclose(visible.color("transmission"), expected)
+    result = visible.color("transmission")
+    assert result.label == "transmission"
+    Assert.allclose(result.rgb, expected)
 
 
 def test_color_component_switch_changes_result(visible):
-    assert not np.allclose(visible.color("reflectivity"), visible.color("transmission"))
+    reflectivity = visible.color("reflectivity").rgb
+    transmission = visible.color("transmission").rgb
+    assert not np.allclose(reflectivity, transmission)
 
 
 def test_color_list_selection(visible):
     result = visible.color("xx, yy")
     assert set(result) == {"reflectivity_xx", "reflectivity_yy"}
-    assert all(rgb.shape == (3,) for rgb in result.values())
+    assert all(isinstance(color, Color) for color in result.values())
+    assert result["reflectivity_xx"].label == "reflectivity_xx"
 
 
 def test_color_multiple_components(visible, Assert):
     result = visible.color("reflectivity, transmission")
     assert set(result) == {"reflectivity", "transmission"}
-    Assert.allclose(result["transmission"], visible.color("transmission"))
+    Assert.allclose(result["transmission"].rgb, visible.color("transmission").rgb)
 
 
 def test_color_invalid_illuminant_raises_error(visible):

@@ -17,6 +17,7 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._raw.definition import unique_selections as _schema_sources
 from py4vasp._third_party import graph
 from py4vasp._util import convert, index, select
+from py4vasp._util.color import Color
 
 # The optics quantity owns no raw data of its own; it derives every quantity from the
 # dielectric function. Dispatch therefore accesses the "dielectric_function" schema
@@ -126,16 +127,19 @@ class OpticsHandler:
         """Perceived sRGB color(s) for the selected coefficient(s) and direction(s).
 
         Uses the same selection logic as :meth:`to_graph`, but derives the color from a
-        single coefficient defaulting to the reflectivity. Selecting several coefficients
-        or directions returns a dictionary of colors keyed by the selection.
+        single coefficient defaulting to the reflectivity. Each color is returned as a
+        :class:`~py4vasp._util.color.Color`. Selecting several coefficients or directions
+        returns a dictionary of colors keyed by the selection.
         """
         energies = self._energies()
         results = {}
-        for component, label, epsilon in self._components(selection, ["reflectivity"]):
+        for component, direction_label, epsilon in self._components(
+            selection, ["reflectivity"]
+        ):
             spectrum = _COEFFICIENTS[component](epsilon, energies)
-            results[self._label(component, label)] = self._rgb(
-                spectrum, energies, illuminant, cmf
-            )
+            rgb = self._rgb(spectrum, energies, illuminant, cmf)
+            label = self._label(component, direction_label)
+            results[label] = Color(rgb, label=label)
         if len(results) == 1:
             return next(iter(results.values()))
         return results
