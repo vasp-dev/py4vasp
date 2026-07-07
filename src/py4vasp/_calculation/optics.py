@@ -99,11 +99,25 @@ class OpticsHandler:
     def transmission_graph(self, selection=None) -> graph.Graph:
         return self._coefficient_graph("transmission", selection)
 
+    def to_graph(self, selection=None) -> graph.Graph:
+        """Merge transmission, absorption, and reflectivity into a single figure."""
+        energies = self._energies()
+        series = [
+            graph.Series(
+                energies, coefficient(epsilon, energies), self._label(name, label)
+            )
+            for label, epsilon in self._dielectric_function(selection)
+            for name, coefficient in _COEFFICIENTS.items()
+        ]
+        return graph.Graph(series=series, xlabel="Energy (eV)", ylabel="coefficient")
+
     def _coefficient_graph(self, name, selection) -> graph.Graph:
         energies = self._energies()
         coefficient = _COEFFICIENTS[name]
         series = [
-            graph.Series(energies, coefficient(epsilon, energies), self._label(name, label))
+            graph.Series(
+                energies, coefficient(epsilon, energies), self._label(name, label)
+            )
             for label, epsilon in self._dielectric_function(selection)
         ]
         return graph.Graph(series=series, xlabel="Energy (eV)", ylabel=name)
@@ -263,7 +277,27 @@ class Optics(graph.Mixin):
         )
 
     def to_graph(self, selection: str | None = None) -> graph.Graph:
-        raise NotImplementedError
+        """Merge the transmission, absorption, and reflectivity into a single figure.
+
+        Parameters
+        ----------
+        selection : str
+            Select which dielectric function and which direction(s) to evaluate.
+            Defaults to the isotropic average.
+
+        Returns
+        -------
+        Graph
+            A figure overlaying the transmission, absorption, and reflectivity spectra
+            for the selected direction(s).
+        """
+        return merge_graphs(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            OpticsHandler.to_graph,
+        )
 
     def selections(self, selection: str | None = None) -> dict:
         """Returns a dictionary of the directions along which optics can be evaluated."""

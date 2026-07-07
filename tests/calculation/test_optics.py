@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 import types
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -167,3 +168,47 @@ def test_transmission_graph(electron, Assert):
     eps_xx = get_direction(tensor, "xx")
     xx = [Plot(energies, _transmission(eps_xx, energies), "transmission_xx")]
     check_graph(electron.transmission("xx"), xx, "transmission", Assert)
+
+
+def _merged_plots(eps, energies, suffix=""):
+    return [
+        Plot(energies, _transmission(eps, energies), f"transmission{suffix}"),
+        Plot(energies, _absorption(eps, energies), f"absorption{suffix}"),
+        Plot(energies, _reflectivity(eps), f"reflectivity{suffix}"),
+    ]
+
+
+def test_plot_default(electron, Assert):
+    energies = electron.ref.energies
+    eps = isotropic(electron.ref.dielectric_function)
+    refs = _merged_plots(eps, energies)
+    check_graph(electron.plot(), refs, "coefficient", Assert)
+    check_graph(electron.to_graph(), refs, "coefficient", Assert)
+
+
+def test_plot_direction(electron, Assert):
+    energies = electron.ref.energies
+    eps = get_direction(electron.ref.dielectric_function, "xx")
+    refs = _merged_plots(eps, energies, suffix="_xx")
+    check_graph(electron.plot("xx"), refs, "coefficient", Assert)
+
+
+def test_to_plotly(electron):
+    with patch.object(Optics, "to_graph") as mock_graph:
+        fig = electron.to_plotly("xx")
+    mock_graph.assert_called_once_with("xx")
+    assert fig == mock_graph.return_value.to_plotly.return_value
+
+
+def check_to_image(optics, filename_argument, expected_filename):
+    with patch.object(Optics, "to_plotly") as plot:
+        optics.to_image("args", filename=filename_argument, key="word")
+        plot.assert_called_once_with("args", key="word")
+        fig = plot.return_value
+        expected_path = optics.path / expected_filename
+        fig.write_image.assert_called_once_with(expected_path)
+
+
+def test_to_image(electron):
+    check_to_image(electron, None, "optics.png")
+    check_to_image(electron, "custom.jpg", "custom.jpg")
