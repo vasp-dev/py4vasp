@@ -3,16 +3,16 @@
 import numpy as np
 
 import py4vasp._third_party.graph as _graph
+from py4vasp._calculation import projector
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._calculation.kpoint import KpointHandler
-from py4vasp._calculation import projector
 from py4vasp._raw import data as raw
 from py4vasp._raw.data_db import Dispersion_DB
 from py4vasp._util import check
@@ -102,7 +102,7 @@ class DispersionHandler:
 class Dispersion:
     """Generic class for all dispersions (electrons, phonons)."""
 
-    def __init__(self, source, quantity_name="_dispersion"):
+    def __init__(self, source, quantity_name="dispersion"):
         self._source = source
         self._quantity_name = quantity_name
 
@@ -147,12 +147,11 @@ class Dispersion:
             projections,
         )
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             DispersionHandler.from_data,
             DispersionHandler.to_database,
         )

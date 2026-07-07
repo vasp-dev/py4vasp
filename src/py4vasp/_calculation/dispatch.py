@@ -7,14 +7,17 @@ Provides Source classes, dispatch functions, merge strategies, and the
 """
 
 import contextlib
+import dataclasses
 import inspect
 import pathlib
 import typing
 
 import numpy as np
 
-from py4vasp import exception, raw as _raw_module
+from py4vasp import exception
+from py4vasp import raw as _raw_module
 from py4vasp._raw.definition import selections as schema_selections
+from py4vasp._raw.definition import unique_selections as schema_unique_selections
 from py4vasp._third_party.graph import Graph
 from py4vasp._util import select
 
@@ -36,12 +39,16 @@ def quantity(name, group=None):
     """
 
     def decorator(cls):
+        # The registry key keeps a leading underscore to mark a quantity as private
+        # (Calculation.__getattr__ rejects underscore-prefixed names), but the schema
+        # never uses that underscore, so strip it for the access name.
+        access_name = name.lstrip("_")
         if group is None:
-            cls._quantity_name = name
+            cls._quantity_name = access_name
         else:
             # Use the full schema name f"{group}_{name}" so that FileSource
             # can look up the correct schema entry (e.g. "electron_phonon_self_energy").
-            cls._quantity_name = f"{group}_{name}"
+            cls._quantity_name = f"{group}_{access_name}"
 
         @classmethod
         def from_path(klass, path="."):
@@ -56,6 +63,13 @@ def quantity(name, group=None):
 
         cls.from_path = from_path
         cls.from_file = from_file
+
+        def __repr__(self):
+            return f"{type(self).__name__}.from_path({self._path!r})"
+
+        # Preserve an explicit __repr__ defined on the class (e.g. Structure).
+        if "__repr__" not in cls.__dict__:
+            cls.__repr__ = __repr__
 
         if not isinstance(getattr(cls, "_path", None), property):
             cls._path = property(lambda self: self._source.path or pathlib.Path.cwd())
@@ -255,26 +269,110 @@ def _dispatch(
     return results
 
 
-def merge_to_database(
-    source, quantity_name, selection, handler_factory, method, *args, **kwargs
-):
-    """Dispatch to_database calls and return results keyed by quantity name.
+def _result_has_data(result) -> bool:
+    """Return True if *result* contains any data field that carries data.
 
-    Like :func:`_dispatch`, but remaps the result keys from selection names to
-    quantity-based keys: the default selection maps to just the quantity name,
-    and non-default selections map to ``quantity_selection``. Leading underscores
-    are stripped from *quantity_name* so private quantities (``_CONTCAR``,
+    Dataclass instances (DB objects) are considered empty when every field is
+    empty. A field is empty when it is None, or when it is a ``has_*`` flag set
+    to False (such a flag only signals presence, so False means "not present").
+    Empty dicts are also considered empty. Everything else is assumed to have
+    data.
+    """
+    if dataclasses.is_dataclass(result) and not isinstance(result, type):
+        return any(
+            _field_has_data(f.name, getattr(result, f.name))
+            for f in dataclasses.fields(result)
+        )
+    if isinstance(result, dict):
+        return bool(result)
+    return True
+
+
+def _field_has_data(name, value) -> bool:
+    if value is None:
+        return False
+    if name.startswith("has_"):
+        return bool(value)
+    return True
+
+
+_SUPPRESSED_DB_EXCEPTIONS = (
+    exception.Py4VaspError,
+    exception.OutdatedVaspVersion,
+    exception.NoData,
+    exception.FileAccessError,
+    AttributeError,
+    TypeError,
+    ValueError,
+    # a source may point to an optional external file (e.g. the structure "poscar"
+    # source); its absence simply means that selection has no data for the database
+    FileNotFoundError,
+)
+
+
+class SuppressErrorsSourceWrapper:
+    def __init__(self, source):
+        self._source = source
+
+    class AccessContext:
+        def __init__(self, original_context):
+            self.original_context = original_context
+            self.entered = False
+
+        def __enter__(self):
+            try:
+                self.raw = self.original_context.__enter__()
+                self.entered = True
+                return self.raw
+            except _SUPPRESSED_DB_EXCEPTIONS:
+                return None
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if exc_type is not None and issubclass(exc_type, _SUPPRESSED_DB_EXCEPTIONS):
+                if self.entered:
+                    try:
+                        self.original_context.__exit__(exc_type, exc_val, exc_tb)
+                    except Exception:
+                        # Intentionally ignore teardown errors here: this wrapper suppresses
+                        # known database-access exceptions and should not re-raise failures
+                        # from the underlying context cleanup.
+                        pass
+                return True
+            if self.entered:
+                return self.original_context.__exit__(exc_type, exc_val, exc_tb)
+            return False
+
+    def access(self, quantity, selection=None):
+        return self.AccessContext(self._source.access(quantity, selection))
+
+    def __getattr__(self, name):
+        return getattr(self._source, name)
+
+
+def merge_to_database(source, quantity_name, handler_factory, method, *args, **kwargs):
+    """Collect database results across all of a quantity's sources.
+
+    Database collection is internal and never user-selected, so this enumerates
+    every unique (non-alias) source of *quantity_name* from the schema and lets
+    :func:`_dispatch` handle them in one pass. Results are remapped from selection
+    names to quantity-based keys: the default source maps to just the quantity
+    name and every other source to ``quantity_source``. Leading underscores are
+    stripped from *quantity_name* so private quantities (``_CONTCAR``,
     ``_stoichiometry``) appear without the underscore prefix.
+
+    Sources without data are dropped (errors are suppressed via
+    :class:`SuppressErrorsSourceWrapper`). A source whose result merely duplicates
+    the default result is dropped too, so an in-memory :class:`DataSource` (which
+    ignores the selection and yields the same data for every source) collapses to
+    a single ``quantity`` entry.
 
     Parameters
     ----------
     source : Source
         The data source (DataSource, DictSource, etc.).
     quantity_name : str
-        Name used to look up data in the source. Leading underscores are stripped
-        for key generation.
-    selection : str | None
-        User-provided selection string, forwarded to :func:`_dispatch`.
+        Name used to look up data in the source and the schema. Leading
+        underscores are stripped for key generation.
     handler_factory : callable(raw) -> Handler
         Called with the raw data object to construct a handler.
     method : unbound method reference
@@ -285,16 +383,51 @@ def merge_to_database(
     Returns
     -------
     dict[str, result]
-        Maps ``quantity_name`` (default) or ``quantity_name_selection`` (non-default)
-        to each handler result.
+        Maps ``quantity_name`` (default source) or ``quantity_name_source``
+        (other sources) to each handler result.
     """
-    raw_results = _dispatch(
-        source, quantity_name, selection, handler_factory, method, *args, **kwargs
-    )
+    wrapped_source = SuppressErrorsSourceWrapper(source)
     base = quantity_name.lstrip("_")
-    return {
+    selection = _all_sources_selection(base)
+    raw_results = _dispatch(
+        wrapped_source,
+        quantity_name,
+        selection,
+        handler_factory,
+        method,
+        *args,
+        **kwargs,
+    )
+    results = {
         base if sel == "default" else f"{base}_{sel}": result
         for sel, result in raw_results.items()
+        if _result_has_data(result)
+    }
+    return _drop_duplicates_of_default(results, base)
+
+
+def _all_sources_selection(quantity_name):
+    """Return a selection string covering every unique source of *quantity_name*.
+
+    Returns None when the quantity is unknown to the schema, so :func:`_dispatch`
+    falls back to the default source only.
+    """
+    try:
+        sources = schema_unique_selections(quantity_name)
+    except exception.FileAccessError:
+        return None
+    return ", ".join(str(source_name) for source_name in sources)
+
+
+def _drop_duplicates_of_default(results, base):
+    """Drop non-default entries whose result equals the default result."""
+    if base not in results:
+        return results
+    default_result = results[base]
+    return {
+        key: result
+        for key, result in results.items()
+        if key == base or result != default_result
     }
 
 

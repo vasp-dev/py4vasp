@@ -1,7 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
-
 from typing import Optional, Union
 
 import numpy as np
@@ -9,11 +8,11 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._calculation.structure import StructureHandler
@@ -319,12 +318,11 @@ class CurrentDensity:
             supercell=supercell,
         )
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             CurrentDensityHandler.from_data,
             CurrentDensityHandler.to_database,
         )

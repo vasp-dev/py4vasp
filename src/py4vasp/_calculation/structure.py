@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import copy
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import Union
@@ -7,13 +8,19 @@ from typing import Union
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._calculation import _stoichiometry, base, cell, slice_
-from py4vasp._calculation.cell import CellHandler
+from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
-from py4vasp._raw import data as raw_data
+from py4vasp._calculation.cell import CellHandler
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    merge_to_database,
+    quantity,
+)
 from py4vasp._raw.data_db import Structure_DB
 from py4vasp._third_party import view
-from py4vasp._util import check, database, import_, parse
+from py4vasp._util import check, import_, parse
 
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
@@ -92,6 +99,16 @@ class StructureHandler:
         """Generate a string representing the final structure usable as a POSCAR file."""
         return self._create_repr()
 
+    def _repr_html_(self):
+        format_ = _Format(
+            begin_table="<table>\n<tr><td>",
+            column_separator="</td><td>",
+            row_separator="</td></tr>\n<tr><td>",
+            end_table="</td></tr>\n</table>",
+            newline="<br>",
+        )
+        return self._create_repr(format_)
+
     def to_POSCAR(self, ion_types=None) -> str:
         """Convert the structure(s) to a POSCAR format."""
         if not self._is_slice:
@@ -146,7 +163,8 @@ class StructureHandler:
         if not self._is_slice:
             message = "Converting a single structure to mdtraj is not implemented."
             raise exception.NotImplemented(message)
-        data = self.to_dict(ion_types) @ data["lattice_vectors"] * self.A_to_nm
+        data = self.to_dict(ion_types)
+        xyz = data["positions"] @ data["lattice_vectors"] * self.A_to_nm
         trajectory = mdtraj.Trajectory(xyz, self._stoichiometry().to_mdtraj(ion_types))
         trajectory.unitcell_vectors = data["lattice_vectors"] * self.A_to_nm
         return trajectory
@@ -211,8 +229,6 @@ Atoms # atomic
         self._steps = slice(None)
         self._is_slice = True
         self._slice = slice(None)
-
-        stoichiometry = self._stoichiometry().to_database()
 
         final_lattice, initial_lattice = ([None, None, None] for _ in range(2))
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
@@ -289,80 +305,63 @@ Atoms # atomic
         self._is_slice = saved_is_slice
         self._slice = saved_slice
 
-        return database.combine_db_dicts(
-            {
-                "structure": Structure_DB(
-                    num_ions=num_atoms,
-                    dimensionality=dimensionality,
-                    final_cell_volume=volume_final,
-                    final_cell_area_2d=cell_area_2d_final,
-                    final_cell_area_2d_span=cell_area_2d_span_final,
-                    final_lattice_vector_1=(
-                        list(final_lattice[0]) if final_lattice[0] is not None else None
-                    ),
-                    final_lattice_vector_2=(
-                        list(final_lattice[1]) if final_lattice[1] is not None else None
-                    ),
-                    final_lattice_vector_3=(
-                        list(final_lattice[2]) if final_lattice[2] is not None else None
-                    ),
-                    final_lattice_vector_1_length=(
-                        lengths_final[0] if lengths_final is not None else None
-                    ),
-                    final_lattice_vector_2_length=(
-                        lengths_final[1] if lengths_final is not None else None
-                    ),
-                    final_lattice_vector_3_length=(
-                        lengths_final[2] if lengths_final is not None else None
-                    ),
-                    final_angle_alpha=(
-                        angles_final[0] if angles_final is not None else None
-                    ),
-                    final_angle_beta=(
-                        angles_final[1] if angles_final is not None else None
-                    ),
-                    final_angle_gamma=(
-                        angles_final[2] if angles_final is not None else None
-                    ),
-                    initial_cell_volume=volume_initial,
-                    initial_cell_area_2d=cell_area_2d_initial,
-                    initial_cell_area_2d_span=cell_area_2d_span_initial,
-                    initial_lattice_vector_1=(
-                        list(initial_lattice[0])
-                        if initial_lattice[0] is not None
-                        else None
-                    ),
-                    initial_lattice_vector_2=(
-                        list(initial_lattice[1])
-                        if initial_lattice[1] is not None
-                        else None
-                    ),
-                    initial_lattice_vector_3=(
-                        list(initial_lattice[2])
-                        if initial_lattice[2] is not None
-                        else None
-                    ),
-                    initial_lattice_vector_1_length=(
-                        lengths_initial[0] if lengths_initial is not None else None
-                    ),
-                    initial_lattice_vector_2_length=(
-                        lengths_initial[1] if lengths_initial is not None else None
-                    ),
-                    initial_lattice_vector_3_length=(
-                        lengths_initial[2] if lengths_initial is not None else None
-                    ),
-                    initial_angle_alpha=(
-                        angles_initial[0] if angles_initial is not None else None
-                    ),
-                    initial_angle_beta=(
-                        angles_initial[1] if angles_initial is not None else None
-                    ),
-                    initial_angle_gamma=(
-                        angles_initial[2] if angles_initial is not None else None
-                    ),
-                ),
-            },
-            stoichiometry,
+        return Structure_DB(
+            num_ions=num_atoms,
+            dimensionality=dimensionality,
+            final_cell_volume=volume_final,
+            final_cell_area_2d=cell_area_2d_final,
+            final_cell_area_2d_span=cell_area_2d_span_final,
+            final_lattice_vector_1=(
+                list(final_lattice[0]) if final_lattice[0] is not None else None
+            ),
+            final_lattice_vector_2=(
+                list(final_lattice[1]) if final_lattice[1] is not None else None
+            ),
+            final_lattice_vector_3=(
+                list(final_lattice[2]) if final_lattice[2] is not None else None
+            ),
+            final_lattice_vector_1_length=(
+                lengths_final[0] if lengths_final is not None else None
+            ),
+            final_lattice_vector_2_length=(
+                lengths_final[1] if lengths_final is not None else None
+            ),
+            final_lattice_vector_3_length=(
+                lengths_final[2] if lengths_final is not None else None
+            ),
+            final_angle_alpha=(angles_final[0] if angles_final is not None else None),
+            final_angle_beta=(angles_final[1] if angles_final is not None else None),
+            final_angle_gamma=(angles_final[2] if angles_final is not None else None),
+            initial_cell_volume=volume_initial,
+            initial_cell_area_2d=cell_area_2d_initial,
+            initial_cell_area_2d_span=cell_area_2d_span_initial,
+            initial_lattice_vector_1=(
+                list(initial_lattice[0]) if initial_lattice[0] is not None else None
+            ),
+            initial_lattice_vector_2=(
+                list(initial_lattice[1]) if initial_lattice[1] is not None else None
+            ),
+            initial_lattice_vector_3=(
+                list(initial_lattice[2]) if initial_lattice[2] is not None else None
+            ),
+            initial_lattice_vector_1_length=(
+                lengths_initial[0] if lengths_initial is not None else None
+            ),
+            initial_lattice_vector_2_length=(
+                lengths_initial[1] if lengths_initial is not None else None
+            ),
+            initial_lattice_vector_3_length=(
+                lengths_initial[2] if lengths_initial is not None else None
+            ),
+            initial_angle_alpha=(
+                angles_initial[0] if angles_initial is not None else None
+            ),
+            initial_angle_beta=(
+                angles_initial[1] if angles_initial is not None else None
+            ),
+            initial_angle_gamma=(
+                angles_initial[2] if angles_initial is not None else None
+            ),
         )
 
     def _dimensionality(self) -> Union[int, np.ndarray]:
@@ -513,7 +512,8 @@ class _Format:
         return f"{element:21.16f}"
 
 
-class Structure(slice_.Mixin, base.Refinery, view.Mixin):
+@quantity("structure")
+class Structure(view.Mixin):
     """The structure contains the unit cell and the position of all ions within.
 
     The crystal structure is the specific arrangement of ions in a three-dimensional
@@ -560,10 +560,36 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
     3
     """
 
-    _raw_data: raw_data.Structure
-
     A_to_nm = 0.1
     "Converting Å to nm used for mdtraj trajectories."
+
+    def __init__(self, source, quantity_name="structure", steps=None):
+        self._source = source
+        self._quantity_name = quantity_name
+        self._steps = steps
+
+    @classmethod
+    def from_data(cls, raw_structure) -> "Structure":
+        return cls(source=DataSource(raw_structure))
+
+    def __repr__(self):
+        return f"{type(self).__name__}.from_path({self._path!r})"
+
+    def _handler_factory(self, raw):
+        return StructureHandler.from_data(raw, steps=self._steps)
+
+    def __getitem__(self, steps) -> "Structure":
+        with self._source.access(self._quantity_name) as raw_structure:
+            is_trajectory = raw_structure.positions.ndim == 3
+        if not is_trajectory:
+            message = (
+                "The structure is not a Trajectory so accessing individual "
+                "elements is not allowed."
+            )
+            raise exception.IncorrectUsage(message)
+        new = copy.copy(self)
+        new._steps = steps
+        return new
 
     @classmethod
     def from_POSCAR(cls, poscar, *, elements=None):
@@ -623,35 +649,28 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         )
         return cls.from_data(structure)
 
-    @base.data_access
-    def __str__(self):
+    def __str__(self, selection=None):
         "Generate a string representing the final structure usable as a POSCAR file."
-        return self._create_repr()
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            StructureHandler.__str__,
+        )
 
-    @base.data_access
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self) if not cycle else "...")
+
     def _repr_html_(self):
-        format_ = _Format(
-            begin_table="<table>\n<tr><td>",
-            column_separator="</td><td>",
-            row_separator="</td></tr>\n<tr><td>",
-            end_table="</td></tr>\n</table>",
-            newline="<br>",
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler._repr_html_,
         )
-        return self._create_repr(format_)
 
-    def _create_repr(self, format_=_Format(), ion_types=None):
-        step = self._get_last_step()
-        lines = (
-            format_.comment_line(self._stoichiometry(), self._step_string(), ion_types),
-            format_.scaling_factor(self._cell().scale()),
-            format_.vectors_to_table(self._raw_data.cell.lattice_vectors[step]),
-            format_.ion_list(self._stoichiometry(), ion_types),
-            format_.coordinate_system(),
-            format_.vectors_to_table(self._raw_data.positions[step]),
-        )
-        return "\n".join(lines)
-
-    @base.data_access
     def read(self, ion_types=None):
         """Read the structural information into a dictionary.
 
@@ -710,173 +729,19 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         {'lattice_vectors': array([[[...]]]), 'positions': array([[[...]]]),
             'elements': [...], 'names': [...]}
         """
-        return {
-            "lattice_vectors": self.lattice_vectors(),
-            "positions": self.positions(),
-            "elements": self._stoichiometry().elements(ion_types),
-            "names": self._stoichiometry().names(ion_types),
-        }
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.to_dict,
+            ion_types,
+        )
 
-    @base.data_access
     def to_dict(self, ion_types=None):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(ion_types=ion_types)
 
-    @base.data_access
-    def _to_database(self, *args, **kwargs):
-        steps_sel = self._steps
-        self._steps = slice(None)
-        stoichiometry = self._stoichiometry()._read_to_database(*args, **kwargs)
-
-        # TODO add more structure properties
-        final_lattice, initial_lattice = ([None, None, None] for _ in range(2))
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            lattices = self.lattice_vectors()
-            final_lattice = lattices[-1] if lattices.ndim == 3 else lattices
-            initial_lattice = lattices[0] if lattices.ndim == 3 else lattices
-            if final_lattice.ndim != 2:
-                final_lattice = [None, None, None]
-            if initial_lattice.ndim != 2:
-                initial_lattice = [None, None, None]
-
-        volume_final, volume_initial = (None for _ in range(2))
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            volumes = self.volume()
-            volume_final = (
-                volumes[-1]
-                if not isinstance(volumes, (float, np.float64, np.float32))
-                else volumes
-            )
-            volume_initial = (
-                volumes[0]
-                if not isinstance(volumes, (float, np.float64, np.float32))
-                else volumes
-            )
-
-        lengths_final, angles_final, lengths_initial, angles_initial = (
-            None for _ in range(4)
-        )
-        (
-            cell_area_2d_final,
-            cell_area_2d_span_final,
-            cell_area_2d_initial,
-            cell_area_2d_span_initial,
-        ) = (None for _ in range(4))
-        dimensionality = 3
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            dimensionality = self._dimensionality()
-
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            cell_: cell.Cell = self._cell()
-            lengths = cell_.lengths()
-            lengths_final = lengths[-1] if lengths.ndim == 2 else lengths
-            lengths_initial = lengths[0] if lengths.ndim == 2 else lengths
-            angles = cell_.angles()
-            angles_final = angles[-1] if angles.ndim == 2 else angles
-            angles_initial = angles[0] if angles.ndim == 2 else angles
-            if dimensionality == 2:
-                cell_area_2d, cell_area_2d_span = cell_._area_2d()
-                cell_area_2d_final = (
-                    cell_area_2d[-1]
-                    if isinstance(cell_area_2d, np.ndarray)
-                    else cell_area_2d
-                )
-                cell_area_2d_initial = (
-                    cell_area_2d[0]
-                    if isinstance(cell_area_2d, np.ndarray)
-                    else cell_area_2d
-                )
-                cell_area_2d_span_final = (
-                    cell_area_2d_span[-1]
-                    if isinstance(cell_area_2d_span, list)
-                    else cell_area_2d_span
-                )
-                cell_area_2d_span_initial = (
-                    cell_area_2d_span[0]
-                    if isinstance(cell_area_2d_span, list)
-                    else cell_area_2d_span
-                )
-
-        num_atoms = self.number_atoms() or None
-        self._steps = steps_sel
-
-        return database.combine_db_dicts(
-            {
-                "structure": Structure_DB(
-                    num_ions=num_atoms,
-                    dimensionality=dimensionality,
-                    final_cell_volume=volume_final,
-                    final_cell_area_2d=cell_area_2d_final,
-                    final_cell_area_2d_span=cell_area_2d_span_final,
-                    final_lattice_vector_1=(
-                        list(final_lattice[0]) if final_lattice[0] is not None else None
-                    ),
-                    final_lattice_vector_2=(
-                        list(final_lattice[1]) if final_lattice[1] is not None else None
-                    ),
-                    final_lattice_vector_3=(
-                        list(final_lattice[2]) if final_lattice[2] is not None else None
-                    ),
-                    final_lattice_vector_1_length=(
-                        lengths_final[0] if lengths_final is not None else None
-                    ),
-                    final_lattice_vector_2_length=(
-                        lengths_final[1] if lengths_final is not None else None
-                    ),
-                    final_lattice_vector_3_length=(
-                        lengths_final[2] if lengths_final is not None else None
-                    ),
-                    final_angle_alpha=(
-                        angles_final[0] if angles_final is not None else None
-                    ),
-                    final_angle_beta=(
-                        angles_final[1] if angles_final is not None else None
-                    ),
-                    final_angle_gamma=(
-                        angles_final[2] if angles_final is not None else None
-                    ),
-                    initial_cell_volume=volume_initial,
-                    initial_cell_area_2d=cell_area_2d_initial,
-                    initial_cell_area_2d_span=cell_area_2d_span_initial,
-                    initial_lattice_vector_1=(
-                        list(initial_lattice[0])
-                        if initial_lattice[0] is not None
-                        else None
-                    ),
-                    initial_lattice_vector_2=(
-                        list(initial_lattice[1])
-                        if initial_lattice[1] is not None
-                        else None
-                    ),
-                    initial_lattice_vector_3=(
-                        list(initial_lattice[2])
-                        if initial_lattice[2] is not None
-                        else None
-                    ),
-                    initial_lattice_vector_1_length=(
-                        lengths_initial[0] if lengths_initial is not None else None
-                    ),
-                    initial_lattice_vector_2_length=(
-                        lengths_initial[1] if lengths_initial is not None else None
-                    ),
-                    initial_lattice_vector_3_length=(
-                        lengths_initial[2] if lengths_initial is not None else None
-                    ),
-                    initial_angle_alpha=(
-                        angles_initial[0] if angles_initial is not None else None
-                    ),
-                    initial_angle_beta=(
-                        angles_initial[1] if angles_initial is not None else None
-                    ),
-                    initial_angle_gamma=(
-                        angles_initial[2] if angles_initial is not None else None
-                    ),
-                ),
-            },
-            stoichiometry,
-        )
-
-    @base.data_access
     def to_view(self, supercell=None, ion_types=None):
         """Generate a 3d representation of the structure(s).
 
@@ -940,18 +805,16 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         >>> calculation.structure.to_view(supercell=[2,3,1])
         View(..., supercell=array([2, 3, 1]), ...)
         """
-        make_3d = lambda array: array if array.ndim == 3 else array[np.newaxis]
-        positions = make_3d(self.positions())
-        elements_single_step = self._stoichiometry().elements(ion_types)
-        elements_all_steps = np.tile(elements_single_step, (len(positions), 1))
-        return view.View(
-            elements=elements_all_steps,
-            lattice_vectors=make_3d(self.lattice_vectors()),
-            positions=positions,
-            supercell=self._parse_supercell(supercell),
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.to_view,
+            supercell,
+            ion_types,
         )
 
-    @base.data_access
     def to_ase(self, supercell=None, ion_types=None):
         """Convert the structure to an ASE Atoms object.
 
@@ -1008,33 +871,16 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         >>> calculation.structure.to_ase(supercell=[2,3,1])
         Atoms(symbols='...', pbc=True, cell=[[...]])
         """
-        if self._is_slice:
-            message = (
-                "Converting multiple structures to ASE trajectories is not implemented."
-            )
-            raise exception.NotImplemented(message)
-        data = self.to_dict(ion_types)
-        structure = ase.Atoms(
-            symbols=data["elements"],
-            cell=data["lattice_vectors"],
-            scaled_positions=data["positions"],
-            pbc=True,
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.to_ase,
+            supercell,
+            ion_types,
         )
-        num_atoms_prim = len(structure)
-        if supercell is not None:
-            try:
-                structure *= supercell
-            except (TypeError, IndexError) as err:
-                error_message = (
-                    "Generating the supercell failed. Please make sure the requested "
-                    "supercell is either an integer or a list of 3 integers."
-                )
-                raise exception.IncorrectUsage(error_message) from None
-        num_atoms_super = len(structure)
-        order = sorted(range(num_atoms_super), key=lambda n: n % num_atoms_prim)
-        return structure[order]
 
-    @base.data_access
     def to_mdtraj(self, ion_types=None):
         """Convert the trajectory to mdtraj.Trajectory
 
@@ -1075,16 +921,15 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
         You cannot convert a single structure to mdtraj.Trajectory.
         """
-        if not self._is_slice:
-            message = "Converting a single structure to mdtraj is not implemented."
-            raise exception.NotImplemented(message)
-        data = self.to_dict(ion_types)
-        xyz = data["positions"] @ data["lattice_vectors"] * self.A_to_nm
-        trajectory = mdtraj.Trajectory(xyz, self._stoichiometry().to_mdtraj(ion_types))
-        trajectory.unitcell_vectors = data["lattice_vectors"] * Structure.A_to_nm
-        return trajectory
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.to_mdtraj,
+            ion_types,
+        )
 
-    @base.data_access
     def to_POSCAR(self, ion_types=None):
         """Convert the structure(s) to a POSCAR format.
 
@@ -1126,13 +971,15 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
 
         Notice that converting multiple steps to POSCAR format is not implemented.
         """
-        if not self._is_slice:
-            return self._create_repr(ion_types=ion_types)
-        else:
-            message = "Converting multiple structures to a POSCAR is currently not implemented."
-            raise exception.NotImplemented(message)
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.to_POSCAR,
+            ion_types,
+        )
 
-    @base.data_access
     def to_lammps(self, standard_form=True):
         """Convert the structure to LAMMPS format.
 
@@ -1205,60 +1052,15 @@ class Structure(slice_.Mixin, base.Refinery, view.Mixin):
         1 1 ...
 
         """
-        if self._is_slice:
-            message = "Converting multiple structures to LAMMPS is not implemented."
-            raise exception.NotImplemented(message)
-        number_ion_types = self._raw_data.stoichiometry.number_ion_types
-        cell_string, transformation = self._cell_and_transformation(standard_form)
-        position_lines = self._position_lines(number_ion_types, transformation)
-        return f"""\
-Configuration 1: system "{self._stoichiometry()}"
-
-{self.number_atoms()} atoms
-{len(number_ion_types)} atom types
-
-{cell_string}
-
-Atoms # atomic
-
-{position_lines}"""
-
-    def _cell_and_transformation(self, standard_form):
-        if standard_form:
-            cell = ase.cell.Cell(self.lattice_vectors())
-            cell, transformation = cell.standard_form()
-            cell_string = f"""\
-0.0 {self._format_number(cell[0,0])} xlo xhi
-0.0 {self._format_number(cell[1,1])} ylo yhi
-0.0 {self._format_number(cell[2,2])} zlo zhi
-{self._format_number((cell[1,0], cell[2,0], cell[2,1]))} xy xz yz"""
-        else:
-            lattice_vectors = self.lattice_vectors()
-            cell_string = f"""\
-{self._format_number(lattice_vectors[0])} avec
-{self._format_number(lattice_vectors[1])} bvec
-{self._format_number(lattice_vectors[2])} cvec
-0.0 0.0 0.0 abc origin"""
-            transformation = np.eye(3)
-        return cell_string, transformation
-
-    def _position_lines(self, number_ion_types, transformation):
-        positions = self.cartesian_positions() @ transformation.T
-        ion_type_labels = [
-            str(ion_type + 1)
-            for ion_type, number in enumerate(number_ion_types)
-            for _ in range(number)
-        ]
-        return "\n".join(
-            f"{i + 1} {ion_type_labels[i]} {self._format_number(position)}"
-            for i, position in enumerate(positions)
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.to_lammps,
+            standard_form,
         )
 
-    def _format_number(self, number):
-        number = np.atleast_1d(number)
-        return " ".join(f"{x:24.16E}" for x in number)
-
-    @base.data_access
     def lattice_vectors(self):
         """Return the lattice vectors spanning the unit cell
 
@@ -1287,9 +1089,14 @@ Atoms # atomic
         >>> calculation.structure[:].lattice_vectors()
         array([[[...]], [[...]], [[...]], [[...]]])
         """
-        return self._cell().lattice_vectors()
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.lattice_vectors,
+        )
 
-    @base.data_access
     def positions(self):
         """Return the direct coordinates of all ions in the unit cell.
 
@@ -1321,9 +1128,14 @@ Atoms # atomic
         >>> calculation.structure[:].positions()
         array([[[...]]])
         """
-        return self._raw_data.positions[self._get_steps()]
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.positions,
+        )
 
-    @base.data_access
     def cartesian_positions(self):
         """Convert the positions from direct coordinates to cartesian ones.
 
@@ -1352,9 +1164,14 @@ Atoms # atomic
         >>> calculation.structure[:].cartesian_positions()
         array([[[...]]])
         """
-        return self.positions() @ self.lattice_vectors()
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.cartesian_positions,
+        )
 
-    @base.data_access
     def volume(self):
         """Return the volume of the unit cell for the selected steps.
 
@@ -1383,98 +1200,42 @@ Atoms # atomic
         >>> calculation.structure[:].volume()
         array([...])
         """
-        return np.abs(np.linalg.det(self.lattice_vectors()))
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.volume,
+        )
 
-    @base.data_access
-    def _dimensionality(self) -> Union[int, np.ndarray]:
-        """
-        Heuristic check for dimensionality of system.
-        """
-        # TODO add check for actual vacuum if ldipol, idipol are not set
-        # TODO consider case of multi-atom molecule, which should return 1
-        if not check.is_none(self._raw_data.idipol):
-            if self._raw_data.idipol < 1:
-                return 3
-            elif self._raw_data.idipol in [1, 2, 3]:
-                return 2
-            elif self._raw_data.idipol == 4:
-                return 0
-
-        cell_ = self._cell()
-        if bool(np.all(np.array(cell_.is_suspected_2d_system))):
-            return 2
-        return 3
-
-    @base.data_access
     def number_atoms(self):
         """Return the total number of atoms in the structure."""
-        if self._is_trajectory:
-            return self._raw_data.positions.shape[1]
-        else:
-            return self._raw_data.positions.shape[0]
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.number_atoms,
+        )
 
-    @base.data_access
     def number_steps(self):
         """Return the number of structures in the trajectory."""
-        if self._is_trajectory:
-            range_ = range(len(self._raw_data.positions))
-            return len(range_[self._slice])
-        else:
-            return 1
-
-    def _parse_supercell(self, supercell):
-        if supercell is None:
-            return np.ones(3, np.int_)
-        try:
-            integer_supercell = np.round(supercell).astype(np.int_)
-        except TypeError as error:
-            message = (
-                f"Could not convert supercell='{supercell}' to an integer numpy array."
-            )
-            raise exception.IncorrectUsage(message) from None
-        if not np.allclose(supercell, integer_supercell):
-            message = f"supercell='{supercell}' contains noninteger values."
-            raise exception.IncorrectUsage(message)
-        if np.isscalar(integer_supercell):
-            return np.full(3, integer_supercell)
-        if integer_supercell.shape == (3,):
-            return integer_supercell
-        message = (
-            f"supercell='{supercell}' is not a scalar or a three component vector."
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.number_steps,
         )
-        raise exception.IncorrectUsage(message)
 
-    def _stoichiometry(self):
-        return _stoichiometry.Stoichiometry.from_data(self._raw_data.stoichiometry)
-
-    def _cell(self):
-        return cell.Cell.from_data(self._raw_data.cell)[self._steps]
-
-    def _get_steps(self):
-        return self._steps if self._is_trajectory else ()
-
-    def _get_last_step(self):
-        return self._last_step_in_slice if self._is_trajectory else ()
-
-    def _step_string(self):
-        if self._is_slice:
-            range_ = range(len(self._raw_data.positions))[self._steps]
-            return f" from step {range_.start + 1} to {range_.stop + 1}"
-        elif self._steps == -1:
-            return ""
-        else:
-            return f" (step {self._steps + 1})"
-
-    @base.data_access
-    def __getitem__(self, steps):
-        if not self._is_trajectory:
-            message = "The structure is not a Trajectory so accessing individual elements is not allowed."
-            raise exception.IncorrectUsage(message)
-        return super().__getitem__(steps)
-
-    @property
-    def _is_trajectory(self):
-        return self._raw_data.positions.ndim == 3
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            StructureHandler.from_data,
+            StructureHandler.to_database,
+        )
 
 
 def _cell_from_ase(structure):

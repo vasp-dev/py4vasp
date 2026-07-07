@@ -1,14 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import copy
 
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._calculation.structure import StructureHandler
@@ -139,12 +137,11 @@ class CONTCAR(view.Mixin):
             supercell,
         )
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             CONTCARHandler.from_data,
             CONTCARHandler.to_database,
         )

@@ -7,14 +7,14 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from py4vasp import exception, interpolate, raw
-from py4vasp._calculation import cell
+from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_graphs,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import EffectiveCoulomb_DB
@@ -198,7 +198,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         }
 
     def _cell(self):
-        return cell.Cell.from_data(self._raw_coulomb.cell)
+        return CellHandler.from_data(self._raw_coulomb.cell, steps=-1)
 
     def to_graph(
         self,
@@ -559,12 +559,11 @@ class EffectiveCoulomb(graph.Mixin):
         delta = np.abs(delta)
         return np.sqrt(delta / (radius + delta))
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             EffectiveCoulombHandler.from_data,
             EffectiveCoulombHandler.to_database,
         )

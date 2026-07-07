@@ -1,8 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import _stoichiometry, base
-from py4vasp._util import select
-
 selection_doc = """\
 selection : str
     A string specifying the projection of the phonon modes onto atoms and directions.
@@ -21,36 +18,3 @@ selection : str
     If you are unsure what selections exist, please use the `selections` routine which
     will return all possibilities.
 """
-
-
-class Mixin:
-    "Provide functionality common to Phonon classes."
-
-    @base.data_access
-    def selections(self):
-        "Return a dictionary specifying which atoms and directions can be used as selection."
-        atoms = self._init_atom_dict().keys()
-        return {
-            "atom": sorted(atoms, key=self._sort_key),
-            "direction": ["x", "y", "z"],
-        }
-
-    def _stoichiometry(self):
-        return _stoichiometry.Stoichiometry.from_data(self._raw_data.stoichiometry)
-
-    def _init_atom_dict(self):
-        return {
-            key: value.indices
-            for key, value in self._stoichiometry().read().items()
-            if key != select.all
-        }
-
-    def _init_direction_dict(self):
-        return {
-            "x": slice(0, 1),
-            "y": slice(1, 2),
-            "z": slice(2, 3),
-        }
-
-    def _sort_key(self, key):
-        return key.isdecimal()

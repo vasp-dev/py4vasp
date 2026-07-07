@@ -8,7 +8,7 @@ import pytest
 
 from py4vasp import _config
 from py4vasp._calculation.partial_density import PartialDensity
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._util.slicing import plane
 from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
@@ -92,6 +92,9 @@ def make_reference_partial_density(raw_data, selection):
     parchg = PartialDensity.from_data(raw_partial_density)
     parchg.ref = types.SimpleNamespace()
     parchg.ref.structure = Structure.from_data(raw_partial_density.structure)
+    parchg.ref.structure_handler = StructureHandler.from_data(
+        raw_partial_density.structure
+    )
     parchg.ref.plane_vectors = plane(
         cell=parchg.ref.structure.lattice_vectors(),
         cut="c",
@@ -117,7 +120,7 @@ def test_read(AnyPartialDensity, Assert, not_core):
 
 def test_stoichiometry(AnyPartialDensity, not_core):
     actual = AnyPartialDensity._stoichiometry()
-    expected = str(AnyPartialDensity.ref.structure._stoichiometry())
+    expected = str(AnyPartialDensity.ref.structure_handler._stoichiometry())
     assert actual == expected
 
 

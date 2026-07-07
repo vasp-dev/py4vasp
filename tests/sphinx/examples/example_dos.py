@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from py4vasp._calculation import base, projector
+from py4vasp._calculation import projector
 from py4vasp._third_party import graph
 from py4vasp._util import documentation, import_
 
@@ -8,7 +8,7 @@ pd = import_.optional("pandas")
 pretty = import_.optional("IPython.lib.pretty")
 
 
-class Dos(base.Refinery, graph.Mixin):
+class Dos(graph.Mixin):
     """The density of states (DOS) describes the number of states per energy.
 
     The DOS quantifies the distribution of electronic states within an energy range
@@ -51,7 +51,9 @@ class Dos(base.Refinery, graph.Mixin):
 
     _missing_data_message = "No DOS data found, please verify that LORBIT flag is set."
 
-    @base.data_access
+    def __init__(self, data_context, **kwargs):
+        self._data_context = data_context
+
     def __str__(self):
         energies = self._raw_data.energies
         if self._is_collinear():
@@ -65,7 +67,6 @@ class Dos(base.Refinery, graph.Mixin):
     energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points
 {pretty.pretty(self._projector())}"""
 
-    @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
     def to_dict(self, selection=None):
         """Read the DOS into a dictionary.
@@ -134,7 +135,6 @@ class Dos(base.Refinery, graph.Mixin):
         data.pop(projector.SPIN_PROJECTION, None)
         return {**data, "fermi_energy": self._raw_data.fermi_energy}
 
-    @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
     def to_graph(self, selection=None):
         """Read the DOS and convert it into a graph.
@@ -203,7 +203,6 @@ class Dos(base.Refinery, graph.Mixin):
             ylabel="DOS (1/eV)",
         )
 
-    @base.data_access
     @documentation.format(selection_doc=projector.selection_doc)
     def to_frame(self, selection=None):
         """Read the data into a pandas DataFrame.
@@ -256,9 +255,22 @@ class Dos(base.Refinery, graph.Mixin):
         df.fermi_energy = self._raw_data.fermi_energy
         return df
 
-    @base.data_access
-    def selections(self):
-        return {**super().selections(), **self._projector().selections()}
+    def selections(self) -> dict:
+        """Returns possible alternatives for this particular quantity VASP can produce.
+
+        The returned dictionary contains a single item with the name of the quantity
+        mapping to all possible selections. Each of these selection may be passed to
+        other functions of this quantity to select which output of VASP is used. Some
+        quantities provide additional elements which can be passed as selection for
+        other routines.
+
+        Returns
+        -------
+        dict
+            The key indicates this quantity and the values possible choices for arguments
+            to other functions of this quantity.
+        """
+        return self._projector().selections()
 
     def _is_collinear(self):
         return len(self._raw_data.dos) == 2

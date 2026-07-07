@@ -7,11 +7,11 @@ import numpy as np
 from py4vasp import _config, exception, raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
     slice_steps,
 )
@@ -342,12 +342,11 @@ class Force(view.Mixin):
             ForceHandler.number_steps,
         )
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             ForceHandler.from_data,
             ForceHandler.to_database,
         )

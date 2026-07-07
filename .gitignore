@@ -2,6 +2,7 @@ notebook
 backup
 node_modules
 work
+workshop/
 _old_templates
 .github/hooks/
 

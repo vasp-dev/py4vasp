@@ -10,6 +10,7 @@ from jinja2 import Template
 
 from py4vasp import _calculation
 from py4vasp._sphinx.builder import HugoBuilder
+from py4vasp._util import convert
 
 
 class JinjaDirective(Directive):
@@ -83,10 +84,11 @@ def write_docstring(folder, quantity, title=None):
 
 def write_hidden_docstring(folder, quantity):
     outfile = folder / f"{quantity}.rst"
+    class_name = convert.to_camelcase(quantity)
     with open(outfile, "w", encoding="utf-8") as file:
         file.write(f"{quantity}\n")
         file.write("=" * len(quantity) + "\n\n")
-        file.write(f".. autoproperty:: py4vasp.Calculation.{quantity}\n")
+        file.write(f".. autoclass:: py4vasp._calculation.{quantity}.{class_name}\n")
 
 
 def on_build_finished(app, exception):

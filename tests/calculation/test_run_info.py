@@ -8,7 +8,7 @@ from py4vasp._calculation._CONTCAR import CONTCARHandler
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.bandgap import Bandgap, BandgapHandler
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.data_db import RunInfo_DB
 from py4vasp._util import check
 
@@ -25,7 +25,7 @@ def run_info(request, raw_data):
     run_info.ref.len_dos = raw_run_info.len_dos
     run_info.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
     run_info.ref.band_projections = raw_run_info.band_projections
-    run_info.ref.structure = Structure.from_data(raw_run_info.structure)
+    run_info.ref.structure = StructureHandler.from_data(raw_run_info.structure)
     run_info.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
     run_info.ref.phonon_dispersion = DispersionHandler.from_data(
         raw_run_info.phonon_dispersion
@@ -45,7 +45,7 @@ def run_info_handler(request, raw_data):
     handler.ref.len_dos = raw_run_info.len_dos
     handler.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
     handler.ref.band_projections = raw_run_info.band_projections
-    handler.ref.structure = Structure.from_data(raw_run_info.structure)
+    handler.ref.structure = StructureHandler.from_data(raw_run_info.structure)
     handler.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
     handler.ref.phonon_dispersion = DispersionHandler.from_data(
         raw_run_info.phonon_dispersion
@@ -59,7 +59,8 @@ def _check_dict(data_db: RunInfo_DB, runinfo_ref):
 
     # from structure
     assert (
-        data_db.num_ionic_steps == runinfo_ref.structure._raw_data.positions[:].shape[0]
+        data_db.num_ionic_steps
+        == runinfo_ref.structure._raw_structure.positions[:].shape[0]
     )
 
     # from system

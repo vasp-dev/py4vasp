@@ -10,11 +10,11 @@ import pytest
 
 from py4vasp import Calculation
 from py4vasp._calculation.dispatch import (
+    _REGISTRY,
     DataSource,
     DictSource,
     FileSource,
     Group,
-    _REGISTRY,
     quantity,
 )
 

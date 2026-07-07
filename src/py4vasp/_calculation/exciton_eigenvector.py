@@ -5,11 +5,11 @@ import numpy as np
 from py4vasp import raw
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import ExcitonEigenvector_DB
@@ -133,12 +133,11 @@ class ExcitonEigenvector:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             ExcitonEigenvectorHandler.from_data,
             ExcitonEigenvectorHandler.to_database,
         )

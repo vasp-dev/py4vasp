@@ -11,10 +11,10 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
-    merge_to_database,
     merge_default,
     merge_graphs,
     merge_strings,
+    merge_to_database,
     quantity,
     slice_steps,
 )
@@ -464,12 +464,11 @@ class Bandgap(graph.Mixin):
         with self._source.access(self._quantity_name) as raw_data:
             return raw_data.values.shape[1] == 3
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             self._handler_factory,
             BandgapHandler.to_database,
         )

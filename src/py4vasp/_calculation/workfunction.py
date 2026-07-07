@@ -5,12 +5,12 @@ from contextlib import suppress
 from py4vasp import exception, raw
 from py4vasp._calculation import bandgap as bandgap_module
 from py4vasp._calculation.dispatch import (
-    _dispatch,
     DataSource,
-    merge_to_database,
+    _dispatch,
     merge_default,
     merge_graphs,
     merge_strings,
+    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import Workfunction_DB
@@ -184,12 +184,11 @@ class Workfunction(graph.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def _to_database(self, selection=None) -> dict:
+    def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
         return merge_to_database(
             self._source,
             self._quantity_name,
-            selection,
             WorkfunctionHandler.from_data,
             WorkfunctionHandler.to_database,
         )

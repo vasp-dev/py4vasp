@@ -130,9 +130,10 @@ def mock_calculations_incorrect(raw_data):
     return _mock_calculations
 
 
-@patch("py4vasp._calculation.base.Refinery.from_path", autospec=True)
-@patch("py4vasp.raw.access", autospec=True)
-def test_read_inputs_from_path(mock_access, mock_from_path):
+@patch("py4vasp._calculation.energy.Energy.from_path", autospec=True)
+@patch("py4vasp._calculation.force.Force.from_path", autospec=True)
+@patch("py4vasp._calculation.stress.Stress.from_path", autospec=True)
+def test_read_inputs_from_path(mock_stress, mock_force, mock_energy):
     absolute_path_dft = Path(__file__) / "dft"
     absolute_path_mlff = Path(__file__) / "mlff"
     error_analysis = MLFFErrorAnalysis.from_paths(
@@ -154,9 +155,10 @@ def test_read_inputs_from_path(mock_access, mock_from_path):
     assert isinstance(error_analysis.dft.stresses, np.ndarray)
 
 
-@patch("py4vasp._calculation.base.Refinery.from_path", autospec=True)
-@patch("py4vasp.raw.access", autospec=True)
-def test_read_inputs_from_files(mock_analysis, mock_from_path):
+@patch("py4vasp._calculation.energy.Energy.from_file", autospec=True)
+@patch("py4vasp._calculation.force.Force.from_file", autospec=True)
+@patch("py4vasp._calculation.stress.Stress.from_file", autospec=True)
+def test_read_inputs_from_files(mock_stress, mock_force, mock_energy):
     absolute_files_dft = Path(__file__) / "dft*.h5"
     absolute_files_mlff = Path(__file__) / "mlff*.h5"
     error_analysis = MLFFErrorAnalysis.from_files(
