@@ -6,7 +6,6 @@ import py4vasp._third_party.graph as _graph
 from py4vasp._calculation import projector
 from py4vasp._calculation.dispatch import (
     DataSource,
-    _dispatch,
     merge_default,
     merge_strings,
     merge_to_database,
