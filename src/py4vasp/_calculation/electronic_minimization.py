@@ -39,6 +39,11 @@ _ENERGY_CHANGE_LABELS = {
 # Residual series shown on the secondary axis of the convergence overview.
 _RESIDUAL_TOKENS = ["rms", "rms_c"]
 
+# Convergence entries whose magnitude is below this threshold are treated as
+# not-yet-computed and reported as NaN. This most notably affects rms(c), which VASP
+# reports as zero until density updates begin after the NELMDL delay.
+_SANITY_THRESHOLD = 1e-16
+
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     exception.Py4VaspError,
     AttributeError,
@@ -66,7 +71,8 @@ class ElectronicMinimizationHandler:
         label_rep = "{}\t\t{}\t\t{}\t\t{}\t\t{}\t{}\t\t{}\n"
         string = ""
         labels = [label.decode("utf-8") for label in getattr(self._raw_data, "label")]
-        data = self.to_dict()
+        # print the raw OSZICAR data verbatim, without the read() sanity filter
+        data = self._extract(selection=None, sanitize=False)
         electronic_iterations = data["N"]
         if not self._more_than_one_ionic_step(electronic_iterations):
             electronic_iterations = [electronic_iterations]
@@ -94,8 +100,13 @@ class ElectronicMinimizationHandler:
 
         The selection is parsed with the standard :mod:`py4vasp._util.select` grammar and
         evaluated with :class:`py4vasp._util.index.Selector`, so multiple columns
-        (``"E, dE"``) and compositions (``"E + dE"``) are supported.
+        (``"E, dE"``) and compositions (``"E + dE"``) are supported. Entries whose
+        magnitude is below a small threshold are treated as not-yet-computed and reported
+        as NaN (see :data:`_SANITY_THRESHOLD`).
         """
+        return self._extract(selection, sanitize=True)
+
+    def _extract(self, selection, sanitize) -> dict:
         tokens = self._tokens()
         step_arrays = self._step_arrays()
         column_map = {1: {token: column for column, token in enumerate(tokens)}}
@@ -109,13 +120,22 @@ class ElectronicMinimizationHandler:
         for sel in selections:
             try:
                 key = selectors[0].label(sel)
-                values = [list(selector[sel]) for selector in selectors]
+                columns = [selector[sel] for selector in selectors]
             except exception.IncorrectUsage as error:
                 raise exception.RefinementError(_SELECTION_ERROR_MESSAGE) from error
+            if sanitize:
+                columns = [self._sanitize(column) for column in columns]
+            values = [list(column) for column in columns]
             if len(values) == 1:
                 values = values[0]
             return_data[key] = values if not is_none else {}
         return return_data
+
+    def _sanitize(self, column):
+        """Report not-yet-computed (near-zero) entries as NaN."""
+        column = np.array(column, dtype=float)
+        column[np.abs(column) < _SANITY_THRESHOLD] = np.nan
+        return column
 
     def to_graph(self, selection=None) -> graph.Graph:
         """Graph the convergence data against the iteration number.

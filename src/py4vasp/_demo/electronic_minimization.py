@@ -10,6 +10,9 @@ def electronic_minimization():
     iteration_number = np.arange(1, 10)[:, np.newaxis]
     ncg = np.random.randint(4, 10, (9, 1))
     random_rms = np.random.rand(9, 2)
+    # density updates (and hence rms(c)) only start after the NELMDL delay, so the
+    # first few electronic steps report a value of zero for this column
+    random_rms[:5, 1] = 0.0
     convergence_data = np.hstack(
         [iteration_number, random_convergence_data, ncg, random_rms]
     )

@@ -7,7 +7,7 @@ from dataclasses import fields
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation.electronic_minimization import (
     ElectronicMinimization,
     ElectronicMinimizationHandler,
@@ -27,7 +27,10 @@ def electronic_minimization(raw_data):
     electronic_minimization.ref.deps = convergence_data[:, 3]
     electronic_minimization.ref.ncg = convergence_data[:, 4]
     electronic_minimization.ref.rms = convergence_data[:, 5]
-    electronic_minimization.ref.rms_c = convergence_data[:, 6]
+    # read() nulls out the not-yet-computed (zero) rms(c) entries of the early steps
+    rms_c = np.array(convergence_data[:, 6], dtype=float)
+    rms_c[rms_c == 0.0] = np.nan
+    electronic_minimization.ref.rms_c = rms_c
     is_elmin_converged = [raw_elmin.is_elmin_converged == [0.0]]
     electronic_minimization.ref.is_elmin_converged = is_elmin_converged
     string_rep = "N\t\tE\t\tdE\t\tdeps\t\tncg\trms\t\trms(c)\n"
@@ -78,6 +81,34 @@ def test_read_addition(electronic_minimization, Assert):
     assert list(actual) == ["E + dE"]
     expected = electronic_minimization.ref.E + electronic_minimization.ref.dE
     Assert.allclose(actual["E + dE"], expected)
+
+
+def test_read_nulls_early_rms_c(electronic_minimization, Assert):
+    # the first (zero) rms(c) entries should be reported as NaN, real ones kept
+    actual = electronic_minimization.read("rms_c")["rms_c"]
+    assert np.all(np.isnan(actual[:5]))
+    assert not np.any(np.isnan(actual[5:]))
+    Assert.allclose(actual, electronic_minimization.ref.rms_c)
+
+
+def test_sanity_check_applies_to_any_column(Assert):
+    # values below the threshold are nulled regardless of which column they are in
+    convergence_data = np.array(
+        [
+            [1, -8.0, 1e-30, 5e-1, 5, 3e-1, 0.0],
+            [2, -8.1, 1e-3, 1e-25, 6, 1e-1, 0.0],
+        ]
+    )
+    raw_elmin = raw.ElectronicMinimization(
+        convergence_data=raw.VaspData(convergence_data),
+        label=raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"]),
+        is_elmin_converged=[0],
+    )
+    data = ElectronicMinimizationHandler.from_data(raw_elmin).to_dict()
+    assert np.isnan(data["dE"][0]) and not np.isnan(data["dE"][1])
+    assert not np.isnan(data["deps"][0]) and np.isnan(data["deps"][1])
+    assert np.all(np.isnan(data["rms_c"]))
+    assert not np.any(np.isnan(data["E"]))
 
 
 def test_read_incorrect_selection(electronic_minimization):
