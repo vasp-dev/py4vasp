@@ -99,11 +99,39 @@ def test_slice(electronic_minimization, Assert):
 
 def test_plot(electronic_minimization, Assert):
     graph = electronic_minimization.plot()
+    ref = electronic_minimization.ref
     assert graph.xlabel == "Iteration number"
-    assert graph.ylabel == "E"
-    assert len(graph.series) == 1
-    Assert.allclose(graph.series[0].x, electronic_minimization.ref.N)
-    Assert.allclose(graph.series[0].y, electronic_minimization.ref.E)
+    assert graph.ylabel == "Energy change (eV)"
+    assert graph.y2label == "Residual"
+    assert graph.yscale == "log"
+    assert graph.y2scale == "log"
+    assert len(graph.series) == 5
+    by_label = {series.label: series for series in graph.series}
+    for series in graph.series:
+        Assert.allclose(series.x, ref.N)
+    # energy changes on the (log) left axis
+    energy_change = np.abs(ref.E[-1] - ref.E)
+    energy_change[-1] = np.nan  # final point is zero and dropped on the log axis
+    Assert.allclose(by_label["|E_final - E|"].y, energy_change)
+    Assert.allclose(by_label["|dE|"].y, np.abs(ref.dE))
+    Assert.allclose(by_label["|d eps|"].y, np.abs(ref.deps))
+    assert not by_label["|E_final - E|"].y2
+    # residuals on the (log) secondary axis
+    Assert.allclose(by_label["rms"].y, ref.rms)
+    Assert.allclose(by_label["rms_c"].y, ref.rms_c)
+    assert by_label["rms"].y2
+    assert by_label["rms_c"].y2
+
+
+def test_plot_selection(electronic_minimization, Assert):
+    graph = electronic_minimization.plot("E, rms")
+    ref = electronic_minimization.ref
+    assert graph.yscale == "log"
+    assert {series.label for series in graph.series} == {"E", "rms"}
+    by_label = {series.label: series for series in graph.series}
+    Assert.allclose(by_label["E"].x, ref.N)
+    Assert.allclose(by_label["E"].y, ref.E)
+    Assert.allclose(by_label["rms"].y, ref.rms)
 
 
 def test_print(electronic_minimization, format_):

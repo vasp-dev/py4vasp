@@ -29,6 +29,16 @@ _SELECTION_ERROR_MESSAGE = """\
 Please choose a selection including at least one of the following keywords:
 N, E, dE, deps, ncg, rms, rms_c"""
 
+# Energy-change series shown on the left axis of the convergence overview. "E" is plotted
+# as the distance to the converged energy (|E_final - E|); the others as their magnitude.
+_ENERGY_CHANGE_LABELS = {
+    "|E_final - E|": "E",
+    "|dE|": "dE",
+    "|d eps|": "deps",
+}
+# Residual series shown on the secondary axis of the convergence overview.
+_RESIDUAL_TOKENS = ["rms", "rms_c"]
+
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     exception.Py4VaspError,
     AttributeError,
@@ -107,17 +117,58 @@ class ElectronicMinimizationHandler:
             return_data[key] = values if not is_none else {}
         return return_data
 
-    def to_graph(self, selection="E") -> graph.Graph:
-        """Graph the change in parameter with iteration number."""
-        data = self.to_dict()
-        series = graph.Series(data["N"], data[selection], selection)
-        from py4vasp._util import select as sel_util
+    def to_graph(self, selection=None) -> graph.Graph:
+        """Graph the convergence data against the iteration number.
 
-        ylabel = " ".join(s.capitalize() for s in selection.split("_"))
+        Without a selection this produces a convergence overview: the energy changes
+        on a logarithmic left axis and the residuals on a logarithmic secondary axis.
+        With a selection, the chosen columns are plotted as-is on a logarithmic axis.
+        """
+        if selection is None:
+            return self._overview_graph()
+        return self._selection_graph(selection)
+
+    def _overview_graph(self) -> graph.Graph:
+        data = self.to_dict()
+        iterations = np.array(data["N"], dtype=float)
+        series = [
+            graph.Series(iterations, np.abs(self._energy_change(label, data)), label)
+            for label in _ENERGY_CHANGE_LABELS
+        ]
+        series += [
+            graph.Series(iterations, np.array(data[token], dtype=float), token, y2=True)
+            for token in _RESIDUAL_TOKENS
+        ]
         return graph.Graph(
-            series=[series],
+            series=series,
             xlabel="Iteration number",
-            ylabel=ylabel,
+            ylabel="Energy change (eV)",
+            y2label="Residual",
+            yscale="log",
+            y2scale="log",
+        )
+
+    def _energy_change(self, label, data):
+        token = _ENERGY_CHANGE_LABELS[label]
+        values = np.array(data[token], dtype=float)
+        if token == "E":
+            # plot the distance to the converged energy; the final point is zero and
+            # therefore dropped so it does not vanish on a logarithmic axis
+            values = values[-1] - values
+            values[-1] = np.nan
+        return values
+
+    def _selection_graph(self, selection) -> graph.Graph:
+        iterations = np.array(self.to_dict("N")["N"], dtype=float)
+        series = [
+            graph.Series(iterations, np.array(values, dtype=float), label)
+            for label, values in self.to_dict(selection).items()
+        ]
+        return graph.Graph(
+            series=series,
+            xlabel="Iteration number",
+            ylabel="Convergence data",
+            yscale="log",
         )
 
     def is_converged(self) -> np.ndarray:
@@ -271,13 +322,17 @@ class ElectronicMinimization(graph.Mixin):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
-    def to_graph(self, selection="E") -> graph.Graph:
-        """Graph the change in parameter with iteration number.
+    def to_graph(self, selection=None) -> graph.Graph:
+        """Graph the convergence data against the iteration number.
 
         Parameters
         ----------
         selection: str
-            Choose strings consistent with the OSZICAR format
+            Choose strings consistent with the OSZICAR format (N, E, dE, deps, ncg, rms,
+            rms_c), optionally composed with the standard selection grammar (e.g.
+            "E + dE"). Without a selection a convergence overview is produced with the
+            energy changes on a logarithmic left axis and the residuals on a logarithmic
+            secondary axis.
 
         Returns
         -------
