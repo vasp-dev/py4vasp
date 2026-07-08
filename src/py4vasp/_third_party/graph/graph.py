@@ -124,14 +124,20 @@ class Graph(Sequence):
     "Tuple specifying the visible range of the x-axis as (min, max)."
     xticks: Optional[dict] = None
     "Dictionary mapping tick positions (keys) to their labels (values) for the x-axis."
+    xscale: Optional[str] = None
+    'Scale of the x-axis, e.g. "log". Defaults to None (plotly\'s automatic linear scale).'
     xsize: Optional[int] = 720
     "Width of the figure in pixels."
     ylabel: Optional[str] = None
     "Label for the y-axis. For subplots, provide a list of labels corresponding to each subplot."
     yrange: Optional[tuple] = None
     "Tuple specifying the visible range of the y-axis as (min, max)."
+    yscale: Optional[str] = None
+    'Scale of the y-axis, e.g. "log". Defaults to None (plotly\'s automatic linear scale).'
     y2label: Optional[str] = None
     "Label for the secondary y-axis (only applicable when series use the secondary y-axis)."
+    y2scale: Optional[str] = None
+    'Scale of the secondary y-axis, e.g. "log". Defaults to None (automatic linear scale).'
     ysize: Optional[int] = 540
     "Height of the figure in pixels."
     title: Optional[str] = None
@@ -316,16 +322,18 @@ class Graph(Sequence):
         return figure
 
     def _figure_with_one_or_two_y_axes(self):
-        has_secondary_y_axis = lambda series: isinstance(series, Series) and series.y2
         if self._subplot_on:
             max_row = max(series.subplot for series in self)
             figure = subplots.make_subplots(rows=max_row, cols=1)
             figure.update_layout(showlegend=False)
             return figure
-        elif any(has_secondary_y_axis(series) for series in self):
+        elif self._any_have_secondary_y_axis():
             return subplots.make_subplots(specs=[[{"secondary_y": True}]])
         else:
             return go.Figure()
+
+    def _any_have_secondary_y_axis(self):
+        return any(isinstance(series, Series) and series.y2 for series in self)
 
     def _set_legend(self, figure):
         default_colorbar_x = 1.02
@@ -374,6 +382,8 @@ class Graph(Sequence):
             figure.layout.xaxis.ticktext = self._xtick_labels()
         if self.xrange:
             figure.layout.xaxis.range = self.xrange
+        if self.xscale:
+            figure.layout.xaxis.type = self.xscale
         if self._all_are_contour():
             figure.layout.xaxis.visible = False
 
@@ -388,8 +398,12 @@ class Graph(Sequence):
                 figure.update_yaxes(title_text=ylabel, row=row + 1, col=1)
         else:
             figure.layout.yaxis.title.text = self.ylabel
+            if self.yscale:
+                figure.layout.yaxis.type = self.yscale
             if self.y2label:
                 figure.layout.yaxis2.title.text = self.y2label
+            if self.y2scale and self._any_have_secondary_y_axis():
+                figure.layout.yaxis2.type = self.y2scale
         if self.yrange:
             figure.layout.yaxis.range = self.yrange
         if self._all_are_contour():

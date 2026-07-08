@@ -294,6 +294,36 @@ def test_secondary_yaxis(parabola, sine, Assert):
     assert fig.data[1].yaxis == "y2"
 
 
+def test_default_axis_scale_is_linear(parabola):
+    pytest.importorskip("plotly")
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.xaxis.type in (None, "linear")
+    assert fig.layout.yaxis.type in (None, "linear")
+
+
+def test_log_scale_axes(parabola):
+    pytest.importorskip("plotly")
+    graph = Graph(parabola, xscale="log", yscale="log")
+    fig = graph.to_plotly()
+    assert fig.layout.xaxis.type == "log"
+    assert fig.layout.yaxis.type == "log"
+
+
+def test_secondary_yaxis_log_scale(parabola, sine):
+    pytest.importorskip("plotly")
+    sine.y2 = True
+    graph = Graph([parabola, sine], y2scale="log")
+    fig = graph.to_plotly()
+    assert fig.layout.yaxis2.type == "log"
+
+
+def test_scale_preserved_on_merge(parabola, sine):
+    pytest.importorskip("plotly")
+    merged = Graph(parabola, yscale="log") + Graph(sine, yscale="log")
+    assert merged.yscale == "log"
+    assert merged.to_plotly().layout.yaxis.type == "log"
+
+
 def check_legend_group(converted, original, first_trace):
     assert converted.legendgroup == original.label
     assert converted.showlegend == first_trace
