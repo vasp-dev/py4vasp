@@ -27,7 +27,7 @@ def electronic_minimization(raw_data):
     electronic_minimization.ref.deps = convergence_data[:, 3]
     electronic_minimization.ref.ncg = convergence_data[:, 4]
     electronic_minimization.ref.rms = convergence_data[:, 5]
-    electronic_minimization.ref.rmsc = convergence_data[:, 6]
+    electronic_minimization.ref.rms_c = convergence_data[:, 6]
     is_elmin_converged = [raw_elmin.is_elmin_converged == [0.0]]
     electronic_minimization.ref.is_elmin_converged = is_elmin_converged
     string_rep = "N\t\tE\t\tdE\t\tdeps\t\tncg\trms\t\trms(c)\n"
@@ -54,17 +54,30 @@ def test_read(electronic_minimization, Assert):
     Assert.allclose(actual["deps"], expected.deps)
     Assert.allclose(actual["ncg"], expected.ncg)
     Assert.allclose(actual["rms"], expected.rms)
-    Assert.allclose(actual["rms(c)"], expected.rmsc)
+    Assert.allclose(actual["rms_c"], expected.rms_c)
 
 
 @pytest.mark.parametrize(
-    "quantity_name", ["N", "E", "dE", "deps", "ncg", "rms", "rms(c)"]
+    "quantity_name", ["N", "E", "dE", "deps", "ncg", "rms", "rms_c"]
 )
 def test_read_selection(quantity_name, electronic_minimization, Assert):
     actual = electronic_minimization.read(quantity_name)
-    name_without_parenthesis = quantity_name.replace("(", "").replace(")", "")
-    expected = getattr(electronic_minimization.ref, name_without_parenthesis)
+    expected = getattr(electronic_minimization.ref, quantity_name)
     Assert.allclose(actual[quantity_name], expected)
+
+
+def test_read_list(electronic_minimization, Assert):
+    actual = electronic_minimization.read("E, dE")
+    assert set(actual) == {"E", "dE"}
+    Assert.allclose(actual["E"], electronic_minimization.ref.E)
+    Assert.allclose(actual["dE"], electronic_minimization.ref.dE)
+
+
+def test_read_addition(electronic_minimization, Assert):
+    actual = electronic_minimization.read("E + dE")
+    assert list(actual) == ["E + dE"]
+    expected = electronic_minimization.ref.E + electronic_minimization.ref.dE
+    Assert.allclose(actual["E + dE"], expected)
 
 
 def test_read_incorrect_selection(electronic_minimization):
@@ -81,7 +94,7 @@ def test_slice(electronic_minimization, Assert):
     Assert.allclose(actual["deps"], expected.deps)
     Assert.allclose(actual["ncg"], expected.ncg)
     Assert.allclose(actual["rms"], expected.rms)
-    Assert.allclose(actual["rms(c)"], expected.rmsc)
+    Assert.allclose(actual["rms_c"], expected.rms_c)
 
 
 def test_plot(electronic_minimization, Assert):

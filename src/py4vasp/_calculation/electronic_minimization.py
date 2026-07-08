@@ -19,7 +19,15 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.data_db import ElectronicMinimization_DB
 from py4vasp._third_party import graph
-from py4vasp._util import check
+from py4vasp._util import check, index, select
+
+# VASP labels that clash with the selection grammar (parentheses mean nesting) are
+# exposed under a grammar-safe alias. The raw label is kept for display / printing.
+_LABEL_TOKEN_OVERRIDES = {"rms(c)": "rms_c"}
+
+_SELECTION_ERROR_MESSAGE = """\
+Please choose a selection including at least one of the following keywords:
+N, E, dE, deps, ncg, rms, rms_c"""
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     exception.Py4VaspError,
@@ -59,7 +67,10 @@ class ElectronicMinimizationHandler:
             for electronic_step in range(electronic_steps):
                 _data = []
                 for label in self._raw_data.label:
-                    _values_electronic = data[label.decode("utf-8")]
+                    token = _LABEL_TOKEN_OVERRIDES.get(
+                        label.decode("utf-8"), label.decode("utf-8")
+                    )
+                    _values_electronic = data[token]
                     if not self._more_than_one_ionic_step(_values_electronic):
                         _values_electronic = [_values_electronic]
                     _value = _values_electronic[ionic_step][electronic_step]
@@ -69,20 +80,31 @@ class ElectronicMinimizationHandler:
         return string
 
     def to_dict(self, selection=None) -> dict:
-        """Extract convergence data and return as a dict."""
-        return_data = {}
+        """Extract convergence data and return as a dict.
+
+        The selection is parsed with the standard :mod:`py4vasp._util.select` grammar and
+        evaluated with :class:`py4vasp._util.index.Selector`, so multiple columns
+        (``"E, dE"``) and compositions (``"E + dE"``) are supported.
+        """
+        tokens = self._tokens()
+        step_arrays = self._step_arrays()
+        column_map = {1: {token: column for column, token in enumerate(tokens)}}
+        selectors = [index.Selector(column_map, array) for array in step_arrays]
+        is_none = np.all([array.is_none() for array in step_arrays])
         if selection is None:
-            keys_to_include = self._from_bytes_to_utf(self._raw_data.label)
+            selections = [(token,) for token in tokens]
         else:
-            labels_as_str = self._from_bytes_to_utf(self._raw_data.label)
-            if selection not in labels_as_str:
-                message = """\
-Please choose a selection including at least one of the following keywords:
-N, E, dE, deps, ncg, rms, rms(c)"""
-                raise exception.RefinementError(message)
-            keys_to_include = [selection]
-        for key in keys_to_include:
-            return_data[key] = self._read(key)
+            selections = list(select.Tree.from_selection(selection).selections())
+        return_data = {}
+        for sel in selections:
+            try:
+                key = selectors[0].label(sel)
+                values = [list(selector[sel]) for selector in selectors]
+            except exception.IncorrectUsage as error:
+                raise exception.RefinementError(_SELECTION_ERROR_MESSAGE) from error
+            if len(values) == 1:
+                values = values[0]
+            return_data[key] = values if not is_none else {}
         return return_data
 
     def to_graph(self, selection="E") -> graph.Graph:
@@ -144,22 +166,20 @@ N, E, dE, deps, ncg, rms, rms(c)"""
     def _more_than_one_ionic_step(self, data):
         return any(isinstance(_data, list) for _data in data)
 
-    def _read(self, key):
+    def _tokens(self):
+        """Selectable tokens: the raw labels with grammar-clashing ones aliased."""
+        labels = self._from_bytes_to_utf(self._raw_data.label)
+        return [_LABEL_TOKEN_OVERRIDES.get(label, label) for label in labels]
+
+    def _step_arrays(self):
+        """Split the convergence data into per-ionic-step arrays for the chosen steps."""
         data = getattr(self._raw_data, "convergence_data")
         iteration_number = data[:, 0]
         split_index = np.where(iteration_number == 1)[0]
         data = np.vsplit(data, split_index)[1:][self._steps_or_last]
         if isinstance(self._steps, slice):
-            data = [raw.VaspData(_data) for _data in data]
-        else:
-            data = [raw.VaspData(data)]
-        labels = [label.decode("utf-8") for label in self._raw_data.label]
-        data_index = labels.index(key)
-        return_data = [list(_data[:, data_index]) for _data in data]
-        is_none = [_data.is_none() for _data in data]
-        if len(return_data) == 1:
-            return_data = return_data[0]
-        return return_data if not np.all(is_none) else {}
+            return [raw.VaspData(_data) for _data in data]
+        return [raw.VaspData(data)]
 
     def _get_electronic_steps_info(self) -> tuple:
         if check.is_none(self._raw_data.convergence_data):
