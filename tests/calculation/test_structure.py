@@ -278,7 +278,8 @@ Direct
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
-def test_to_ase_Sr2TiO4(Sr2TiO4, Assert, not_core):
+def test_to_ase_Sr2TiO4(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     check_Sr2TiO4_ase(Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg), Sr2TiO4.ref, -1, Assert)
     check_Sr2TiO4_ase(Sr2TiO4[0].to_ase(**Sr2TiO4.ion_type_arg), Sr2TiO4.ref, 0, Assert)
     for steps in (slice(None), slice(1, 3)):
@@ -293,7 +294,8 @@ def check_Sr2TiO4_ase(structure, reference, steps, Assert):
     assert all(structure.pbc)
 
 
-def test_to_ase_Fe3O4(Fe3O4, Assert, not_core):
+def test_to_ase_Fe3O4(Fe3O4, Assert):
+    pytest.importorskip("ase")
     check_Fe3O4_ase(Fe3O4.to_ase(), Fe3O4.ref, -1, Assert)
     check_Fe3O4_ase(Fe3O4[0].to_ase(), Fe3O4.ref, 0, Assert)
 
@@ -306,7 +308,8 @@ def check_Fe3O4_ase(structure, reference, steps, Assert):
     assert all(structure.pbc)
 
 
-def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert, not_core):
+def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert):
+    pytest.importorskip("ase")
     structure = Ca3AsBr3.to_ase()
     Assert.allclose(structure.cell.array, Ca3AsBr3.ref.lattice_vectors)
     Assert.allclose(structure.get_scaled_positions(), Ca3AsBr3.ref.positions)
@@ -314,12 +317,14 @@ def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert, not_core):
     assert all(structure.pbc)
 
 
-def test_from_ase(Sr2TiO4, Assert, not_core):
+def test_from_ase(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     structure = Structure.from_ase(Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg))
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
-def test_to_mdtraj(Sr2TiO4, Assert, not_core):
+def test_to_mdtraj(Sr2TiO4, Assert):
+    pytest.importorskip("mdtraj")
     for steps in (slice(None), slice(1, 3)):
         trajectory = Sr2TiO4[steps].to_mdtraj(**Sr2TiO4.ion_type_arg)
         check_Sr2TiO4_mdtraj(trajectory, Sr2TiO4.ref, steps, Assert)
@@ -340,7 +345,8 @@ def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
     Assert.allclose(trajectory.unitcell_vectors, unitcell_vectors)
 
 
-def test_supercell_scale_all(Sr2TiO4, Assert, not_core):
+def test_supercell_scale_all(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     number_atoms = 7
     scale = 2
     supercell = Sr2TiO4.to_ase(supercell=scale, **Sr2TiO4.ion_type_arg)
@@ -349,7 +355,8 @@ def test_supercell_scale_all(Sr2TiO4, Assert, not_core):
     assert list(supercell.symbols) == 16 * ["Sr"] + 8 * ["Ti"] + 32 * ["O"]
 
 
-def test_supercell_scale_individual(Sr2TiO4, Assert, not_core):
+def test_supercell_scale_individual(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     number_atoms = 7
     scale = (2, 1, 3)
     supercell = Sr2TiO4.to_ase(supercell=scale, **Sr2TiO4.ion_type_arg)
@@ -357,7 +364,8 @@ def test_supercell_scale_individual(Sr2TiO4, Assert, not_core):
     Assert.allclose(supercell.cell.array, np.diag(scale) @ Sr2TiO4.ref.lattice_vectors)
 
 
-def test_supercell_wrong_size(Sr2TiO4, not_a_supercell, not_core):
+def test_supercell_wrong_size(Sr2TiO4, not_a_supercell):
+    pytest.importorskip("ase")
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.to_ase(not_a_supercell)
 
@@ -374,12 +382,14 @@ def test_positions(Sr2TiO4, steps, Assert):
     Assert.allclose(structure.positions(), Sr2TiO4.ref.positions[steps])
 
 
-def test_Sr2TiO4_cartesian_positions(Sr2TiO4, Assert, not_core):
+def test_Sr2TiO4_cartesian_positions(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     expected = Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg).get_positions()
     Assert.allclose(Sr2TiO4.cartesian_positions(), expected)
 
 
-def test_cartesian_positions(Fe3O4, Ca3AsBr3, Assert, not_core):
+def test_cartesian_positions(Fe3O4, Ca3AsBr3, Assert):
+    pytest.importorskip("ase")
     check_cartesian_positions(Fe3O4, Assert)
     check_cartesian_positions(Fe3O4[0], Assert)
     check_cartesian_positions(Ca3AsBr3, Assert)
@@ -472,13 +482,15 @@ def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
         Ca3AsBr3[0]
 
 
-def test_Sr2TiO4_to_lammps(Sr2TiO4, not_core):
+def test_Sr2TiO4_to_lammps(Sr2TiO4):
+    pytest.importorskip("ase")
     assert re.match(REF_LAMMPS, Sr2TiO4.to_lammps())
     with pytest.raises(exception.NotImplemented):
         Sr2TiO4[:].to_lammps()
 
 
-def test_ZnS_to_lammps(ZnS, not_core):
+def test_ZnS_to_lammps(ZnS):
+    pytest.importorskip("ase")
     assert re.match(REF_LAMMPS_ZnS, ZnS.to_lammps())
     assert ZnS.to_lammps(standard_form=False) == REF_LAMMPS_ZnS_general
 

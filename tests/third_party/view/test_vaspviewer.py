@@ -72,7 +72,7 @@ def base_input_view(is_structure):
 
 
 @pytest.fixture(params=[True, False])
-def view(request, not_core):
+def view(request):
     is_structure = request.param
     inputs = base_input_view(is_structure)
     view = View(**inputs)
@@ -80,7 +80,7 @@ def view(request, not_core):
 
 
 @hasVaspView
-def test_structure_to_view(view: View, Assert, not_core):
+def test_structure_to_view(view: View, Assert):
     state = view.to_vasp_viewer().get_state()
     # check positions, lattice and element types
     assert np.allclose(
@@ -96,21 +96,21 @@ def test_structure_to_view(view: View, Assert, not_core):
 
 @hasVaspView
 @patch("vasp.viewer.Widget", autospec=True)
-def test_ipython(mock_display, view, not_core):
+def test_ipython(mock_display, view):
     display = view._ipython_display_(mode="vasp_viewer")
     mock_display.assert_called_once()
 
 
 @hasVaspView
 @patch("vasp.viewer.Widget", autospec=True)
-def test_ipython_auto(mock_display, view, not_core):
+def test_ipython_auto(mock_display, view):
     display = view._ipython_display_(mode="auto")
     mock_display.assert_called_once()
 
 
 @hasVaspView
 @pytest.mark.parametrize("camera", ("orthographic", "perspective"))
-def test_camera(view, camera, not_core):
+def test_camera(view, camera):
     view.camera = camera
     state = view.to_vasp_viewer().get_state()
     assert camera == state["_selections_camera_mode"]
@@ -118,25 +118,25 @@ def test_camera(view, camera, not_core):
 
 @hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
-def test_isosurface(view, not_core):
+def test_isosurface(view):
     assert False
 
 
 @hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
-def test_shifted_isosurface(view, not_core):
+def test_shifted_isosurface(view):
     assert False
 
 
 @hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
-def test_fail_isosurface(view, not_core):
+def test_fail_isosurface(view):
     assert False
 
 
 @hasVaspView
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_ion_arrows(is_structure, Assert, not_core):
+def test_ion_arrows(is_structure, Assert):
     inputs = base_input_view(is_structure)
     view = View(
         **inputs,
@@ -179,7 +179,7 @@ def test_ion_arrows(is_structure, Assert, not_core):
 
 @hasVaspView
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_supercell(is_structure, Assert, not_core):
+def test_supercell(is_structure, Assert):
     view = View(**base_input_view(is_structure), supercell=(2, 2, 2))
     state = view.to_vasp_viewer().get_state()
     assert np.allclose(
@@ -193,7 +193,7 @@ def test_supercell(is_structure, Assert, not_core):
     ["is_structure", "is_show_cell"],
     [[True, True], [False, True], [True, False], [False, False]],
 )
-def test_showcell(is_structure, is_show_cell, not_core):
+def test_showcell(is_structure, is_show_cell):
     view = View(**base_input_view(is_structure), show_cell=is_show_cell)
     state = view.to_vasp_viewer().get_state()
     assert state["_selections_show_lattice"] == is_show_cell
@@ -204,7 +204,7 @@ def test_showcell(is_structure, is_show_cell, not_core):
     ["is_structure", "is_show_axes"],
     [[True, True], [False, True], [True, False], [False, False]],
 )
-def test_showaxes(is_structure, is_show_axes, not_core):
+def test_showaxes(is_structure, is_show_axes):
     view = View(**base_input_view(is_structure), show_axes=is_show_axes)
     state = view.to_vasp_viewer().get_state()
     assert state["_selections_show_abc"] == is_show_axes
@@ -212,7 +212,7 @@ def test_showaxes(is_structure, is_show_axes, not_core):
 
 @hasVaspView
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_showaxes_different_origin(is_structure, Assert, not_core):
+def test_showaxes_different_origin(is_structure, Assert):
     axes_offset = np.array([0.2, 0.2, 0.2])
     view = View(
         **base_input_view(is_structure), show_axes=True, show_axes_at=axes_offset
@@ -224,14 +224,14 @@ def test_showaxes_different_origin(is_structure, Assert, not_core):
 
 @hasVaspView
 @pytest.mark.parametrize("atom_radius", [0.1, 0.5, 1.0])
-def test_atom_radius(atom_radius, not_core):
+def test_atom_radius(atom_radius):
     view = View(**base_input_view(is_structure=True), atom_radius=atom_radius)
     state = view.to_vasp_viewer().get_state()
     assert state["_selections_atom_radius"] == atom_radius
 
 
 @hasVaspView
-def test_structure_title(not_core):
+def test_structure_title():
     view = View(
         **base_input_view(is_structure=True), structure_title="My Structure Title"
     )
@@ -240,7 +240,7 @@ def test_structure_title(not_core):
 
 
 @hasVaspView
-def test_different_number_of_steps_raises_error(view, not_core):
+def test_different_number_of_steps_raises_error(view):
     too_many_elements = [element for element in view.elements] + [view.elements[0]]
     with pytest.raises(exception.IncorrectUsage):
         View(too_many_elements, view.lattice_vectors, view.positions)
@@ -267,7 +267,7 @@ def test_different_number_of_steps_raises_error(view, not_core):
 
 
 @hasVaspView
-def test_incorrect_shape_raises_error(view, not_core):
+def test_incorrect_shape_raises_error(view):
     different_number_atoms = np.zeros((len(view.positions), 7, 3))
     with pytest.raises(exception.IncorrectUsage):
         View(view.elements, view.lattice_vectors, different_number_atoms)

@@ -370,14 +370,16 @@ def test_more_projections_style(raw_data, Assert):
     Assert.allclose(band["g_down"], zero)
 
 
-def test_single_polarized_to_frame(single_band, Assert, not_core):
+def test_single_polarized_to_frame(single_band, Assert):
+    pytest.importorskip("pandas")
     actual = single_band.to_frame(fermi_energy=single_band.ref.fermi_energy_argument)
     Assert.allclose(actual.bands, single_band.ref.bands[:, 0])
     Assert.allclose(actual.occupations, single_band.ref.occupations[:, 0])
     Assert.allclose(actual.kpoint_distances, single_band.ref.kpoints.distances())
 
 
-def test_multiple_bands_to_frame(multiple_bands, Assert, not_core):
+def test_multiple_bands_to_frame(multiple_bands, Assert):
+    pytest.importorskip("pandas")
     actual = multiple_bands.to_frame()
     Assert.allclose(actual.bands, multiple_bands.ref.bands.T.flatten())
     Assert.allclose(actual.occupations, multiple_bands.ref.occupations.T.flatten())
@@ -385,7 +387,8 @@ def test_multiple_bands_to_frame(multiple_bands, Assert, not_core):
     Assert.allclose(actual.kpoint_distances, kpoint_distances)
 
 
-def test_line_with_labels_to_frame(line_with_labels, Assert, not_core):
+def test_line_with_labels_to_frame(line_with_labels, Assert):
+    pytest.importorskip("pandas")
     actual = line_with_labels.to_frame()
     kpoint_distances = np.repeat(line_with_labels.ref.kpoints.distances(), repeats=3)
     kpoint_labels = np.repeat(line_with_labels.ref.kpoints.labels(), repeats=3)
@@ -394,13 +397,15 @@ def test_line_with_labels_to_frame(line_with_labels, Assert, not_core):
     Assert.allclose(actual_kpoint_labels, kpoint_labels)
 
 
-def test_with_projectors_to_frame(with_projectors, Assert, not_core):
+def test_with_projectors_to_frame(with_projectors, Assert):
+    pytest.importorskip("pandas")
     actual = with_projectors.to_frame("Sr p")
     Assert.allclose(actual.Sr, with_projectors.ref.Sr.T.flatten())
     Assert.allclose(actual.p, with_projectors.ref.p.T.flatten())
 
 
-def test_spin_polarized_to_frame(spin_polarized, Assert, not_core):
+def test_spin_polarized_to_frame(spin_polarized, Assert):
+    pytest.importorskip("pandas")
     actual = spin_polarized.to_frame()
     ref = spin_polarized.ref
     Assert.allclose(actual.bands_up, ref.bands_up.T.flatten())
@@ -409,7 +414,8 @@ def test_spin_polarized_to_frame(spin_polarized, Assert, not_core):
     Assert.allclose(actual.occupations_down, ref.occupations_down.T.flatten())
 
 
-def test_spin_projectors_to_frame(spin_projectors, Assert, not_core):
+def test_spin_projectors_to_frame(spin_projectors, Assert):
+    pytest.importorskip("pandas")
     actual = spin_projectors.to_frame(selection="O Fe(d)")
     Assert.allclose(actual.O_up, spin_projectors.ref.O_up.T.flatten())
     Assert.allclose(actual.O_down, spin_projectors.ref.O_down.T.flatten())

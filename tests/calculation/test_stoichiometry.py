@@ -28,13 +28,15 @@ class Base:
             assert stoichiometry[str(i + 1)] == expected
         self.check_ion_indices(stoichiometry)
 
-    def test_to_frame(self, not_core):
+    def test_to_frame(self):
+        pytest.importorskip("pandas")
         actual = self.stoichiometry.to_frame(**self.ion_types)
         ref_data = {"name": self.names, "element": self.elements}
         reference = pd.DataFrame(ref_data)
         pdt.assert_frame_equal(reference, actual)
 
-    def test_to_mdtraj(self, not_core):
+    def test_to_mdtraj(self):
+        pytest.importorskip("mdtraj")
         actual, _ = self.stoichiometry.to_mdtraj(**self.ion_types).to_dataframe()
         num_atoms = self.stoichiometry.number_atoms()
         ref_data = {
@@ -64,7 +66,8 @@ class Base:
     def test_number_atoms(self):
         assert self.stoichiometry.number_atoms() == 7
 
-    def test_from_ase(self, not_core):
+    def test_from_ase(self):
+        pytest.importorskip("ase")
         structure = ase.Atoms("".join(self.elements))
         stoichiometry = Stoichiometry.from_ase(structure)
         assert stoichiometry.elements() == self.elements
@@ -235,7 +238,11 @@ def test_poscar_string_without_types(without_types):
 @pytest.mark.parametrize(
     "method", ("to_dict", "to_frame", "to_mdtraj", "names", "elements")
 )
-def test_ion_types_required(method, without_types, not_core):
+def test_ion_types_required(method, without_types):
+    if method == "to_frame":
+        pytest.importorskip("pandas")
+    if method == "to_mdtraj":
+        pytest.importorskip("mdtraj")
     with pytest.raises(exception.IncorrectUsage):
         getattr(without_types, method)()
 
