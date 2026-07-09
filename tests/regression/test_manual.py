@@ -140,6 +140,9 @@ def test_example(tmp_path, quantity, method, kwargs):
     "quantity, method, kwargs, selection",
     [
         ("band", "line_mode", {"labels": "no_labels"}, "kpoints_opt"),
+        # the ionic() demo sets a q_point the "ion" source does not store; write.py now
+        # skips it instead of crashing (see tests/raw/test_write.py)
+        ("dielectric_function", "ionic", {}, "ion"),
         ("dispersion", "line_mode", {"labels": "no_labels"}, "kpoints_opt"),
         ("dos", "Fe3O4", {"projectors": "excess_orbitals"}, "kpoints_opt"),
         ("energy", "afqmc", {}, "afqmc"),
