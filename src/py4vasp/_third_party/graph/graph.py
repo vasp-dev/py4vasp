@@ -359,14 +359,24 @@ class Graph(Sequence):
                     cb.x = default_colorbar_x + i * colorbar_spacing
                 max_colorbar_x = max(max_colorbar_x, cb.x)
 
-        # Step 3: Place legend safely to the right of all colorbars
+        # Step 3: Place legend safely to the right of all colorbars, or clear of the
+        # secondary y-axis title (which sits on the right) if there is one. The right
+        # margin auto-expands to fit the shifted legend.
         if max_colorbar_x > 1.0:
             legend_x = max_colorbar_x + colorbar_spacing
             figure.update_layout(
                 legend=dict(x=legend_x, y=1.0, xanchor="left", yanchor="top")
             )
-
-        figure.update_layout(margin=dict(r=120))
+            figure.update_layout(margin=dict(r=120))
+        elif self._any_have_secondary_y_axis():
+            # push the legend clear of the secondary y-axis title on the right and widen
+            # the margin so the (potentially long) labels are not clipped
+            figure.update_layout(
+                legend=dict(x=1.13, y=1.0, xanchor="left", yanchor="top")
+            )
+            figure.update_layout(margin=dict(r=200))
+        else:
+            figure.update_layout(margin=dict(r=120))
 
     def _set_xaxis_options(self, figure):
         if self._subplot_on:

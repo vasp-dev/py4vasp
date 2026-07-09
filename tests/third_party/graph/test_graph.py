@@ -292,6 +292,17 @@ def test_secondary_yaxis(parabola, sine, Assert):
     assert fig.layout.yaxis2.title.text == graph.y2label
     assert len(fig.data) == 2
     assert fig.data[1].yaxis == "y2"
+    # the legend is pushed clear of the secondary y-axis title on the right, with a
+    # wider right margin so the labels are not clipped
+    assert fig.layout.legend.x > 1.05
+    assert fig.layout.margin.r > 120
+
+
+def test_single_yaxis_uses_default_legend(parabola, sine):
+    pytest.importorskip("plotly")
+    fig = Graph([parabola, sine]).to_plotly()
+    # no secondary axis: keep plotly's default legend placement
+    assert fig.layout.legend.x is None
 
 
 def test_default_axis_scale_is_linear(parabola):
