@@ -602,6 +602,10 @@ class PairCorrelation_DB(_DBDataMixin):
     """The minimum distance at which the pair correlation function was evaluated, in Å."""
     distance_max: Optional[float] = None
     """The maximum distance at which the pair correlation function was evaluated, in Å."""
+    first_peak_position: Optional[float] = None
+    """The distance of the first peak of the total pair correlation function, in Å."""
+    first_peak_height: Optional[float] = None
+    """The height (value of the total pair correlation function) at the first peak."""
 
 
 @dataclass

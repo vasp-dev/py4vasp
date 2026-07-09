@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
 
+import numpy as np
+
 from py4vasp import raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
@@ -16,6 +18,11 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._raw.data_db import PairCorrelation_DB
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, documentation, index, select
+
+# Minimum height of the total pair correlation function for a local maximum to be
+# considered the first peak. The value corresponds to the ideal-gas baseline, so
+# small bumps below it (e.g. numerical noise before the first shell) are ignored.
+_FIRST_PEAK_THRESHOLD = 1.0
 
 
 def _selection_string(default):
@@ -62,13 +69,42 @@ class PairCorrelationHandler:
         """Return all possible labels for the selection string."""
         return tuple(convert.text_to_string(label) for label in self._raw_data.labels)
 
-    def to_database(self) -> dict:
+    def to_database(self) -> PairCorrelation_DB:
         """Serialize pair-correlation data for database storage."""
         distance_min, distance_max = None, None
         if not check.is_none(self._raw_data.distances):
             distance_min = float(self._raw_data.distances[0])
             distance_max = float(self._raw_data.distances[-1])
-        return PairCorrelation_DB(distance_min=distance_min, distance_max=distance_max)
+        first_peak_position, first_peak_height = self._first_peak()
+        return PairCorrelation_DB(
+            distance_min=distance_min,
+            distance_max=distance_max,
+            first_peak_position=first_peak_position,
+            first_peak_height=first_peak_height,
+        )
+
+    def _first_peak(self):
+        """Position and height of the first peak of the total pair correlation.
+
+        Scans the existing sample points for the first strict local maximum of the
+        total g(r) whose height exceeds :data:`_FIRST_PEAK_THRESHOLD`, so small
+        bumps before the first real shell are skipped. Returns ``(None, None)`` when
+        no such peak exists.
+        """
+        if check.is_none(self._raw_data.distances) or check.is_none(
+            self._raw_data.function
+        ):
+            return None, None
+        distances = np.asarray(self._raw_data.distances[:])
+        # index 0 of the function is the total pair correlation by convention
+        total = np.asarray(self._raw_data.function)[self._steps_or_last, 0]
+        if distances.shape != total.shape or total.size < 3:
+            return None, None
+        for i in range(1, total.size - 1):
+            is_local_max = total[i] > total[i - 1] and total[i] > total[i + 1]
+            if is_local_max and total[i] > _FIRST_PEAK_THRESHOLD:
+                return float(distances[i]), float(total[i])
+        return None, None
 
     @property
     def _steps_or_last(self):
