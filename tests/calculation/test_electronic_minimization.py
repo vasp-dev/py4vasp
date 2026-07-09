@@ -12,8 +12,8 @@ from py4vasp._calculation.electronic_minimization import (
     ElectronicMinimization,
     ElectronicMinimizationHandler,
 )
-from py4vasp._third_party.graph import Marker
 from py4vasp._raw.data_db import ElectronicMinimization_DB
+from py4vasp._third_party.graph import Marker
 
 
 @pytest.fixture

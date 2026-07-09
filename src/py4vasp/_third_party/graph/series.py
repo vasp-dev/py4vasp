@@ -226,7 +226,9 @@ class Series(trace.Trace):
         return (self.weight is not None) and (self.marker is None)
 
     def _marker_symbol_and_size(self):
-        marker = Marker(symbol=self.marker) if isinstance(self.marker, str) else self.marker
+        marker = (
+            Marker(symbol=self.marker) if isinstance(self.marker, str) else self.marker
+        )
         symbol = _SYMBOL_ALIASES.get(marker.symbol, marker.symbol)
         return symbol, marker.size
 
