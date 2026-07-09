@@ -29,13 +29,9 @@ _SELECTION_ERROR_MESSAGE = """\
 Please choose a selection including at least one of the following keywords:
 N, E, dE, deps, ncg, rms, rms_c"""
 
-# Energy-change series shown on the left axis of the convergence overview. "E" is plotted
-# as the distance to the converged energy (|E_final - E|); the others as their magnitude.
-_ENERGY_CHANGE_LABELS = {
-    "|E_final - E|": "E",
-    "|dE|": "dE",
-    "|d eps|": "deps",
-}
+# Energy-change series shown on the left axis of the convergence overview, beside the
+# "E" distance to the converged energy. Given as (column token, display label) pairs.
+_ENERGY_CHANGE_TOKENS = [("dE", "dE"), ("deps", "d eps")]
 # Residual series shown on the secondary axis of the convergence overview.
 _RESIDUAL_TOKENS = ["rms", "rms_c"]
 
@@ -151,12 +147,14 @@ class ElectronicMinimizationHandler:
     def _overview_graph(self) -> graph.Graph:
         data = self.to_dict()
         iterations = np.array(data["N"], dtype=float)
-        series = [
-            graph.Series(iterations, np.abs(self._energy_change(label, data)), label)
-            for label in _ENERGY_CHANGE_LABELS
+        # the distance to the converged energy is a magnitude by construction
+        series = [graph.Series(iterations, self._energy_distance(data), "|E_final - E|")]
+        series += [
+            self._make_series(iterations, np.array(data[token], dtype=float), label)
+            for token, label in _ENERGY_CHANGE_TOKENS
         ]
         series += [
-            graph.Series(iterations, np.array(data[token], dtype=float), token, y2=True)
+            self._make_series(iterations, np.array(data[token], dtype=float), token, y2=True)
             for token in _RESIDUAL_TOKENS
         ]
         return graph.Graph(
@@ -168,20 +166,17 @@ class ElectronicMinimizationHandler:
             y2scale="log",
         )
 
-    def _energy_change(self, label, data):
-        token = _ENERGY_CHANGE_LABELS[label]
-        values = np.array(data[token], dtype=float)
-        if token == "E":
-            # plot the distance to the converged energy; the final point is zero and
-            # therefore dropped so it does not vanish on a logarithmic axis
-            values = values[-1] - values
-            values[-1] = np.nan
-        return values
+    def _energy_distance(self, data):
+        # the final point is zero and therefore dropped so it does not vanish on the axis
+        values = np.array(data["E"], dtype=float)
+        values = values[-1] - values
+        values[-1] = np.nan
+        return np.abs(values)
 
     def _selection_graph(self, selection) -> graph.Graph:
         iterations = np.array(self.to_dict("N")["N"], dtype=float)
         series = [
-            graph.Series(iterations, np.array(values, dtype=float), label)
+            self._make_series(iterations, np.array(values, dtype=float), label)
             for label, values in self.to_dict(selection).items()
         ]
         return graph.Graph(
@@ -190,6 +185,14 @@ class ElectronicMinimizationHandler:
             ylabel="Convergence data",
             yscale="log",
         )
+
+    def _make_series(self, x, values, label, y2=False) -> graph.Series:
+        """Plot |values| labelled "|label|" if any value is negative (a log axis cannot
+        show negative numbers); otherwise plot the values as they are."""
+        if np.any(values < 0):
+            values = np.abs(values)
+            label = f"|{label}|"
+        return graph.Series(x, values, label, y2=y2)
 
     def is_converged(self) -> np.ndarray:
         is_elmin_converged = self._raw_data.is_elmin_converged[self._steps_or_last]

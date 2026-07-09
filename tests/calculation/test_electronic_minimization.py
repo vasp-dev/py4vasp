@@ -140,18 +140,43 @@ def test_plot(electronic_minimization, Assert):
     by_label = {series.label: series for series in graph.series}
     for series in graph.series:
         Assert.allclose(series.x, ref.N)
-    # energy changes on the (log) left axis
+    # energy changes on the (log) left axis; the demo dE/deps are all positive, so
+    # they are plotted (and labelled) as-is
     energy_change = np.abs(ref.E[-1] - ref.E)
     energy_change[-1] = np.nan  # final point is zero and dropped on the log axis
     Assert.allclose(by_label["|E_final - E|"].y, energy_change)
-    Assert.allclose(by_label["|dE|"].y, np.abs(ref.dE))
-    Assert.allclose(by_label["|d eps|"].y, np.abs(ref.deps))
+    Assert.allclose(by_label["dE"].y, ref.dE)
+    Assert.allclose(by_label["d eps"].y, ref.deps)
     assert not by_label["|E_final - E|"].y2
+    assert not by_label["dE"].y2
     # residuals on the (log) secondary axis
     Assert.allclose(by_label["rms"].y, ref.rms)
     Assert.allclose(by_label["rms_c"].y, ref.rms_c)
     assert by_label["rms"].y2
     assert by_label["rms_c"].y2
+
+
+def test_plot_uses_absolute_value_for_signed_series(Assert):
+    # a directly plotted series with negative values (e.g. "ort", mislabelled as
+    # rms(c) for ALGO=All) is shown as its magnitude and labelled "|label|"
+    convergence_data = np.array(
+        [
+            [1, -8.0, -0.5, 0.2, 5, 0.3, -0.1],
+            [2, -8.2, 0.3, -0.4, 6, 0.2, -0.2],
+            [3, -8.3, 0.1, 0.05, 7, 0.1, -0.05],
+        ]
+    )
+    raw_elmin = raw.ElectronicMinimization(
+        convergence_data=raw.VaspData(convergence_data),
+        label=raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"rms(c)"]),
+        is_elmin_converged=[0],
+    )
+    graph = ElectronicMinimizationHandler.from_data(raw_elmin).to_graph()
+    by_label = {series.label: series for series in graph.series}
+    assert set(by_label) == {"|E_final - E|", "|dE|", "|d eps|", "rms", "|rms_c|"}
+    Assert.allclose(by_label["|rms_c|"].y, np.abs(convergence_data[:, 6]))
+    Assert.allclose(by_label["|dE|"].y, np.abs(convergence_data[:, 2]))
+    Assert.allclose(by_label["rms"].y, convergence_data[:, 5])
 
 
 def test_plot_selection(electronic_minimization, Assert):
