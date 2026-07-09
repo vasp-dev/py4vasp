@@ -19,7 +19,7 @@ _SYMBOL_ALIASES = {
     "s": "square",
     "^": "triangle-up",
     "v": "triangle-down",
-    "x": "x-thin",
+    "x": "x",
     "d": "diamond",
     "+": "cross",
 }

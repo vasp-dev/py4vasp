@@ -398,17 +398,17 @@ def test_simple_with_marker(sine):
 
 def test_marker_symbol(parabola):
     pytest.importorskip("plotly")
-    series = dataclasses.replace(parabola, marker=Marker(symbol="x"))
+    series = dataclasses.replace(parabola, marker=Marker(symbol="*"))
     fig = Graph(series).to_plotly()
     assert fig.data[0].mode == "markers"
-    assert fig.data[0].marker.symbol == "x-thin"  # friendly name mapped to plotly
+    assert fig.data[0].marker.symbol == "star"  # friendly name mapped to plotly
 
 
 def test_marker_symbol_and_size(parabola):
     pytest.importorskip("plotly")
-    series = dataclasses.replace(parabola, marker=Marker(symbol="x", size=7))
+    series = dataclasses.replace(parabola, marker=Marker(symbol="*", size=7))
     fig = Graph(series).to_plotly()
-    assert fig.data[0].marker.symbol == "x-thin"
+    assert fig.data[0].marker.symbol == "star"
     assert fig.data[0].marker.size == 7
 
 

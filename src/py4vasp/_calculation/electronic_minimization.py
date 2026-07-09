@@ -42,11 +42,14 @@ _NON_RESIDUAL_TOKENS = {"N", "E", "dE", "deps", "ncg"}
 # reports as zero until density updates begin after the NELMDL delay.
 _SANITY_THRESHOLD = 1e-16
 
-# Overlay marking the points whose underlying value was negative (a log axis can only
-# show the magnitude). Drawn as small crosses in a neutral colour.
-_NEGATIVE_MARKER = "x"
-_NEGATIVE_MARKER_SIZE = 7
-_NEGATIVE_COLOR = "#4d4d4d"
+# Overlay flagging the points whose sign is atypical for their series (a log axis only
+# shows the magnitude, so the sign is otherwise invisible). Drawn as small crosses in a
+# neutral colour. "Atypical" means the minority sign, so a cleanly converging quantity
+# (e.g. an always-negative dE) is not flagged at all.
+_UNUSUAL_SIGN_LABEL = "unusual sign"
+_UNUSUAL_MARKER = "x"
+_UNUSUAL_MARKER_SIZE = 8
+_UNUSUAL_COLOR = "#4d4d4d"
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     exception.Py4VaspError,
@@ -168,7 +171,7 @@ class ElectronicMinimizationHandler:
             if token not in _NON_RESIDUAL_TOKENS
         ]
         series = [self._make_series(iterations, *spec) for spec in specs]
-        series += self._negative_overlays(iterations, specs)
+        series += self._unusual_sign_overlays(iterations, specs)
         return graph.Graph(
             series=series,
             xlabel="Iteration number",
@@ -178,16 +181,19 @@ class ElectronicMinimizationHandler:
             y2scale="log",
         )
 
-    def _negative_overlays(self, iterations, specs):
-        """One markers-only series per axis flagging the points that were negative (and
-        therefore only shown as their magnitude); a single shared legend entry."""
+    def _unusual_sign_overlays(self, iterations, specs):
+        """One markers-only series per axis flagging the atypical-sign points (whose
+        magnitude is plotted but whose sign the log axis hides); the overlays on the two
+        axes share a single legend entry."""
         overlays = []
         for y2 in (False, True):
-            points = [
-                (iterations[values < 0], np.abs(values[values < 0]))
-                for values, _, axis in specs
-                if axis == y2 and np.any(values < 0)
-            ]
+            points = []
+            for values, _, axis in specs:
+                if axis != y2:
+                    continue
+                mask = self._unusual_sign_mask(values)
+                if mask.any():
+                    points.append((iterations[mask], np.abs(values[mask])))
             if not points:
                 continue
             xs, ys = zip(*points)
@@ -195,14 +201,24 @@ class ElectronicMinimizationHandler:
                 graph.Series(
                     np.concatenate(xs),
                     np.concatenate(ys),
-                    "negative",
-                    marker=graph.Marker(_NEGATIVE_MARKER, _NEGATIVE_MARKER_SIZE),
-                    color=_NEGATIVE_COLOR,
+                    _UNUSUAL_SIGN_LABEL,
+                    marker=graph.Marker(_UNUSUAL_MARKER, _UNUSUAL_MARKER_SIZE),
+                    color=_UNUSUAL_COLOR,
                     y2=y2,
                     show_legend=not overlays,
                 )
             )
         return overlays
+
+    @staticmethod
+    def _unusual_sign_mask(values):
+        """Boolean mask of the points whose sign is the minority for this series; empty
+        when the finite values do not change sign."""
+        num_positive = np.sum(values > 0)
+        num_negative = np.sum(values < 0)
+        if num_positive == 0 or num_negative == 0:
+            return np.zeros(len(values), dtype=bool)
+        return values > 0 if num_positive < num_negative else values < 0
 
     def _energy_distance(self, data):
         # E - E_final is positive while the energy is above its converged value; the

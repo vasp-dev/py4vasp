@@ -199,21 +199,22 @@ def test_plot_uses_absolute_value_for_signed_series(Assert):
     graph = ElectronicMinimizationHandler.from_data(raw_elmin).to_graph()
     by_label = {series.label: series for series in graph.series}
     # energy decreases here, so E - E_final stays positive and keeps its plain label
-    main_labels = {label for label in by_label if label != "negative"}
+    main_labels = {label for label in by_label if label != "unusual sign"}
     assert main_labels == {"E - E_final", "|dE|", "|d eps|", "rms", "|rms_c|"}
     Assert.allclose(by_label["|rms_c|"].y, np.abs(convergence_data[:, 6]))
     Assert.allclose(by_label["|dE|"].y, np.abs(convergence_data[:, 2]))
     Assert.allclose(by_label["rms"].y, convergence_data[:, 5])
 
 
-def test_plot_marks_negative_points(Assert):
-    # dE is negative at the first step (left axis); ort is negative at the first two
-    # steps (right axis). The overview should overlay an extra "negative" markers series.
+def test_plot_marks_unusual_sign_points(Assert):
+    # dE is usually negative with one positive blip (left axis); ort is usually negative
+    # with one positive blip (right axis). Only these atypical-sign points are flagged.
     convergence_data = np.array(
         [
-            [1, -8.0, -0.5, 0.2, 5, 0.3, -0.1],
-            [2, -8.2, 0.3, 0.4, 6, 0.2, -0.2],
-            [3, -8.3, 0.1, 0.05, 7, 0.1, 0.05],
+            [1, -8.0, -0.5, 0.3, 5, 0.30, 0.1],
+            [2, -8.2, -0.3, 0.2, 6, 0.20, -0.2],
+            [3, -8.3, -0.1, 0.1, 7, 0.10, -0.3],
+            [4, -8.4, 0.2, 0.05, 8, 0.05, -0.15],
         ]
     )
     raw_elmin = raw.ElectronicMinimization(
@@ -222,20 +223,20 @@ def test_plot_marks_negative_points(Assert):
         is_elmin_converged=[0],
     )
     graph = ElectronicMinimizationHandler.from_data(raw_elmin).to_graph()
-    main = [series for series in graph.series if series.label != "negative"]
-    negatives = [series for series in graph.series if series.label == "negative"]
+    main = [series for series in graph.series if series.label != "unusual sign"]
+    unusual = [series for series in graph.series if series.label == "unusual sign"]
     assert len(main) == 5
     # every overlay is markers-only using the small "x" marker
-    assert all(series.marker == Marker(symbol="x", size=7) for series in negatives)
-    # a single shared legend entry even though negatives span both axes
-    assert {series.y2 for series in negatives} == {False, True}
-    assert sum(series.show_legend for series in negatives) == 1
-    left = next(series for series in negatives if not series.y2)
-    right = next(series for series in negatives if series.y2)
-    Assert.allclose(left.x, [1])  # dE < 0 at step 1
-    Assert.allclose(left.y, [0.5])
-    Assert.allclose(right.x, [1, 2])  # ort < 0 at steps 1 and 2
-    Assert.allclose(right.y, [0.1, 0.2])
+    assert all(series.marker == Marker(symbol="x", size=8) for series in unusual)
+    # a single shared legend entry even though the points span both axes
+    assert {series.y2 for series in unusual} == {False, True}
+    assert sum(series.show_legend for series in unusual) == 1
+    left = next(series for series in unusual if not series.y2)
+    right = next(series for series in unusual if series.y2)
+    Assert.allclose(left.x, [4])  # dE > 0 only at step 4 (energy went up)
+    Assert.allclose(left.y, [0.2])
+    Assert.allclose(right.x, [1])  # ort > 0 only at step 1
+    Assert.allclose(right.y, [0.1])
 
 
 def test_plot_selection(electronic_minimization, Assert):
