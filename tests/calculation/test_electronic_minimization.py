@@ -156,6 +156,30 @@ def test_plot(electronic_minimization, Assert):
     assert by_label["rms_c"].y2
 
 
+def test_plot_with_ort_residual(Assert):
+    # ALGO=All labels the 7th column "ort" instead of "rms(c)"; the overview must derive
+    # the residual columns from the labels instead of hardcoding the name
+    convergence_data = np.array(
+        [
+            [1, -8.0, 0.5, 0.2, 5, 0.3, -0.1],
+            [2, -8.2, 0.3, 0.4, 6, 0.2, -0.2],
+        ]
+    )
+    raw_elmin = raw.ElectronicMinimization(
+        convergence_data=raw.VaspData(convergence_data),
+        label=raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"ort"]),
+        is_elmin_converged=[0],
+    )
+    graph = ElectronicMinimizationHandler.from_data(raw_elmin).to_graph()
+    by_label = {series.label: series for series in graph.series}
+    # "ort" is negative, so it is shown as its magnitude on the (secondary) residual axis
+    assert "|ort|" in by_label
+    assert "rms" in by_label
+    assert by_label["|ort|"].y2
+    Assert.allclose(by_label["|ort|"].y, np.abs(convergence_data[:, 6]))
+    Assert.allclose(by_label["rms"].y, convergence_data[:, 5])
+
+
 def test_plot_uses_absolute_value_for_signed_series(Assert):
     # a directly plotted series with negative values (e.g. "ort", mislabelled as
     # rms(c) for ALGO=All) is shown as its magnitude and labelled "|label|"

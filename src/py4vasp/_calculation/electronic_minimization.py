@@ -32,8 +32,10 @@ N, E, dE, deps, ncg, rms, rms_c"""
 # Energy-change series shown on the left axis of the convergence overview, beside the
 # "E" distance to the converged energy. Given as (column token, display label) pairs.
 _ENERGY_CHANGE_TOKENS = [("dE", "dE"), ("deps", "d eps")]
-# Residual series shown on the secondary axis of the convergence overview.
-_RESIDUAL_TOKENS = ["rms", "rms_c"]
+# Columns not plotted on the secondary residual axis: the iteration index, the energies,
+# and the number of Hamiltonian evaluations. Every remaining column (rms and the density
+# / orthonormalization residual, which VASP labels rms(c) or ort) is a residual.
+_NON_RESIDUAL_TOKENS = {"N", "E", "dE", "deps", "ncg"}
 
 # Convergence entries whose magnitude is below this threshold are treated as
 # not-yet-computed and reported as NaN. This most notably affects rms(c), which VASP
@@ -155,7 +157,8 @@ class ElectronicMinimizationHandler:
         ]
         series += [
             self._make_series(iterations, np.array(data[token], dtype=float), token, y2=True)
-            for token in _RESIDUAL_TOKENS
+            for token in self._tokens()
+            if token not in _NON_RESIDUAL_TOKENS
         ]
         return graph.Graph(
             series=series,
