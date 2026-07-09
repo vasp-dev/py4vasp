@@ -13,12 +13,14 @@ from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
+    SuppressErrorsSourceWrapper,
+    _result_has_data,
     merge_default,
     merge_strings,
-    merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_db import Stoichiometry_DB, Structure_DB
+from py4vasp._raw.definition import unique_selections as _schema_unique_selections
 from py4vasp._third_party import view
 from py4vasp._util import check, import_, parse
 
@@ -35,6 +37,9 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     TypeError,
     ValueError,
     IndexError,
+    # a source may reference datasets that are absent/malformed in the HDF5 file;
+    # reading them can raise a low-level RuntimeError which we treat as "no data"
+    RuntimeError,
 )
 
 
@@ -220,15 +225,26 @@ Atoms # atomic
         else:
             return 1
 
-    def to_database(self) -> dict:
-        """Return database-ready structure data."""
-        # Temporarily use all steps for database
+    def to_database(self, steps=slice(None)) -> Structure_DB:
+        """Return database-ready structure data for the selected step(s).
+
+        By default all steps are considered, so ``initial_*`` fields describe the
+        first step and ``final_*`` fields the last one. Passing a single integer
+        *steps* restricts the model to one geometry and ``initial_*``/``final_*``
+        then coincide.
+        """
+        # Temporarily override the steps used for the database
         saved_steps = self._steps
         saved_is_slice = self._is_slice
         saved_slice = self._slice
-        self._steps = slice(None)
-        self._is_slice = True
-        self._slice = slice(None)
+        self._steps = steps
+        self._is_slice = isinstance(steps, slice)
+        if self._is_slice:
+            self._slice = steps
+        elif steps == -1:
+            self._slice = slice(-1, None)
+        else:
+            self._slice = slice(steps, steps + 1)
 
         final_lattice, initial_lattice = ([None, None, None] for _ in range(2))
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
@@ -1238,13 +1254,99 @@ class Structure(view.Mixin):
         )
 
     def _to_database(self) -> dict:
-        """Return {quantity[_selection]: handler_result} for database storage."""
-        return merge_to_database(
-            self._source,
-            self._quantity_name,
-            StructureHandler.from_data,
-            StructureHandler.to_database,
-        )
+        """Return ``{"structure": {selection: Structure_DB}}`` for the database.
+
+        Uses a custom merge instead of the generic :func:`merge_to_database`: the
+        final structure is always stored, the initial structure (first ionic step
+        of the ``default`` trajectory) only when it differs from the final one, and
+        any additional source only when it differs from both.
+        """
+        models = _collect_structure_database(self._source, self._quantity_name)
+        return {"structure": models} if models else {}
+
+
+def _collect_structure_database(source, quantity_name):
+    """Build ``{selection: Structure_DB}`` from the available structure sources.
+
+    The ``final`` source (or, when absent, the last step of the ``default``
+    trajectory) provides the final structure, which is always included. The first
+    ionic step of the ``default`` trajectory provides the initial structure, kept
+    only when it differs from the final one. Every other source is kept only when
+    it differs from both.
+    """
+    entries = _read_structure_entries(source, quantity_name)
+    return _assemble_structure_models(entries)
+
+
+def _read_structure_entries(source, quantity_name):
+    """Materialize ``{source: {step: (model, geometry)}}`` for every schema source.
+
+    The reads happen while the source's access context is open (raw data holds
+    lazy references that become invalid once the file is closed) and the arrays
+    are copied so they survive after the context exits. The ``default`` trajectory
+    is read at both its first (``0``) and last (``-1``) step; every other source
+    only at its final step (``-1``).
+    """
+    wrapped = SuppressErrorsSourceWrapper(source)
+    entries = {}
+    for name in _schema_unique_selections(quantity_name.lstrip("_")):
+        selection = None if name == "default" else name
+        steps = (-1, 0) if name == "default" else (-1,)
+        with wrapped.access(quantity_name, selection=selection) as raw_structure:
+            if raw_structure is None:
+                continue
+            per_step = {}
+            for step in steps:
+                entry = _build_structure_entry(raw_structure, step)
+                if entry is not None:
+                    per_step[step] = entry
+            if per_step:
+                entries[name] = per_step
+    return entries
+
+
+def _build_structure_entry(raw_structure, step):
+    """Return ``(Structure_DB, (lattice, positions))`` for a single step, or None."""
+    with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+        handler = StructureHandler.from_data(raw_structure, steps=step)
+        geometry = (np.array(handler.lattice_vectors()), np.array(handler.positions()))
+        model = StructureHandler.from_data(raw_structure).to_database(steps=step)
+        if not _result_has_data(model):
+            return None
+        return model, geometry
+    return None
+
+
+def _assemble_structure_models(entries):
+    """Apply the final/initial/other rules to the collected per-source entries."""
+    models, geometries = {}, {}
+    final = entries.get("final", {}).get(-1) or entries.get("default", {}).get(-1)
+    if final is not None:
+        models["final"], geometries["final"] = final
+    initial = entries.get("default", {}).get(0)
+    if initial is not None and not _duplicate_geometry(initial[1], geometries):
+        models["initial"], geometries["initial"] = initial
+    for name, per_step in entries.items():
+        if name in ("default", "final") or -1 not in per_step:
+            continue
+        model, geometry = per_step[-1]
+        if _duplicate_geometry(geometry, geometries):
+            continue
+        models[name], geometries[name] = model, geometry
+    return models
+
+
+def _duplicate_geometry(geometry, geometries):
+    """Whether *geometry* matches any already-collected geometry."""
+    return any(_same_geometry(geometry, other) for other in geometries.values())
+
+
+def _same_geometry(first, second):
+    """Two geometries are equal when both lattice vectors and positions match."""
+    return all(
+        np.shape(a) == np.shape(b) and np.allclose(a, b)
+        for a, b in zip(first, second)
+    )
 
 
 def _cell_from_ase(structure):

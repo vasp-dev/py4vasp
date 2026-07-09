@@ -627,14 +627,33 @@ def test_to_database(structures, Assert):
     assert db_data.num_ion_types_primitive == stoichiometry.num_ion_types_primitive
 
 
-def test_to_database_dispatch(raw_data):
-    """The dispatcher nests the handler result under quantity -> selection."""
-    raw_structure = raw_data.structure("Sr2TiO4")
+def test_to_database_split_distinct_initial_final(raw_data):
+    """A trajectory with distinct first/last steps yields both a final and an
+    initial structure model, each describing a single geometry."""
+    raw_structure = raw_data.structure("Fe3O4")  # trajectory with shifting positions
     result = Structure.from_data(raw_structure)._to_database()
     assert set(result) == {"structure"}
-    assert set(result["structure"]) == {"default"}
-    expected = StructureHandler.from_data(raw_structure).to_database()
-    assert result["structure"]["default"] == expected
+    assert set(result["structure"]) == {"final", "initial"}
+    expected_final = StructureHandler.from_data(raw_structure).to_database(steps=-1)
+    expected_initial = StructureHandler.from_data(raw_structure).to_database(steps=0)
+    assert result["structure"]["final"] == expected_final
+    assert result["structure"]["initial"] == expected_initial
+    assert result["structure"]["final"] != result["structure"]["initial"]
+
+
+def test_to_database_identical_steps_only_final(raw_data):
+    """When the initial geometry matches the final one, only the final model is
+    stored (initial is dropped as a duplicate)."""
+    raw_structure = raw_data.structure("Sr2TiO4")  # trajectory of identical steps
+    result = Structure.from_data(raw_structure)._to_database()
+    assert set(result["structure"]) == {"final"}
+
+
+def test_to_database_single_geometry_only_final(raw_data):
+    """A single-geometry structure is stored under the final key only."""
+    raw_structure = raw_data.structure("ZnS")  # not a trajectory
+    result = Structure.from_data(raw_structure)._to_database()
+    assert set(result["structure"]) == {"final"}
 
 
 def test_to_database_collects_available_sources(tmp_path):
