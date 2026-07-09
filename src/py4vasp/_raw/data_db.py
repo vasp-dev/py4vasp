@@ -860,73 +860,47 @@ class Stress_DB(_DBDataMixin):
 
 @dataclass
 class Structure_DB(_DBDataMixin):
-    """Data class for storing structure data in the database."""
+    """Data class for storing a single structure geometry in the database.
+
+    Each instance describes one geometry. The database entry for a calculation stores
+    a ``final`` structure and, when it differs, a separate ``initial`` structure rather
+    than packing both into one model, so the fields carry no ``initial_``/``final_``
+    prefix."""
 
     num_ions: Optional[int] = None
     """The number of ions in the structure."""
     dimensionality: Optional[int] = None
     """The dimensionality of the structure, as determined by the presence of vacuum along different lattice vectors.
-    
+
     - 3 = bulk structure with no vacuum along any lattice vector
     - 2 = slab structure with vacuum along one lattice vector
     - 1 = multi-atom molecule or wire structure with vacuum along two lattice vectors
     - 0 = single-atom structure with vacuum along all three lattice vectors"""
 
-    final_cell_volume: Optional[float] = None
-    """The volume of the unit cell on the final step, in Å^3."""
-    final_cell_area_2d: Optional[float] = None
+    cell_volume: Optional[float] = None
+    """The volume of the unit cell, in Å^3."""
+    cell_area_2d: Optional[float] = None
     """The area of the unit cell in 2D materials, calculated as the product of the two lattice vectors that are not along the vacuum direction, in Å^2."""
-    final_cell_area_2d_span: Optional[str] = None
+    cell_area_2d_span: Optional[str] = None
     """The two lattice vectors that are used to calculate the area of the unit cell in 2D materials, in the format '12', '13', or '23'."""
-    final_lattice_vector_1: Optional[List[float]] = field(default_factory=lambda: None)
-    """The first lattice vector on the final step, in Å."""
-    final_lattice_vector_2: Optional[List[float]] = field(default_factory=lambda: None)
-    """The second lattice vector on the final step, in Å."""
-    final_lattice_vector_3: Optional[List[float]] = field(default_factory=lambda: None)
-    """The third lattice vector on the final step, in Å."""
-    final_lattice_vector_1_length: Optional[float] = None
-    """The length of the first lattice vector on the final step, in Å."""
-    final_lattice_vector_2_length: Optional[float] = None
-    """The length of the second lattice vector on the final step, in Å."""
-    final_lattice_vector_3_length: Optional[float] = None
-    """The length of the third lattice vector on the final step, in Å."""
-    final_angle_alpha: Optional[float] = None
-    """The angle between the second and third lattice vectors on the final step, in degrees."""
-    final_angle_beta: Optional[float] = None
-    """The angle between the first and third lattice vectors on the final step, in degrees."""
-    final_angle_gamma: Optional[float] = None
-    """The angle between the first and second lattice vectors on the final step, in degrees."""
-
-    initial_cell_volume: Optional[float] = None
-    """The volume of the unit cell on the initial step, in Å^3."""
-    initial_cell_area_2d: Optional[float] = None
-    """The area of the unit cell in 2D materials on the initial step, calculated as the product of the two lattice vectors that are not along the vacuum direction, in Å^2."""
-    initial_cell_area_2d_span: Optional[str] = None
-    """The two lattice vectors that are used to calculate the area of the unit cell in 2D materials on the initial step, in the format '12', '13', or '23'."""
-    initial_lattice_vector_1: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
-    """The first lattice vector on the initial step, in Å."""
-    initial_lattice_vector_2: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
-    """The second lattice vector on the initial step, in Å."""
-    initial_lattice_vector_3: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
-    """The third lattice vector on the initial step, in Å."""
-    initial_lattice_vector_1_length: Optional[float] = None
-    """The length of the first lattice vector on the initial step, in Å."""
-    initial_lattice_vector_2_length: Optional[float] = None
-    """The length of the second lattice vector on the initial step, in Å."""
-    initial_lattice_vector_3_length: Optional[float] = None
-    """The length of the third lattice vector on the initial step, in Å."""
-    initial_angle_alpha: Optional[float] = None
-    """The angle between the second and third lattice vectors on the initial step, in degrees."""
-    initial_angle_beta: Optional[float] = None
-    """The angle between the first and third lattice vectors on the initial step, in degrees."""
-    initial_angle_gamma: Optional[float] = None
-    """The angle between the first and second lattice vectors on the initial step, in degrees."""
+    lattice_vector_1: Optional[List[float]] = field(default_factory=lambda: None)
+    """The first lattice vector, in Å."""
+    lattice_vector_2: Optional[List[float]] = field(default_factory=lambda: None)
+    """The second lattice vector, in Å."""
+    lattice_vector_3: Optional[List[float]] = field(default_factory=lambda: None)
+    """The third lattice vector, in Å."""
+    lattice_vector_1_length: Optional[float] = None
+    """The length of the first lattice vector, in Å."""
+    lattice_vector_2_length: Optional[float] = None
+    """The length of the second lattice vector, in Å."""
+    lattice_vector_3_length: Optional[float] = None
+    """The length of the third lattice vector, in Å."""
+    angle_alpha: Optional[float] = None
+    """The angle between the second and third lattice vectors, in degrees."""
+    angle_beta: Optional[float] = None
+    """The angle between the first and third lattice vectors, in degrees."""
+    angle_gamma: Optional[float] = None
+    """The angle between the first and second lattice vectors, in degrees."""
 
     # stoichiometry data folded into the structure model
     ion_types: Optional[List[str]] = field(default_factory=lambda: None)

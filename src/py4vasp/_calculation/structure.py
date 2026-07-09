@@ -225,13 +225,13 @@ Atoms # atomic
         else:
             return 1
 
-    def to_database(self, steps=slice(None)) -> Structure_DB:
-        """Return database-ready structure data for the selected step(s).
+    def to_database(self, steps=-1) -> Structure_DB:
+        """Return database-ready data for a single structure geometry.
 
-        By default all steps are considered, so ``initial_*`` fields describe the
-        first step and ``final_*`` fields the last one. Passing a single integer
-        *steps* restricts the model to one geometry and ``initial_*``/``final_*``
-        then coincide.
+        *steps* selects which geometry to describe (default ``-1``, the final step).
+        The database splits a calculation into separate ``initial`` and ``final``
+        structure models, so each :class:`Structure_DB` holds one geometry with
+        unprefixed fields.
         """
         # Temporarily override the steps used for the database
         saved_steps = self._steps
@@ -246,80 +246,48 @@ Atoms # atomic
         else:
             self._slice = slice(steps, steps + 1)
 
-        final_lattice, initial_lattice = ([None, None, None] for _ in range(2))
+        try:
+            return self._single_geometry_database()
+        finally:
+            self._steps = saved_steps
+            self._is_slice = saved_is_slice
+            self._slice = saved_slice
+
+    def _single_geometry_database(self) -> Structure_DB:
+        lattice = [None, None, None]
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             lattices = self.lattice_vectors()
-            final_lattice = lattices[-1] if lattices.ndim == 3 else lattices
-            initial_lattice = lattices[0] if lattices.ndim == 3 else lattices
-            if final_lattice.ndim != 2:
-                final_lattice = [None, None, None]
-            if initial_lattice.ndim != 2:
-                initial_lattice = [None, None, None]
+            lattice = lattices[-1] if lattices.ndim == 3 else lattices
+            if lattice.ndim != 2:
+                lattice = [None, None, None]
 
-        volume_final, volume_initial = (None for _ in range(2))
+        volume = None
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             volumes = self.volume()
-            volume_final = (
+            volume = (
                 volumes[-1]
                 if not isinstance(volumes, (float, np.float64, np.float32))
                 else volumes
             )
-            volume_initial = (
-                volumes[0]
-                if not isinstance(volumes, (float, np.float64, np.float32))
-                else volumes
-            )
 
-        lengths_final, angles_final, lengths_initial, angles_initial = (
-            None for _ in range(4)
-        )
-        (
-            cell_area_2d_final,
-            cell_area_2d_span_final,
-            cell_area_2d_initial,
-            cell_area_2d_span_initial,
-        ) = (None for _ in range(4))
+        lengths = angles = None
+        cell_area_2d = cell_area_2d_span = None
         dimensionality = 3
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             dimensionality = self._dimensionality()
 
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             cell_ = self._cell()
-            lengths = cell_.lengths()
-            lengths_final = lengths[-1] if lengths.ndim == 2 else lengths
-            lengths_initial = lengths[0] if lengths.ndim == 2 else lengths
-            angles = cell_.angles()
-            angles_final = angles[-1] if angles.ndim == 2 else angles
-            angles_initial = angles[0] if angles.ndim == 2 else angles
+            all_lengths = cell_.lengths()
+            lengths = all_lengths[-1] if all_lengths.ndim == 2 else all_lengths
+            all_angles = cell_.angles()
+            angles = all_angles[-1] if all_angles.ndim == 2 else all_angles
             if dimensionality == 2:
-                cell_area_2d, cell_area_2d_span = cell_._area_2d()
-                cell_area_2d_final = (
-                    cell_area_2d[-1]
-                    if isinstance(cell_area_2d, np.ndarray)
-                    else cell_area_2d
-                )
-                cell_area_2d_initial = (
-                    cell_area_2d[0]
-                    if isinstance(cell_area_2d, np.ndarray)
-                    else cell_area_2d
-                )
-                cell_area_2d_span_final = (
-                    cell_area_2d_span[-1]
-                    if isinstance(cell_area_2d_span, list)
-                    else cell_area_2d_span
-                )
-                cell_area_2d_span_initial = (
-                    cell_area_2d_span[0]
-                    if isinstance(cell_area_2d_span, list)
-                    else cell_area_2d_span
-                )
+                area, span = cell_._area_2d()
+                cell_area_2d = area[-1] if isinstance(area, np.ndarray) else area
+                cell_area_2d_span = span[-1] if isinstance(span, list) else span
 
         num_atoms = self.number_atoms() or None
-
-        # Restore steps
-        self._steps = saved_steps
-        self._is_slice = saved_is_slice
-        self._slice = saved_slice
 
         stoichiometry = Stoichiometry_DB()
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
@@ -333,60 +301,18 @@ Atoms # atomic
             num_ion_types_primitive=stoichiometry.num_ion_types_primitive,
             formula=stoichiometry.formula,
             compound=stoichiometry.compound,
-            final_cell_volume=volume_final,
-            final_cell_area_2d=cell_area_2d_final,
-            final_cell_area_2d_span=cell_area_2d_span_final,
-            final_lattice_vector_1=(
-                list(final_lattice[0]) if final_lattice[0] is not None else None
-            ),
-            final_lattice_vector_2=(
-                list(final_lattice[1]) if final_lattice[1] is not None else None
-            ),
-            final_lattice_vector_3=(
-                list(final_lattice[2]) if final_lattice[2] is not None else None
-            ),
-            final_lattice_vector_1_length=(
-                lengths_final[0] if lengths_final is not None else None
-            ),
-            final_lattice_vector_2_length=(
-                lengths_final[1] if lengths_final is not None else None
-            ),
-            final_lattice_vector_3_length=(
-                lengths_final[2] if lengths_final is not None else None
-            ),
-            final_angle_alpha=(angles_final[0] if angles_final is not None else None),
-            final_angle_beta=(angles_final[1] if angles_final is not None else None),
-            final_angle_gamma=(angles_final[2] if angles_final is not None else None),
-            initial_cell_volume=volume_initial,
-            initial_cell_area_2d=cell_area_2d_initial,
-            initial_cell_area_2d_span=cell_area_2d_span_initial,
-            initial_lattice_vector_1=(
-                list(initial_lattice[0]) if initial_lattice[0] is not None else None
-            ),
-            initial_lattice_vector_2=(
-                list(initial_lattice[1]) if initial_lattice[1] is not None else None
-            ),
-            initial_lattice_vector_3=(
-                list(initial_lattice[2]) if initial_lattice[2] is not None else None
-            ),
-            initial_lattice_vector_1_length=(
-                lengths_initial[0] if lengths_initial is not None else None
-            ),
-            initial_lattice_vector_2_length=(
-                lengths_initial[1] if lengths_initial is not None else None
-            ),
-            initial_lattice_vector_3_length=(
-                lengths_initial[2] if lengths_initial is not None else None
-            ),
-            initial_angle_alpha=(
-                angles_initial[0] if angles_initial is not None else None
-            ),
-            initial_angle_beta=(
-                angles_initial[1] if angles_initial is not None else None
-            ),
-            initial_angle_gamma=(
-                angles_initial[2] if angles_initial is not None else None
-            ),
+            cell_volume=volume,
+            cell_area_2d=cell_area_2d,
+            cell_area_2d_span=cell_area_2d_span,
+            lattice_vector_1=list(lattice[0]) if lattice[0] is not None else None,
+            lattice_vector_2=list(lattice[1]) if lattice[1] is not None else None,
+            lattice_vector_3=list(lattice[2]) if lattice[2] is not None else None,
+            lattice_vector_1_length=lengths[0] if lengths is not None else None,
+            lattice_vector_2_length=lengths[1] if lengths is not None else None,
+            lattice_vector_3_length=lengths[2] if lengths is not None else None,
+            angle_alpha=angles[0] if angles is not None else None,
+            angle_beta=angles[1] if angles is not None else None,
+            angle_gamma=angles[2] if angles is not None else None,
         )
 
     def _dimensionality(self) -> Union[int, np.ndarray]:
