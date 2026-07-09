@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from py4vasp import _config, exception
-from py4vasp._third_party.graph import Contour, Graph, Series
+from py4vasp._third_party.graph import Contour, Graph, Marker, Series
 from py4vasp._util import import_, slicing
 
 px = import_.optional("plotly.express")
@@ -292,6 +292,47 @@ def test_secondary_yaxis(parabola, sine, Assert):
     assert fig.layout.yaxis2.title.text == graph.y2label
     assert len(fig.data) == 2
     assert fig.data[1].yaxis == "y2"
+    # the legend is pushed clear of the secondary y-axis title on the right, with a
+    # wider right margin so the labels are not clipped
+    assert fig.layout.legend.x > 1.05
+    assert fig.layout.margin.r > 120
+
+
+def test_single_yaxis_uses_default_legend(parabola, sine):
+    pytest.importorskip("plotly")
+    fig = Graph([parabola, sine]).to_plotly()
+    # no secondary axis: keep plotly's default legend placement
+    assert fig.layout.legend.x is None
+
+
+def test_default_axis_scale_is_linear(parabola):
+    pytest.importorskip("plotly")
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.xaxis.type in (None, "linear")
+    assert fig.layout.yaxis.type in (None, "linear")
+
+
+def test_log_scale_axes(parabola):
+    pytest.importorskip("plotly")
+    graph = Graph(parabola, xscale="log", yscale="log")
+    fig = graph.to_plotly()
+    assert fig.layout.xaxis.type == "log"
+    assert fig.layout.yaxis.type == "log"
+
+
+def test_secondary_yaxis_log_scale(parabola, sine):
+    pytest.importorskip("plotly")
+    sine.y2 = True
+    graph = Graph([parabola, sine], y2scale="log")
+    fig = graph.to_plotly()
+    assert fig.layout.yaxis2.type == "log"
+
+
+def test_scale_preserved_on_merge(parabola, sine):
+    pytest.importorskip("plotly")
+    merged = Graph(parabola, yscale="log") + Graph(sine, yscale="log")
+    assert merged.yscale == "log"
+    assert merged.to_plotly().layout.yaxis.type == "log"
 
 
 def check_legend_group(converted, original, first_trace):
@@ -364,6 +405,38 @@ def test_simple_with_marker(sine):
     assert len(fig.data) == 1
     assert fig.data[0].mode == "markers"
     assert fig.data[0].marker.size is None
+
+
+def test_marker_symbol(parabola):
+    pytest.importorskip("plotly")
+    series = dataclasses.replace(parabola, marker=Marker(symbol="*"))
+    fig = Graph(series).to_plotly()
+    assert fig.data[0].mode == "markers"
+    assert fig.data[0].marker.symbol == "star"  # friendly name mapped to plotly
+
+
+def test_marker_symbol_and_size(parabola):
+    pytest.importorskip("plotly")
+    series = dataclasses.replace(parabola, marker=Marker(symbol="*", size=7))
+    fig = Graph(series).to_plotly()
+    assert fig.data[0].marker.symbol == "star"
+    assert fig.data[0].marker.size == 7
+
+
+def test_marker_string_shorthand(parabola):
+    pytest.importorskip("plotly")
+    series = dataclasses.replace(parabola, marker="o")
+    fig = Graph(series).to_plotly()
+    assert fig.data[0].mode == "markers"
+    assert fig.data[0].marker.symbol == "circle"
+
+
+def test_hide_legend_entry(parabola, sine):
+    pytest.importorskip("plotly")
+    hidden = dataclasses.replace(sine, show_legend=False)
+    fig = Graph([parabola, hidden]).to_plotly()
+    assert fig.data[0].showlegend is True
+    assert fig.data[1].showlegend is False
 
 
 def test_fatband_with_marker(fatband, Assert):
