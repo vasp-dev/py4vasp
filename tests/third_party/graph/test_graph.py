@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from py4vasp import _config, exception
-from py4vasp._third_party.graph import Contour, Graph, Series
+from py4vasp._third_party.graph import Contour, Graph, Marker, Series
 from py4vasp._util import import_, slicing
 
 px = import_.optional("plotly.express")
@@ -394,6 +394,38 @@ def test_simple_with_marker(sine):
     assert len(fig.data) == 1
     assert fig.data[0].mode == "markers"
     assert fig.data[0].marker.size is None
+
+
+def test_marker_symbol(parabola):
+    pytest.importorskip("plotly")
+    series = dataclasses.replace(parabola, marker=Marker(symbol="x"))
+    fig = Graph(series).to_plotly()
+    assert fig.data[0].mode == "markers"
+    assert fig.data[0].marker.symbol == "x-thin"  # friendly name mapped to plotly
+
+
+def test_marker_symbol_and_size(parabola):
+    pytest.importorskip("plotly")
+    series = dataclasses.replace(parabola, marker=Marker(symbol="x", size=7))
+    fig = Graph(series).to_plotly()
+    assert fig.data[0].marker.symbol == "x-thin"
+    assert fig.data[0].marker.size == 7
+
+
+def test_marker_string_shorthand(parabola):
+    pytest.importorskip("plotly")
+    series = dataclasses.replace(parabola, marker="o")
+    fig = Graph(series).to_plotly()
+    assert fig.data[0].mode == "markers"
+    assert fig.data[0].marker.symbol == "circle"
+
+
+def test_hide_legend_entry(parabola, sine):
+    pytest.importorskip("plotly")
+    hidden = dataclasses.replace(sine, show_legend=False)
+    fig = Graph([parabola, hidden]).to_plotly()
+    assert fig.data[0].showlegend is True
+    assert fig.data[1].showlegend is False
 
 
 def test_fatband_with_marker(fatband, Assert):

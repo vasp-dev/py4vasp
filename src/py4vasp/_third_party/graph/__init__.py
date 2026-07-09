@@ -9,7 +9,7 @@ from .contour import Contour
 from .graph import Graph
 from .mixin import Mixin
 from .plot import plot
-from .series import Series
+from .series import Marker, Series
 
 go = import_.optional("plotly.graph_objects")
 pio = import_.optional("plotly.io")
