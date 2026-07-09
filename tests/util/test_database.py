@@ -189,7 +189,7 @@ def test_get_all_possible_keys():
     assert output_type_dict["band"] == output_type_dict["band:kpoints_opt"]
     assert output_type_dict["band"] == output_type_dict["band:kpoints_wan"]
     assert "band:default" not in output_type_dict
-    assert output_type_dict["current_density"] is None
+    assert output_type_dict["current_density"] == "CurrentDensity_DB"
 
     assert (
         sum([1 for v in all_keys.values() if len(v) > 0 and isinstance(v[0], tuple)])

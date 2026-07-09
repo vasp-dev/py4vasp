@@ -179,6 +179,23 @@ class BornEffectiveCharge_DB(_DBDataMixin):
 
 
 @dataclass
+class CurrentDensity_DB(_DBDataMixin):
+    """Data class for storing current density data in the database.
+
+    The current density is a vector field on a grid; the summaries below refer to its
+    magnitude |j| aggregated over all grid points and perturbations."""
+
+    grid_shape: Optional[List[int]] = field(default_factory=lambda: None)
+    """The shape of the grid on which the current density is evaluated, in the order (nx, ny, nz)."""
+    magnitude_min: Optional[float] = None
+    """The minimum magnitude of the current density across all grid points and perturbations."""
+    magnitude_max: Optional[float] = None
+    """The maximum magnitude of the current density across all grid points and perturbations."""
+    magnitude_mean: Optional[float] = None
+    """The mean magnitude of the current density across all grid points and perturbations."""
+
+
+@dataclass
 class DielectricFunction_DB(_DBDataMixin):
     """Data class for storing dielectric function data in the database."""
 
