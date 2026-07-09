@@ -261,17 +261,15 @@ def test_factory_methods(raw_data, check_factory_methods):
     check_factory_methods(Stoichiometry, data, skip_methods=["to_mdtraj"])
 
 
-def test_to_database_dispatch(raw_data):
-    """The dispatcher nests the handler result under quantity -> selection."""
+def test_stoichiometry_not_collected_standalone(raw_data):
+    """Stoichiometry is folded into structure, so the dispatcher exposes no
+    ``_to_database`` and is skipped by the calculation-level collection. The
+    handler ``to_database`` stays (it is used by the structure model)."""
     raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4")
-    result = Stoichiometry.from_data(raw_stoichiometry)._to_database()
-    assert set(result) == {"stoichiometry"}
-    expected = StoichiometryHandler.from_data(raw_stoichiometry).to_database()
-    assert result["stoichiometry"]["default"] == expected
-
-
-def test_to_database_dispatch_skips_empty(raw_data):
-    """Stoichiometry without ion types carries no database data, so it is omitted."""
-    raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4 without ion types")
-    result = Stoichiometry.from_data(raw_stoichiometry)._to_database()
-    assert result == {}
+    dispatcher = Stoichiometry.from_data(raw_stoichiometry)
+    assert not hasattr(dispatcher, "_to_database")
+    # the handler still produces the stoichiometry model for the parent to fold in
+    assert isinstance(
+        StoichiometryHandler.from_data(raw_stoichiometry).to_database(),
+        Stoichiometry_DB,
+    )

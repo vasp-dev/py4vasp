@@ -9,7 +9,6 @@ from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
     merge_strings,
-    merge_to_database,
     quantity,
 )
 from py4vasp._calculation.selection import Selection
@@ -417,14 +416,9 @@ class Stoichiometry:
             StoichiometryHandler.number_atoms,
         )
 
-    def _to_database(self) -> dict:
-        """Return {quantity[_selection]: handler_result} for database storage."""
-        return merge_to_database(
-            self._source,
-            self._quantity_name,
-            StoichiometryHandler.from_data,
-            StoichiometryHandler.to_database,
-        )
+    # Stoichiometry has no standalone database entry: its data is folded into the
+    # structure model (see StructureHandler.to_database), so the dispatcher
+    # deliberately exposes no `_to_database`.
 
 
 def raw_stoichiometry_from_ase(structure):

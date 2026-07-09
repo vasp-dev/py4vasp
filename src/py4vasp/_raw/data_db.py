@@ -78,6 +78,20 @@ class Band_DB(_DBDataMixin):
     fermi_energy: Optional[float] = None
     """The Fermi energy used for plotting the band structure, which may be different from the raw Fermi energy based on user input."""
 
+    # dispersion data folded into the band model
+    eigenvalue_min: Optional[float] = None
+    """The minimum eigenvalue across all bands and k-points, in eV."""
+    eigenvalue_max: Optional[float] = None
+    """The maximum eigenvalue across all bands and k-points, in eV."""
+    eigenvalue_min_up: Optional[float] = None
+    """The minimum eigenvalue for spin-up electrons across all bands and k-points, in eV."""
+    eigenvalue_max_up: Optional[float] = None
+    """The maximum eigenvalue for spin-up electrons across all bands and k-points, in eV."""
+    eigenvalue_min_down: Optional[float] = None
+    """The minimum eigenvalue for spin-down electrons across all bands and k-points, in eV."""
+    eigenvalue_max_down: Optional[float] = None
+    """The maximum eigenvalue for spin-down electrons across all bands and k-points, in eV."""
+
 
 @dataclass
 class Bandgap_DB(_DBDataMixin):
@@ -601,6 +615,18 @@ class PhononDos_DB(_DBDataMixin):
 
 
 @dataclass
+class PhononBand_DB(_DBDataMixin):
+    """Data class for storing phonon band structure data in the database.
+
+    The dispersion (phonon frequencies) is folded into this model."""
+
+    eigenvalue_min: Optional[float] = None
+    """The minimum phonon frequency across all modes and q-points, in THz."""
+    eigenvalue_max: Optional[float] = None
+    """The maximum phonon frequency across all modes and q-points, in THz."""
+
+
+@dataclass
 class PhononMode_DB(_DBDataMixin):
     """Data class for storing phonon mode data in the database."""
 
@@ -897,6 +923,18 @@ class Structure_DB(_DBDataMixin):
     """The angle between the first and third lattice vectors on the initial step, in degrees."""
     initial_angle_gamma: Optional[float] = None
     """The angle between the first and second lattice vectors on the initial step, in degrees."""
+
+    # stoichiometry data folded into the structure model
+    ion_types: Optional[List[str]] = field(default_factory=lambda: None)
+    """The distinct types of ions in the system."""
+    num_ion_types: Optional[List[int]] = field(default_factory=lambda: None)
+    """The number of ions of each type in the system."""
+    num_ion_types_primitive: Optional[List[int]] = field(default_factory=lambda: None)
+    """The number of ions of each type in the primitive cell."""
+    formula: Optional[str] = None
+    """The chemical formula of the system, in the format {element}{count if count > 1 else ''}, e.g. A3B2CD4."""
+    compound: Optional[str] = None
+    """The name of the compound, in the format {element1}-{element2}-..., e.g. A-B-C."""
 
 
 @dataclass

@@ -144,6 +144,27 @@ def test_run_info_in_properties(demo_db):
     assert "run_info" in demo_db.properties
 
 
+def test_subcomponents_not_top_level(demo_db):
+    """stoichiometry and dispersion are folded into their parent quantities and
+    must not appear as top-level properties."""
+    assert "stoichiometry" not in demo_db.properties
+    assert "dispersion" not in demo_db.properties
+
+
+def test_stoichiometry_folded_into_structure(demo_db):
+    """Structure models carry the folded stoichiometry fields."""
+    structure_models = list(demo_db.properties["structure"].values())
+    assert any(model.formula is not None for model in structure_models)
+    assert any(model.ion_types is not None for model in structure_models)
+
+
+def test_dispersion_folded_into_band(demo_db):
+    """The band model carries the folded dispersion eigenvalue range."""
+    band = demo_db.properties["band"]["default"]
+    assert band.eigenvalue_min is not None
+    assert band.eigenvalue_max is not None
+
+
 def test_default_selection_key_has_no_suffix(demo_db):
     """Keys for the default selection must not have a '_default' suffix."""
     for key in demo_db.properties:

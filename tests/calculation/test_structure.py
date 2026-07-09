@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception, raw
-from py4vasp._calculation._stoichiometry import Stoichiometry
+from py4vasp._calculation._stoichiometry import Stoichiometry, StoichiometryHandler
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.data_db import Structure_DB
 from py4vasp._util import check
@@ -615,6 +615,16 @@ def test_to_database(structures, Assert):
     assert getattr(db_data, f"{prefix}_angle_alpha") == pytest.approx(alpha)
     assert getattr(db_data, f"{prefix}_angle_beta") == pytest.approx(beta)
     assert getattr(db_data, f"{prefix}_angle_gamma") == pytest.approx(gamma)
+
+    # stoichiometry is folded into the structure model
+    stoichiometry = StoichiometryHandler.from_data(
+        structures.ref.raw_data.stoichiometry
+    ).to_database()
+    assert db_data.formula == stoichiometry.formula
+    assert db_data.compound == stoichiometry.compound
+    assert db_data.ion_types == stoichiometry.ion_types
+    assert db_data.num_ion_types == stoichiometry.num_ion_types
+    assert db_data.num_ion_types_primitive == stoichiometry.num_ion_types_primitive
 
 
 def test_to_database_dispatch(raw_data):

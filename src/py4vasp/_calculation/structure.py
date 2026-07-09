@@ -18,7 +18,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Structure_DB
+from py4vasp._raw.data_db import Stoichiometry_DB, Structure_DB
 from py4vasp._third_party import view
 from py4vasp._util import check, import_, parse
 
@@ -305,9 +305,18 @@ Atoms # atomic
         self._is_slice = saved_is_slice
         self._slice = saved_slice
 
+        stoichiometry = Stoichiometry_DB()
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            stoichiometry = self._stoichiometry().to_database()
+
         return Structure_DB(
             num_ions=num_atoms,
             dimensionality=dimensionality,
+            ion_types=stoichiometry.ion_types,
+            num_ion_types=stoichiometry.num_ion_types,
+            num_ion_types_primitive=stoichiometry.num_ion_types_primitive,
+            formula=stoichiometry.formula,
+            compound=stoichiometry.compound,
             final_cell_volume=volume_final,
             final_cell_area_2d=cell_area_2d_final,
             final_cell_area_2d_span=cell_area_2d_span_final,

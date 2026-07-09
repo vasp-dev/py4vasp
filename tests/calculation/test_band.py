@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
+from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.band import _OCCUPATION_CUTOFF, Band, BandHandler
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import Projector
@@ -695,6 +696,17 @@ def _check_to_database(_band):
     assert database_data.fermi_energy == getattr(
         _band.ref, "fermi_energy_argument", _band.ref.fermi_energy
     )
+
+    # dispersion is folded into the band model
+    dispersion = DispersionHandler.from_data(
+        _band.ref.raw_data.dispersion
+    ).to_database()
+    assert database_data.eigenvalue_min == dispersion.eigenvalue_min
+    assert database_data.eigenvalue_max == dispersion.eigenvalue_max
+    assert database_data.eigenvalue_min_up == dispersion.eigenvalue_min_up
+    assert database_data.eigenvalue_max_up == dispersion.eigenvalue_max_up
+    assert database_data.eigenvalue_min_down == dispersion.eigenvalue_min_down
+    assert database_data.eigenvalue_max_down == dispersion.eigenvalue_max_down
 
     if getattr(_band.ref, "num_occupied_bands", None) is not None:
         assert database_data.num_occupied_bands == _band.ref.num_occupied_bands
