@@ -42,6 +42,12 @@ _NON_RESIDUAL_TOKENS = {"N", "E", "dE", "deps", "ncg"}
 # reports as zero until density updates begin after the NELMDL delay.
 _SANITY_THRESHOLD = 1e-16
 
+# Overlay marking the points whose underlying value was negative (a log axis can only
+# show the magnitude). Drawn as small crosses in a neutral colour.
+_NEGATIVE_MARKER = "x"
+_NEGATIVE_MARKER_SIZE = 7
+_NEGATIVE_COLOR = "#4d4d4d"
+
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     exception.Py4VaspError,
     AttributeError,
@@ -149,17 +155,20 @@ class ElectronicMinimizationHandler:
     def _overview_graph(self) -> graph.Graph:
         data = self.to_dict()
         iterations = np.array(data["N"], dtype=float)
-        # distance to the converged energy; positive while E is above its final value
-        series = [self._make_series(iterations, self._energy_distance(data), "E - E_final")]
-        series += [
-            self._make_series(iterations, np.array(data[token], dtype=float), label)
+        # (signed values, label, secondary axis) for each series of the overview; the
+        # distance to the converged energy is positive while E is above its final value
+        specs = [(self._energy_distance(data), "E - E_final", False)]
+        specs += [
+            (np.array(data[token], dtype=float), label, False)
             for token, label in _ENERGY_CHANGE_TOKENS
         ]
-        series += [
-            self._make_series(iterations, np.array(data[token], dtype=float), token, y2=True)
+        specs += [
+            (np.array(data[token], dtype=float), token, True)
             for token in self._tokens()
             if token not in _NON_RESIDUAL_TOKENS
         ]
+        series = [self._make_series(iterations, *spec) for spec in specs]
+        series += self._negative_overlays(iterations, specs)
         return graph.Graph(
             series=series,
             xlabel="Iteration number",
@@ -168,6 +177,32 @@ class ElectronicMinimizationHandler:
             yscale="log",
             y2scale="log",
         )
+
+    def _negative_overlays(self, iterations, specs):
+        """One markers-only series per axis flagging the points that were negative (and
+        therefore only shown as their magnitude); a single shared legend entry."""
+        overlays = []
+        for y2 in (False, True):
+            points = [
+                (iterations[values < 0], np.abs(values[values < 0]))
+                for values, _, axis in specs
+                if axis == y2 and np.any(values < 0)
+            ]
+            if not points:
+                continue
+            xs, ys = zip(*points)
+            overlays.append(
+                graph.Series(
+                    np.concatenate(xs),
+                    np.concatenate(ys),
+                    "negative",
+                    marker=graph.Marker(_NEGATIVE_MARKER, _NEGATIVE_MARKER_SIZE),
+                    color=_NEGATIVE_COLOR,
+                    y2=y2,
+                    show_legend=not overlays,
+                )
+            )
+        return overlays
 
     def _energy_distance(self, data):
         # E - E_final is positive while the energy is above its converged value; the

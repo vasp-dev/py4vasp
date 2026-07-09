@@ -12,6 +12,7 @@ from py4vasp._calculation.electronic_minimization import (
     ElectronicMinimization,
     ElectronicMinimizationHandler,
 )
+from py4vasp._third_party.graph import Marker
 from py4vasp._raw.data_db import ElectronicMinimization_DB
 
 
@@ -198,10 +199,43 @@ def test_plot_uses_absolute_value_for_signed_series(Assert):
     graph = ElectronicMinimizationHandler.from_data(raw_elmin).to_graph()
     by_label = {series.label: series for series in graph.series}
     # energy decreases here, so E - E_final stays positive and keeps its plain label
-    assert set(by_label) == {"E - E_final", "|dE|", "|d eps|", "rms", "|rms_c|"}
+    main_labels = {label for label in by_label if label != "negative"}
+    assert main_labels == {"E - E_final", "|dE|", "|d eps|", "rms", "|rms_c|"}
     Assert.allclose(by_label["|rms_c|"].y, np.abs(convergence_data[:, 6]))
     Assert.allclose(by_label["|dE|"].y, np.abs(convergence_data[:, 2]))
     Assert.allclose(by_label["rms"].y, convergence_data[:, 5])
+
+
+def test_plot_marks_negative_points(Assert):
+    # dE is negative at the first step (left axis); ort is negative at the first two
+    # steps (right axis). The overview should overlay an extra "negative" markers series.
+    convergence_data = np.array(
+        [
+            [1, -8.0, -0.5, 0.2, 5, 0.3, -0.1],
+            [2, -8.2, 0.3, 0.4, 6, 0.2, -0.2],
+            [3, -8.3, 0.1, 0.05, 7, 0.1, 0.05],
+        ]
+    )
+    raw_elmin = raw.ElectronicMinimization(
+        convergence_data=raw.VaspData(convergence_data),
+        label=raw.VaspData([b"N", b"E", b"dE", b"deps", b"ncg", b"rms", b"ort"]),
+        is_elmin_converged=[0],
+    )
+    graph = ElectronicMinimizationHandler.from_data(raw_elmin).to_graph()
+    main = [series for series in graph.series if series.label != "negative"]
+    negatives = [series for series in graph.series if series.label == "negative"]
+    assert len(main) == 5
+    # every overlay is markers-only using the small "x" marker
+    assert all(series.marker == Marker(symbol="x", size=7) for series in negatives)
+    # a single shared legend entry even though negatives span both axes
+    assert {series.y2 for series in negatives} == {False, True}
+    assert sum(series.show_legend for series in negatives) == 1
+    left = next(series for series in negatives if not series.y2)
+    right = next(series for series in negatives if series.y2)
+    Assert.allclose(left.x, [1])  # dE < 0 at step 1
+    Assert.allclose(left.y, [0.5])
+    Assert.allclose(right.x, [1, 2])  # ort < 0 at steps 1 and 2
+    Assert.allclose(right.y, [0.1, 0.2])
 
 
 def test_plot_selection(electronic_minimization, Assert):
