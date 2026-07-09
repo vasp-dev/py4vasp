@@ -562,7 +562,11 @@ def test_to_database(structures, Assert):
             structures.ref.volume[index] if has_timesteps else structures.ref.volume
         )
         area_2d = (
-            (structures.ref.area_2d[index] if structures.ref.area_2d is not None else None)
+            (
+                structures.ref.area_2d[index]
+                if structures.ref.area_2d is not None
+                else None
+            )
             if has_timesteps
             else structures.ref.area_2d
         )
@@ -582,9 +586,7 @@ def test_to_database(structures, Assert):
             assert db_data.cell_area_2d is None
             assert db_data.cell_area_2d_span is None
         for idx in range(3):
-            Assert.allclose(
-                getattr(db_data, f"lattice_vector_{idx + 1}"), lattice[idx]
-            )
+            Assert.allclose(getattr(db_data, f"lattice_vector_{idx + 1}"), lattice[idx])
             assert getattr(
                 db_data, f"lattice_vector_{idx + 1}_length"
             ) == pytest.approx(np.linalg.norm(lattice[idx]))

@@ -183,9 +183,9 @@ def run_test(tmp_path, quantity, method, kwargs, selection=None):
             # data now lives inside the parent model, so it must not be a standalone
             # top-level property any more.
             for name in _folded_top_names(key):
-                assert name not in properties, (
-                    f"{key!r} should be folded but {name!r} is still top-level"
-                )
+                assert (
+                    name not in properties
+                ), f"{key!r} should be folded but {name!r} is still top-level"
             continue
         quantity_key, selection_key = target
         assert quantity_key in properties, (
@@ -200,13 +200,13 @@ def run_test(tmp_path, quantity, method, kwargs, selection=None):
         if quantity_key == "structure":
             # The legacy model packed both geometries with initial_/final_ prefixes; the
             # port splits them into separate unprefixed models keyed final/initial.
-            assert structure_equal(selections, selection_key, value), (
-                f"value changed for {key!r} -> structure.{selection_key}"
-            )
+            assert structure_equal(
+                selections, selection_key, value
+            ), f"value changed for {key!r} -> structure.{selection_key}"
         else:
-            assert reference_fields_equal(selections[selection_key], value), (
-                f"value changed for {key!r} -> {quantity_key}.{selection_key}"
-            )
+            assert reference_fields_equal(
+                selections[selection_key], value
+            ), f"value changed for {key!r} -> {quantity_key}.{selection_key}"
 
 
 def resolve_key(key):
@@ -286,9 +286,9 @@ def structure_equal(port_structures, selection_key, reference):
         if name.startswith("__"):
             continue
         if name.startswith("final_"):
-            target, attr = final_model, name[len("final_"):]
+            target, attr = final_model, name[len("final_") :]
         elif name.startswith("initial_"):
-            attr = name[len("initial_"):]
+            attr = name[len("initial_") :]
             if initial_model is None:
                 if not _values_equal(getattr(final_model, attr, _MISSING), ref_value):
                     # tolerated demo artifact (see docstring)

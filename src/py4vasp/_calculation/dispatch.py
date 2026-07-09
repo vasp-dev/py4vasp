@@ -407,9 +407,7 @@ def merge_to_database(
         **kwargs,
     )
     selections = {
-        sel: result
-        for sel, result in raw_results.items()
-        if _result_has_data(result)
+        sel: result for sel, result in raw_results.items() if _result_has_data(result)
     }
     selections = _drop_duplicates_of_default(selections)
     return {base: selections} if selections else {}

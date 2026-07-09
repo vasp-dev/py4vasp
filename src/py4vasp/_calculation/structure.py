@@ -1270,8 +1270,7 @@ def _duplicate_geometry(geometry, geometries):
 def _same_geometry(first, second):
     """Two geometries are equal when both lattice vectors and positions match."""
     return all(
-        np.shape(a) == np.shape(b) and np.allclose(a, b)
-        for a, b in zip(first, second)
+        np.shape(a) == np.shape(b) and np.allclose(a, b) for a, b in zip(first, second)
     )
 
 
