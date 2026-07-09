@@ -149,8 +149,8 @@ class ElectronicMinimizationHandler:
     def _overview_graph(self) -> graph.Graph:
         data = self.to_dict()
         iterations = np.array(data["N"], dtype=float)
-        # the distance to the converged energy is a magnitude by construction
-        series = [graph.Series(iterations, self._energy_distance(data), "|E_final - E|")]
+        # distance to the converged energy; positive while E is above its final value
+        series = [self._make_series(iterations, self._energy_distance(data), "E - E_final")]
         series += [
             self._make_series(iterations, np.array(data[token], dtype=float), label)
             for token, label in _ENERGY_CHANGE_TOKENS
@@ -170,11 +170,12 @@ class ElectronicMinimizationHandler:
         )
 
     def _energy_distance(self, data):
-        # the final point is zero and therefore dropped so it does not vanish on the axis
+        # E - E_final is positive while the energy is above its converged value; the
+        # final point is zero and therefore dropped so it does not vanish on the axis
         values = np.array(data["E"], dtype=float)
-        values = values[-1] - values
+        values = values - values[-1]
         values[-1] = np.nan
-        return np.abs(values)
+        return values
 
     def _selection_graph(self, selection) -> graph.Graph:
         iterations = np.array(self.to_dict("N")["N"], dtype=float)

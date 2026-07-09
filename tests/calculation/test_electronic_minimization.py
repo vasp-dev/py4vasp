@@ -140,14 +140,14 @@ def test_plot(electronic_minimization, Assert):
     by_label = {series.label: series for series in graph.series}
     for series in graph.series:
         Assert.allclose(series.x, ref.N)
-    # energy changes on the (log) left axis; the demo dE/deps are all positive, so
-    # they are plotted (and labelled) as-is
-    energy_change = np.abs(ref.E[-1] - ref.E)
+    # energy changes on the (log) left axis; the demo energy converges downward, so the
+    # distance E - E_final is positive and plotted (and labelled) as-is
+    energy_change = ref.E - ref.E[-1]
     energy_change[-1] = np.nan  # final point is zero and dropped on the log axis
-    Assert.allclose(by_label["|E_final - E|"].y, energy_change)
+    Assert.allclose(by_label["E - E_final"].y, energy_change)
     Assert.allclose(by_label["dE"].y, ref.dE)
     Assert.allclose(by_label["d eps"].y, ref.deps)
-    assert not by_label["|E_final - E|"].y2
+    assert not by_label["E - E_final"].y2
     assert not by_label["dE"].y2
     # residuals on the (log) secondary axis
     Assert.allclose(by_label["rms"].y, ref.rms)
@@ -197,7 +197,8 @@ def test_plot_uses_absolute_value_for_signed_series(Assert):
     )
     graph = ElectronicMinimizationHandler.from_data(raw_elmin).to_graph()
     by_label = {series.label: series for series in graph.series}
-    assert set(by_label) == {"|E_final - E|", "|dE|", "|d eps|", "rms", "|rms_c|"}
+    # energy decreases here, so E - E_final stays positive and keeps its plain label
+    assert set(by_label) == {"E - E_final", "|dE|", "|d eps|", "rms", "|rms_c|"}
     Assert.allclose(by_label["|rms_c|"].y, np.abs(convergence_data[:, 6]))
     Assert.allclose(by_label["|dE|"].y, np.abs(convergence_data[:, 2]))
     Assert.allclose(by_label["rms"].y, convergence_data[:, 5])
@@ -207,10 +208,11 @@ def test_plot_selection(electronic_minimization, Assert):
     graph = electronic_minimization.plot("E, rms")
     ref = electronic_minimization.ref
     assert graph.yscale == "log"
-    assert {series.label for series in graph.series} == {"E", "rms"}
+    # the total energy is negative, so on the log axis it is shown as its magnitude
+    assert {series.label for series in graph.series} == {"|E|", "rms"}
     by_label = {series.label: series for series in graph.series}
-    Assert.allclose(by_label["E"].x, ref.N)
-    Assert.allclose(by_label["E"].y, ref.E)
+    Assert.allclose(by_label["|E|"].x, ref.N)
+    Assert.allclose(by_label["|E|"].y, np.abs(ref.E))
     Assert.allclose(by_label["rms"].y, ref.rms)
 
 

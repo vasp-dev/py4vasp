@@ -7,6 +7,9 @@ from py4vasp import raw
 
 def electronic_minimization():
     random_convergence_data = np.random.rand(9, 3)
+    # the total energy converges downward toward its final value, so the distance
+    # E - E_final stays positive throughout the minimization
+    random_convergence_data[:, 0] = -8.0 - np.linspace(0.0, 1.0, 9)
     iteration_number = np.arange(1, 10)[:, np.newaxis]
     ncg = np.random.randint(4, 10, (9, 1))
     random_rms = np.random.rand(9, 2)
