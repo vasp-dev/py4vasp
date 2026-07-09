@@ -618,18 +618,19 @@ def test_to_database(structures, Assert):
 
 
 def test_to_database_dispatch(raw_data):
-    """The dispatcher keys the handler result by quantity name for the database."""
+    """The dispatcher nests the handler result under quantity -> selection."""
     raw_structure = raw_data.structure("Sr2TiO4")
     result = Structure.from_data(raw_structure)._to_database()
     assert set(result) == {"structure"}
+    assert set(result["structure"]) == {"default"}
     expected = StructureHandler.from_data(raw_structure).to_database()
-    assert result["structure"] == expected
+    assert result["structure"]["default"] == expected
 
 
 def test_to_database_collects_available_sources(tmp_path):
     """Database collection enumerates every structure source. For a CONTCAR-only
-    calculation only the ``final`` source carries data, so the result is keyed
-    ``structure_final`` (default/exciton/poscar have no data and are dropped)."""
+    calculation only the ``final`` source carries data, so the result is nested as
+    ``{"structure": {"final": ...}}`` (default/exciton/poscar have no data)."""
     import h5py
 
     import py4vasp
@@ -639,8 +640,9 @@ def test_to_database_collects_available_sources(tmp_path):
         py4vasp._raw.write.write(h5f, raw.Version(99, 99, 99))
         py4vasp._raw.write.write(h5f, contcar_demo.Sr2TiO4())
     result = py4vasp.Calculation.from_path(tmp_path).structure._to_database()
-    assert set(result) == {"structure_final"}
-    assert result["structure_final"].num_ions == 7
+    assert set(result) == {"structure"}
+    assert set(result["structure"]) == {"final"}
+    assert result["structure"]["final"].num_ions == 7
 
 
 def test_factory_methods(raw_data, check_factory_methods):

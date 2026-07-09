@@ -740,11 +740,12 @@ def test_to_database_noncollinear_projectors(noncollinear_projectors):
 
 
 def test_dispatcher_to_database_default(single_band):
-    """Dispatcher._to_database() must return {selection_name: handler_result}."""
+    """Dispatcher._to_database() returns {quantity: {selection: handler_result}}."""
     result = single_band._to_database()
     assert isinstance(result, dict)
     assert "band" in result
-    assert isinstance(result["band"], Band_DB)
+    assert isinstance(result["band"], dict)
+    assert isinstance(result["band"]["default"], Band_DB)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

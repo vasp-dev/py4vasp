@@ -207,9 +207,14 @@ def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):
     # Check metadata fields
     assert isinstance(demo_calc_db.metadata.path, Path)
 
-    # Check that properties has enough non-empty entries
+    # properties is a dict of dicts {quantity: {selection: model}}; count the
+    # non-empty inner models across all quantities and selections.
     non_empty_counter = sum(
-        1 for v in demo_calc_db.properties.values() if v not in (None, {}, [])
+        1
+        for selections in demo_calc_db.properties.values()
+        if isinstance(selections, dict)
+        for v in selections.values()
+        if v not in (None, {}, [])
     )
     assert non_empty_counter > minimum_counter
     assert "run_info" in demo_calc_db.properties

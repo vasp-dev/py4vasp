@@ -262,12 +262,12 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def test_to_database_dispatch(raw_data):
-    """The dispatcher keys the handler result by quantity name for the database."""
+    """The dispatcher nests the handler result under quantity -> selection."""
     raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4")
     result = Stoichiometry.from_data(raw_stoichiometry)._to_database()
     assert set(result) == {"stoichiometry"}
     expected = StoichiometryHandler.from_data(raw_stoichiometry).to_database()
-    assert result["stoichiometry"] == expected
+    assert result["stoichiometry"]["default"] == expected
 
 
 def test_to_database_dispatch_skips_empty(raw_data):

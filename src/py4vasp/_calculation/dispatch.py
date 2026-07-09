@@ -389,9 +389,10 @@ def merge_to_database(
 
     Returns
     -------
-    dict[str, result]
-        Maps ``quantity_name`` (default source) or ``quantity_name_source``
-        (other sources) to each handler result.
+    dict[str, dict[str, result]]
+        Nested ``{quantity: {selection: result}}``. The outer key is the
+        (underscore-stripped) quantity name; the inner dict is keyed by selection
+        with the default source keyed ``"default"``. Empty quantities are omitted.
     """
     wrapped_source = SuppressErrorsSourceWrapper(source)
     base = (key_name or quantity_name).lstrip("_")
@@ -405,12 +406,13 @@ def merge_to_database(
         *args,
         **kwargs,
     )
-    results = {
-        base if sel == "default" else f"{base}_{sel}": result
+    selections = {
+        sel: result
         for sel, result in raw_results.items()
         if _result_has_data(result)
     }
-    return _drop_duplicates_of_default(results, base)
+    selections = _drop_duplicates_of_default(selections)
+    return {base: selections} if selections else {}
 
 
 def _all_sources_selection(quantity_name):
@@ -426,15 +428,15 @@ def _all_sources_selection(quantity_name):
     return ", ".join(str(source_name) for source_name in sources)
 
 
-def _drop_duplicates_of_default(results, base):
-    """Drop non-default entries whose result equals the default result."""
-    if base not in results:
-        return results
-    default_result = results[base]
+def _drop_duplicates_of_default(selections):
+    """Drop non-default selections whose result equals the ``default`` result."""
+    if "default" not in selections:
+        return selections
+    default_result = selections["default"]
     return {
-        key: result
-        for key, result in results.items()
-        if key == base or result != default_result
+        sel: result
+        for sel, result in selections.items()
+        if sel == "default" or result != default_result
     }
 
 

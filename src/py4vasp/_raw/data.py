@@ -185,10 +185,10 @@ class _DatabaseData:
     metadata: CalculationMetaData
     properties: dict = dataclasses.field(default_factory=dict)
     """Properties extracted from the calculation.
-    Keys follow the format 'quantity' (default selection) or 'quantity_selection'
-    (non-default selection). Group quantities use 'group_quantity' or
-    'group_quantity_selection'. Leading underscores are stripped from private
-    quantity names."""
+    A nested dict ``{quantity: {selection: model}}``. The outer key is the quantity
+    name (group members use 'group_quantity', e.g. 'phonon_mode'); leading
+    underscores are stripped from private quantity names. The inner dict is keyed by
+    selection with the default source keyed 'default'."""
 
 
 @dataclasses.dataclass

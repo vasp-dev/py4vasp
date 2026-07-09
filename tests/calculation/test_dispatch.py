@@ -415,18 +415,18 @@ class TestDispatchToDatabase:
             result = merge_to_database(
                 source, "energy", _FakeHandler.from_data, _FakeHandler.read
             )
-        assert result == {"energy": {"value": 42}}
+        assert result == {"energy": {"default": {"value": 42}}}
 
-    def test_named_selection_appends_selection_to_quantity_name(self):
+    def test_named_selection_becomes_inner_key(self):
         raw = {"value": 10}
         source = DictSource({("band", "kpoints_opt"): raw})
         with _patch_sources(["kpoints_opt"]):
             result = merge_to_database(
                 source, "band", _FakeHandler.from_data, _FakeHandler.read
             )
-        assert result == {"band_kpoints_opt": {"value": 10}}
+        assert result == {"band": {"kpoints_opt": {"value": 10}}}
 
-    def test_multiple_selections_produce_distinct_keys(self):
+    def test_multiple_selections_produce_distinct_inner_keys(self):
         raw_a = {"value": 1}
         raw_b = {"value": 2}
         source = DictSource({("dos", "a"): raw_a, ("dos", "b"): raw_b})
@@ -434,7 +434,7 @@ class TestDispatchToDatabase:
             result = merge_to_database(
                 source, "dos", _FakeHandler.from_data, _FakeHandler.read
             )
-        assert result == {"dos_a": {"value": 1}, "dos_b": {"value": 2}}
+        assert result == {"dos": {"a": {"value": 1}, "b": {"value": 2}}}
 
     def test_leading_underscore_stripped_from_quantity_name(self):
         raw = {"value": 7}
@@ -453,28 +453,28 @@ class TestDispatchToDatabase:
             result = merge_to_database(
                 source, "_CONTCAR", _FakeHandler.from_data, _FakeHandler.read
             )
-        assert result == {"CONTCAR_sel": {"value": 3}}
+        assert result == {"CONTCAR": {"sel": {"value": 3}}}
 
-    def test_default_key_has_no_default_suffix(self):
+    def test_default_selection_is_inner_key(self):
         raw = {"value": 5}
         source = DataSource(raw)
         with _patch_sources(["default"]):
             result = merge_to_database(
                 source, "force", _FakeHandler.from_data, _FakeHandler.read
             )
-        assert "force_default" not in result
-        assert "force" in result
+        assert set(result) == {"force"}
+        assert set(result["force"]) == {"default"}
 
     def test_duplicate_source_results_collapse_to_default(self):
         # an in-memory DataSource yields the same data for every source, so the
-        # non-default selections must collapse into the single default key
+        # non-default selections must collapse into the single default inner key
         raw = {"value": 99}
         source = DataSource(raw)
         with _patch_sources(["default", "final", "exciton"]):
             result = merge_to_database(
                 source, "structure", _FakeHandler.from_data, _FakeHandler.read
             )
-        assert result == {"structure": {"value": 99}}
+        assert result == {"structure": {"default": {"value": 99}}}
 
     def test_forwards_extra_kwargs_to_handler(self):
         raw = {"value": 4}
@@ -487,7 +487,7 @@ class TestDispatchToDatabase:
                 _FakeHandler.read_with_args,
                 scale=3,
             )
-        assert result == {"energy": {"value": 12}}
+        assert result == {"energy": {"default": {"value": 12}}}
 
 
 @dataclasses.dataclass
@@ -600,14 +600,14 @@ class TestMergeToDatabaseFilter:
             source, "quantity", _PartialHandler.from_data, _PartialHandler.to_database
         )
         assert "quantity" in result
-        assert isinstance(result["quantity"], _PartialDB)
+        assert isinstance(result["quantity"]["default"], _PartialDB)
 
     def test_non_empty_dict_result_included(self):
         source = DataSource({"value": 1})
         result = merge_to_database(
             source, "quantity", _FakeHandler.from_data, _FakeHandler.read
         )
-        assert result == {"quantity": {"value": 1}}
+        assert result == {"quantity": {"default": {"value": 1}}}
 
 
 class TestSubstituteRemainingSelection:
