@@ -130,6 +130,12 @@ def test_get_primitive_ion_numbers(ion_numbers, expected):
             [2, 3, 1, 1, 2],
             ("AsBrCa", "As-Br-Ca", ["As", "Br", "Ca"], [3, 3, 3], [1, 1, 1]),
         ),
+        # names absent but counts present: keep the counts (and primitive counts),
+        # but formula/compound/types cannot be derived without element names
+        (None, [2, 1, 4], (None, None, None, [2, 1, 4], [2, 1, 4])),
+        (None, [4, 2, 6], (None, None, None, [4, 2, 6], [2, 1, 3])),
+        # neither names nor counts: everything is None
+        (None, None, (None, None, None, None, None)),
     ],
 )
 def test_get_formula_and_compound(ion_types, ion_numbers, expectations):

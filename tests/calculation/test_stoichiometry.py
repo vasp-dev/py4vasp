@@ -218,9 +218,11 @@ class TestBa2MnO4(Base):
                 "text/html": "<em>A</em><sub>2</sub><em>B</em><em>C</em><sub>4</sub>",
             }
         self.ref_ion_types = ["O", "Sr", "Ti"] if request.param == "Sr2TiO4" else None
-        self.ref_num_ion_types = [4, 2, 1] if request.param == "Sr2TiO4" else None
+        # without element names the counts survive in their raw order (no name-based
+        # aggregation is possible), so num_ion_types is [2, 1, 4] rather than None
+        self.ref_num_ion_types = [4, 2, 1] if request.param == "Sr2TiO4" else [2, 1, 4]
         self.ref_num_ion_types_primitive = (
-            None if not request.param == "Sr2TiO4" else [4, 2, 1]
+            [4, 2, 1] if request.param == "Sr2TiO4" else [2, 1, 4]
         )
         self.ref_formula = None if not request.param == "Sr2TiO4" else "O4Sr2Ti"
         self.ref_compound = None if not request.param == "Sr2TiO4" else "O-Sr-Ti"
