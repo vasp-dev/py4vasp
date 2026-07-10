@@ -839,7 +839,8 @@ def check_unit_cell(unit_cell, x, y, zero):
 
 def check_annotations(lattice, annotations, Assert):
     assert len(lattice.vectors) == len(annotations)
-    sign = np.sign(np.cross(*lattice.vectors))
+    first, second = lattice.vectors
+    sign = np.sign(first[0] * second[1] - first[1] * second[0])
     labels = "abc".replace(lattice.cut, "")
     for vector, label, annotation in zip(lattice.vectors, labels, annotations):
         assert annotation.showarrow == False
@@ -882,7 +883,8 @@ def check_basic_tilted_contour(
     graph = Graph(curr_contour)
     fig = graph.to_plotly()
     if not with_periodic_traces:
-        area_cell = np.linalg.norm(np.cross(*curr_contour.lattice.vectors))
+        first, second = curr_contour.lattice.vectors
+        area_cell = abs(first[0] * second[1] - first[1] * second[0])
         points_per_area = curr_contour.data.size / area_cell
         points_per_line = np.sqrt(points_per_area) * curr_contour._interpolation_factor
         lengths = np.array(expected_lengths)
