@@ -7,8 +7,10 @@ These tests define the new expected behaviour:
   - CalculationMetaData has a `path` (directory) and `schema_version`,
     but no `tags` and no `hdf5_original_path`.
   - _to_database() takes no arguments.
-  - properties keys follow the format <quantity> (default) or
-    <quantity>_<selection> (non-default), with no leading underscore.
+  - properties is a dict of dicts: {"<quantity>": {"<selection>": model}}.
+    Top-level keys are bare quantity names (no leading underscore, no selection
+    suffix); the inner dict is keyed by selection with the default source keyed
+    "default".
   - schema_version is stored only in metadata, not on individual _DB dataclasses.
 """
 
@@ -119,6 +121,18 @@ def test_properties_has_entries(demo_db):
     assert len(demo_db.properties) > 0
 
 
+def test_properties_values_are_dicts(demo_db):
+    """properties is a dict of dicts: each value maps selection -> model."""
+    for key, value in demo_db.properties.items():
+        assert isinstance(value, dict), f"properties[{key!r}] is not a dict"
+        assert len(value) > 0, f"properties[{key!r}] is empty"
+
+
+def test_default_selection_is_inner_key(demo_db):
+    """run_info is always available under its default selection key 'default'."""
+    assert "default" in demo_db.properties["run_info"]
+
+
 def test_no_leading_underscore_in_properties_keys(demo_db):
     """Private quantities like _CONTCAR must be stored under 'CONTCAR', not '_CONTCAR'."""
     for key in demo_db.properties:
@@ -130,6 +144,27 @@ def test_run_info_in_properties(demo_db):
     assert "run_info" in demo_db.properties
 
 
+def test_subcomponents_not_top_level(demo_db):
+    """stoichiometry and dispersion are folded into their parent quantities and
+    must not appear as top-level properties."""
+    assert "stoichiometry" not in demo_db.properties
+    assert "dispersion" not in demo_db.properties
+
+
+def test_stoichiometry_folded_into_structure(demo_db):
+    """Structure models carry the folded stoichiometry fields."""
+    structure_models = list(demo_db.properties["structure"].values())
+    assert any(model.formula is not None for model in structure_models)
+    assert any(model.ion_types is not None for model in structure_models)
+
+
+def test_dispersion_folded_into_band(demo_db):
+    """The band model carries the folded dispersion eigenvalue range."""
+    band = demo_db.properties["band"]["default"]
+    assert band.eigenvalue_min is not None
+    assert band.eigenvalue_max is not None
+
+
 def test_default_selection_key_has_no_suffix(demo_db):
     """Keys for the default selection must not have a '_default' suffix."""
     for key in demo_db.properties:
@@ -137,14 +172,15 @@ def test_default_selection_key_has_no_suffix(demo_db):
 
 
 def test_non_default_selection_key_format(tmp_path):
-    """Non-default selections are appended with an underscore: quantity_selection."""
+    """Selections are nested keys, not folded into the top-level quantity key."""
     actual_path = tmp_path / "demo_calc_band"
     calc = demo.calculation(actual_path)
     db = calc._to_database()
-    # band has kpoints_opt and kpoints_wan selections in the schema.
-    # If the demo data doesn't have them, they simply won't appear — that is fine.
-    # But if they DO appear, the key format must be 'band_kpoints_opt' not
-    # 'band:kpoints_opt' or 'band.kpoints_opt'.
-    for key in db.properties:
-        assert ":" not in key, f"Key {key!r} contains a colon"
-        assert "." not in key, f"Key {key!r} contains a dot"
+    # Top-level keys are bare quantity names; selections live in the inner dict.
+    for quantity, selections in db.properties.items():
+        assert ":" not in quantity, f"Key {quantity!r} contains a colon"
+        assert "." not in quantity, f"Key {quantity!r} contains a dot"
+        assert "_" != quantity[-1:], f"Key {quantity!r} ends with underscore"
+        assert isinstance(selections, dict)
+        for selection in selections:
+            assert ":" not in selection, f"Selection {selection!r} contains a colon"

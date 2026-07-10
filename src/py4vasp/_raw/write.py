@@ -25,6 +25,11 @@ def write(h5f, raw_data, *, selection=None):
 def _write_dataset(h5f, target, data, valid_indices=None):
     if check.is_none(data):
         return
+    if check.is_none(target):
+        # The chosen source defines no path for this field (e.g. the "ion"
+        # dielectric-function source has no q_point), so there is nothing to write.
+        # Skip it instead of passing the unset VaspData(None) target to h5py as a key.
+        return
     if isinstance(target, Link):
         write(h5f, data, selection=target.source)
     elif isinstance(target, Length) or target in h5f:

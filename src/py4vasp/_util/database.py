@@ -233,9 +233,24 @@ def get_formula_and_compound(
     tuple[str, str, list[str], list[int], list[int]]
         The chemical formula and compound name, followed by unique ion types, their
         counts in the conventional cell, and their counts in the primitive cell.
+
+    When the element names are unavailable but the counts are known, the counts (and
+    their primitive reduction) are still returned; the name-derived formula, compound,
+    and unique-type list are ``None`` because they cannot be built without names.
     """
-    if ion_types is None or number_ion_types is None:
+    if number_ion_types is None:
         return None, None, None, None, None
+    if ion_types is None:
+        # No element names: keep the counts in their raw order (they cannot be
+        # aggregated or sorted by element) and reduce them to the primitive cell.
+        simple_numbers = list(number_ion_types)
+        return (
+            None,
+            None,
+            None,
+            simple_numbers,
+            get_primitive_ion_numbers(simple_numbers),
+        )
 
     formula_dict = {}
     # first sort, then count up numbers in case any ion type is non-unique

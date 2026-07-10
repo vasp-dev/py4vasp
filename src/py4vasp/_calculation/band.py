@@ -106,6 +106,8 @@ class BandHandler:
             else None
         )
 
+        dispersion = self._dispersion().to_database()
+
         return Band_DB(
             num_considered_bands=num_checked_bands,
             num_occupied_bands=num_total_occupied,
@@ -113,6 +115,12 @@ class BandHandler:
             num_occupied_bands_down=num_occupied_down,
             fermi_energy_raw=raw_fermi_energy,
             fermi_energy=fermi_energy or raw_fermi_energy,
+            eigenvalue_min=dispersion.eigenvalue_min,
+            eigenvalue_max=dispersion.eigenvalue_max,
+            eigenvalue_min_up=dispersion.eigenvalue_min_up,
+            eigenvalue_max_up=dispersion.eigenvalue_max_up,
+            eigenvalue_min_down=dispersion.eigenvalue_min_down,
+            eigenvalue_max_down=dispersion.eigenvalue_max_down,
         )
 
     def to_graph(self, selection=None, fermi_energy=None, width=0.5) -> graph.Graph:

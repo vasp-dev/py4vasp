@@ -13,12 +13,14 @@ from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
+    SuppressErrorsSourceWrapper,
+    _result_has_data,
     merge_default,
     merge_strings,
-    merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Structure_DB
+from py4vasp._raw.data_db import Stoichiometry_DB, Structure_DB
+from py4vasp._raw.definition import unique_selections as _schema_unique_selections
 from py4vasp._third_party import view
 from py4vasp._util import check, import_, parse
 
@@ -35,6 +37,9 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     TypeError,
     ValueError,
     IndexError,
+    # a source may reference datasets that are absent/malformed in the HDF5 file;
+    # reading them can raise a low-level RuntimeError which we treat as "no data"
+    RuntimeError,
 )
 
 
@@ -220,148 +225,94 @@ Atoms # atomic
         else:
             return 1
 
-    def to_database(self) -> dict:
-        """Return database-ready structure data."""
-        # Temporarily use all steps for database
+    def to_database(self, steps=-1) -> Structure_DB:
+        """Return database-ready data for a single structure geometry.
+
+        *steps* selects which geometry to describe (default ``-1``, the final step).
+        The database splits a calculation into separate ``initial`` and ``final``
+        structure models, so each :class:`Structure_DB` holds one geometry with
+        unprefixed fields.
+        """
+        # Temporarily override the steps used for the database
         saved_steps = self._steps
         saved_is_slice = self._is_slice
         saved_slice = self._slice
-        self._steps = slice(None)
-        self._is_slice = True
-        self._slice = slice(None)
+        self._steps = steps
+        self._is_slice = isinstance(steps, slice)
+        if self._is_slice:
+            self._slice = steps
+        elif steps == -1:
+            self._slice = slice(-1, None)
+        else:
+            self._slice = slice(steps, steps + 1)
 
-        final_lattice, initial_lattice = ([None, None, None] for _ in range(2))
+        try:
+            return self._single_geometry_database()
+        finally:
+            self._steps = saved_steps
+            self._is_slice = saved_is_slice
+            self._slice = saved_slice
+
+    def _single_geometry_database(self) -> Structure_DB:
+        lattice = [None, None, None]
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             lattices = self.lattice_vectors()
-            final_lattice = lattices[-1] if lattices.ndim == 3 else lattices
-            initial_lattice = lattices[0] if lattices.ndim == 3 else lattices
-            if final_lattice.ndim != 2:
-                final_lattice = [None, None, None]
-            if initial_lattice.ndim != 2:
-                initial_lattice = [None, None, None]
+            lattice = lattices[-1] if lattices.ndim == 3 else lattices
+            if lattice.ndim != 2:
+                lattice = [None, None, None]
 
-        volume_final, volume_initial = (None for _ in range(2))
+        volume = None
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             volumes = self.volume()
-            volume_final = (
+            volume = (
                 volumes[-1]
                 if not isinstance(volumes, (float, np.float64, np.float32))
                 else volumes
             )
-            volume_initial = (
-                volumes[0]
-                if not isinstance(volumes, (float, np.float64, np.float32))
-                else volumes
-            )
 
-        lengths_final, angles_final, lengths_initial, angles_initial = (
-            None for _ in range(4)
-        )
-        (
-            cell_area_2d_final,
-            cell_area_2d_span_final,
-            cell_area_2d_initial,
-            cell_area_2d_span_initial,
-        ) = (None for _ in range(4))
+        lengths = angles = None
+        cell_area_2d = cell_area_2d_span = None
         dimensionality = 3
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             dimensionality = self._dimensionality()
 
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             cell_ = self._cell()
-            lengths = cell_.lengths()
-            lengths_final = lengths[-1] if lengths.ndim == 2 else lengths
-            lengths_initial = lengths[0] if lengths.ndim == 2 else lengths
-            angles = cell_.angles()
-            angles_final = angles[-1] if angles.ndim == 2 else angles
-            angles_initial = angles[0] if angles.ndim == 2 else angles
+            all_lengths = cell_.lengths()
+            lengths = all_lengths[-1] if all_lengths.ndim == 2 else all_lengths
+            all_angles = cell_.angles()
+            angles = all_angles[-1] if all_angles.ndim == 2 else all_angles
             if dimensionality == 2:
-                cell_area_2d, cell_area_2d_span = cell_._area_2d()
-                cell_area_2d_final = (
-                    cell_area_2d[-1]
-                    if isinstance(cell_area_2d, np.ndarray)
-                    else cell_area_2d
-                )
-                cell_area_2d_initial = (
-                    cell_area_2d[0]
-                    if isinstance(cell_area_2d, np.ndarray)
-                    else cell_area_2d
-                )
-                cell_area_2d_span_final = (
-                    cell_area_2d_span[-1]
-                    if isinstance(cell_area_2d_span, list)
-                    else cell_area_2d_span
-                )
-                cell_area_2d_span_initial = (
-                    cell_area_2d_span[0]
-                    if isinstance(cell_area_2d_span, list)
-                    else cell_area_2d_span
-                )
+                area, span = cell_._area_2d()
+                cell_area_2d = area[-1] if isinstance(area, np.ndarray) else area
+                cell_area_2d_span = span[-1] if isinstance(span, list) else span
 
         num_atoms = self.number_atoms() or None
 
-        # Restore steps
-        self._steps = saved_steps
-        self._is_slice = saved_is_slice
-        self._slice = saved_slice
+        stoichiometry = Stoichiometry_DB()
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            stoichiometry = self._stoichiometry().to_database()
 
         return Structure_DB(
             num_ions=num_atoms,
             dimensionality=dimensionality,
-            final_cell_volume=volume_final,
-            final_cell_area_2d=cell_area_2d_final,
-            final_cell_area_2d_span=cell_area_2d_span_final,
-            final_lattice_vector_1=(
-                list(final_lattice[0]) if final_lattice[0] is not None else None
-            ),
-            final_lattice_vector_2=(
-                list(final_lattice[1]) if final_lattice[1] is not None else None
-            ),
-            final_lattice_vector_3=(
-                list(final_lattice[2]) if final_lattice[2] is not None else None
-            ),
-            final_lattice_vector_1_length=(
-                lengths_final[0] if lengths_final is not None else None
-            ),
-            final_lattice_vector_2_length=(
-                lengths_final[1] if lengths_final is not None else None
-            ),
-            final_lattice_vector_3_length=(
-                lengths_final[2] if lengths_final is not None else None
-            ),
-            final_angle_alpha=(angles_final[0] if angles_final is not None else None),
-            final_angle_beta=(angles_final[1] if angles_final is not None else None),
-            final_angle_gamma=(angles_final[2] if angles_final is not None else None),
-            initial_cell_volume=volume_initial,
-            initial_cell_area_2d=cell_area_2d_initial,
-            initial_cell_area_2d_span=cell_area_2d_span_initial,
-            initial_lattice_vector_1=(
-                list(initial_lattice[0]) if initial_lattice[0] is not None else None
-            ),
-            initial_lattice_vector_2=(
-                list(initial_lattice[1]) if initial_lattice[1] is not None else None
-            ),
-            initial_lattice_vector_3=(
-                list(initial_lattice[2]) if initial_lattice[2] is not None else None
-            ),
-            initial_lattice_vector_1_length=(
-                lengths_initial[0] if lengths_initial is not None else None
-            ),
-            initial_lattice_vector_2_length=(
-                lengths_initial[1] if lengths_initial is not None else None
-            ),
-            initial_lattice_vector_3_length=(
-                lengths_initial[2] if lengths_initial is not None else None
-            ),
-            initial_angle_alpha=(
-                angles_initial[0] if angles_initial is not None else None
-            ),
-            initial_angle_beta=(
-                angles_initial[1] if angles_initial is not None else None
-            ),
-            initial_angle_gamma=(
-                angles_initial[2] if angles_initial is not None else None
-            ),
+            ion_types=stoichiometry.ion_types,
+            num_ion_types=stoichiometry.num_ion_types,
+            num_ion_types_primitive=stoichiometry.num_ion_types_primitive,
+            formula=stoichiometry.formula,
+            compound=stoichiometry.compound,
+            cell_volume=volume,
+            cell_area_2d=cell_area_2d,
+            cell_area_2d_span=cell_area_2d_span,
+            lattice_vector_1=list(lattice[0]) if lattice[0] is not None else None,
+            lattice_vector_2=list(lattice[1]) if lattice[1] is not None else None,
+            lattice_vector_3=list(lattice[2]) if lattice[2] is not None else None,
+            lattice_vector_1_length=lengths[0] if lengths is not None else None,
+            lattice_vector_2_length=lengths[1] if lengths is not None else None,
+            lattice_vector_3_length=lengths[2] if lengths is not None else None,
+            angle_alpha=angles[0] if angles is not None else None,
+            angle_beta=angles[1] if angles is not None else None,
+            angle_gamma=angles[2] if angles is not None else None,
         )
 
     def _dimensionality(self) -> Union[int, np.ndarray]:
@@ -1229,13 +1180,98 @@ class Structure(view.Mixin):
         )
 
     def _to_database(self) -> dict:
-        """Return {quantity[_selection]: handler_result} for database storage."""
-        return merge_to_database(
-            self._source,
-            self._quantity_name,
-            StructureHandler.from_data,
-            StructureHandler.to_database,
-        )
+        """Return ``{"structure": {selection: Structure_DB}}`` for the database.
+
+        Uses a custom merge instead of the generic :func:`merge_to_database`: the
+        final structure is always stored, the initial structure (first ionic step
+        of the ``default`` trajectory) only when it differs from the final one, and
+        any additional source only when it differs from both.
+        """
+        models = _collect_structure_database(self._source, self._quantity_name)
+        return {"structure": models} if models else {}
+
+
+def _collect_structure_database(source, quantity_name):
+    """Build ``{selection: Structure_DB}`` from the available structure sources.
+
+    The ``final`` source (or, when absent, the last step of the ``default``
+    trajectory) provides the final structure, which is always included. The first
+    ionic step of the ``default`` trajectory provides the initial structure, kept
+    only when it differs from the final one. Every other source is kept only when
+    it differs from both.
+    """
+    entries = _read_structure_entries(source, quantity_name)
+    return _assemble_structure_models(entries)
+
+
+def _read_structure_entries(source, quantity_name):
+    """Materialize ``{source: {step: (model, geometry)}}`` for every schema source.
+
+    The reads happen while the source's access context is open (raw data holds
+    lazy references that become invalid once the file is closed) and the arrays
+    are copied so they survive after the context exits. The ``default`` trajectory
+    is read at both its first (``0``) and last (``-1``) step; every other source
+    only at its final step (``-1``).
+    """
+    wrapped = SuppressErrorsSourceWrapper(source)
+    entries = {}
+    for name in _schema_unique_selections(quantity_name.lstrip("_")):
+        selection = None if name == "default" else name
+        steps = (-1, 0) if name == "default" else (-1,)
+        with wrapped.access(quantity_name, selection=selection) as raw_structure:
+            if raw_structure is None:
+                continue
+            per_step = {}
+            for step in steps:
+                entry = _build_structure_entry(raw_structure, step)
+                if entry is not None:
+                    per_step[step] = entry
+            if per_step:
+                entries[name] = per_step
+    return entries
+
+
+def _build_structure_entry(raw_structure, step):
+    """Return ``(Structure_DB, (lattice, positions))`` for a single step, or None."""
+    with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+        handler = StructureHandler.from_data(raw_structure, steps=step)
+        geometry = (np.array(handler.lattice_vectors()), np.array(handler.positions()))
+        model = StructureHandler.from_data(raw_structure).to_database(steps=step)
+        if not _result_has_data(model):
+            return None
+        return model, geometry
+    return None
+
+
+def _assemble_structure_models(entries):
+    """Apply the final/initial/other rules to the collected per-source entries."""
+    models, geometries = {}, {}
+    final = entries.get("final", {}).get(-1) or entries.get("default", {}).get(-1)
+    if final is not None:
+        models["final"], geometries["final"] = final
+    initial = entries.get("default", {}).get(0)
+    if initial is not None and not _duplicate_geometry(initial[1], geometries):
+        models["initial"], geometries["initial"] = initial
+    for name, per_step in entries.items():
+        if name in ("default", "final") or -1 not in per_step:
+            continue
+        model, geometry = per_step[-1]
+        if _duplicate_geometry(geometry, geometries):
+            continue
+        models[name], geometries[name] = model, geometry
+    return models
+
+
+def _duplicate_geometry(geometry, geometries):
+    """Whether *geometry* matches any already-collected geometry."""
+    return any(_same_geometry(geometry, other) for other in geometries.values())
+
+
+def _same_geometry(first, second):
+    """Two geometries are equal when both lattice vectors and positions match."""
+    return all(
+        np.shape(a) == np.shape(b) and np.allclose(a, b) for a, b in zip(first, second)
+    )
 
 
 def _cell_from_ase(structure):

@@ -118,11 +118,12 @@ def test_to_database(run_info_handler):
 
 
 def test_dispatcher_to_database(run_info):
-    """Dispatcher._to_database() must return {selection_name: handler_result}."""
+    """Dispatcher._to_database() returns {quantity: {selection: handler_result}}."""
     result = run_info._to_database()
     assert isinstance(result, dict)
     assert "run_info" in result
-    assert isinstance(result["run_info"], RunInfo_DB)
+    assert isinstance(result["run_info"], dict)
+    assert isinstance(result["run_info"]["default"], RunInfo_DB)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

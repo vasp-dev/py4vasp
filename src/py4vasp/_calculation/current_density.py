@@ -16,8 +16,9 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
+from py4vasp._raw.data_db import CurrentDensity_DB
 from py4vasp._third_party import graph
-from py4vasp._util import documentation, import_, slicing
+from py4vasp._util import check, documentation, import_, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
@@ -62,8 +63,29 @@ class CurrentDensityHandler:
             **self._read_current_densities(),
         }
 
-    def to_database(self) -> dict:
-        return {}
+    def to_database(self) -> "CurrentDensity_DB":
+        """Serialize a scalar summary of the current density for database storage."""
+        grid_shape, magnitudes = None, []
+        for key in self._raw_current_density.valid_indices:
+            current_density = self._raw_current_density[key].current_density
+            if check.is_none(current_density):
+                continue
+            # current_density has shape (3, nz, ny, nx); |j| is the norm over the
+            # vector component axis, leaving the grid.
+            vector_field = np.array(current_density[:])
+            magnitudes.append(np.linalg.norm(vector_field, axis=0).ravel())
+            if grid_shape is None:
+                nz, ny, nx = vector_field.shape[1:]
+                grid_shape = [nx, ny, nz]
+        if not magnitudes:
+            return CurrentDensity_DB()
+        magnitude = np.concatenate(magnitudes)
+        return CurrentDensity_DB(
+            grid_shape=grid_shape,
+            magnitude_min=float(np.min(magnitude)),
+            magnitude_max=float(np.max(magnitude)),
+            magnitude_mean=float(np.mean(magnitude)),
+        )
 
     def to_contour(
         self,

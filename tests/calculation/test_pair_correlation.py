@@ -2,9 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation.pair_correlation import (
     PairCorrelation,
     PairCorrelationHandler,
@@ -107,6 +108,39 @@ def test_to_database(pair_correlation, raw_data):
     assert isinstance(db_data, PairCorrelation_DB)
     assert db_data.distance_min == float(pair_correlation.ref.distances[0])
     assert db_data.distance_max == float(pair_correlation.ref.distances[-1])
+
+
+def _pair_correlation_from_total(distances, total):
+    """Build a raw pair correlation whose only curve is the given total g(r)."""
+    function = np.asarray(total)[np.newaxis, np.newaxis, :]  # (steps, labels, points)
+    return raw.PairCorrelation(
+        distances=np.asarray(distances, dtype=float),
+        function=function,
+        labels=("total",),
+    )
+
+
+def test_to_database_first_peak():
+    """The first peak is the first local maximum of the total g(r) above the
+    threshold; a small sub-threshold bump before it must be ignored."""
+    distances = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+    # bump at index 1 (0.5) is below the threshold; the first real peak is at index 4
+    total = [0.0, 0.5, 0.3, 2.5, 4.0, 1.5, 1.2, 1.0]
+    raw_pcf = _pair_correlation_from_total(distances, total)
+    db_data = PairCorrelationHandler.from_data(raw_pcf).to_database()
+    assert isinstance(db_data, PairCorrelation_DB)
+    assert db_data.first_peak_position == 4.0
+    assert db_data.first_peak_height == 4.0
+
+
+def test_to_database_no_first_peak():
+    """A monotonic curve staying below the threshold has no detectable peak."""
+    distances = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    total = [0.0, 0.2, 0.4, 0.6, 0.8, 0.9]
+    raw_pcf = _pair_correlation_from_total(distances, total)
+    db_data = PairCorrelationHandler.from_data(raw_pcf).to_database()
+    assert db_data.first_peak_position is None
+    assert db_data.first_peak_height is None
 
 
 def test_factory_methods(raw_data, check_factory_methods):

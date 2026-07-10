@@ -78,6 +78,20 @@ class Band_DB(_DBDataMixin):
     fermi_energy: Optional[float] = None
     """The Fermi energy used for plotting the band structure, which may be different from the raw Fermi energy based on user input."""
 
+    # dispersion data folded into the band model
+    eigenvalue_min: Optional[float] = None
+    """The minimum eigenvalue across all bands and k-points, in eV."""
+    eigenvalue_max: Optional[float] = None
+    """The maximum eigenvalue across all bands and k-points, in eV."""
+    eigenvalue_min_up: Optional[float] = None
+    """The minimum eigenvalue for spin-up electrons across all bands and k-points, in eV."""
+    eigenvalue_max_up: Optional[float] = None
+    """The maximum eigenvalue for spin-up electrons across all bands and k-points, in eV."""
+    eigenvalue_min_down: Optional[float] = None
+    """The minimum eigenvalue for spin-down electrons across all bands and k-points, in eV."""
+    eigenvalue_max_down: Optional[float] = None
+    """The maximum eigenvalue for spin-down electrons across all bands and k-points, in eV."""
+
 
 @dataclass
 class Bandgap_DB(_DBDataMixin):
@@ -162,6 +176,23 @@ class BornEffectiveCharge_DB(_DBDataMixin):
     """The maximum eigenvalue of the Born effective charge tensors across all ions. This can be used to quickly determine the range of the Born effective charges without having to load the full array."""
     eigenvalue_max_index: Optional[int] = None
     """The index of the ion with the maximum eigenvalue of the Born effective charge tensor."""
+
+
+@dataclass
+class CurrentDensity_DB(_DBDataMixin):
+    """Data class for storing current density data in the database.
+
+    The current density is a vector field on a grid; the summaries below refer to its
+    magnitude |j| aggregated over all grid points and perturbations."""
+
+    grid_shape: Optional[List[int]] = field(default_factory=lambda: None)
+    """The shape of the grid on which the current density is evaluated, in the order (nx, ny, nz)."""
+    magnitude_min: Optional[float] = None
+    """The minimum magnitude of the current density across all grid points and perturbations."""
+    magnitude_max: Optional[float] = None
+    """The maximum magnitude of the current density across all grid points and perturbations."""
+    magnitude_mean: Optional[float] = None
+    """The mean magnitude of the current density across all grid points and perturbations."""
 
 
 @dataclass
@@ -588,6 +619,10 @@ class PairCorrelation_DB(_DBDataMixin):
     """The minimum distance at which the pair correlation function was evaluated, in Å."""
     distance_max: Optional[float] = None
     """The maximum distance at which the pair correlation function was evaluated, in Å."""
+    first_peak_position: Optional[float] = None
+    """The distance of the first peak of the total pair correlation function, in Å."""
+    first_peak_height: Optional[float] = None
+    """The height (value of the total pair correlation function) at the first peak."""
 
 
 @dataclass
@@ -598,6 +633,18 @@ class PhononDos_DB(_DBDataMixin):
     """The minimum energy at which the phonon density of states was evaluated, in THz."""
     energy_max: Optional[float] = None
     """The maximum energy at which the phonon density of states was evaluated, in THz."""
+
+
+@dataclass
+class PhononBand_DB(_DBDataMixin):
+    """Data class for storing phonon band structure data in the database.
+
+    The dispersion (phonon frequencies) is folded into this model."""
+
+    eigenvalue_min: Optional[float] = None
+    """The minimum phonon frequency across all modes and q-points, in THz."""
+    eigenvalue_max: Optional[float] = None
+    """The maximum phonon frequency across all modes and q-points, in THz."""
 
 
 @dataclass
@@ -830,73 +877,59 @@ class Stress_DB(_DBDataMixin):
 
 @dataclass
 class Structure_DB(_DBDataMixin):
-    """Data class for storing structure data in the database."""
+    """Data class for storing a single structure geometry in the database.
+
+    Each instance describes one geometry. The database entry for a calculation stores
+    a ``final`` structure and, when it differs, a separate ``initial`` structure rather
+    than packing both into one model, so the fields carry no ``initial_``/``final_``
+    prefix."""
 
     num_ions: Optional[int] = None
     """The number of ions in the structure."""
     dimensionality: Optional[int] = None
     """The dimensionality of the structure, as determined by the presence of vacuum along different lattice vectors.
-    
+
     - 3 = bulk structure with no vacuum along any lattice vector
     - 2 = slab structure with vacuum along one lattice vector
     - 1 = multi-atom molecule or wire structure with vacuum along two lattice vectors
     - 0 = single-atom structure with vacuum along all three lattice vectors"""
 
-    final_cell_volume: Optional[float] = None
-    """The volume of the unit cell on the final step, in Å^3."""
-    final_cell_area_2d: Optional[float] = None
+    cell_volume: Optional[float] = None
+    """The volume of the unit cell, in Å^3."""
+    cell_area_2d: Optional[float] = None
     """The area of the unit cell in 2D materials, calculated as the product of the two lattice vectors that are not along the vacuum direction, in Å^2."""
-    final_cell_area_2d_span: Optional[str] = None
+    cell_area_2d_span: Optional[str] = None
     """The two lattice vectors that are used to calculate the area of the unit cell in 2D materials, in the format '12', '13', or '23'."""
-    final_lattice_vector_1: Optional[List[float]] = field(default_factory=lambda: None)
-    """The first lattice vector on the final step, in Å."""
-    final_lattice_vector_2: Optional[List[float]] = field(default_factory=lambda: None)
-    """The second lattice vector on the final step, in Å."""
-    final_lattice_vector_3: Optional[List[float]] = field(default_factory=lambda: None)
-    """The third lattice vector on the final step, in Å."""
-    final_lattice_vector_1_length: Optional[float] = None
-    """The length of the first lattice vector on the final step, in Å."""
-    final_lattice_vector_2_length: Optional[float] = None
-    """The length of the second lattice vector on the final step, in Å."""
-    final_lattice_vector_3_length: Optional[float] = None
-    """The length of the third lattice vector on the final step, in Å."""
-    final_angle_alpha: Optional[float] = None
-    """The angle between the second and third lattice vectors on the final step, in degrees."""
-    final_angle_beta: Optional[float] = None
-    """The angle between the first and third lattice vectors on the final step, in degrees."""
-    final_angle_gamma: Optional[float] = None
-    """The angle between the first and second lattice vectors on the final step, in degrees."""
+    lattice_vector_1: Optional[List[float]] = field(default_factory=lambda: None)
+    """The first lattice vector, in Å."""
+    lattice_vector_2: Optional[List[float]] = field(default_factory=lambda: None)
+    """The second lattice vector, in Å."""
+    lattice_vector_3: Optional[List[float]] = field(default_factory=lambda: None)
+    """The third lattice vector, in Å."""
+    lattice_vector_1_length: Optional[float] = None
+    """The length of the first lattice vector, in Å."""
+    lattice_vector_2_length: Optional[float] = None
+    """The length of the second lattice vector, in Å."""
+    lattice_vector_3_length: Optional[float] = None
+    """The length of the third lattice vector, in Å."""
+    angle_alpha: Optional[float] = None
+    """The angle between the second and third lattice vectors, in degrees."""
+    angle_beta: Optional[float] = None
+    """The angle between the first and third lattice vectors, in degrees."""
+    angle_gamma: Optional[float] = None
+    """The angle between the first and second lattice vectors, in degrees."""
 
-    initial_cell_volume: Optional[float] = None
-    """The volume of the unit cell on the initial step, in Å^3."""
-    initial_cell_area_2d: Optional[float] = None
-    """The area of the unit cell in 2D materials on the initial step, calculated as the product of the two lattice vectors that are not along the vacuum direction, in Å^2."""
-    initial_cell_area_2d_span: Optional[str] = None
-    """The two lattice vectors that are used to calculate the area of the unit cell in 2D materials on the initial step, in the format '12', '13', or '23'."""
-    initial_lattice_vector_1: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
-    """The first lattice vector on the initial step, in Å."""
-    initial_lattice_vector_2: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
-    """The second lattice vector on the initial step, in Å."""
-    initial_lattice_vector_3: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
-    """The third lattice vector on the initial step, in Å."""
-    initial_lattice_vector_1_length: Optional[float] = None
-    """The length of the first lattice vector on the initial step, in Å."""
-    initial_lattice_vector_2_length: Optional[float] = None
-    """The length of the second lattice vector on the initial step, in Å."""
-    initial_lattice_vector_3_length: Optional[float] = None
-    """The length of the third lattice vector on the initial step, in Å."""
-    initial_angle_alpha: Optional[float] = None
-    """The angle between the second and third lattice vectors on the initial step, in degrees."""
-    initial_angle_beta: Optional[float] = None
-    """The angle between the first and third lattice vectors on the initial step, in degrees."""
-    initial_angle_gamma: Optional[float] = None
-    """The angle between the first and second lattice vectors on the initial step, in degrees."""
+    # stoichiometry data folded into the structure model
+    ion_types: Optional[List[str]] = field(default_factory=lambda: None)
+    """The distinct types of ions in the system."""
+    num_ion_types: Optional[List[int]] = field(default_factory=lambda: None)
+    """The number of ions of each type in the system."""
+    num_ion_types_primitive: Optional[List[int]] = field(default_factory=lambda: None)
+    """The number of ions of each type in the primitive cell."""
+    formula: Optional[str] = None
+    """The chemical formula of the system, in the format {element}{count if count > 1 else ''}, e.g. A3B2CD4."""
+    compound: Optional[str] = None
+    """The name of the compound, in the format {element1}-{element2}-..., e.g. A-B-C."""
 
 
 @dataclass

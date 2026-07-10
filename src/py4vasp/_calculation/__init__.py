@@ -380,12 +380,10 @@ instead of the constructor Calculation()."""
     def _compute_database_data(self) -> dict:
         """Iterate over all quantities in _REGISTRY and collect database properties.
 
-        Returns a flat dict mapping property keys to handler result dicts.
-        Keys use the format:
-        - ``<quantity>`` for the default selection
-        - ``<quantity>_<selection>`` for non-default selections
-        - ``<group>_<quantity>`` / ``<group>_<quantity>_<selection>`` for groups
-        Leading underscores are stripped from private quantity names.
+        Returns a nested dict ``{quantity: {selection: model}}``. The outer key is
+        the (underscore-stripped) quantity name; the inner dict is keyed by
+        selection with the default source keyed ``"default"``. Group members use
+        ``<group>_<quantity>`` (e.g. ``phonon_mode``) as their outer key.
         """
         _ensure_all_quantities_imported()
         properties = {}
@@ -435,11 +433,12 @@ def _ensure_all_quantities_imported():
 
 
 def _collect_to_database(dispatcher_cls, source, properties):
-    """Call dispatcher._to_database() and merge results into *properties*.
+    """Call dispatcher._to_database() and deep-merge results into *properties*.
 
-    Each dispatcher already keys its results by the full quantity name; group members
-    use ``<group>_<member>`` via their ``_quantity_name`` (e.g. ``phonon_mode``), so the
-    results merge directly without any additional group prefix.
+    Each dispatcher returns a nested ``{quantity: {selection: model}}`` dict keyed by
+    the full quantity name; group members use ``<group>_<member>`` via their
+    ``_quantity_name`` (e.g. ``phonon_mode``). The nested dicts are merged so that
+    quantities and their selections accumulate without clobbering each other.
     """
     dispatcher = dispatcher_cls(
         source=source, quantity_name=dispatcher_cls._quantity_name
@@ -452,7 +451,8 @@ def _collect_to_database(dispatcher_cls, source, properties):
         return
     except Exception:
         return
-    properties.update(result)
+    for quantity, selections in result.items():
+        properties.setdefault(quantity, {}).update(selections)
 
 
 def _rebuild_public_registry_views():

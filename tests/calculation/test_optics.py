@@ -395,7 +395,8 @@ def test_to_database_keyed_by_optics(visible):
     assert isinstance(result, dict)
     # the DataSource ignores the selection, so all sources collapse to a single "optics"
     assert "optics" in result
-    assert isinstance(result["optics"], Optics_DB)
+    assert isinstance(result["optics"], dict)
+    assert isinstance(result["optics"]["default"], Optics_DB)
     # keys are derived from "optics", never from the underlying "dielectric_function"
     assert not any(key.startswith("dielectric_function") for key in result)
 

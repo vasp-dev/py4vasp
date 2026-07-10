@@ -218,9 +218,11 @@ class TestBa2MnO4(Base):
                 "text/html": "<em>A</em><sub>2</sub><em>B</em><em>C</em><sub>4</sub>",
             }
         self.ref_ion_types = ["O", "Sr", "Ti"] if request.param == "Sr2TiO4" else None
-        self.ref_num_ion_types = [4, 2, 1] if request.param == "Sr2TiO4" else None
+        # without element names the counts survive in their raw order (no name-based
+        # aggregation is possible), so num_ion_types is [2, 1, 4] rather than None
+        self.ref_num_ion_types = [4, 2, 1] if request.param == "Sr2TiO4" else [2, 1, 4]
         self.ref_num_ion_types_primitive = (
-            None if not request.param == "Sr2TiO4" else [4, 2, 1]
+            [4, 2, 1] if request.param == "Sr2TiO4" else [2, 1, 4]
         )
         self.ref_formula = None if not request.param == "Sr2TiO4" else "O4Sr2Ti"
         self.ref_compound = None if not request.param == "Sr2TiO4" else "O-Sr-Ti"
@@ -261,17 +263,15 @@ def test_factory_methods(raw_data, check_factory_methods):
     check_factory_methods(Stoichiometry, data, skip_methods=["to_mdtraj"])
 
 
-def test_to_database_dispatch(raw_data):
-    """The dispatcher keys the handler result by quantity name for the database."""
+def test_stoichiometry_not_collected_standalone(raw_data):
+    """Stoichiometry is folded into structure, so the dispatcher exposes no
+    ``_to_database`` and is skipped by the calculation-level collection. The
+    handler ``to_database`` stays (it is used by the structure model)."""
     raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4")
-    result = Stoichiometry.from_data(raw_stoichiometry)._to_database()
-    assert set(result) == {"stoichiometry"}
-    expected = StoichiometryHandler.from_data(raw_stoichiometry).to_database()
-    assert result["stoichiometry"] == expected
-
-
-def test_to_database_dispatch_skips_empty(raw_data):
-    """Stoichiometry without ion types carries no database data, so it is omitted."""
-    raw_stoichiometry = raw_data.stoichiometry("Sr2TiO4 without ion types")
-    result = Stoichiometry.from_data(raw_stoichiometry)._to_database()
-    assert result == {}
+    dispatcher = Stoichiometry.from_data(raw_stoichiometry)
+    assert not hasattr(dispatcher, "_to_database")
+    # the handler still produces the stoichiometry model for the parent to fold in
+    assert isinstance(
+        StoichiometryHandler.from_data(raw_stoichiometry).to_database(),
+        Stoichiometry_DB,
+    )
