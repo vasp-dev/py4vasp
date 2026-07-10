@@ -17,7 +17,7 @@ authors = [
     { name = "Tomáš Bučko", email = "tomas.bucko@uniba.sk" },
     { name = "Max Liebetreu", email = "max.liebetreu@vasp.at" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "Apache-2.0"
 dependencies = [
