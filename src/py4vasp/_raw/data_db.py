@@ -562,6 +562,64 @@ class EnergyAfqmc_DB(_DBDataMixin):
 
 
 @dataclass
+class EnergyMD_DB(_DBDataMixin):
+    """Data class for storing molecular-dynamics energy data in the database.
+
+    MD energies fluctuate around a value rather than converging to a minimum, so each
+    energy term is summarized by its initial, average, and final value (a minimum is not
+    meaningful for a trajectory that thermalizes)."""
+
+    ion_electron_initial: Optional[float] = None
+    """The initial ion-electron energy, in eV."""
+    ion_electron_average: Optional[float] = None
+    """The average ion-electron energy across all steps, in eV."""
+    ion_electron_final: Optional[float] = None
+    """The final ion-electron energy, in eV."""
+
+    kinetic_energy_initial: Optional[float] = None
+    """The initial kinetic energy, in eV."""
+    kinetic_energy_average: Optional[float] = None
+    """The average kinetic energy across all steps, in eV."""
+    kinetic_energy_final: Optional[float] = None
+    """The final kinetic energy, in eV."""
+
+    kinetic_energy_lattice_initial: Optional[float] = None
+    """The initial kinetic energy of the lattice, in eV."""
+    kinetic_energy_lattice_average: Optional[float] = None
+    """The average kinetic energy of the lattice across all steps, in eV."""
+    kinetic_energy_lattice_final: Optional[float] = None
+    """The final kinetic energy of the lattice, in eV."""
+
+    temperature_initial: Optional[float] = None
+    """The initial temperature, in K."""
+    temperature_average: Optional[float] = None
+    """The average temperature across all steps, in K."""
+    temperature_final: Optional[float] = None
+    """The final temperature, in K."""
+
+    nose_potential_initial: Optional[float] = None
+    """The initial Nose potential energy, in eV."""
+    nose_potential_average: Optional[float] = None
+    """The average Nose potential energy across all steps, in eV."""
+    nose_potential_final: Optional[float] = None
+    """The final Nose potential energy, in eV."""
+
+    nose_kinetic_initial: Optional[float] = None
+    """The initial Nose kinetic energy, in eV."""
+    nose_kinetic_average: Optional[float] = None
+    """The average Nose kinetic energy across all steps, in eV."""
+    nose_kinetic_final: Optional[float] = None
+    """The final Nose kinetic energy, in eV."""
+
+    total_energy_initial: Optional[float] = None
+    """The initial total energy, in eV."""
+    total_energy_average: Optional[float] = None
+    """The average total energy across all steps, in eV."""
+    total_energy_final: Optional[float] = None
+    """The final total energy, in eV."""
+
+
+@dataclass
 class ExcitonEigenvector_DB(_DBDataMixin):
     """Data class for storing exciton eigenvector data in the database."""
 

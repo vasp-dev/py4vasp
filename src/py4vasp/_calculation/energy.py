@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Energy_DB, EnergyAfqmc_DB
+from py4vasp._raw.data_db import Energy_DB, EnergyAfqmc_DB, EnergyMD_DB
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 
@@ -173,7 +173,21 @@ class EnergyHandler:
         energy_format = _detect_energy_format(present_db_keys)
         if energy_format == "afqmc":
             return self._to_afqmc_database(default_dict)
+        if energy_format == "md":
+            return self._to_md_database(default_dict)
         return self._to_legacy_database(default_dict)
+
+    def _to_md_database(self, default_dict) -> EnergyMD_DB:
+        energy_dict = {}
+        for label, values in default_dict.items():
+            db_key = _DB_KEYS.get(label)
+            if db_key not in _MD_DB_KEYS:
+                continue
+            v = np.array(values)
+            energy_dict[f"{db_key}_initial"] = float(v[0])
+            energy_dict[f"{db_key}_average"] = float(np.mean(v))
+            energy_dict[f"{db_key}_final"] = float(v[-1])
+        return EnergyMD_DB(**energy_dict)
 
     def _to_afqmc_database(self, default_dict) -> EnergyAfqmc_DB:
         energy_dict = {}

@@ -9,7 +9,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.energy import _DB_KEYS, Energy, EnergyHandler
-from py4vasp._raw.data_db import Energy_DB, EnergyAfqmc_DB
+from py4vasp._raw.data_db import Energy_DB, EnergyAfqmc_DB, EnergyMD_DB
 from py4vasp._util import convert
 
 
@@ -200,31 +200,30 @@ def test_print(steps, step_label, MD_energy, format_):
     assert actual == {"text/plain": "\n".join(lines)}
 
 
-def test_to_database(MD_energy, raw_data):
+def test_to_database_md(MD_energy, raw_data):
     raw_energy = raw_data.energy("MD")
     handler = EnergyHandler.from_data(raw_energy)
-    database_data: Energy_DB = handler.to_database()
+    database_data = handler.to_database()
 
-    assert isinstance(database_data, Energy_DB)
-    assert len(MD_energy.ref.labels) > 0
+    assert isinstance(database_data, EnergyMD_DB)
+    assert not isinstance(database_data, Energy_DB)
 
-    for idx, _label in enumerate(MD_energy.ref.labels):
-        ref_values = MD_energy.ref.values[idx]
-        label = _DB_KEYS.get(_label)
-        try:
-            assert getattr(database_data, f"{label}_initial") == float(ref_values[0])
-            assert getattr(database_data, f"{label}_final") == float(ref_values[-1])
-            if label != "step":
-                assert getattr(database_data, f"{label}_min") == float(
-                    np.min(ref_values)
-                )
-                assert getattr(database_data, f"{label}_step_min") == int(
-                    np.argmin(ref_values)
-                )
-        except KeyError as e:
-            raise AssertionError(
-                f"Missing key {e} in database data, keys: {list([fld.name for fld in fields(database_data)])}"
-            ) from e
+    labels = MD_energy.ref.labels
+    values = MD_energy.ref.values
+    assert len(labels) > 0
+
+    for label, ref in zip(labels, values):
+        db_key = _DB_KEYS[label]
+        assert getattr(database_data, f"{db_key}_initial") == float(ref[0])
+        assert getattr(database_data, f"{db_key}_final") == float(ref[-1])
+        # MD summarizes with an average instead of a (meaningless) minimum
+        assert getattr(database_data, f"{db_key}_average") == float(np.mean(ref))
+        assert not hasattr(database_data, f"{db_key}_min")
+        assert not hasattr(database_data, f"{db_key}_step_min")
+
+    # the MD model must not carry relaxation- or AFQMC-only fields
+    assert not hasattr(database_data, "free_energy_initial")
+    assert not hasattr(database_data, "weight_initial")
 
 
 def test_to_database_afqmc(raw_data):
