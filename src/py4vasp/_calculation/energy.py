@@ -4,7 +4,7 @@ import copy
 
 import numpy as np
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Energy_DB
+from py4vasp._raw.data_db import Energy_DB, EnergyAfqmc_DB
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 
@@ -72,6 +72,50 @@ _DB_KEYS = {
     "weight          WEIGHT": "weight",
 }
 
+# The database keys (values of _DB_KEYS) that characterize each of the three energy
+# formats VASP produces. The format is not stored explicitly; it is inferred from which
+# labels the raw data contains.
+_MD_DB_KEYS = (
+    "ion_electron",
+    "kinetic_energy",
+    "kinetic_energy_lattice",
+    "temperature",
+    "nose_potential",
+    "nose_kinetic",
+    "total_energy",
+)
+_RELAXATION_DB_KEYS = ("free_energy", "energy_without_entropy", "energy_sigma_0")
+_AFQMC_DB_KEYS = (
+    "step",
+    "one_electron_energy",
+    "hartree_energy",
+    "exchange_energy",
+    "free_energy",
+    "free_energy_cap",
+    "weight",
+)
+# markers unique to AFQMC (free_energy is shared with relaxation, so it is not a marker)
+_AFQMC_MARKERS = frozenset(_AFQMC_DB_KEYS) - {"free_energy"}
+
+
+def _detect_energy_format(db_keys: set) -> str:
+    """Classify the energy format from the database keys present in the raw data.
+
+    The most distinctive format is checked first, keying only on markers that are unique
+    to a format. AFQMC is matched on its own unique markers before the shared
+    ``free_energy`` key is ever consulted, so the relaxation/AFQMC overlap on that key
+    cannot cause a misclassification.
+    """
+    if db_keys & _AFQMC_MARKERS:
+        return "afqmc"
+    if db_keys & frozenset(_MD_DB_KEYS):
+        return "md"
+    if db_keys & frozenset(_RELAXATION_DB_KEYS):
+        return "relaxation"
+    raise exception.NotImplemented(
+        f"Could not determine the energy format from the labels {sorted(db_keys)}."
+    )
+
 
 @documentation.format(examples=slice_.examples("energy"))
 class EnergyHandler:
@@ -121,6 +165,31 @@ class EnergyHandler:
 
     def to_database(self) -> dict:
         default_dict = self._default_dict_all()
+        present_db_keys = {
+            db_key
+            for label in default_dict
+            if (db_key := _DB_KEYS.get(label)) is not None
+        }
+        energy_format = _detect_energy_format(present_db_keys)
+        if energy_format == "afqmc":
+            return self._to_afqmc_database(default_dict)
+        return self._to_legacy_database(default_dict)
+
+    def _to_afqmc_database(self, default_dict) -> EnergyAfqmc_DB:
+        energy_dict = {}
+        for label, values in default_dict.items():
+            db_key = _DB_KEYS.get(label)
+            if db_key not in _AFQMC_DB_KEYS:
+                continue
+            v = np.array(values)
+            energy_dict[f"{db_key}_initial"] = float(v[0])
+            energy_dict[f"{db_key}_final"] = float(v[-1])
+            # the step counter has no meaningful average
+            if db_key != "step":
+                energy_dict[f"{db_key}_average"] = float(np.mean(v))
+        return EnergyAfqmc_DB(**energy_dict)
+
+    def _to_legacy_database(self, default_dict) -> Energy_DB:
         energy_dict = {}
         for original_label, db_key in _DB_KEYS.items():
             v = default_dict.get(original_label, None)

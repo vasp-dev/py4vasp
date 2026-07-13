@@ -9,7 +9,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.energy import _DB_KEYS, Energy, EnergyHandler
-from py4vasp._raw.data_db import Energy_DB
+from py4vasp._raw.data_db import Energy_DB, EnergyAfqmc_DB
 from py4vasp._util import convert
 
 
@@ -225,6 +225,36 @@ def test_to_database(MD_energy, raw_data):
             raise AssertionError(
                 f"Missing key {e} in database data, keys: {list([fld.name for fld in fields(database_data)])}"
             ) from e
+
+
+def test_to_database_afqmc(raw_data):
+    raw_energy = raw_data.energy("afqmc")
+    handler = EnergyHandler.from_data(raw_energy)
+    database_data = handler.to_database()
+
+    assert isinstance(database_data, EnergyAfqmc_DB)
+    assert not isinstance(database_data, Energy_DB)
+
+    get_label = lambda x: convert.text_to_string(x).strip()
+    labels = [get_label(label) for label in raw_energy.labels]
+    values = raw_energy.values.T
+    assert len(labels) > 0
+
+    for label, ref in zip(labels, values):
+        db_key = _DB_KEYS[label]
+        assert getattr(database_data, f"{db_key}_initial") == float(ref[0])
+        assert getattr(database_data, f"{db_key}_final") == float(ref[-1])
+        # MD/AFQMC summarize with an average instead of a (meaningless) minimum;
+        # the monotonic step counter has neither.
+        assert not hasattr(database_data, f"{db_key}_min")
+        assert not hasattr(database_data, f"{db_key}_step_min")
+        if db_key == "step":
+            assert not hasattr(database_data, f"{db_key}_average")
+        else:
+            assert getattr(database_data, f"{db_key}_average") == float(np.mean(ref))
+
+    # the afqmc model must not carry MD-only fields
+    assert not hasattr(database_data, "temperature_initial")
 
 
 def test_factory_methods(raw_data, check_factory_methods):

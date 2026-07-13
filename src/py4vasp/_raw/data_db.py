@@ -505,6 +505,63 @@ class Energy_DB(_DBDataMixin):
 
 
 @dataclass
+class EnergyAfqmc_DB(_DBDataMixin):
+    """Data class for storing AFQMC energy data in the database.
+
+    AFQMC energies fluctuate around a value rather than converging to a minimum, so
+    each energy term is summarized by its initial, average, and final value (a minimum
+    is not meaningful). The sampling step is a monotonic counter, so only its initial
+    and final values are stored."""
+
+    step_initial: Optional[float] = None
+    """The initial sampling step, for which energies are evaluated."""
+    step_final: Optional[float] = None
+    """The final sampling step, for which energies are evaluated."""
+
+    one_electron_energy_initial: Optional[float] = None
+    """The initial one-electron energy, in eV."""
+    one_electron_energy_average: Optional[float] = None
+    """The average one-electron energy across all sampling steps, in eV."""
+    one_electron_energy_final: Optional[float] = None
+    """The final one-electron energy, in eV."""
+
+    hartree_energy_initial: Optional[float] = None
+    """The initial Hartree energy, in eV."""
+    hartree_energy_average: Optional[float] = None
+    """The average Hartree energy across all sampling steps, in eV."""
+    hartree_energy_final: Optional[float] = None
+    """The final Hartree energy, in eV."""
+
+    exchange_energy_initial: Optional[float] = None
+    """The initial exchange energy, in eV."""
+    exchange_energy_average: Optional[float] = None
+    """The average exchange energy across all sampling steps, in eV."""
+    exchange_energy_final: Optional[float] = None
+    """The final exchange energy, in eV."""
+
+    free_energy_initial: Optional[float] = None
+    """The initial free energy, in eV."""
+    free_energy_average: Optional[float] = None
+    """The average free energy across all sampling steps, in eV."""
+    free_energy_final: Optional[float] = None
+    """The final free energy, in eV."""
+
+    free_energy_cap_initial: Optional[float] = None
+    """The initial capped free energy, in eV."""
+    free_energy_cap_average: Optional[float] = None
+    """The average capped free energy across all sampling steps, in eV."""
+    free_energy_cap_final: Optional[float] = None
+    """The final capped free energy, in eV."""
+
+    weight_initial: Optional[float] = None
+    """The initial ensemble weight."""
+    weight_average: Optional[float] = None
+    """The average ensemble weight across all sampling steps."""
+    weight_final: Optional[float] = None
+    """The final ensemble weight."""
+
+
+@dataclass
 class ExcitonEigenvector_DB(_DBDataMixin):
     """Data class for storing exciton eigenvector data in the database."""
 
