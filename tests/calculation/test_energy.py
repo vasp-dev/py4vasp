@@ -8,13 +8,13 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.energy import _DB_KEYS, Energy, EnergyHandler
-from py4vasp._raw.data_db import (
-    Energy_DB,
-    EnergyAfqmc_DB,
-    EnergyMD_DB,
-    EnergyRelaxation_DB,
+from py4vasp._calculation.energy import (
+    _DB_KEYS,
+    Energy,
+    EnergyHandler,
+    _detect_energy_format,
 )
+from py4vasp._raw.data_db import EnergyAfqmc_DB, EnergyMD_DB, EnergyRelaxation_DB
 from py4vasp._util import convert
 
 
@@ -211,7 +211,6 @@ def test_to_database_md(MD_energy, raw_data):
     database_data = handler.to_database()
 
     assert isinstance(database_data, EnergyMD_DB)
-    assert not isinstance(database_data, Energy_DB)
 
     labels = MD_energy.ref.labels
     values = MD_energy.ref.values
@@ -237,7 +236,6 @@ def test_to_database_relax(raw_data):
     database_data = handler.to_database()
 
     assert isinstance(database_data, EnergyRelaxation_DB)
-    assert not isinstance(database_data, Energy_DB)
 
     get_label = lambda x: convert.text_to_string(x).strip()
     labels = [get_label(label) for label in raw_energy.labels]
@@ -264,7 +262,6 @@ def test_to_database_afqmc(raw_data):
     database_data = handler.to_database()
 
     assert isinstance(database_data, EnergyAfqmc_DB)
-    assert not isinstance(database_data, Energy_DB)
 
     get_label = lambda x: convert.text_to_string(x).strip()
     labels = [get_label(label) for label in raw_energy.labels]
@@ -286,6 +283,12 @@ def test_to_database_afqmc(raw_data):
 
     # the afqmc model must not carry MD-only fields
     assert not hasattr(database_data, "temperature_initial")
+
+
+def test_detect_energy_format_unknown_raises():
+    # an unrecognized set of labels must raise rather than silently fall through
+    with pytest.raises(exception.NotImplemented):
+        _detect_energy_format({"not_a_real_energy_key"})
 
 
 def test_factory_methods(raw_data, check_factory_methods):

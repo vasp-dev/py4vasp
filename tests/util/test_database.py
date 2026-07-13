@@ -197,6 +197,12 @@ def test_get_all_possible_keys():
     assert "band:default" not in output_type_dict
     assert output_type_dict["current_density"] == "CurrentDensity_DB"
 
+    # energy is represented by three format-specific models; there is no flat Energy_DB
+    assert output_type_dict["energy"] == "EnergyRelaxation_DB"
+    assert output_type_dict["energy:afqmc"] == "EnergyAfqmc_DB"
+    for model in ("EnergyRelaxation_DB", "EnergyMD_DB", "EnergyAfqmc_DB"):
+        assert model in all_keys and len(all_keys[model]) > 0
+
     assert (
         sum([1 for v in all_keys.values() if len(v) > 0 and isinstance(v[0], tuple)])
         > 10
