@@ -562,6 +562,42 @@ class EnergyAfqmc_DB(_DBDataMixin):
 
 
 @dataclass
+class EnergyRelaxation_DB(_DBDataMixin):
+    """Data class for storing ionic-relaxation energy data in the database.
+
+    A relaxation converges toward a minimum, so each energy term is summarized by its
+    initial and final value together with the minimum reached and the step at which that
+    minimum occurs."""
+
+    free_energy_initial: Optional[float] = None
+    """The initial free energy, in eV."""
+    free_energy_min: Optional[float] = None
+    """The minimum free energy during the relaxation, in eV."""
+    free_energy_step_min: Optional[int] = None
+    """The step at which the minimum free energy occurs."""
+    free_energy_final: Optional[float] = None
+    """The final free energy, in eV."""
+
+    energy_without_entropy_initial: Optional[float] = None
+    """The initial energy without entropy, in eV."""
+    energy_without_entropy_min: Optional[float] = None
+    """The minimum energy without entropy during the relaxation, in eV."""
+    energy_without_entropy_step_min: Optional[int] = None
+    """The step at which the minimum energy without entropy occurs."""
+    energy_without_entropy_final: Optional[float] = None
+    """The final energy without entropy, in eV."""
+
+    energy_sigma_0_initial: Optional[float] = None
+    """The initial energy at sigma->0, in eV."""
+    energy_sigma_0_min: Optional[float] = None
+    """The minimum energy at sigma->0 during the relaxation, in eV."""
+    energy_sigma_0_step_min: Optional[int] = None
+    """The step at which the minimum energy at sigma->0 occurs."""
+    energy_sigma_0_final: Optional[float] = None
+    """The final energy at sigma->0, in eV."""
+
+
+@dataclass
 class EnergyMD_DB(_DBDataMixin):
     """Data class for storing molecular-dynamics energy data in the database.
 

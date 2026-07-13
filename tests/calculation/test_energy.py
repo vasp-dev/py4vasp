@@ -9,7 +9,12 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.energy import _DB_KEYS, Energy, EnergyHandler
-from py4vasp._raw.data_db import Energy_DB, EnergyAfqmc_DB, EnergyMD_DB
+from py4vasp._raw.data_db import (
+    Energy_DB,
+    EnergyAfqmc_DB,
+    EnergyMD_DB,
+    EnergyRelaxation_DB,
+)
 from py4vasp._util import convert
 
 
@@ -223,6 +228,33 @@ def test_to_database_md(MD_energy, raw_data):
 
     # the MD model must not carry relaxation- or AFQMC-only fields
     assert not hasattr(database_data, "free_energy_initial")
+    assert not hasattr(database_data, "weight_initial")
+
+
+def test_to_database_relax(raw_data):
+    raw_energy = raw_data.energy("relax")
+    handler = EnergyHandler.from_data(raw_energy)
+    database_data = handler.to_database()
+
+    assert isinstance(database_data, EnergyRelaxation_DB)
+    assert not isinstance(database_data, Energy_DB)
+
+    get_label = lambda x: convert.text_to_string(x).strip()
+    labels = [get_label(label) for label in raw_energy.labels]
+    values = raw_energy.values.T
+    assert len(labels) > 0
+
+    for label, ref in zip(labels, values):
+        db_key = _DB_KEYS[label]
+        assert getattr(database_data, f"{db_key}_initial") == float(ref[0])
+        assert getattr(database_data, f"{db_key}_final") == float(ref[-1])
+        # relaxation converges, so the minimum (and the step it occurs at) is meaningful
+        assert getattr(database_data, f"{db_key}_min") == float(np.min(ref))
+        assert getattr(database_data, f"{db_key}_step_min") == int(np.argmin(ref))
+        assert not hasattr(database_data, f"{db_key}_average")
+
+    # the relaxation model must not carry MD- or AFQMC-only fields
+    assert not hasattr(database_data, "temperature_initial")
     assert not hasattr(database_data, "weight_initial")
 
 
