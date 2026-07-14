@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from py4vasp._raw.data_wrapper import VaspData
 
@@ -354,154 +354,154 @@ class ElectronicMinimization_DB(_DBDataMixin):
 
 
 @dataclass
-class Energy_DB(_DBDataMixin):
-    """Data class for storing energy data in the database."""
+class EnergyAfqmc_DB(_DBDataMixin):
+    """Data class for storing AFQMC energy data in the database.
 
-    ion_electron_initial: Optional[float] = None
-    """The initial ion-electron energy, in eV."""
-    ion_electron_min: Optional[float] = None
-    """The minimum ion-electron energy during the calculation, in eV."""
-    ion_electron_step_min: Optional[float] = None
-    """The ion-electron energy at the step where the minimum ion-electron energy occurs, in eV."""
-    ion_electron_final: Optional[float] = None
-    """The final ion-electron energy, in eV."""
+    AFQMC energies fluctuate around a value rather than converging to a minimum, so
+    each energy term is summarized by its initial, average, and final value (a minimum
+    is not meaningful). The sampling step is a monotonic counter, so only its initial
+    and final values are stored."""
 
-    kinetic_energy_initial: Optional[float] = None
-    """The initial kinetic energy, in eV."""
-    kinetic_energy_min: Optional[float] = None
-    """The minimum kinetic energy during the calculation, in eV."""
-    kinetic_energy_step_min: Optional[float] = None
-    """The kinetic energy at the step where the minimum kinetic energy occurs, in eV."""
-    kinetic_energy_final: Optional[float] = None
-    """The final kinetic energy, in eV."""
+    step_initial: Optional[float] = None
+    """The initial sampling step, for which energies are evaluated."""
+    step_final: Optional[float] = None
+    """The final sampling step, for which energies are evaluated."""
 
-    kinetic_energy_lattice_initial: Optional[float] = None
-    """The initial kinetic energy of the lattice, in eV."""
-    kinetic_energy_lattice_min: Optional[float] = None
-    """The minimum kinetic energy of the lattice during the calculation, in eV."""
-    kinetic_energy_lattice_step_min: Optional[float] = None
-    """The kinetic energy of the lattice at the step where the minimum kinetic energy of the lattice occurs, in eV."""
-    kinetic_energy_lattice_final: Optional[float] = None
-    """The final kinetic energy of the lattice, in eV."""
+    one_electron_energy_initial: Optional[float] = None
+    """The initial one-electron energy, in eV."""
+    one_electron_energy_average: Optional[float] = None
+    """The average one-electron energy across all sampling steps, in eV."""
+    one_electron_energy_final: Optional[float] = None
+    """The final one-electron energy, in eV."""
 
-    temperature_initial: Optional[float] = None
-    """The initial temperature, in K."""
-    temperature_min: Optional[float] = None
-    """The minimum temperature during the calculation, in K."""
-    temperature_step_min: Optional[float] = None
-    """The temperature at the step where the minimum temperature occurs, in K."""
-    temperature_final: Optional[float] = None
-    """The final temperature, in K."""
+    hartree_energy_initial: Optional[float] = None
+    """The initial Hartree energy, in eV."""
+    hartree_energy_average: Optional[float] = None
+    """The average Hartree energy across all sampling steps, in eV."""
+    hartree_energy_final: Optional[float] = None
+    """The final Hartree energy, in eV."""
 
-    nose_potential_initial: Optional[float] = None
-    """The initial Nose potential energy, in eV."""
-    nose_potential_min: Optional[float] = None
-    """The minimum Nose potential energy during the calculation, in eV."""
-    nose_potential_step_min: Optional[float] = None
-    """The Nose potential energy at the step where the minimum Nose potential energy occurs, in eV."""
-    nose_potential_final: Optional[float] = None
-    """The final Nose potential energy, in eV."""
+    exchange_energy_initial: Optional[float] = None
+    """The initial exchange energy, in eV."""
+    exchange_energy_average: Optional[float] = None
+    """The average exchange energy across all sampling steps, in eV."""
+    exchange_energy_final: Optional[float] = None
+    """The final exchange energy, in eV."""
 
-    nose_kinetic_initial: Optional[float] = None
-    """The initial Nose kinetic energy, in eV."""
-    nose_kinetic_min: Optional[float] = None
-    """The minimum Nose kinetic energy during the calculation, in eV."""
-    nose_kinetic_step_min: Optional[float] = None
-    """The Nose kinetic energy at the step where the minimum Nose kinetic energy occurs, in eV."""
-    nose_kinetic_final: Optional[float] = None
-    """The final Nose kinetic energy, in eV."""
+    free_energy_initial: Optional[float] = None
+    """The initial free energy, in eV."""
+    free_energy_average: Optional[float] = None
+    """The average free energy across all sampling steps, in eV."""
+    free_energy_final: Optional[float] = None
+    """The final free energy, in eV."""
 
-    total_energy_initial: Optional[float] = None
-    """The initial total energy, in eV."""
-    total_energy_min: Optional[float] = None
-    """The minimum total energy during the calculation, in eV."""
-    total_energy_step_min: Optional[float] = None
-    """The total energy at the step where the minimum total energy occurs, in eV."""
-    total_energy_final: Optional[float] = None
-    """The final total energy, in eV."""
+    free_energy_cap_initial: Optional[float] = None
+    """The initial capped free energy, in eV."""
+    free_energy_cap_average: Optional[float] = None
+    """The average capped free energy across all sampling steps, in eV."""
+    free_energy_cap_final: Optional[float] = None
+    """The final capped free energy, in eV."""
+
+    weight_initial: Optional[float] = None
+    """The initial ensemble weight."""
+    weight_average: Optional[float] = None
+    """The average ensemble weight across all sampling steps."""
+    weight_final: Optional[float] = None
+    """The final ensemble weight."""
+
+
+@dataclass
+class EnergyRelaxation_DB(_DBDataMixin):
+    """Data class for storing ionic-relaxation energy data in the database.
+
+    A relaxation converges toward a minimum, so each energy term is summarized by its
+    initial and final value together with the minimum reached and the step at which that
+    minimum occurs."""
 
     free_energy_initial: Optional[float] = None
     """The initial free energy, in eV."""
     free_energy_min: Optional[float] = None
-    """The minimum free energy during the calculation, in eV."""
-    free_energy_step_min: Optional[float] = None
-    """The free energy at the step where the minimum free energy occurs, in eV."""
+    """The minimum free energy during the relaxation, in eV."""
+    free_energy_step_min: Optional[int] = None
+    """The step at which the minimum free energy occurs."""
     free_energy_final: Optional[float] = None
     """The final free energy, in eV."""
 
     energy_without_entropy_initial: Optional[float] = None
     """The initial energy without entropy, in eV."""
     energy_without_entropy_min: Optional[float] = None
-    """The minimum energy without entropy during the calculation, in eV."""
-    energy_without_entropy_step_min: Optional[float] = None
-    """The energy without entropy at the step where the minimum energy without entropy occurs, in eV."""
+    """The minimum energy without entropy during the relaxation, in eV."""
+    energy_without_entropy_step_min: Optional[int] = None
+    """The step at which the minimum energy without entropy occurs."""
     energy_without_entropy_final: Optional[float] = None
     """The final energy without entropy, in eV."""
 
     energy_sigma_0_initial: Optional[float] = None
     """The initial energy at sigma->0, in eV."""
     energy_sigma_0_min: Optional[float] = None
-    """The minimum energy at sigma->0 during the calculation, in eV."""
-    energy_sigma_0_step_min: Optional[float] = None
-    """The energy at sigma->0 at the step where the minimum energy at sigma->0 occurs, in eV."""
+    """The minimum energy at sigma->0 during the relaxation, in eV."""
+    energy_sigma_0_step_min: Optional[int] = None
+    """The step at which the minimum energy at sigma->0 occurs."""
     energy_sigma_0_final: Optional[float] = None
     """The final energy at sigma->0, in eV."""
 
-    step_initial: Optional[float] = None
-    """The initial step, for which energies are evaluated."""
-    step_final: Optional[float] = None
-    """The final step, for which energies are evaluated."""
 
-    one_electron_energy_initial: Optional[float] = None
-    """The initial one-electron energy, in eV."""
-    one_electron_energy_min: Optional[float] = None
-    """The minimum one-electron energy during the calculation, in eV."""
-    one_electron_energy_step_min: Optional[float] = None
-    """The one-electron energy at the step where the minimum one-electron energy occurs, in eV."""
-    one_electron_energy_final: Optional[float] = None
-    """The final one-electron energy, in eV."""
+@dataclass
+class EnergyMD_DB(_DBDataMixin):
+    """Data class for storing molecular-dynamics energy data in the database.
 
-    hartree_energy_initial: Optional[float] = None
-    """The initial Hartree energy, in eV."""
-    hartree_energy_min: Optional[float] = None
-    """The minimum Hartree energy during the calculation, in eV."""
-    hartree_energy_step_min: Optional[float] = None
-    """The Hartree energy at the step where the minimum Hartree energy occurs, in eV."""
-    hartree_energy_final: Optional[float] = None
-    """The final Hartree energy, in eV."""
+    MD energies fluctuate around a value rather than converging to a minimum, so each
+    energy term is summarized by its initial, average, and final value (a minimum is not
+    meaningful for a trajectory that thermalizes)."""
 
-    exchange_energy_initial: Optional[float] = None
-    """The initial exchange energy, in eV."""
-    exchange_energy_min: Optional[float] = None
-    """The minimum exchange energy during the calculation, in eV."""
-    exchange_energy_step_min: Optional[float] = None
-    """The exchange energy at the step where the minimum exchange energy occurs, in eV."""
-    exchange_energy_final: Optional[float] = None
-    """The final exchange energy, in eV."""
+    ion_electron_initial: Optional[float] = None
+    """The initial ion-electron energy, in eV."""
+    ion_electron_average: Optional[float] = None
+    """The average ion-electron energy across all steps, in eV."""
+    ion_electron_final: Optional[float] = None
+    """The final ion-electron energy, in eV."""
 
-    free_energy_initial: Optional[float] = None
-    """The initial free energy, in eV."""
-    free_energy_min: Optional[float] = None
-    """The minimum free energy during the calculation, in eV."""
-    free_energy_step_min: Optional[float] = None
-    """The free energy at the step where the minimum free energy occurs, in eV."""
-    free_energy_final: Optional[float] = None
-    """The final free energy, in eV."""
+    kinetic_energy_initial: Optional[float] = None
+    """The initial kinetic energy, in eV."""
+    kinetic_energy_average: Optional[float] = None
+    """The average kinetic energy across all steps, in eV."""
+    kinetic_energy_final: Optional[float] = None
+    """The final kinetic energy, in eV."""
 
-    # TODO what is it?
-    free_energy_cap_initial: Optional[float] = None
-    free_energy_cap_min: Optional[float] = None
-    free_energy_cap_step_min: Optional[float] = None
-    free_energy_cap_final: Optional[float] = None
+    kinetic_energy_lattice_initial: Optional[float] = None
+    """The initial kinetic energy of the lattice, in eV."""
+    kinetic_energy_lattice_average: Optional[float] = None
+    """The average kinetic energy of the lattice across all steps, in eV."""
+    kinetic_energy_lattice_final: Optional[float] = None
+    """The final kinetic energy of the lattice, in eV."""
 
-    # TODO what is it?
-    weight_initial: Optional[float] = None
-    weight_min: Optional[float] = None
-    weight_step_min: Optional[float] = None
-    weight_final: Optional[float] = None
+    temperature_initial: Optional[float] = None
+    """The initial temperature, in K."""
+    temperature_average: Optional[float] = None
+    """The average temperature across all steps, in K."""
+    temperature_final: Optional[float] = None
+    """The final temperature, in K."""
 
-    other_energy_data: Optional[Dict[str, float]] = field(default_factory=lambda: None)
-    """A dictionary to store any additional energy data that may be relevant for the calculation, where the keys are descriptive names of the energy terms and the values are the corresponding energy values in eV."""
+    nose_potential_initial: Optional[float] = None
+    """The initial Nose potential energy, in eV."""
+    nose_potential_average: Optional[float] = None
+    """The average Nose potential energy across all steps, in eV."""
+    nose_potential_final: Optional[float] = None
+    """The final Nose potential energy, in eV."""
+
+    nose_kinetic_initial: Optional[float] = None
+    """The initial Nose kinetic energy, in eV."""
+    nose_kinetic_average: Optional[float] = None
+    """The average Nose kinetic energy across all steps, in eV."""
+    nose_kinetic_final: Optional[float] = None
+    """The final Nose kinetic energy, in eV."""
+
+    total_energy_initial: Optional[float] = None
+    """The initial total energy, in eV."""
+    total_energy_average: Optional[float] = None
+    """The average total energy across all steps, in eV."""
+    total_energy_final: Optional[float] = None
+    """The final total energy, in eV."""
 
 
 @dataclass

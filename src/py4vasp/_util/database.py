@@ -430,6 +430,18 @@ def get_all_possible_keys(
             for sel in non_default_selections:
                 output_type_dict[f"{constructed_key}:{sel}"] = dataclass_name
 
+    # `energy` is special: its format -- and thus its database model -- is detected from
+    # the data at runtime, so the single `energy` quantity is represented by three
+    # different models rather than one. The auto-discovery above cannot resolve this, so
+    # map the selections explicitly: the default source is a relaxation or an MD run
+    # (relaxation is the representative), while the `afqmc` selection always maps to
+    # EnergyAfqmc_DB. All three models are injected into ``main_keys`` below so their
+    # fields still appear in the generated documentation.
+    energy_db_models = ("EnergyRelaxation_DB", "EnergyMD_DB", "EnergyAfqmc_DB")
+    if "energy" in all_keys:
+        output_type_dict["energy"] = "EnergyRelaxation_DB"
+        output_type_dict["energy:afqmc"] = "EnergyAfqmc_DB"
+
     sort_keys_list = ["energy"]
 
     if to_print:
@@ -462,6 +474,10 @@ def get_all_possible_keys(
         for dataclass_name in [_get_dataclass_name_for_quantity(k)]
         if dataclass_name is not None
     }
+    # enumerate every energy model explicitly (see the note above the override)
+    if "energy" in all_keys:
+        for model in energy_db_models:
+            main_keys[model] = _get_dataclass_field_tuples(model)
     output_type_dict = {
         k: v for k, v in sorted(output_type_dict.items(), key=lambda item: item[0])
     }
