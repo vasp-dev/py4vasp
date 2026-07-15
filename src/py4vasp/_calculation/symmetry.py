@@ -2,13 +2,37 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
     quantity,
 )
-from py4vasp._util import check
+from py4vasp._util import check, import_
+
+spglib = import_.optional("spglib")
+
+# Tolerance used by spglib when classifying the symmetry operations.
+_SYMPREC = 1e-5
+
+# Upper space-group-number boundary of each crystal system.
+_CRYSTAL_SYSTEMS = (
+    (2, "triclinic"),
+    (15, "monoclinic"),
+    (74, "orthorhombic"),
+    (142, "tetragonal"),
+    (167, "trigonal"),
+    (194, "hexagonal"),
+    (230, "cubic"),
+)
+
+
+def _crystal_system(space_group_number):
+    for boundary, name in _CRYSTAL_SYSTEMS:
+        if space_group_number <= boundary:
+            return name
+    message = f"The space group number {space_group_number} is not in the range 1-230."
+    raise exception.IncorrectUsage(message)
 
 
 class SymmetryHandler:
@@ -62,6 +86,79 @@ class SymmetryHandler:
         """Public alias for read()."""
         return self.read()
 
+    def has_inversion_symmetry(self) -> bool:
+        """Return whether the inversion operation is part of the symmetry group."""
+        inversion = -np.eye(3, dtype=int)
+        rotations = np.array(self._raw_symmetry.rotations)
+        return any(np.array_equal(rotation, inversion) for rotation in rotations)
+
+    def is_symmorphic(self) -> bool:
+        """Return whether the space group is symmorphic.
+
+        A space group is symmorphic if an origin exists for which all operations have
+        no fractional translation. We use the practical criterion that none of the
+        stored operations carries a fractional translation.
+        """
+        translations = np.array(self._raw_symmetry.translations)
+        return bool(np.allclose(translations, 0.0))
+
+    def space_group(self) -> dict:
+        """Determine the space group of the crystal from the symmetry operations.
+
+        The space group is deduced with spglib from the symmetry operations VASP
+        stored. This requires the optional dependency spglib to be installed.
+
+        Returns
+        -------
+        dict
+            The international space-group number and Hermann-Mauguin symbol, the
+            point group, the crystal system, and whether the group is symmorphic.
+        """
+        space_group_type = self._space_group_type()
+        number = space_group_type.number
+        return {
+            "number": number,
+            "international_symbol": space_group_type.international_short,
+            "point_group": space_group_type.pointgroup_international,
+            "crystal_system": _crystal_system(number),
+            "is_symmorphic": self.is_symmorphic(),
+        }
+
+    def _space_group_type(self):
+        rotations, translations = self._all_operations()
+        return spglib.get_spacegroup_type_from_symmetry(
+            rotations, translations, lattice=self._lattice(), symprec=_SYMPREC
+        )
+
+    def _all_operations(self):
+        """Combine the rotations with the pure translations of the primitive cell.
+
+        VASP stores the rotations in the basis of the computational cell. When the
+        computational cell contains more than one primitive cell, the pure lattice
+        translations relating them are symmetry operations as well and have to be
+        added so that spglib classifies the space group correctly.
+        """
+        rotations = np.array(self._raw_symmetry.rotations)
+        translations = np.array(self._raw_symmetry.translations)
+        primitive_translations = np.array(self._raw_symmetry.primitive_translations)
+        all_rotations = []
+        all_translations = []
+        for rotation, translation in zip(rotations, translations):
+            for primitive_translation in primitive_translations:
+                all_rotations.append(rotation)
+                all_translations.append((translation + primitive_translation) % 1.0)
+        return np.array(all_rotations), np.array(all_translations)
+
+    def _lattice(self):
+        cell = self._raw_symmetry.cell
+        return self._scale(cell) * np.array(cell.lattice_vectors)
+
+    @staticmethod
+    def _scale(cell):
+        if check.is_none(cell.scale):
+            return 1.0
+        return np.array(cell.scale)
+
 
 @quantity("symmetry")
 class Symmetry:
@@ -106,3 +203,27 @@ class Symmetry:
     def to_dict(self, selection: str | None = None) -> dict:
         """Public alias for read(). Check that method for the returned data."""
         return self.read()
+
+    def space_group(self) -> dict:
+        """Determine the space group of the crystal from the symmetry operations.
+
+        Check :meth:`SymmetryHandler.space_group` for the description of the returned
+        data. Requires the optional dependency spglib.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            SymmetryHandler.space_group,
+        )
+
+    def has_inversion_symmetry(self) -> bool:
+        """Return whether the inversion operation is part of the symmetry group."""
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            SymmetryHandler.has_inversion_symmetry,
+        )

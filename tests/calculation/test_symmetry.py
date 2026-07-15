@@ -1,10 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import types
 
 import numpy as np
 import pytest
 
+from py4vasp import exception, raw
 from py4vasp._calculation.symmetry import Symmetry
 
 
@@ -55,3 +57,52 @@ def test_to_dict_is_alias_of_read(symmetry, Assert):
             assert from_dict[key] is None
         else:
             Assert.allclose(from_dict[key], from_read[key])
+
+
+EXPECTED_SPACE_GROUP = {
+    "CoO": dict(
+        number=216,
+        international_symbol="F-43m",
+        point_group="-43m",
+        crystal_system="cubic",
+    ),
+    "AlP": dict(
+        number=38,
+        international_symbol="Amm2",
+        point_group="mm2",
+        crystal_system="orthorhombic",
+    ),
+}
+
+
+def test_space_group(symmetry):
+    pytest.importorskip("spglib")
+    expected = EXPECTED_SPACE_GROUP[symmetry.ref.name]
+    actual = symmetry.space_group()
+    assert actual["number"] == expected["number"]
+    assert actual["international_symbol"] == expected["international_symbol"]
+    assert actual["point_group"] == expected["point_group"]
+    assert actual["crystal_system"] == expected["crystal_system"]
+    assert actual["is_symmorphic"] is True
+
+
+def test_space_group_without_spglib(symmetry, monkeypatch):
+    from py4vasp._calculation import symmetry as symmetry_module
+    from py4vasp._util import import_
+
+    placeholder = import_._ModulePlaceholder("spglib")
+    monkeypatch.setattr(symmetry_module, "spglib", placeholder)
+    with pytest.raises(exception.ModuleNotInstalled):
+        symmetry.space_group()
+
+
+def test_has_inversion_symmetry_absent(symmetry):
+    assert symmetry.has_inversion_symmetry() is False
+
+
+def test_has_inversion_symmetry_present(raw_data):
+    raw_symmetry = raw_data.symmetry("AlP")
+    rotations = np.array(raw_symmetry.rotations)
+    rotations[1] = -np.eye(3, dtype=int)
+    modified = dataclasses.replace(raw_symmetry, rotations=raw.VaspData(rotations))
+    assert Symmetry.from_data(modified).has_inversion_symmetry() is True
