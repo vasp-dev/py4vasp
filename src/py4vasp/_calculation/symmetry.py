@@ -179,6 +179,7 @@ class SymmetryHandler:
             pearson_symbol=pearson_symbol,
             has_inversion_symmetry=self.has_inversion_symmetry(),
             number_of_operations=int(self._raw_symmetry.number_of_operations),
+            number_of_primitive_cells=int(self._raw_symmetry.number_of_primitive_cells),
             is_symmorphic=self.is_symmorphic(),
         )
 

@@ -185,6 +185,7 @@ def test_to_database(symmetry, raw_data):
     assert actual.pearson_symbol == space_group["pearson_symbol"]
     assert actual.has_inversion_symmetry is False
     assert actual.number_of_operations == NUMBER_OPERATIONS[name]
+    assert actual.number_of_primitive_cells == NUMBER_PRIMITIVE_CELLS[name]
     assert actual.is_symmorphic is True
 
 
@@ -204,6 +205,7 @@ def test_to_database_without_spglib(symmetry, raw_data, monkeypatch):
     assert actual.pearson_symbol is None
     assert actual.has_inversion_symmetry is False
     assert actual.number_of_operations == NUMBER_OPERATIONS[name]
+    assert actual.number_of_primitive_cells == NUMBER_PRIMITIVE_CELLS[name]
     assert actual.is_symmorphic is True
 
 

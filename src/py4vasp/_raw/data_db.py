@@ -977,6 +977,8 @@ class Symmetry_DB(_DBDataMixin):
     """Whether the crystal has inversion symmetry. Useful to filter centrosymmetric calculations."""
     number_of_operations: Optional[int] = None
     """The number of symmetry operations of the crystal."""
+    number_of_primitive_cells: Optional[int] = None
+    """The number of primitive cells contained in the computational cell."""
     is_symmorphic: Optional[bool] = None
     """Whether the space group is symmorphic, i.e. none of its operations carries a fractional translation."""
 
