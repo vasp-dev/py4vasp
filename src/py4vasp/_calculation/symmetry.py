@@ -132,7 +132,7 @@ class SymmetryHandler:
         """Determine the space group of the crystal from the symmetry operations.
 
         The space group is deduced with spglib from the symmetry operations VASP
-        stored. This requires the optional dependency spglib to be installed.
+        stored.
 
         Returns
         -------
@@ -184,18 +184,14 @@ class SymmetryHandler:
         )
 
     def point_group_schoenflies(self) -> str:
-        """Return the point group of the crystal in Schoenflies notation, e.g. Td.
-
-        Requires the optional dependency spglib.
-        """
+        """Return the point group of the crystal in Schoenflies notation, e.g. Td."""
         return self._space_group_type().pointgroup_schoenflies
 
     def bravais_lattice(self) -> str:
         """Return the two-letter Bravais-lattice symbol, e.g. cF, oS, or hP.
 
         The first letter denotes the crystal family (a, m, o, t, h, c) and the second
-        the centering (P, S, I, F, R). There are 14 possible combinations. Requires the
-        optional dependency spglib.
+        the centering (P, S, I, F, R). There are 14 possible combinations.
         """
         return self._bravais_lattice(self._space_group_type())
 
@@ -203,7 +199,7 @@ class SymmetryHandler:
         """Return the Pearson symbol, e.g. cF8.
 
         The Pearson symbol combines the Bravais-lattice symbol with the number of atoms
-        in the conventional cell. Requires the optional dependency spglib.
+        in the conventional cell.
         """
         bravais_lattice = self._bravais_lattice(self._space_group_type())
         number_atoms = self._number_of_conventional_atoms(bravais_lattice)
@@ -281,10 +277,30 @@ class SymmetryHandler:
 class Symmetry:
     """The symmetry operations of the crystal determined by VASP.
 
-    VASP analyzes the crystal structure and stores the set of symmetry operations
-    (rotations and translations) it uses to reduce the computational effort. This
-    class exposes those operations for further processing and can derive the space
-    group of the crystal from them using spglib.
+    VASP analyzes the crystal structure and determines the symmetry operations
+    (rotations and translations) that leave it invariant. This class exposes those
+    operations for further processing and derives common crystallographic descriptors
+    such as the space group, the Bravais lattice, and the Pearson symbol from them
+    using spglib.
+
+    Examples
+    --------
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not contain any VASP
+    calculation data. Alternatively, use your own data if you have run VASP.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    Read the symmetry operations into a Python dictionary for further processing
+
+    >>> calculation.symmetry.read()
+    {'rotations': array(...), ..., 'isym': 2, 'spin_flips': array(...)}
+
+    Check whether the crystal is centrosymmetric
+
+    >>> calculation.symmetry.has_inversion_symmetry()
+    False
     """
 
     def __init__(self, source, quantity_name: str = "symmetry"):
@@ -305,9 +321,33 @@ class Symmetry:
         return SymmetryHandler.from_data(raw_data)
 
     def read(self) -> dict:
-        """Return the symmetry operations and related data as a dictionary.
+        """Read the symmetry operations into a dictionary.
 
-        Check :meth:`SymmetryHandler.read` for the description of the returned data.
+        The dictionary provides the complete set of symmetry operations as NumPy
+        arrays for convenient postprocessing. The rotation matrices act on fractional
+        coordinates of the computational cell and the translations are given in the
+        same basis. The index arrays ``inverse_operations`` and ``atom_permutations``
+        are converted from the Fortran 1-based convention used in the file to 0-based,
+        so that they index NumPy arrays directly. ``spin_flips`` is only present for
+        spin-polarized calculations.
+
+        Returns
+        -------
+        dict
+            The real- and reciprocal-space rotations, the translations, the inverse of
+            each operation, the atom permutations, the primitive-cell lattice vectors
+            and translations, and scalar metadata (number of operations, number of
+            primitive cells, and the ISYM setting).
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Read the symmetry operations into a Python dictionary
+
+        >>> calculation.symmetry.read()
+        {'rotations': array(...), ..., 'isym': 2, 'spin_flips': array(...)}
         """
         return merge_default(
             self._source,
@@ -318,14 +358,28 @@ class Symmetry:
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
-        """Public alias for read(). Check that method for the returned data."""
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
     def space_group(self) -> dict:
-        """Determine the space group of the crystal from the symmetry operations.
+        """Determine the space group of the crystal from its symmetry operations.
 
-        Check :meth:`SymmetryHandler.space_group` for the description of the returned
-        data. Requires the optional dependency spglib.
+        The symmetry operations are classified with spglib to identify the space group
+        the crystal belongs to.
+
+        Returns
+        -------
+        dict
+            The international space-group number and Hermann-Mauguin symbol, the point
+            group, the crystal system, and whether the space group is symmorphic.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.symmetry.space_group()
+        {'number': 216, 'international_symbol': 'F-43m', 'point_group': '-43m', 'crystal_system': 'cubic', 'is_symmorphic': True}
         """
         return merge_default(
             self._source,
@@ -336,7 +390,22 @@ class Symmetry:
         )
 
     def has_inversion_symmetry(self) -> bool:
-        """Return whether the inversion operation is part of the symmetry group."""
+        """Check whether the inversion operation is part of the symmetry group.
+
+        Returns
+        -------
+        bool
+            True if the crystal is centrosymmetric, i.e. the inversion maps the crystal
+            onto itself.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.symmetry.has_inversion_symmetry()
+        False
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -346,9 +415,20 @@ class Symmetry:
         )
 
     def point_group_schoenflies(self) -> str:
-        """Return the point group of the crystal in Schoenflies notation, e.g. Td.
+        """Determine the point group of the crystal in Schoenflies notation.
 
-        Requires the optional dependency spglib.
+        Returns
+        -------
+        str
+            The point group in Schoenflies notation, e.g. Td.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.symmetry.point_group_schoenflies()
+        'Td'
         """
         return merge_default(
             self._source,
@@ -359,9 +439,21 @@ class Symmetry:
         )
 
     def bravais_lattice(self) -> str:
-        """Return the two-letter Bravais-lattice symbol, e.g. cF, oS, or hP.
+        """Determine the Bravais lattice of the crystal.
 
-        Requires the optional dependency spglib.
+        Returns
+        -------
+        str
+            The two-letter Bravais-lattice symbol, one of the 14 possible combinations
+            of crystal family (a, m, o, t, h, c) and centering (P, S, I, F, R), e.g. cF.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.symmetry.bravais_lattice()
+        'cF'
         """
         return merge_default(
             self._source,
@@ -372,9 +464,21 @@ class Symmetry:
         )
 
     def pearson_symbol(self) -> str:
-        """Return the Pearson symbol, e.g. cF8.
+        """Determine the Pearson symbol of the crystal.
 
-        Requires the optional dependency spglib.
+        Returns
+        -------
+        str
+            The Pearson symbol, combining the Bravais-lattice symbol with the number of
+            atoms in the conventional cell, e.g. cF8.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.symmetry.pearson_symbol()
+        'cF8'
         """
         return merge_default(
             self._source,

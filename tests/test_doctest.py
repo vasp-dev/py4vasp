@@ -18,6 +18,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     optics,
     projector,
     structure,
+    symmetry,
     system,
 )
 from py4vasp._util import color as _util_color
@@ -48,15 +49,23 @@ def _all_calculation_examples():
         + find_examples(_calculation.optics)
         + find_examples(_calculation.projector)
         + find_examples(_calculation.structure)
+        + find_examples(_calculation.symmetry)
         + find_examples(_calculation.system)
     )
     return [example for example in examples if interesting_example(example)]
 
 
-# Examples that rely on an optional package (e.g. scipy for the color pipeline) which is
-# not part of the py4vasp-core installation. They run in test_calculation_full which skips
-# via importorskip when the package is missing; everything else runs in test_calculation.
-_FULL_INSTALL_EXAMPLES = ("py4vasp._calculation.optics.Optics.color",)
+# Examples that rely on an optional package (e.g. scipy for the color pipeline or spglib
+# for the space-group analysis) which is not part of the py4vasp-core installation. Each is
+# mapped to the package it needs; they run in test_calculation_full which skips via
+# importorskip when that package is missing. Everything else runs in test_calculation.
+_FULL_INSTALL_EXAMPLES = {
+    "py4vasp._calculation.optics.Optics.color": "scipy",
+    "py4vasp._calculation.symmetry.Symmetry.space_group": "spglib",
+    "py4vasp._calculation.symmetry.Symmetry.point_group_schoenflies": "spglib",
+    "py4vasp._calculation.symmetry.Symmetry.bravais_lattice": "spglib",
+    "py4vasp._calculation.symmetry.Symmetry.pearson_symbol": "spglib",
+}
 
 
 def _requires_full_install(example):
@@ -104,7 +113,7 @@ def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
     "example", get_full_calculation_examples(), ids=lambda example: example.name
 )
 def test_calculation_full(example: doctest.DocTest, tmp_path: pathlib.Path):
-    pytest.importorskip("scipy")
+    pytest.importorskip(_FULL_INSTALL_EXAMPLES[example.name])
     _run_calculation_example(example, tmp_path)
 
 
