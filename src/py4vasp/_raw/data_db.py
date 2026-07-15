@@ -967,6 +967,12 @@ class Symmetry_DB(_DBDataMixin):
     """The Hermann-Mauguin (international short) symbol of the space group, e.g. Fm-3m."""
     crystal_system: Optional[str] = None
     """The crystal system deduced from the space group, e.g. cubic or orthorhombic."""
+    point_group_schoenflies: Optional[str] = None
+    """The point group of the crystal in Schoenflies notation, e.g. Td."""
+    bravais_lattice: Optional[str] = None
+    """The two-letter Bravais-lattice symbol (crystal family + centering), e.g. cF, oS, hP. One of 14 options."""
+    pearson_symbol: Optional[str] = None
+    """The Pearson symbol combining the Bravais lattice with the number of atoms in the conventional cell, e.g. cF8."""
     has_inversion_symmetry: Optional[bool] = None
     """Whether the crystal has inversion symmetry. Useful to filter centrosymmetric calculations."""
     number_of_operations: Optional[int] = None

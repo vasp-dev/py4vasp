@@ -29,6 +29,20 @@ _CRYSTAL_SYSTEMS = (
     (230, "cubic"),
 )
 
+# Crystal-family letter of the Pearson symbol for each crystal system.
+_FAMILY_LETTER = {
+    "triclinic": "a",
+    "monoclinic": "m",
+    "orthorhombic": "o",
+    "tetragonal": "t",
+    "trigonal": "h",
+    "hexagonal": "h",
+    "cubic": "c",
+}
+
+# Number of lattice points in the conventional cell for each centering.
+_CENTERING_MULTIPLICITY = {"P": 1, "S": 2, "I": 2, "F": 4, "R": 3}
+
 
 def _crystal_system(space_group_number):
     for boundary, name in _CRYSTAL_SYSTEMS:
@@ -36,6 +50,15 @@ def _crystal_system(space_group_number):
             return name
     message = f"The space group number {space_group_number} is not in the range 1-230."
     raise exception.IncorrectUsage(message)
+
+
+def _centering(space_group_type):
+    """Return the centering letter (P, S, I, F, R) of the conventional cell.
+
+    The base-centered lattices (A, B, C) are unified into the single symbol S.
+    """
+    letter = space_group_type.international_short[0]
+    return "S" if letter in "ABC" else letter
 
 
 class SymmetryHandler:
@@ -135,17 +158,67 @@ class SymmetryHandler:
         system, presence of inversion symmetry, ...). Space-group information requires
         spglib; if it is not installed those fields are left empty.
         """
-        space_group = self.space_group() if import_.is_imported(spglib) else None
+        if import_.is_imported(spglib):
+            space_group_type = self._space_group_type()
+            number = space_group_type.number
+            space_group = number
+            space_group_symbol = space_group_type.international_short
+            crystal_system = _crystal_system(number)
+            point_group_schoenflies = space_group_type.pointgroup_schoenflies
+            bravais_lattice = self._bravais_lattice(space_group_type)
+            pearson_symbol = f"{bravais_lattice}{self._number_of_conventional_atoms(bravais_lattice)}"
+        else:
+            space_group = space_group_symbol = crystal_system = None
+            point_group_schoenflies = bravais_lattice = pearson_symbol = None
         return Symmetry_DB(
-            space_group=space_group["number"] if space_group else None,
-            space_group_symbol=(
-                space_group["international_symbol"] if space_group else None
-            ),
-            crystal_system=space_group["crystal_system"] if space_group else None,
+            space_group=space_group,
+            space_group_symbol=space_group_symbol,
+            crystal_system=crystal_system,
+            point_group_schoenflies=point_group_schoenflies,
+            bravais_lattice=bravais_lattice,
+            pearson_symbol=pearson_symbol,
             has_inversion_symmetry=self.has_inversion_symmetry(),
             number_of_operations=int(self._raw_symmetry.number_of_operations),
             is_symmorphic=self.is_symmorphic(),
         )
+
+    def point_group_schoenflies(self) -> str:
+        """Return the point group of the crystal in Schoenflies notation, e.g. Td.
+
+        Requires the optional dependency spglib.
+        """
+        return self._space_group_type().pointgroup_schoenflies
+
+    def bravais_lattice(self) -> str:
+        """Return the two-letter Bravais-lattice symbol, e.g. cF, oS, or hP.
+
+        The first letter denotes the crystal family (a, m, o, t, h, c) and the second
+        the centering (P, S, I, F, R). There are 14 possible combinations. Requires the
+        optional dependency spglib.
+        """
+        return self._bravais_lattice(self._space_group_type())
+
+    def pearson_symbol(self) -> str:
+        """Return the Pearson symbol, e.g. cF8.
+
+        The Pearson symbol combines the Bravais-lattice symbol with the number of atoms
+        in the conventional cell. Requires the optional dependency spglib.
+        """
+        bravais_lattice = self._bravais_lattice(self._space_group_type())
+        number_atoms = self._number_of_conventional_atoms(bravais_lattice)
+        return f"{bravais_lattice}{number_atoms}"
+
+    def _bravais_lattice(self, space_group_type):
+        family = _FAMILY_LETTER[_crystal_system(space_group_type.number)]
+        return family + _centering(space_group_type)
+
+    def _number_of_conventional_atoms(self, bravais_lattice):
+        multiplicity = _CENTERING_MULTIPLICITY[bravais_lattice[1]]
+        number_atoms = np.array(self._raw_symmetry.atom_permutations).shape[-1]
+        number_primitive_atoms = number_atoms // int(
+            self._raw_symmetry.number_of_primitive_cells
+        )
+        return number_primitive_atoms * multiplicity
 
     def _space_group_type(self):
         rotations, translations = self._all_operations()
@@ -269,6 +342,45 @@ class Symmetry:
             None,
             self._handler_factory,
             SymmetryHandler.has_inversion_symmetry,
+        )
+
+    def point_group_schoenflies(self) -> str:
+        """Return the point group of the crystal in Schoenflies notation, e.g. Td.
+
+        Requires the optional dependency spglib.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            SymmetryHandler.point_group_schoenflies,
+        )
+
+    def bravais_lattice(self) -> str:
+        """Return the two-letter Bravais-lattice symbol, e.g. cF, oS, or hP.
+
+        Requires the optional dependency spglib.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            SymmetryHandler.bravais_lattice,
+        )
+
+    def pearson_symbol(self) -> str:
+        """Return the Pearson symbol, e.g. cF8.
+
+        Requires the optional dependency spglib.
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            SymmetryHandler.pearson_symbol,
         )
 
     def __str__(self, selection=None) -> str:

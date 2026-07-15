@@ -65,14 +65,38 @@ EXPECTED_SPACE_GROUP = {
         international_symbol="F-43m",
         point_group="-43m",
         crystal_system="cubic",
+        point_group_schoenflies="Td",
+        bravais_lattice="cF",
+        pearson_symbol="cF8",
     ),
     "AlP": dict(
         number=38,
         international_symbol="Amm2",
         point_group="mm2",
         crystal_system="orthorhombic",
+        point_group_schoenflies="C2v",
+        bravais_lattice="oS",
+        pearson_symbol="oS4",
     ),
 }
+
+
+def test_bravais_lattice(symmetry):
+    pytest.importorskip("spglib")
+    expected = EXPECTED_SPACE_GROUP[symmetry.ref.name]["bravais_lattice"]
+    assert symmetry.bravais_lattice() == expected
+
+
+def test_point_group_schoenflies(symmetry):
+    pytest.importorskip("spglib")
+    expected = EXPECTED_SPACE_GROUP[symmetry.ref.name]["point_group_schoenflies"]
+    assert symmetry.point_group_schoenflies() == expected
+
+
+def test_pearson_symbol(symmetry):
+    pytest.importorskip("spglib")
+    expected = EXPECTED_SPACE_GROUP[symmetry.ref.name]["pearson_symbol"]
+    assert symmetry.pearson_symbol() == expected
 
 
 def test_space_group(symmetry):
@@ -156,6 +180,9 @@ def test_to_database(symmetry, raw_data):
     assert actual.space_group == space_group["number"]
     assert actual.space_group_symbol == space_group["international_symbol"]
     assert actual.crystal_system == space_group["crystal_system"]
+    assert actual.point_group_schoenflies == space_group["point_group_schoenflies"]
+    assert actual.bravais_lattice == space_group["bravais_lattice"]
+    assert actual.pearson_symbol == space_group["pearson_symbol"]
     assert actual.has_inversion_symmetry is False
     assert actual.number_of_operations == NUMBER_OPERATIONS[name]
     assert actual.is_symmorphic is True
@@ -172,6 +199,9 @@ def test_to_database_without_spglib(symmetry, raw_data, monkeypatch):
     assert actual.space_group is None
     assert actual.space_group_symbol is None
     assert actual.crystal_system is None
+    assert actual.point_group_schoenflies is None
+    assert actual.bravais_lattice is None
+    assert actual.pearson_symbol is None
     assert actual.has_inversion_symmetry is False
     assert actual.number_of_operations == NUMBER_OPERATIONS[name]
     assert actual.is_symmorphic is True
