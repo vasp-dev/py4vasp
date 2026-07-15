@@ -841,6 +841,40 @@ class Structure:
 
 
 @dataclasses.dataclass
+class Symmetry:
+    """Symmetry operations of the crystal determined by VASP.
+
+    Contains the rotation matrices and translation vectors of all symmetry
+    operations that VASP detected for the computational cell, together with the
+    primitive cell information needed to relate the operations to the crystal."""
+
+    cell: Cell
+    "Computational cell in which the symmetry operations are expressed."
+    rotations: VaspData
+    "Rotation matrices of the symmetry operations in real space (lattice basis)."
+    reciprocal_rotations: VaspData
+    "Rotation matrices of the symmetry operations in reciprocal space."
+    translations: VaspData
+    "Fractional translation vector associated with each symmetry operation."
+    inverse_operations: VaspData
+    "Index of the inverse of each symmetry operation (Fortran 1-based in the file)."
+    atom_permutations: VaspData
+    "Permutation of the atoms under each operation for every primitive cell (Fortran 1-based)."
+    primitive_lattice_vectors: VaspData
+    "Lattice vectors of the primitive cell."
+    primitive_translations: VaspData
+    "Pure translations relating the computational cell to the primitive cell."
+    number_of_operations: int
+    "Number of symmetry operations."
+    number_of_primitive_cells: int
+    "Number of primitive cells contained in the computational cell."
+    isym: int
+    "The ISYM setting used in the calculation."
+    spin_flips: Optional[VaspData] = NONE()
+    "Spin-flip factor for each operation, only present for spin-polarized calculations."
+
+
+@dataclasses.dataclass
 class System:
     "The name of the system set in the input."
 
