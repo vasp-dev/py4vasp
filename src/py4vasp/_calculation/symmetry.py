@@ -6,6 +6,7 @@ from py4vasp import exception, raw
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
+    merge_strings,
     quantity,
 )
 from py4vasp._util import check, import_
@@ -159,6 +160,26 @@ class SymmetryHandler:
             return 1.0
         return np.array(cell.scale)
 
+    def __str__(self) -> str:
+        raw_symmetry = self._raw_symmetry
+        lines = [
+            f"symmetry group with {int(raw_symmetry.number_of_operations)} operations:"
+        ]
+        if import_.is_imported(spglib):
+            space_group = self.space_group()
+            symbol = space_group["international_symbol"]
+            lines.append(f"    space group: {symbol} ({space_group['number']})")
+            lines.append(f"    crystal system: {space_group['crystal_system']}")
+        else:
+            lines.append("    space group: not available (requires spglib)")
+        inversion = "yes" if self.has_inversion_symmetry() else "no"
+        lines.append(f"    inversion symmetry: {inversion}")
+        lines.append(
+            f"    primitive cells: {int(raw_symmetry.number_of_primitive_cells)}"
+        )
+        lines.append(f"    ISYM: {int(raw_symmetry.isym)}")
+        return "\n".join(lines)
+
 
 @quantity("symmetry")
 class Symmetry:
@@ -227,3 +248,15 @@ class Symmetry:
             self._handler_factory,
             SymmetryHandler.has_inversion_symmetry,
         )
+
+    def __str__(self, selection=None) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            SymmetryHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))

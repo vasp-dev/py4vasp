@@ -106,3 +106,38 @@ def test_has_inversion_symmetry_present(raw_data):
     rotations[1] = -np.eye(3, dtype=int)
     modified = dataclasses.replace(raw_symmetry, rotations=raw.VaspData(rotations))
     assert Symmetry.from_data(modified).has_inversion_symmetry() is True
+
+
+NUMBER_OPERATIONS = {"CoO": 24, "AlP": 4}
+NUMBER_PRIMITIVE_CELLS = {"CoO": 1, "AlP": 2}
+
+
+def test_print(symmetry, format_):
+    pytest.importorskip("spglib")
+    name = symmetry.ref.name
+    space_group = EXPECTED_SPACE_GROUP[name]
+    reference = f"""\
+symmetry group with {NUMBER_OPERATIONS[name]} operations:
+    space group: {space_group['international_symbol']} ({space_group['number']})
+    crystal system: {space_group['crystal_system']}
+    inversion symmetry: no
+    primitive cells: {NUMBER_PRIMITIVE_CELLS[name]}
+    ISYM: 2"""
+    actual, _ = format_(symmetry)
+    assert actual == {"text/plain": reference}
+
+
+def test_print_without_spglib(symmetry, format_, monkeypatch):
+    from py4vasp._calculation import symmetry as symmetry_module
+    from py4vasp._util import import_
+
+    monkeypatch.setattr(symmetry_module, "spglib", import_._ModulePlaceholder("spglib"))
+    name = symmetry.ref.name
+    reference = f"""\
+symmetry group with {NUMBER_OPERATIONS[name]} operations:
+    space group: not available (requires spglib)
+    inversion symmetry: no
+    primitive cells: {NUMBER_PRIMITIVE_CELLS[name]}
+    ISYM: 2"""
+    actual, _ = format_(symmetry)
+    assert actual == {"text/plain": reference}
