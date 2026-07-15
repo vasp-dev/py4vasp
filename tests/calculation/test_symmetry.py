@@ -101,13 +101,16 @@ def test_pearson_symbol(symmetry):
 
 def test_space_group(symmetry):
     pytest.importorskip("spglib")
+    from py4vasp._calculation.symmetry import SpaceGroup
+
     expected = EXPECTED_SPACE_GROUP[symmetry.ref.name]
     actual = symmetry.space_group()
-    assert actual["number"] == expected["number"]
-    assert actual["international_symbol"] == expected["international_symbol"]
-    assert actual["point_group"] == expected["point_group"]
-    assert actual["crystal_system"] == expected["crystal_system"]
-    assert actual["is_symmorphic"] is True
+    assert isinstance(actual, SpaceGroup)
+    assert actual.number == expected["number"]
+    assert actual.international_symbol == expected["international_symbol"]
+    assert actual.point_group == expected["point_group"]
+    assert actual.crystal_system == expected["crystal_system"]
+    assert actual.is_symmorphic is True
 
 
 def test_space_group_without_spglib(symmetry, monkeypatch):

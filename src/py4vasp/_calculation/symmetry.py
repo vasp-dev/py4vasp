@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
+
 import numpy as np
 
 from py4vasp import exception, raw
@@ -14,6 +16,23 @@ from py4vasp._raw.data_db import Symmetry_DB
 from py4vasp._util import check, import_
 
 spglib = import_.optional("spglib")
+
+
+@dataclasses.dataclass
+class SpaceGroup:
+    """The space group of a crystal and related classification."""
+
+    number: int
+    "The international space-group number (1-230)."
+    international_symbol: str
+    "The Hermann-Mauguin (international short) symbol, e.g. F-43m."
+    point_group: str
+    "The point group in international notation, e.g. -43m."
+    crystal_system: str
+    "The crystal system, e.g. cubic or orthorhombic."
+    is_symmorphic: bool
+    "Whether the space group is symmorphic."
+
 
 # Tolerance used by spglib when classifying the symmetry operations.
 _SYMPREC = 1e-5
@@ -128,7 +147,7 @@ class SymmetryHandler:
         translations = np.array(self._raw_symmetry.translations)
         return bool(np.allclose(translations, 0.0))
 
-    def space_group(self) -> dict:
+    def space_group(self) -> SpaceGroup:
         """Determine the space group of the crystal from the symmetry operations.
 
         The space group is deduced with spglib from the symmetry operations VASP
@@ -136,19 +155,19 @@ class SymmetryHandler:
 
         Returns
         -------
-        dict
+        SpaceGroup
             The international space-group number and Hermann-Mauguin symbol, the
             point group, the crystal system, and whether the group is symmorphic.
         """
         space_group_type = self._space_group_type()
         number = space_group_type.number
-        return {
-            "number": number,
-            "international_symbol": space_group_type.international_short,
-            "point_group": space_group_type.pointgroup_international,
-            "crystal_system": _crystal_system(number),
-            "is_symmorphic": self.is_symmorphic(),
-        }
+        return SpaceGroup(
+            number=number,
+            international_symbol=space_group_type.international_short,
+            point_group=space_group_type.pointgroup_international,
+            crystal_system=_crystal_system(number),
+            is_symmorphic=self.is_symmorphic(),
+        )
 
     def to_database(self) -> Symmetry_DB:
         """Serialize the symmetry data for database storage.
@@ -259,9 +278,9 @@ class SymmetryHandler:
         ]
         if import_.is_imported(spglib):
             space_group = self.space_group()
-            symbol = space_group["international_symbol"]
-            lines.append(f"    space group: {symbol} ({space_group['number']})")
-            lines.append(f"    crystal system: {space_group['crystal_system']}")
+            symbol = space_group.international_symbol
+            lines.append(f"    space group: {symbol} ({space_group.number})")
+            lines.append(f"    crystal system: {space_group.crystal_system}")
         else:
             lines.append("    space group: not available (requires spglib)")
         inversion = "yes" if self.has_inversion_symmetry() else "no"
@@ -361,7 +380,7 @@ class Symmetry:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
-    def space_group(self) -> dict:
+    def space_group(self) -> SpaceGroup:
         """Determine the space group of the crystal from its symmetry operations.
 
         The symmetry operations are classified with spglib to identify the space group
@@ -369,7 +388,7 @@ class Symmetry:
 
         Returns
         -------
-        dict
+        SpaceGroup
             The international space-group number and Hermann-Mauguin symbol, the point
             group, the crystal system, and whether the space group is symmorphic.
 
@@ -379,7 +398,7 @@ class Symmetry:
         >>> calculation = demo.calculation(path)
 
         >>> calculation.symmetry.space_group()
-        {'number': 216, 'international_symbol': 'F-43m', 'point_group': '-43m', 'crystal_system': 'cubic', 'is_symmorphic': True}
+        SpaceGroup(number=216, international_symbol='F-43m', point_group='-43m', crystal_system='cubic', is_symmorphic=True)
         """
         return merge_default(
             self._source,
