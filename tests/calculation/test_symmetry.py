@@ -186,3 +186,8 @@ def test_to_database_dispatcher(symmetry):
     assert set(result["symmetry"]) == {"default"}
     expected = SymmetryHandler.from_data(symmetry.ref.raw).to_database()
     assert result["symmetry"]["default"] == expected
+
+
+def test_factory_methods(raw_data, check_factory_methods):
+    raw_symmetry = raw_data.symmetry("CoO")
+    check_factory_methods(Symmetry, raw_symmetry)
