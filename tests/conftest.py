@@ -415,6 +415,15 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def symmetry(selection):
+        if selection == "CoO":
+            return _demo.symmetry.CoO()
+        elif selection == "AlP":
+            return _demo.symmetry.AlP()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
     def velocity(selection):
         if selection == "Sr2TiO4":
             return _demo.velocity.Sr2TiO4()
