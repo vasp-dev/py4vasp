@@ -64,18 +64,15 @@ class SymmetryHandler:
             Contains the real- and reciprocal-space rotations, translations, the inverse
             operation of each operation, the atom permutations, the primitive cell
             information, and scalar metadata (number of operations, number of primitive
-            cells, ISYM). ``spin_flips`` is ``None`` unless the calculation was
-            spin-polarized.
+            cells, ISYM). ``spin_flips`` is only present for spin-polarized calculations.
         """
         raw_symmetry = self._raw_symmetry
-        spin_flips = raw_symmetry.spin_flips
-        return {
+        result = {
             "rotations": np.array(raw_symmetry.rotations),
             "reciprocal_rotations": np.array(raw_symmetry.reciprocal_rotations),
             "translations": np.array(raw_symmetry.translations),
             "inverse_operations": np.array(raw_symmetry.inverse_operations) - 1,
             "atom_permutations": np.array(raw_symmetry.atom_permutations) - 1,
-            "spin_flips": None if check.is_none(spin_flips) else np.array(spin_flips),
             "primitive_lattice_vectors": np.array(
                 raw_symmetry.primitive_lattice_vectors
             ),
@@ -84,6 +81,9 @@ class SymmetryHandler:
             "number_of_primitive_cells": int(raw_symmetry.number_of_primitive_cells),
             "isym": int(raw_symmetry.isym),
         }
+        if not check.is_none(raw_symmetry.spin_flips):
+            result["spin_flips"] = np.array(raw_symmetry.spin_flips)
+        return result
 
     def to_dict(self) -> dict:
         """Public alias for read()."""

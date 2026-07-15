@@ -45,7 +45,7 @@ def test_read(symmetry, Assert):
     if symmetry.ref.name == "CoO":
         Assert.allclose(actual["spin_flips"], np.array(raw.spin_flips))
     else:
-        assert actual["spin_flips"] is None
+        assert "spin_flips" not in actual
 
 
 def test_to_dict_is_alias_of_read(symmetry, Assert):
