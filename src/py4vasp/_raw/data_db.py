@@ -958,6 +958,24 @@ class Velocity_DB(_DBDataMixin):
 
 
 @dataclass
+class Symmetry_DB(_DBDataMixin):
+    """Data class for storing symmetry data in the database."""
+
+    space_group: Optional[int] = None
+    """The international space-group number (1-230) deduced from the symmetry operations. Useful to find calculations of a given crystal symmetry."""
+    space_group_symbol: Optional[str] = None
+    """The Hermann-Mauguin (international short) symbol of the space group, e.g. Fm-3m."""
+    crystal_system: Optional[str] = None
+    """The crystal system deduced from the space group, e.g. cubic or orthorhombic."""
+    has_inversion_symmetry: Optional[bool] = None
+    """Whether the crystal has inversion symmetry. Useful to filter centrosymmetric calculations."""
+    number_of_operations: Optional[int] = None
+    """The number of symmetry operations of the crystal."""
+    is_symmorphic: Optional[bool] = None
+    """Whether the space group is symmorphic, i.e. none of its operations carries a fractional translation."""
+
+
+@dataclass
 class Workfunction_DB(_DBDataMixin):
     """Data class for storing work function data in the database."""
 

@@ -7,8 +7,10 @@ from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
     merge_strings,
+    merge_to_database,
     quantity,
 )
+from py4vasp._raw.data_db import Symmetry_DB
 from py4vasp._util import check, import_
 
 spglib = import_.optional("spglib")
@@ -124,6 +126,26 @@ class SymmetryHandler:
             "crystal_system": _crystal_system(number),
             "is_symmorphic": self.is_symmorphic(),
         }
+
+    def to_database(self) -> Symmetry_DB:
+        """Serialize the symmetry data for database storage.
+
+        The stored quantities deliberately reduce the symmetry operations to a few
+        scalars that make it easy to search for a calculation (space group, crystal
+        system, presence of inversion symmetry, ...). Space-group information requires
+        spglib; if it is not installed those fields are left empty.
+        """
+        space_group = self.space_group() if import_.is_imported(spglib) else None
+        return Symmetry_DB(
+            space_group=space_group["number"] if space_group else None,
+            space_group_symbol=(
+                space_group["international_symbol"] if space_group else None
+            ),
+            crystal_system=space_group["crystal_system"] if space_group else None,
+            has_inversion_symmetry=self.has_inversion_symmetry(),
+            number_of_operations=int(self._raw_symmetry.number_of_operations),
+            is_symmorphic=self.is_symmorphic(),
+        )
 
     def _space_group_type(self):
         rotations, translations = self._all_operations()
@@ -260,3 +282,12 @@ class Symmetry:
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
+
+    def _to_database(self) -> dict:
+        """Return {quantity[_selection]: handler_result} for database storage."""
+        return merge_to_database(
+            self._source,
+            self._quantity_name,
+            SymmetryHandler.from_data,
+            SymmetryHandler.to_database,
+        )

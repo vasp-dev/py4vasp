@@ -141,3 +141,48 @@ symmetry group with {NUMBER_OPERATIONS[name]} operations:
     ISYM: 2"""
     actual, _ = format_(symmetry)
     assert actual == {"text/plain": reference}
+
+
+def test_to_database(symmetry, raw_data):
+    pytest.importorskip("spglib")
+    from py4vasp._calculation.symmetry import SymmetryHandler
+    from py4vasp._raw.data_db import Symmetry_DB
+
+    name = symmetry.ref.name
+    handler = SymmetryHandler.from_data(raw_data.symmetry(name))
+    actual = handler.to_database()
+    assert isinstance(actual, Symmetry_DB)
+    space_group = EXPECTED_SPACE_GROUP[name]
+    assert actual.space_group == space_group["number"]
+    assert actual.space_group_symbol == space_group["international_symbol"]
+    assert actual.crystal_system == space_group["crystal_system"]
+    assert actual.has_inversion_symmetry is False
+    assert actual.number_of_operations == NUMBER_OPERATIONS[name]
+    assert actual.is_symmorphic is True
+
+
+def test_to_database_without_spglib(symmetry, raw_data, monkeypatch):
+    from py4vasp._calculation import symmetry as symmetry_module
+    from py4vasp._calculation.symmetry import SymmetryHandler
+    from py4vasp._util import import_
+
+    monkeypatch.setattr(symmetry_module, "spglib", import_._ModulePlaceholder("spglib"))
+    name = symmetry.ref.name
+    actual = SymmetryHandler.from_data(raw_data.symmetry(name)).to_database()
+    assert actual.space_group is None
+    assert actual.space_group_symbol is None
+    assert actual.crystal_system is None
+    assert actual.has_inversion_symmetry is False
+    assert actual.number_of_operations == NUMBER_OPERATIONS[name]
+    assert actual.is_symmorphic is True
+
+
+def test_to_database_dispatcher(symmetry):
+    pytest.importorskip("spglib")
+    from py4vasp._calculation.symmetry import SymmetryHandler
+
+    result = symmetry._to_database()
+    assert set(result) == {"symmetry"}
+    assert set(result["symmetry"]) == {"default"}
+    expected = SymmetryHandler.from_data(symmetry.ref.raw).to_database()
+    assert result["symmetry"]["default"] == expected
