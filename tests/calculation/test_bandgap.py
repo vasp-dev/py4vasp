@@ -90,7 +90,9 @@ def test_read_default(bandgap, steps, Assert):
     Assert.allclose(actual["kpoint_VBM"], bandgap.ref.kpoint_vbm[steps, 0])
     Assert.allclose(actual["kpoint_CBM"], bandgap.ref.kpoint_cbm[steps, 0])
     Assert.allclose(actual["direct"], bandgap.ref.direct[steps, 0])
-    Assert.allclose(actual["direct_gap_bottom"], bandgap.ref.lower_band_direct[steps, 0])
+    Assert.allclose(
+        actual["direct_gap_bottom"], bandgap.ref.lower_band_direct[steps, 0]
+    )
     Assert.allclose(actual["direct_gap_top"], bandgap.ref.upper_band_direct[steps, 0])
     Assert.allclose(actual["kpoint_direct"], bandgap.ref.kpoint_direct[steps, 0])
     Assert.allclose(actual["fermi_energy"], bandgap.ref.fermi_energy[steps])
