@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 from typing import List, Optional
 
 import numpy as np
@@ -16,6 +17,7 @@ from py4vasp._raw.models import (
     Voigt,
     VoigtMatrix,
     _coerce_field,
+    _DatabaseModel,
 )
 
 
@@ -193,3 +195,33 @@ def test_model_is_json_serializable_after_construction():
         initial_stress_mean=np.float64(1.5), final_stress_tensor=np.arange(6.0)
     )
     json.dumps(dataclasses.asdict(model))  # must not raise
+
+
+# --- _DatabaseModel structural guarantees ----------------------------------
+
+
+def test_model_has_no_schema_version_field():
+    """schema_version lives in the metadata only; a model must not carry it."""
+
+    @dataclasses.dataclass
+    class SampleModel(_DatabaseModel):
+        value: int = 0
+
+    instance = SampleModel(value=42)
+    assert not hasattr(instance, "__schema_version__")
+    assert not hasattr(instance, "schema_version")
+
+
+def test_vaspdata_is_unwrapped_in_model():
+    """VaspData assigned to a field is replaced by its underlying data."""
+
+    @dataclasses.dataclass
+    class SampleModel(_DatabaseModel):
+        field1: Optional[int] = None
+        field2: Optional[str] = None
+        field3: Optional[bool] = None
+
+    instance = SampleModel(field1=VaspData(None), field2=VaspData("test"), field3=True)
+    assert instance.field1 is None
+    assert instance.field2 == "test"
+    assert instance.field3 is True

@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 from unittest.mock import MagicMock
 
 import hypothesis.extra.numpy as np_strat
@@ -9,6 +10,7 @@ import pytest
 from hypothesis import assume, given
 
 from py4vasp import exception
+from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp.raw import VaspData
 
 threshold = 100.0
@@ -179,3 +181,40 @@ def test_nested_data():
     assert VaspData(data).is_none()
     data = np.zeros(10)
     assert isinstance(VaspData(data).data, np.ndarray)
+
+
+# ---------------------------------------------------------------------------
+# Structural tests for the database container dataclasses in py4vasp._raw.data
+# ---------------------------------------------------------------------------
+
+
+def test_database_data_has_only_metadata_and_properties():
+    """_DatabaseData must have exactly the two fields metadata and properties."""
+    field_names = {f.name for f in dataclasses.fields(_DatabaseData)}
+    assert field_names == {"metadata", "properties"}
+
+
+def test_metadata_field_path_not_hdf5_path():
+    """CalculationMetaData uses 'path' for the directory, not hdf5_original_path."""
+    field_names = {f.name for f in dataclasses.fields(CalculationMetaData)}
+    assert "path" in field_names
+    assert "hdf5_original_path" not in field_names
+
+
+def test_metadata_has_schema_version_field():
+    """CalculationMetaData must expose schema_version."""
+    field_names = {f.name for f in dataclasses.fields(CalculationMetaData)}
+    assert "schema_version" in field_names
+
+
+def test_metadata_has_no_tags_field():
+    """tags was removed from CalculationMetaData; _to_database() takes no arguments."""
+    field_names = {f.name for f in dataclasses.fields(CalculationMetaData)}
+    assert "tags" not in field_names
+
+
+def test_metadata_has_file_presence_flags():
+    """CalculationMetaData must still expose has_incar, has_poscar, etc."""
+    field_names = {f.name for f in dataclasses.fields(CalculationMetaData)}
+    for flag in ("has_incar", "has_poscar", "has_kpoints", "has_potcar"):
+        assert flag in field_names, f"Missing flag {flag!r} in CalculationMetaData"

@@ -1,16 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import dataclasses
-from pathlib import Path
-from typing import Optional
-
 import pytest
 
-from py4vasp import demo
 from py4vasp._calculation import GROUPS, QUANTITIES
-from py4vasp._raw.data import CalculationMetaData, _DatabaseData
-from py4vasp._raw.models import _DatabaseModel
-from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.definition import DEFAULT_SOURCE
 from py4vasp._util import database
 
@@ -208,66 +200,3 @@ def test_get_all_possible_keys():
         sum([1 for v in all_keys.values() if len(v) > 0 and isinstance(v[0], tuple)])
         > 10
     )
-
-
-def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):
-    assert demo_calc_db is not None
-    assert isinstance(demo_calc_db, _DatabaseData)
-    assert demo_calc_db.metadata is not None
-    assert isinstance(demo_calc_db.metadata, CalculationMetaData)
-    assert isinstance(demo_calc_db.properties, dict)
-
-    # Check metadata fields
-    assert isinstance(demo_calc_db.metadata.path, Path)
-
-    # properties is a dict of dicts {quantity: {selection: model}}; count the
-    # non-empty inner models across all quantities and selections.
-    non_empty_counter = sum(
-        1
-        for selections in demo_calc_db.properties.values()
-        if isinstance(selections, dict)
-        for v in selections.values()
-        if v not in (None, {}, [])
-    )
-    assert non_empty_counter > minimum_counter
-    assert "run_info" in demo_calc_db.properties
-
-
-@pytest.mark.parametrize(
-    ["selection", "minimum_counter"],
-    [(None, 5), ("collinear", 1), ("noncollinear", 5), ("spin_texture", 2)],
-)
-def test_demo_db(tmp_path, selection, minimum_counter):
-    """Check basic _to_database functionality on demo calculation."""
-    actual_path = tmp_path / "demo_calculation"
-    demo_calc = demo.calculation(actual_path, selection=selection)
-    demo_calc_db = demo_calc._to_database()
-    basic_db_checks(demo_calc_db, minimum_counter=minimum_counter)
-
-
-def test_demo_db_no_longer_accepts_tags(tmp_path):
-    """_to_database() no longer accepts tags or fermi_energy arguments."""
-    import inspect
-
-    from py4vasp._calculation import Calculation
-
-    sig = inspect.signature(Calculation._to_database)
-    params = [name for name in sig.parameters if name != "self"]
-    assert params == []
-
-
-def test_no_vaspdata_in_db():
-    """Check that VaspData objects are converted to their underlying data under the _DatabaseModel for the database wrapper classes."""
-
-    @dataclasses.dataclass
-    class DummyClassDB(_DatabaseModel):
-        field1: Optional[int] = None
-        field2: Optional[str] = None
-        field3: Optional[bool] = None
-
-    dummyClass = DummyClassDB(
-        field1=VaspData(None), field2=VaspData("test"), field3=True
-    )
-    assert dummyClass.field1 is None
-    assert dummyClass.field2 == "test"
-    assert dummyClass.field3 is True

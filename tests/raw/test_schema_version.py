@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import json
 from pathlib import Path
 
@@ -129,6 +130,16 @@ def test_fingerprint_is_sorted_and_field_entries_are_name_type_pairs():
 def test_fingerprint_is_json_serializable():
     dumped = json.dumps(models.schema_fingerprint())
     assert json.loads(dumped) == models.schema_fingerprint()
+
+
+def test_fingerprint_ignores_subclasses_defined_outside_the_module():
+    """Throwaway _DatabaseModel subclasses (e.g. in other tests) must not leak in."""
+
+    @dataclasses.dataclass
+    class ThrowawayModel(models._DatabaseModel):
+        value: int = 0
+
+    assert "ThrowawayModel" not in models.schema_fingerprint()["models"]
 
 
 def test_fingerprint_types_are_canonical_and_interpreter_independent():

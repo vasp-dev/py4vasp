@@ -1,10 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import contextlib
+import inspect
+import pathlib
 
 import pytest
 
 from py4vasp import Calculation, calculation, demo
+from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 from py4vasp._raw.schema import DEFAULT_SELECTION
 from py4vasp._util import loadable
 
@@ -284,3 +287,134 @@ def test_confirm_read_uses_public_call_name_for_fallback(tmp_path, monkeypatch):
     assert captured["call_name"] == "exciton.density"
     assert captured["method_name"] == "read"
     assert captured["source_name"] == DEFAULT_SELECTION
+
+
+# ---------------------------------------------------------------------------
+# Calculation._to_database(): container contract and property structure.
+# These exercise the aggregation in py4vasp._calculation, not any _util helper.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def demo_db(tmp_path):
+    calc = demo.calculation(tmp_path / "demo_calc")
+    return calc._to_database()
+
+
+def test_to_database_returns_database_data(demo_db):
+    assert isinstance(demo_db, _DatabaseData)
+
+
+def test_to_database_takes_no_arguments():
+    """_to_database() must not accept any arguments at all (no tags, no fermi_energy)."""
+    sig = inspect.signature(Calculation._to_database)
+    params = [name for name in sig.parameters if name != "self"]
+    assert params == []
+
+
+def test_metadata_path_is_calculation_directory(demo_db):
+    assert isinstance(demo_db.metadata.path, pathlib.Path)
+    # path must be a directory, not a .h5 file
+    assert demo_db.metadata.path.is_dir()
+    assert not demo_db.metadata.path.name.endswith(".h5")
+
+
+def test_metadata_schema_version_is_nonempty_string(demo_db):
+    assert isinstance(demo_db.metadata.schema_version, str)
+    assert demo_db.metadata.schema_version != ""
+
+
+def test_properties_is_dict(demo_db):
+    assert isinstance(demo_db.properties, dict)
+
+
+def test_properties_has_entries(demo_db):
+    assert len(demo_db.properties) > 0
+
+
+def test_properties_values_are_dicts(demo_db):
+    """properties is a dict of dicts: each value maps selection -> model."""
+    for key, value in demo_db.properties.items():
+        assert isinstance(value, dict), f"properties[{key!r}] is not a dict"
+        assert len(value) > 0, f"properties[{key!r}] is empty"
+
+
+def test_default_selection_is_inner_key(demo_db):
+    """run_info is always available under its default selection key 'default'."""
+    assert "default" in demo_db.properties["run_info"]
+
+
+def test_no_leading_underscore_in_properties_keys(demo_db):
+    """Private quantities like _CONTCAR must be stored under 'CONTCAR', not '_CONTCAR'."""
+    for key in demo_db.properties:
+        assert not key.startswith("_"), f"Key {key!r} starts with underscore"
+
+
+def test_run_info_in_properties(demo_db):
+    """run_info is always available and must be present in properties."""
+    assert "run_info" in demo_db.properties
+
+
+def test_subcomponents_not_top_level(demo_db):
+    """stoichiometry and dispersion are folded into their parent quantities and
+    must not appear as top-level properties."""
+    assert "stoichiometry" not in demo_db.properties
+    assert "dispersion" not in demo_db.properties
+
+
+def test_stoichiometry_folded_into_structure(demo_db):
+    """Structure models carry the folded stoichiometry fields."""
+    structure_models = list(demo_db.properties["structure"].values())
+    assert any(model.formula is not None for model in structure_models)
+    assert any(model.ion_types is not None for model in structure_models)
+
+
+def test_dispersion_folded_into_band(demo_db):
+    """The band model carries the folded dispersion eigenvalue range."""
+    band = demo_db.properties["band"]["default"]
+    assert band.eigenvalue_min is not None
+    assert band.eigenvalue_max is not None
+
+
+def test_default_selection_key_has_no_suffix(demo_db):
+    """Keys for the default selection must not have a '_default' suffix."""
+    for key in demo_db.properties:
+        assert not key.endswith("_default"), f"Key {key!r} still has '_default' suffix"
+
+
+def test_non_default_selection_key_format(demo_db):
+    """Selections are nested keys, not folded into the top-level quantity key."""
+    for quantity, selections in demo_db.properties.items():
+        assert ":" not in quantity, f"Key {quantity!r} contains a colon"
+        assert "." not in quantity, f"Key {quantity!r} contains a dot"
+        assert "_" != quantity[-1:], f"Key {quantity!r} ends with underscore"
+        assert isinstance(selections, dict)
+        for selection in selections:
+            assert ":" not in selection, f"Selection {selection!r} contains a colon"
+
+
+def _basic_db_checks(db, minimum_counter=1):
+    assert isinstance(db, _DatabaseData)
+    assert isinstance(db.metadata, CalculationMetaData)
+    assert isinstance(db.metadata.path, pathlib.Path)
+    assert isinstance(db.properties, dict)
+    # count the non-empty inner models across all quantities and selections
+    non_empty = sum(
+        1
+        for selections in db.properties.values()
+        if isinstance(selections, dict)
+        for model in selections.values()
+        if model not in (None, {}, [])
+    )
+    assert non_empty > minimum_counter
+    assert "run_info" in db.properties
+
+
+@pytest.mark.parametrize(
+    ["selection", "minimum_counter"],
+    [(None, 5), ("collinear", 1), ("noncollinear", 5), ("spin_texture", 2)],
+)
+def test_to_database_on_demo_calculation(tmp_path, selection, minimum_counter):
+    """Basic _to_database functionality across spin selections on a demo calculation."""
+    demo_calc = demo.calculation(tmp_path / "demo_calculation", selection=selection)
+    _basic_db_checks(demo_calc._to_database(), minimum_counter=minimum_counter)

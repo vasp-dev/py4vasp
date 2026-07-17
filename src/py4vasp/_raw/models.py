@@ -95,13 +95,17 @@ def schema_fingerprint() -> dict:
 
     Returns ``{"schema_version": schema_version(), "models": {ClassName: [[field, type],
     ...]}}`` with classes and fields sorted by name. The models are discovered as the
-    subclasses of :class:`_DatabaseModel`, so no registration is needed. Only the field
-    name and type are recorded (not the field documentation), so documentation edits do
-    not trigger a schema-version bump. A committed snapshot of this fingerprint is
-    checked by ``tests/raw/test_schema_version.py``.
+    subclasses of :class:`_DatabaseModel` defined in this module, so no registration is
+    needed (subclasses defined elsewhere, e.g. throwaway classes in tests, are ignored).
+    Only the field name and type are recorded (not the field documentation), so
+    documentation edits do not trigger a schema-version bump. A committed snapshot of
+    this fingerprint is checked by ``tests/raw/test_schema_version.py``.
     """
+    models = [
+        cls for cls in _DatabaseModel.__subclasses__() if cls.__module__ == __name__
+    ]
     model_fingerprints: Dict[str, list] = {}
-    for model in sorted(_DatabaseModel.__subclasses__(), key=lambda cls: cls.__name__):
+    for model in sorted(models, key=lambda cls: cls.__name__):
         model_fingerprints[model.__name__] = [
             [field_.name, _format_type(field_.type)]
             for field_ in sorted(fields(model), key=lambda field_: field_.name)
