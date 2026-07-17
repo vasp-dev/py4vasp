@@ -1,12 +1,37 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from py4vasp._raw.data_wrapper import VaspData
 
-__SCHEMA_VERSION__ = "0.1.0"
+# Counter for the database model schema. Increment it whenever any model below
+# changes (a test enforces this, see tests/raw/test_schema_version.py). It resets
+# to 1 whenever the py4vasp minor version changes; see ``schema_version``.
+__DB_SCHEMA__ = 1
+
+
+def schema_version() -> str:
+    """The version of the database model schema, e.g. ``"0.11+db.1"``.
+
+    The ``<major>.<minor>`` part is taken from the current py4vasp version and the
+    ``db.<X>`` suffix is the hand-maintained :data:`__DB_SCHEMA__` counter.
+    """
+    from py4vasp import __version__
+
+    major, minor = __version__.split(".")[:2]
+    return f"{major}.{minor}+db.{__DB_SCHEMA__}"
+
+
+def parse_schema_version(version: str) -> Tuple[str, int]:
+    """Split a schema version ``"<major>.<minor>+db.<X>"`` into ``("<major>.<minor>", X)``."""
+    match = re.fullmatch(r"(\d+\.\d+)\+db\.(\d+)", version)
+    if match is None:
+        raise ValueError(f"'{version}' is not a valid schema version.")
+    series, counter = match.groups()
+    return series, int(counter)
 
 
 @dataclass

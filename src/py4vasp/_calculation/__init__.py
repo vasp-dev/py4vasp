@@ -8,7 +8,7 @@ from typing import Any, List, Optional, Tuple, Union
 from py4vasp import exception
 from py4vasp._calculation.dispatch import _REGISTRY, FileSource, Group
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
-from py4vasp._raw.models import __SCHEMA_VERSION__
+from py4vasp._raw.models import schema_version
 from py4vasp._util import convert, import_, loadable
 
 
@@ -204,7 +204,7 @@ instead of the constructor Calculation()."""
         """
         metadata = CalculationMetaData(
             path=self._path,
-            schema_version=__SCHEMA_VERSION__,
+            schema_version=schema_version(),
         )
         properties = self._compute_database_data()
         return _DatabaseData(metadata=metadata, properties=properties)
