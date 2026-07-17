@@ -1,7 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -22,23 +21,28 @@ MODELS_B = {"BandModel": [["fermi_energy", "Optional[float]"], ["gap", "Optional
 
 
 def test_parse_schema_version():
+    # the default (released) version carries no "+db" suffix -> counter 0
+    assert models.parse_schema_version("0.11") == ("0.11", 0)
+    assert models.parse_schema_version("0.12") == ("0.12", 0)
+    # intermediate database migrations carry the counter
     assert models.parse_schema_version("0.11+db.3") == ("0.11", 3)
-    assert models.parse_schema_version("0.12+db.1") == ("0.12", 1)
 
 
-def test_schema_version_format():
-    assert re.fullmatch(r"\d+\.\d+\+db\.\d+", models.schema_version())
-
-
-def test_schema_version_uses_py4vasp_series_and_counter():
+def test_schema_version_default_has_no_db_suffix(monkeypatch):
+    monkeypatch.setattr(models, "__DB_SCHEMA__", 0)
     major, minor = __version__.split(".")[:2]
-    expected = f"{major}.{minor}+db.{models.__DB_SCHEMA__}"
-    assert models.schema_version() == expected
+    assert models.schema_version() == f"{major}.{minor}"
 
 
-def test_db_schema_counter_is_a_positive_int():
+def test_schema_version_shows_counter_only_when_nonzero(monkeypatch):
+    monkeypatch.setattr(models, "__DB_SCHEMA__", 5)
+    major, minor = __version__.split(".")[:2]
+    assert models.schema_version() == f"{major}.{minor}+db.5"
+
+
+def test_db_schema_counter_is_a_nonnegative_int():
     assert isinstance(models.__DB_SCHEMA__, int)
-    assert models.__DB_SCHEMA__ >= 1
+    assert models.__DB_SCHEMA__ >= 0
 
 
 # ---------------------------------------------------------------------------
@@ -47,28 +51,28 @@ def test_db_schema_counter_is_a_positive_int():
 
 
 def test_check_ok_when_nothing_changed():
-    stored = _snapshot("0.11+db.1", MODELS_A)
-    current = _snapshot("0.11+db.1", MODELS_A)
+    stored = _snapshot("0.11", MODELS_A)
+    current = _snapshot("0.11", MODELS_A)
     assert database.check_schema_snapshot(stored, current) is None
 
 
 def test_check_rejects_version_change_without_model_change():
-    stored = _snapshot("0.11+db.1", MODELS_A)
-    current = _snapshot("0.11+db.2", MODELS_A)
+    stored = _snapshot("0.11", MODELS_A)
+    current = _snapshot("0.11+db.1", MODELS_A)
     problem = database.check_schema_snapshot(stored, current)
     assert problem is not None
     assert "unchanged" in problem.lower()
 
 
 def test_check_ok_when_models_changed_and_counter_incremented():
-    stored = _snapshot("0.11+db.1", MODELS_A)
-    current = _snapshot("0.11+db.2", MODELS_B)
+    stored = _snapshot("0.11", MODELS_A)
+    current = _snapshot("0.11+db.1", MODELS_B)
     assert database.check_schema_snapshot(stored, current) is None
 
 
 def test_check_rejects_model_change_without_counter_bump():
-    stored = _snapshot("0.11+db.1", MODELS_A)
-    current = _snapshot("0.11+db.1", MODELS_B)
+    stored = _snapshot("0.11", MODELS_A)
+    current = _snapshot("0.11", MODELS_B)
     problem = database.check_schema_snapshot(stored, current)
     assert problem is not None
     assert "__DB_SCHEMA__" in problem
@@ -76,15 +80,17 @@ def test_check_rejects_model_change_without_counter_bump():
     assert "gap" in problem
 
 
-def test_check_ok_when_py4vasp_series_advances_and_counter_resets():
-    stored = _snapshot("0.11+db.3", MODELS_A)
-    current = _snapshot("0.12+db.1", MODELS_B)
-    assert database.check_schema_snapshot(stored, current) is None
+def test_check_ok_when_py4vasp_series_advances_with_clean_reset():
+    # a new py4vasp release resets to the bare series; models may or may not change
+    assert database.check_schema_snapshot(_snapshot("0.11", MODELS_A), _snapshot("0.12", MODELS_A)) is None
+    assert database.check_schema_snapshot(_snapshot("0.11+db.3", MODELS_A), _snapshot("0.12", MODELS_B)) is None
 
 
-def test_check_rejects_new_series_without_counter_reset():
-    stored = _snapshot("0.11+db.3", MODELS_A)
-    current = _snapshot("0.12+db.4", MODELS_B)
+def test_check_rejects_new_series_carrying_a_counter():
+    # "0.11+db.17" was never a released model version, so "0.12+db.1" must not
+    # inherit a counter across the release -- it has to reset to the bare "0.12".
+    stored = _snapshot("0.11+db.17", MODELS_A)
+    current = _snapshot("0.12+db.1", MODELS_A)
     problem = database.check_schema_snapshot(stored, current)
     assert problem is not None
     assert "reset" in problem.lower()
@@ -164,12 +170,10 @@ def test_database_schema_matches_snapshot(request):
 def _update_snapshot(current):
     if SNAPSHOT_PATH.exists():
         stored = json.loads(SNAPSHOT_PATH.read_text())
-        models_changed = stored["models"] != current["models"]
-        version_unchanged = stored["schema_version"] == current["schema_version"]
-        if models_changed and version_unchanged:
+        problem = database.check_schema_snapshot(stored, current)
+        if problem is not None:
             pytest.fail(
-                "Refusing to update the snapshot: the models changed but the schema "
-                "version did not. Increment __DB_SCHEMA__ in models.py first.\n"
-                + database.check_schema_snapshot(stored, current)
+                "Refusing to update the snapshot; the version transition is illegal.\n"
+                + problem
             )
     SNAPSHOT_PATH.write_text(json.dumps(current, indent=2) + "\n")

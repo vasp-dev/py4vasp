@@ -572,20 +572,24 @@ def check_schema_snapshot(stored: dict, current: dict) -> Optional[str]:
     models is accompanied by a bump of the schema version:
 
     - Nothing changed -> OK.
-    - Models unchanged but version changed -> rejected (do not bump the version, or
-      regenerate the snapshot on a py4vasp release).
-    - py4vasp minor series changed -> the ``db`` counter must reset to 1.
-    - Same series, models changed -> the ``db`` counter must be strictly greater than
-      the stored one.
+    - Models unchanged, same py4vasp series, but the counter changed -> rejected (do not
+      bump the counter without a model change).
+    - py4vasp minor series changed (a release) -> the counter must reset to 0, i.e. the
+      new version is the bare series like ``"0.12"``. A non-zero counter is rejected
+      because an intermediate version such as ``"0.11+db.17"`` was never a released
+      model version and must not be inherited across the release.
+    - Same series, models changed -> the counter must be strictly greater than the
+      stored one.
     """
     s_series, s_counter = parse_schema_version(stored["schema_version"])
     c_series, c_counter = parse_schema_version(current["schema_version"])
     models_equal = stored["models"] == current["models"]
     if c_series != s_series:
-        if c_counter != 1:
+        if c_counter != 0:
             return (
-                f"The py4vasp version changed the schema series to '{c_series}'; "
-                f"reset __DB_SCHEMA__ to 1 in models.py (got {c_counter})."
+                f"The py4vasp release changed the schema series to '{c_series}'; "
+                f"reset __DB_SCHEMA__ to 0 in models.py so the version is the bare "
+                f"'{c_series}' (got '{current['schema_version']}')."
             )
         return None
     if models_equal:

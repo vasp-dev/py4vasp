@@ -9,31 +9,42 @@ from typing import Dict, List, Optional, Tuple
 
 from py4vasp._raw.data_wrapper import VaspData
 
-# Counter for the database model schema. Increment it whenever any model below
-# changes (a test enforces this, see tests/raw/test_schema_version.py). It resets
-# to 1 whenever the py4vasp minor version changes; see ``schema_version``.
-__DB_SCHEMA__ = 1
+# Counter for intermediate database-schema migrations within one py4vasp release.
+# 0 means "the released/default schema" -- the version is then just the bare py4vasp
+# series, e.g. "0.11". Increment it whenever any model below changes between releases
+# (a test enforces this, see tests/raw/test_schema_version.py); the version then reads
+# "0.11+db.1", "0.11+db.2", ... Reset it back to 0 on every new py4vasp minor release.
+__DB_SCHEMA__ = 0
 
 
 def schema_version() -> str:
-    """The version of the database model schema, e.g. ``"0.11+db.1"``.
+    """The version of the database model schema.
 
-    The ``<major>.<minor>`` part is taken from the current py4vasp version and the
-    ``db.<X>`` suffix is the hand-maintained :data:`__DB_SCHEMA__` counter.
+    The ``<major>.<minor>`` part is taken from the current py4vasp version. When the
+    :data:`__DB_SCHEMA__` counter is 0 (the released default) the version is just that
+    series, e.g. ``"0.11"``. A non-zero counter marks an intermediate migration between
+    releases and is appended as ``"+db.<X>"``, e.g. ``"0.11+db.5"``.
     """
     from py4vasp import __version__
 
     major, minor = __version__.split(".")[:2]
-    return f"{major}.{minor}+db.{__DB_SCHEMA__}"
+    series = f"{major}.{minor}"
+    if __DB_SCHEMA__ == 0:
+        return series
+    return f"{series}+db.{__DB_SCHEMA__}"
 
 
 def parse_schema_version(version: str) -> Tuple[str, int]:
-    """Split a schema version ``"<major>.<minor>+db.<X>"`` into ``("<major>.<minor>", X)``."""
-    match = re.fullmatch(r"(\d+\.\d+)\+db\.(\d+)", version)
+    """Split a schema version into ``("<major>.<minor>", counter)``.
+
+    Accepts both the bare released form ``"0.11"`` (counter 0) and the intermediate
+    form ``"0.11+db.5"`` (counter 5).
+    """
+    match = re.fullmatch(r"(\d+\.\d+)(?:\+db\.(\d+))?", version)
     if match is None:
         raise ValueError(f"'{version}' is not a valid schema version.")
     series, counter = match.groups()
-    return series, int(counter)
+    return series, int(counter) if counter is not None else 0
 
 
 def _format_type(annotation) -> str:
