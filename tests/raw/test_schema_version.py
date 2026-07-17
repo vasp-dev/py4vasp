@@ -179,7 +179,11 @@ def test_database_schema_matches_snapshot(request):
     )
     stored = json.loads(SNAPSHOT_PATH.read_text())
     problem = database.check_schema_snapshot(stored, current)
-    assert problem is None, problem
+    assert problem is None, (
+        f"{problem}\n\n"
+        "Once __DB_SCHEMA__ is correct, record the new schema with "
+        "`pytest tests/raw/test_schema_version.py --update-schema-snapshot`."
+    )
     assert stored["models"] == current["models"], (
         "The database schema snapshot is stale. Regenerate it with "
         "`pytest tests/raw/test_schema_version.py --update-schema-snapshot`."
@@ -192,7 +196,12 @@ def _update_snapshot(current):
         problem = database.check_schema_snapshot(stored, current)
         if problem is not None:
             pytest.fail(
-                "Refusing to update the snapshot; the version transition is illegal.\n"
-                + problem
+                "Cannot record the snapshot yet: --update-schema-snapshot only saves "
+                "the new schema *after* you bump the version by hand, but the version "
+                "has not been advanced.\n\n"
+                f"{problem}\n\n"
+                "Make that one-line edit in models.py, then run "
+                "`pytest tests/raw/test_schema_version.py --update-schema-snapshot` "
+                "again to record the snapshot."
             )
     SNAPSHOT_PATH.write_text(json.dumps(current, indent=2) + "\n")

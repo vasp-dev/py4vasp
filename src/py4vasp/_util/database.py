@@ -587,26 +587,27 @@ def check_schema_snapshot(stored: dict, current: dict) -> Optional[str]:
     if c_series != s_series:
         if c_counter != 0:
             return (
-                f"The py4vasp release changed the schema series to '{c_series}'; "
-                f"reset __DB_SCHEMA__ to 0 in models.py so the version is the bare "
-                f"'{c_series}' (got '{current['schema_version']}')."
+                f"The py4vasp release changed the schema series to '{c_series}', so "
+                f"__DB_SCHEMA__ in models.py must reset to 0 (it is currently "
+                f"{c_counter}, giving '{current['schema_version']}')."
             )
         return None
     if models_equal:
         if c_counter != s_counter:
             return (
-                "The database models are unchanged, so the schema version must stay "
-                f"'{stored['schema_version']}' (got '{current['schema_version']}'). "
-                "Revert __DB_SCHEMA__ or regenerate the snapshot."
+                "The database models are unchanged, so __DB_SCHEMA__ in models.py must "
+                f"stay at {s_counter} (schema version '{stored['schema_version']}'); it "
+                f"is currently {c_counter} (giving '{current['schema_version']}'). "
+                "Revert __DB_SCHEMA__ to its previous value."
             )
         return None
     if c_counter <= s_counter:
         diff = _format_model_diff(stored["models"], current["models"])
         return (
-            "The database models changed. Increment __DB_SCHEMA__ in models.py "
-            f"(currently {c_counter}, snapshot recorded {s_counter}) and regenerate "
-            "the snapshot with `pytest tests/raw/test_schema_version.py "
-            f"--update-schema-snapshot`.\n{diff}"
+            "The database models changed, but __DB_SCHEMA__ in models.py was not "
+            f"increased -- it is still {c_counter} while the snapshot was recorded at "
+            f"{s_counter}. Edit models.py and set __DB_SCHEMA__ = {s_counter + 1} "
+            f"(bump it by hand; it is not updated automatically).\nChanged fields:\n{diff}"
         )
     return None
 
