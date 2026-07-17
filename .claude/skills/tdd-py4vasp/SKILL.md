@@ -26,7 +26,7 @@ below are relative to the repo/worktree root.
 Break the request into an ordered list of chunks, each ≈ one method/behavior.
 Record it in the todo list, present it to the user, and **wait for their
 sign-off before writing any code.** Do not start chunk 1 until they approve.
-Keep chunks small — the project caps a PR at ~200 lines and asks for splits.
+Keep chunks small — one method/behavior each, so every commit stays reviewable.
 
 Then, for **each** chunk in turn:
 
