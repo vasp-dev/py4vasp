@@ -30,7 +30,7 @@ VoigtMatrix = Tuple[Voigt, Voigt, Voigt, Voigt, Voigt, Voigt]
 # series, e.g. "0.11". Increment it whenever any model below changes between releases
 # (a test enforces this, see tests/raw/test_schema_version.py); the version then reads
 # "0.11+db.1", "0.11+db.2", ... Reset it back to 0 on every new py4vasp minor release.
-__DB_SCHEMA__ = 0
+__DB_SCHEMA__ = 1
 
 
 def schema_version() -> str:
@@ -319,17 +319,17 @@ class BandgapModel(_DatabaseModel):
     """The energy of the conduction band minimum for spin-up electrons, in eV."""
     conduction_band_minimum_spin_down: Optional[float] = None
     """The energy of the conduction band minimum for spin-down electrons, in eV."""
-    kpoint_vbm_spin_independent: Optional[List[float]] = None
+    kpoint_vbm_spin_independent: Optional[Vector] = None
     """The k-point where the valence band maximum occurs, in fractional coordinates."""
-    kpoint_vbm_spin_up: Optional[List[float]] = None
+    kpoint_vbm_spin_up: Optional[Vector] = None
     """The k-point where the valence band maximum for spin-up electrons occurs, in fractional coordinates."""
-    kpoint_vbm_spin_down: Optional[List[float]] = None
+    kpoint_vbm_spin_down: Optional[Vector] = None
     """The k-point where the valence band maximum for spin-down electrons occurs, in fractional coordinates."""
-    kpoint_cbm_spin_independent: Optional[List[float]] = None
+    kpoint_cbm_spin_independent: Optional[Vector] = None
     """The k-point where the conduction band minimum occurs, in fractional coordinates."""
-    kpoint_cbm_spin_up: Optional[List[float]] = None
+    kpoint_cbm_spin_up: Optional[Vector] = None
     """The k-point where the conduction band minimum for spin-up electrons occurs, in fractional coordinates."""
-    kpoint_cbm_spin_down: Optional[List[float]] = None
+    kpoint_cbm_spin_down: Optional[Vector] = None
     """The k-point where the conduction band minimum for spin-down electrons occurs, in fractional coordinates."""
 
     direct_bandgap_spin_independent: Optional[float] = None
@@ -350,11 +350,11 @@ class BandgapModel(_DatabaseModel):
     """The energy of the lowest unoccupied spin-up band at the k-point where the direct band gap occurs, in eV."""
     upper_band_direct_bandgap_spin_down: Optional[float] = None
     """The energy of the lowest unoccupied spin-down band at the k-point where the direct band gap occurs, in eV."""
-    kpoint_direct_bandgap_spin_independent: Optional[List[float]] = None
+    kpoint_direct_bandgap_spin_independent: Optional[Vector] = None
     """The k-point where the direct band gap occurs, in fractional coordinates."""
-    kpoint_direct_bandgap_spin_up: Optional[List[float]] = None
+    kpoint_direct_bandgap_spin_up: Optional[Vector] = None
     """The k-point where the direct band gap for spin-up electrons occurs, in fractional coordinates."""
-    kpoint_direct_bandgap_spin_down: Optional[List[float]] = None
+    kpoint_direct_bandgap_spin_down: Optional[Vector] = None
     """The k-point where the direct band gap for spin-down electrons occurs, in fractional coordinates."""
 
 
@@ -379,7 +379,7 @@ class CurrentDensityModel(_DatabaseModel):
     The current density is a vector field on a grid; the summaries below refer to its
     magnitude |j| aggregated over all grid points and perturbations."""
 
-    grid_shape: Optional[List[int]] = None
+    grid_shape: Optional[IntVector] = None
     """The shape of the grid on which the current density is evaluated, in the order (nx, ny, nz)."""
     magnitude_min: Optional[float] = None
     """The minimum magnitude of the current density across all grid points and perturbations."""
@@ -406,21 +406,21 @@ class DielectricTensorModel(_DatabaseModel):
     method: Optional[str] = None
     """The method used to calculate the dielectric tensor."""
 
-    total_3d_tensor: Optional[List[List[float]]] = None
+    total_3d_tensor: Optional[Voigt] = None
     """The full 3D dielectric tensor for the total response, including both ionic and electronic contributions. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     total_3d_isotropic_dielectric_constant: Optional[float] = None
     """The isotropic dielectric constant for the total response, calculated as the average of the diagonal elements of the total 3D dielectric tensor."""
     total_2d_polarizability: Optional[float] = None
     """The 2D polarizability for the total response, calculated from the total 3D dielectric tensor and the cell geometry."""
 
-    ionic_3d_tensor: Optional[List[List[float]]] = None
+    ionic_3d_tensor: Optional[Voigt] = None
     """The full 3D dielectric tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     ionic_3d_isotropic_dielectric_constant: Optional[float] = None
     """The isotropic dielectric constant for the ionic contribution, calculated as the average of the diagonal elements of the ionic 3D dielectric tensor."""
     ionic_2d_polarizability: Optional[float] = None
     """The 2D polarizability for the ionic contribution, calculated from the ionic 3D dielectric tensor and the cell geometry."""
 
-    electronic_3d_tensor: Optional[List[List[float]]] = None
+    electronic_3d_tensor: Optional[Voigt] = None
     """The full 3D dielectric tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     electronic_3d_isotropic_dielectric_constant: Optional[float] = None
     """The isotropic dielectric constant for the electronic contribution, calculated as the average of the diagonal elements of the electronic 3D dielectric tensor."""
@@ -475,7 +475,7 @@ class EffectiveCoulombModel(_DatabaseModel):
 class ElasticModulusModel(_DatabaseModel):
     """Data class for storing elastic modulus data in the database."""
 
-    total_3d_tensor: Optional[List[List[float]]] = None
+    total_3d_tensor: Optional[VoigtMatrix] = None
     """The full 3D elastic modulus tensor, including both ionic and electronic contributions. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     total_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the total 3D elastic modulus tensor, in GPa."""
@@ -492,7 +492,7 @@ class ElasticModulusModel(_DatabaseModel):
     total_fracture_toughness: Optional[float] = None
     """The fracture toughness calculated from the total bulk and shear moduli, in MPa*m^0.5."""
 
-    ionic_3d_tensor: Optional[List[List[float]]] = None
+    ionic_3d_tensor: Optional[VoigtMatrix] = None
     """The full 3D elastic modulus tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     ionic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the ionic contribution to the elastic modulus tensor, in GPa."""
@@ -509,7 +509,7 @@ class ElasticModulusModel(_DatabaseModel):
     ionic_fracture_toughness: Optional[float] = None
     """The fracture toughness calculated from the ionic contribution to the bulk and shear moduli, in MPa*m^0.5."""
 
-    electronic_3d_tensor: Optional[List[List[float]]] = None
+    electronic_3d_tensor: Optional[VoigtMatrix] = None
     """The full 3D elastic modulus tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     electronic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the electronic contribution to the elastic modulus tensor, in GPa."""
@@ -739,7 +739,7 @@ class KpointModel(_DatabaseModel):
     """The number of points used to sample a single line in the Brillouin zone."""
     num_kpoints_total: Optional[int] = None
     """The total number of k-points in the calculation."""
-    num_kpoints_grid: Optional[List[float]] = None
+    num_kpoints_grid: Optional[IntVector] = None
     """The number of k-points along each reciprocal lattice vector for grid sampling, in the order (kx, ky, kz)."""
     num_lines: Optional[int] = None
     """The number of lines in the Brillouin zone along which the band structure is sampled."""
@@ -795,7 +795,7 @@ class OpticsModel(_DatabaseModel):
     transmission_max: Optional[float] = None
     """The maximum transmission across the evaluated energy range."""
 
-    color_rgb: Optional[List[float]] = None
+    color_rgb: Optional[Vector] = None
     """The perceived color of the material as fractional sRGB values in [0, 1]."""
     color_hex: Optional[str] = None
     """The perceived color of the material as an HTML/HEX color code, e.g. '#2fb5ab'."""
@@ -851,11 +851,11 @@ class PhononModeModel(_DatabaseModel):
 class PiezoelectricTensorModel(_DatabaseModel):
     """Data class for storing piezoelectric tensor data in the database."""
 
-    total_3d_tensor_x: Optional[List[List[float]]] = None
+    total_3d_tensor_x: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m^2."""
-    total_3d_tensor_y: Optional[List[List[float]]] = None
+    total_3d_tensor_y: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m^2."""
-    total_3d_tensor_z: Optional[List[List[float]]] = None
+    total_3d_tensor_z: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction."""
     total_3d_piezoelectric_stress_coefficient_x: Optional[float] = None
     """The piezoelectric stress coefficient for the total response along x direction, in C/m^2."""
@@ -869,18 +869,18 @@ class PiezoelectricTensorModel(_DatabaseModel):
     """The root mean square value of the elements of the total 3D piezoelectric tensor, in C/m^2."""
     total_3d_frobenius_norm: Optional[float] = None
     """The Frobenius norm of the total 3D piezoelectric tensor, in C/m^2."""
-    total_2d_tensor_x: Optional[List[List[float]]] = None
+    total_2d_tensor_x: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m."""
-    total_2d_tensor_y: Optional[List[List[float]]] = None
+    total_2d_tensor_y: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m."""
-    total_2d_tensor_z: Optional[List[List[float]]] = None
+    total_2d_tensor_z: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m."""
 
-    ionic_3d_tensor_x: Optional[List[List[float]]] = None
+    ionic_3d_tensor_x: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m^2."""
-    ionic_3d_tensor_y: Optional[List[List[float]]] = None
+    ionic_3d_tensor_y: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m^2."""
-    ionic_3d_tensor_z: Optional[List[List[float]]] = None
+    ionic_3d_tensor_z: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m^2."""
     ionic_3d_piezoelectric_stress_coefficient_x: Optional[float] = None
     """The piezoelectric stress coefficient for the ionic contribution along x direction, in C/m^2."""
@@ -894,18 +894,18 @@ class PiezoelectricTensorModel(_DatabaseModel):
     """The root mean square value of the elements of the ionic contribution to the 3D piezoelectric tensor, in C/m^2."""
     ionic_3d_frobenius_norm: Optional[float] = None
     """The Frobenius norm of the ionic contribution to the 3D piezoelectric tensor, in C/m^2."""
-    ionic_2d_tensor_x: Optional[List[List[float]]] = None
+    ionic_2d_tensor_x: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m."""
-    ionic_2d_tensor_y: Optional[List[List[float]]] = None
+    ionic_2d_tensor_y: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m."""
-    ionic_2d_tensor_z: Optional[List[List[float]]] = None
+    ionic_2d_tensor_z: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m."""
 
-    electronic_3d_tensor_x: Optional[List[List[float]]] = None
+    electronic_3d_tensor_x: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m^2."""
-    electronic_3d_tensor_y: Optional[List[List[float]]] = None
+    electronic_3d_tensor_y: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m^2."""
-    electronic_3d_tensor_z: Optional[List[List[float]]] = None
+    electronic_3d_tensor_z: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m^2."""
     electronic_3d_piezoelectric_stress_coefficient_x: Optional[float] = None
     """The piezoelectric stress coefficient for the electronic contribution along x direction, in C/m^2."""
@@ -919,11 +919,11 @@ class PiezoelectricTensorModel(_DatabaseModel):
     """The root mean square value of the elements of the electronic contribution to the 3D piezoelectric tensor, in C/m^2."""
     electronic_3d_frobenius_norm: Optional[float] = None
     """The Frobenius norm of the electronic contribution to the 3D piezoelectric tensor, in C/m^2."""
-    electronic_2d_tensor_x: Optional[List[List[float]]] = None
+    electronic_2d_tensor_x: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m."""
-    electronic_2d_tensor_y: Optional[List[List[float]]] = None
+    electronic_2d_tensor_y: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m."""
-    electronic_2d_tensor_z: Optional[List[List[float]]] = None
+    electronic_2d_tensor_z: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m."""
 
 
@@ -933,15 +933,15 @@ class PolarizationModel(_DatabaseModel):
 
     total_dipole_norm: Optional[float] = None
     """The norm of the total dipole moment vector, including both ionic and electronic contributions."""
-    total_dipole_moment: Optional[List[float]] = None
+    total_dipole_moment: Optional[Vector] = None
     """The total dipole moment vector, including both ionic and electronic contributions."""
     ionic_dipole_norm: Optional[float] = None
     """The norm of the ionic dipole moment vector."""
-    ionic_dipole_moment: Optional[List[float]] = None
+    ionic_dipole_moment: Optional[Vector] = None
     """The ionic dipole moment vector."""
     electronic_dipole_norm: Optional[float] = None
     """The norm of the electronic dipole moment vector."""
-    electronic_dipole_moment: Optional[List[float]] = None
+    electronic_dipole_moment: Optional[Vector] = None
     """The electronic dipole moment vector."""
 
 
@@ -983,9 +983,9 @@ class RunInfoModel(_DatabaseModel):
     vasp_version: Optional[str] = None
     """The version of VASP used for the calculation."""
 
-    grid_coarse_shape: Optional[List[int]] = None
+    grid_coarse_shape: Optional[IntVector] = None
     """The shape of the coarse grid used for the calculation, in the order (nx, ny, nz)."""
-    grid_fine_shape: Optional[List[int]] = None
+    grid_fine_shape: Optional[IntVector] = None
     """The shape of the fine grid used for the calculation, in the order (nx, ny, nz)."""
     is_success: Optional[bool] = None
     """Whether the calculation completed successfully."""
@@ -1029,7 +1029,7 @@ class StressModel(_DatabaseModel):
     """The mean trace of the stress tensor across all atoms on the initial step, in GPa."""
     final_stress_mean: Optional[float] = None
     """The mean trace of the stress tensor across all atoms on the final step, in GPa."""
-    final_stress_tensor: Optional[List[List[float]]] = None
+    final_stress_tensor: Optional[Voigt] = None
     """The full 3D stress tensor on the final step, in GPa, in the order (xx, yy, zz, xy, yz, zx)."""
 
 
@@ -1058,11 +1058,11 @@ class StructureModel(_DatabaseModel):
     """The area of the unit cell in 2D materials, calculated as the product of the two lattice vectors that are not along the vacuum direction, in Å^2."""
     cell_area_2d_span: Optional[str] = None
     """The two lattice vectors that are used to calculate the area of the unit cell in 2D materials, in the format '12', '13', or '23'."""
-    lattice_vector_1: Optional[List[float]] = None
+    lattice_vector_1: Optional[Vector] = None
     """The first lattice vector, in Å."""
-    lattice_vector_2: Optional[List[float]] = None
+    lattice_vector_2: Optional[Vector] = None
     """The second lattice vector, in Å."""
-    lattice_vector_3: Optional[List[float]] = None
+    lattice_vector_3: Optional[Vector] = None
     """The third lattice vector, in Å."""
     lattice_vector_1_length: Optional[float] = None
     """The length of the first lattice vector, in Å."""

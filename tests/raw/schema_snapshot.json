@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.11",
+  "schema_version": "0.11+db.1",
   "models": {
     "BandModel": [
       [
@@ -90,39 +90,39 @@
       ],
       [
         "kpoint_cbm_spin_down",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "kpoint_cbm_spin_independent",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "kpoint_cbm_spin_up",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "kpoint_direct_bandgap_spin_down",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "kpoint_direct_bandgap_spin_independent",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "kpoint_direct_bandgap_spin_up",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "kpoint_vbm_spin_down",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "kpoint_vbm_spin_independent",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "kpoint_vbm_spin_up",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "lower_band_direct_bandgap_spin_down",
@@ -188,7 +188,7 @@
     "CurrentDensityModel": [
       [
         "grid_shape",
-        "Optional[list[int]]"
+        "Optional[tuple[int, int, int]]"
       ],
       [
         "magnitude_max",
@@ -224,7 +224,7 @@
       ],
       [
         "electronic_3d_tensor",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "ionic_2d_polarizability",
@@ -236,7 +236,7 @@
       ],
       [
         "ionic_3d_tensor",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "method",
@@ -252,7 +252,7 @@
       ],
       [
         "total_3d_tensor",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ]
     ],
     "DispersionModel": [
@@ -344,7 +344,7 @@
     "ElasticModulusModel": [
       [
         "electronic_3d_tensor",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float]]]"
       ],
       [
         "electronic_bulk_modulus",
@@ -376,7 +376,7 @@
       ],
       [
         "ionic_3d_tensor",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float]]]"
       ],
       [
         "ionic_bulk_modulus",
@@ -408,7 +408,7 @@
       ],
       [
         "total_3d_tensor",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float], tuple[float, float, float, float, float, float]]]"
       ],
       [
         "total_bulk_modulus",
@@ -746,7 +746,7 @@
       ],
       [
         "num_kpoints_grid",
-        "Optional[list[float]]"
+        "Optional[tuple[int, int, int]]"
       ],
       [
         "num_kpoints_total",
@@ -792,7 +792,7 @@
       ],
       [
         "color_rgb",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "energy_max",
@@ -870,15 +870,15 @@
     "PiezoelectricTensorModel": [
       [
         "electronic_2d_tensor_x",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "electronic_2d_tensor_y",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "electronic_2d_tensor_z",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "electronic_3d_frobenius_norm",
@@ -906,27 +906,27 @@
       ],
       [
         "electronic_3d_tensor_x",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "electronic_3d_tensor_y",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "electronic_3d_tensor_z",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "ionic_2d_tensor_x",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "ionic_2d_tensor_y",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "ionic_2d_tensor_z",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "ionic_3d_frobenius_norm",
@@ -954,27 +954,27 @@
       ],
       [
         "ionic_3d_tensor_x",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "ionic_3d_tensor_y",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "ionic_3d_tensor_z",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "total_2d_tensor_x",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "total_2d_tensor_y",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "total_2d_tensor_z",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "total_3d_frobenius_norm",
@@ -1002,21 +1002,21 @@
       ],
       [
         "total_3d_tensor_x",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "total_3d_tensor_y",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "total_3d_tensor_z",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ]
     ],
     "PolarizationModel": [
       [
         "electronic_dipole_moment",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "electronic_dipole_norm",
@@ -1024,7 +1024,7 @@
       ],
       [
         "ionic_dipole_moment",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "ionic_dipole_norm",
@@ -1032,7 +1032,7 @@
       ],
       [
         "total_dipole_moment",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "total_dipole_norm",
@@ -1086,11 +1086,11 @@
       ],
       [
         "grid_coarse_shape",
-        "Optional[list[int]]"
+        "Optional[tuple[int, int, int]]"
       ],
       [
         "grid_fine_shape",
-        "Optional[list[int]]"
+        "Optional[tuple[int, int, int]]"
       ],
       [
         "has_ion_velocities",
@@ -1178,7 +1178,7 @@
       ],
       [
         "final_stress_tensor",
-        "Optional[list[list[float]]]"
+        "Optional[tuple[float, float, float, float, float, float]]"
       ],
       [
         "initial_stress_mean",
@@ -1228,7 +1228,7 @@
       ],
       [
         "lattice_vector_1",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "lattice_vector_1_length",
@@ -1236,7 +1236,7 @@
       ],
       [
         "lattice_vector_2",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "lattice_vector_2_length",
@@ -1244,7 +1244,7 @@
       ],
       [
         "lattice_vector_3",
-        "Optional[list[float]]"
+        "Optional[tuple[float, float, float]]"
       ],
       [
         "lattice_vector_3_length",

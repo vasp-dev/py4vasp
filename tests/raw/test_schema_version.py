@@ -137,9 +137,17 @@ def test_fingerprint_types_are_canonical_and_interpreter_independent():
     band = dict(model_dict["BandModel"])
     assert band["fermi_energy"] == "Optional[float]"
     stoichiometry = dict(model_dict["StoichiometryModel"])
+    # genuinely variable-length fields stay as list
     assert stoichiometry["ion_types"] == "Optional[list[str]]"
-    tensor = dict(model_dict["DielectricTensorModel"])
-    assert tensor["total_3d_tensor"] == "Optional[list[list[float]]]"
+    # fixed-size fields use the tuple aliases, so the length is part of the type
+    vec3 = "tuple[float, float, float]"
+    voigt = "tuple[float, float, float, float, float, float]"
+    voigt_matrix = f"tuple[{', '.join([voigt] * 6)}]"
+    assert dict(model_dict["StructureModel"])["lattice_vector_1"] == f"Optional[{vec3}]"
+    assert dict(model_dict["CurrentDensityModel"])["grid_shape"] == "Optional[tuple[int, int, int]]"
+    assert dict(model_dict["DielectricTensorModel"])["total_3d_tensor"] == f"Optional[{voigt}]"
+    assert dict(model_dict["StressModel"])["final_stress_tensor"] == f"Optional[{voigt}]"
+    assert dict(model_dict["ElasticModulusModel"])["total_3d_tensor"] == f"Optional[{voigt_matrix}]"
 
 
 # ---------------------------------------------------------------------------
