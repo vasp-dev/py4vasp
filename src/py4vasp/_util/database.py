@@ -13,6 +13,7 @@ from h5py import File
 from py4vasp import exception
 from py4vasp._raw.data import Version
 from py4vasp._raw.definition import DEFAULT_SOURCE, Schema, unique_selections
+from py4vasp._raw.models import parse_schema_version
 from py4vasp._raw.schema import Length, Link
 from py4vasp._util import convert
 
@@ -560,3 +561,66 @@ def _quantity_label_to_db_key(label: str) -> str:
                 db_key = f"_{db_key}"
             return db_key
     return label
+
+
+def check_schema_snapshot(stored: dict, current: dict) -> Optional[str]:
+    """Validate that ``current`` is a legal successor of the committed ``stored`` snapshot.
+
+    Each argument is a schema fingerprint ``{"schema_version": str, "models": {...}}``.
+    Returns ``None`` when the transition is allowed, otherwise a human-readable message
+    explaining what the developer must do. The rules enforce that any change to the
+    models is accompanied by a bump of the schema version:
+
+    - Nothing changed -> OK.
+    - Models unchanged but version changed -> rejected (do not bump the version, or
+      regenerate the snapshot on a py4vasp release).
+    - py4vasp minor series changed -> the ``db`` counter must reset to 1.
+    - Same series, models changed -> the ``db`` counter must be strictly greater than
+      the stored one.
+    """
+    s_series, s_counter = parse_schema_version(stored["schema_version"])
+    c_series, c_counter = parse_schema_version(current["schema_version"])
+    models_equal = stored["models"] == current["models"]
+    if c_series != s_series:
+        if c_counter != 1:
+            return (
+                f"The py4vasp version changed the schema series to '{c_series}'; "
+                f"reset __DB_SCHEMA__ to 1 in models.py (got {c_counter})."
+            )
+        return None
+    if models_equal:
+        if c_counter != s_counter:
+            return (
+                "The database models are unchanged, so the schema version must stay "
+                f"'{stored['schema_version']}' (got '{current['schema_version']}'). "
+                "Revert __DB_SCHEMA__ or regenerate the snapshot."
+            )
+        return None
+    if c_counter <= s_counter:
+        diff = _format_model_diff(stored["models"], current["models"])
+        return (
+            "The database models changed. Increment __DB_SCHEMA__ in models.py "
+            f"(currently {c_counter}, snapshot recorded {s_counter}) and regenerate "
+            "the snapshot with `pytest tests/raw/test_schema_version.py "
+            f"--update-schema-snapshot`.\n{diff}"
+        )
+    return None
+
+
+def _format_model_diff(old_models: dict, new_models: dict) -> str:
+    """Human-readable summary of how two model fingerprints differ."""
+    lines: List[str] = []
+    added = sorted(set(new_models) - set(old_models))
+    removed = sorted(set(old_models) - set(new_models))
+    for name in added:
+        lines.append(f"+ model {name}")
+    for name in removed:
+        lines.append(f"- model {name}")
+    for name in sorted(set(old_models) & set(new_models)):
+        old_fields = {tuple(field) for field in old_models[name]}
+        new_fields = {tuple(field) for field in new_models[name]}
+        for field in sorted(new_fields - old_fields):
+            lines.append(f"+ {name}.{field[0]}: {field[1]}")
+        for field in sorted(old_fields - new_fields):
+            lines.append(f"- {name}.{field[0]}: {field[1]}")
+    return "\n".join(lines)
