@@ -10,6 +10,15 @@ from py4vasp import _demo, exception
 from py4vasp._util import check
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--update-schema-snapshot",
+        action="store_true",
+        default=False,
+        help="Rewrite the database schema snapshot from the current models.",
+    )
+
+
 class _Assert:
     @staticmethod
     def allclose(actual, desired, tolerance=1):

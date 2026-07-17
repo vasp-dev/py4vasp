@@ -2,8 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
 import re
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+import types
+import typing
+from dataclasses import dataclass, field, fields
+from typing import Dict, List, Optional, Tuple
 
 from py4vasp._raw.data_wrapper import VaspData
 
@@ -32,6 +34,52 @@ def parse_schema_version(version: str) -> Tuple[str, int]:
         raise ValueError(f"'{version}' is not a valid schema version.")
     series, counter = match.groups()
     return series, int(counter)
+
+
+def _format_type(annotation) -> str:
+    """Canonical, interpreter-independent string representation of a field type.
+
+    The bare ``str(annotation)`` is not stable across Python versions (e.g. 3.14
+    renders ``Optional[float]`` as ``float | None`` while 3.11 renders it as
+    ``typing.Optional[float]``). Rebuilding the string from ``typing`` introspection
+    keeps the committed snapshot identical on every supported interpreter.
+    """
+    if isinstance(annotation, str):
+        return annotation
+    if annotation is type(None):
+        return "None"
+    origin = typing.get_origin(annotation)
+    args = typing.get_args(annotation)
+    if origin is None:
+        return getattr(annotation, "__name__", str(annotation))
+    if origin is typing.Union or origin is types.UnionType:
+        non_none = [arg for arg in args if arg is not type(None)]
+        inner = ", ".join(_format_type(arg) for arg in non_none)
+        if len(non_none) < len(args):  # NoneType present -> Optional
+            return f"Optional[{inner}]" if len(non_none) == 1 else f"Optional[Union[{inner}]]"
+        return f"Union[{inner}]"
+    origin_name = getattr(origin, "__name__", str(origin))
+    inner = ", ".join(_format_type(arg) for arg in args)
+    return f"{origin_name}[{inner}]"
+
+
+def schema_fingerprint() -> dict:
+    """Canonical, JSON-serializable description of every database model.
+
+    Returns ``{"schema_version": schema_version(), "models": {ClassName: [[field, type],
+    ...]}}`` with classes and fields sorted by name. The models are discovered as the
+    subclasses of :class:`_DatabaseModel`, so no registration is needed. Only the field
+    name and type are recorded (not the field documentation), so documentation edits do
+    not trigger a schema-version bump. A committed snapshot of this fingerprint is
+    checked by ``tests/raw/test_schema_version.py``.
+    """
+    model_fingerprints: Dict[str, list] = {}
+    for model in sorted(_DatabaseModel.__subclasses__(), key=lambda cls: cls.__name__):
+        model_fingerprints[model.__name__] = [
+            [field_.name, _format_type(field_.type)]
+            for field_ in sorted(fields(model), key=lambda field_: field_.name)
+        ]
+    return {"schema_version": schema_version(), "models": model_fingerprints}
 
 
 @dataclass
