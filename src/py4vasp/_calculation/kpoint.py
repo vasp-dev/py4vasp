@@ -18,7 +18,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._raw import data as raw
-from py4vasp._raw.data_db import Kpoint_DB
+from py4vasp._raw.models import KpointModel
 from py4vasp._util import check, convert
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -80,7 +80,7 @@ reciprocal"""
         line_length = _safe_call(self.line_length)
         num_kpoints_total = _safe_call(self.number_kpoints)
         num_lines = _safe_call(self.number_lines)
-        return Kpoint_DB(
+        return KpointModel(
             mode=mode,
             line_length=line_length,
             num_kpoints_total=num_kpoints_total,

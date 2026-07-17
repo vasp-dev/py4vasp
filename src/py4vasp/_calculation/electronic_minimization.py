@@ -17,7 +17,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import ElectronicMinimization_DB
+from py4vasp._raw.models import ElectronicMinimizationModel
 from py4vasp._third_party import graph
 from py4vasp._util import check, index, select
 
@@ -280,7 +280,7 @@ class ElectronicMinimizationHandler:
                 num_electronic_steps,
             ) = self._get_electronic_steps_info()
 
-        return ElectronicMinimization_DB(
+        return ElectronicMinimizationModel(
             num_electronic_steps=num_electronic_steps,
             elmin_is_converged_all=elmin_is_converged_all,
             elmin_is_converged_final=elmin_is_converged_final,

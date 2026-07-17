@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Bandgap_DB
+from py4vasp._raw.models import BandgapModel
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, select
 
@@ -145,7 +145,7 @@ Fermi energy:    {fermi_energy}"""
                 if self._spin_polarized()
                 else None
             )
-        return Bandgap_DB(**final_dict)
+        return BandgapModel(**final_dict)
 
     # --- Private helpers ---
 

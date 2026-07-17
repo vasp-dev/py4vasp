@@ -12,7 +12,7 @@ from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.band import _OCCUPATION_CUTOFF, Band, BandHandler
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import Projector
-from py4vasp._raw.data_db import Band_DB
+from py4vasp._raw.models import BandModel
 from py4vasp._util import slicing
 
 
@@ -686,11 +686,11 @@ spin polarized band data:
 
 def _check_to_database(_band):
     handler = BandHandler.from_data(_band.ref.raw_data)
-    database_data: Band_DB = handler.to_database(
+    database_data: BandModel = handler.to_database(
         fermi_energy=getattr(_band.ref, "fermi_energy_argument", None)
     )
 
-    assert isinstance(database_data, Band_DB)
+    assert isinstance(database_data, BandModel)
 
     assert database_data.fermi_energy_raw == _band.ref.fermi_energy
     assert database_data.fermi_energy == getattr(
@@ -719,7 +719,7 @@ def _check_to_database(_band):
             database_data.num_occupied_bands_down == _band.ref.num_occupied_bands_down
         )
 
-    for fld in fields(Band_DB):
+    for fld in fields(BandModel):
         if fld.name.startswith("num"):
             assert getattr(database_data, fld.name) is None or isinstance(
                 getattr(database_data, fld.name), int
@@ -757,7 +757,7 @@ def test_dispatcher_to_database_default(single_band):
     assert isinstance(result, dict)
     assert "band" in result
     assert isinstance(result["band"], dict)
-    assert isinstance(result["band"]["default"], Band_DB)
+    assert isinstance(result["band"]["default"], BandModel)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

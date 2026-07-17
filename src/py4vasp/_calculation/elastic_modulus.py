@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import ElasticModulus_DB
+from py4vasp._raw.models import ElasticModulusModel
 from py4vasp._util import check, error
 from py4vasp._util.tensor import symmetry_reduce
 
@@ -124,7 +124,7 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                     error_key=error_key,
                 )
 
-        return ElasticModulus_DB(
+        return ElasticModulusModel(
             total_3d_tensor=compact_tensor[0],
             total_bulk_modulus=bulk_modulus[0],
             total_shear_modulus=shear_modulus[0],

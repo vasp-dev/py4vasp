@@ -12,7 +12,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import ExcitonEigenvector_DB
+from py4vasp._raw.models import ExcitonEigenvectorModel
 from py4vasp._util import check, convert
 
 
@@ -64,7 +64,7 @@ class ExcitonEigenvectorHandler:
             num_bands_conduction = np.shape(bse_index)[2]
             num_bands_valence = np.shape(bse_index)[3]
             num_kpoints = np.shape(bse_index)[1]
-        return ExcitonEigenvector_DB(
+        return ExcitonEigenvectorModel(
             num_kpoints=num_kpoints,
             num_valence_bands=num_bands_valence,
             num_conduction_bands=num_bands_conduction,

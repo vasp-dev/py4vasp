@@ -13,7 +13,7 @@ from py4vasp._calculation.effective_coulomb import (
     EffectiveCoulomb,
     EffectiveCoulombHandler,
 )
-from py4vasp._raw.data_db import EffectiveCoulomb_DB
+from py4vasp._raw.models import EffectiveCoulombModel
 from py4vasp._third_party import numeric
 from py4vasp._util import check, convert
 
@@ -514,14 +514,15 @@ def test_to_database(raw_data, Assert):
     for param in ("crpa", "crpa_two_center", "crpar", "crpar_two_center"):
         raw_coulomb = raw_data.effective_coulomb(param)
         handler = EffectiveCoulombHandler.from_data(raw_coulomb)
-        data: EffectiveCoulomb_DB = handler.to_database()
-        assert isinstance(data, EffectiveCoulomb_DB)
+        data: EffectiveCoulombModel = handler.to_database()
+        assert isinstance(data, EffectiveCoulombModel)
         setup = determine_setup(raw_coulomb)
         read_data = setup_read_data(setup, raw_coulomb)
         expected = setup_overview_data(setup, read_data)
         for key in expected.keys():
             assert hasattr(data, key)
-            Assert.allclose(getattr(data, key), expected[key])
+            # only the real part of the interaction is stored in the database
+            Assert.allclose(getattr(data, key), np.real(expected[key]))
 
 
 def test_print(effective_coulomb, format_):

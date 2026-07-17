@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     slice_steps,
 )
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._raw.data_db import Force_DB
+from py4vasp._raw.models import ForceModel
 from py4vasp._third_party import view
 from py4vasp._util import check
 
@@ -85,7 +85,7 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
         else:
             final_force_norms = np.linalg.norm(forces[-1], axis=-1)
             initial_force_norms = np.linalg.norm(forces[0], axis=-1)
-        return Force_DB(
+        return ForceModel(
             final_force_min=float(np.min(final_force_norms)),
             final_force_median=float(np.median(final_force_norms)),
             final_force_mean=float(np.mean(final_force_norms)),

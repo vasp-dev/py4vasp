@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp._calculation.phonon_dos import PhononDos, PhononDosHandler
-from py4vasp._raw.data_db import PhononDos_DB
+from py4vasp._raw.models import PhononDosModel
 
 
 @pytest.fixture
@@ -109,8 +109,8 @@ phonon DOS:
 
 def test_to_database(phonon_dos):
     handler = PhononDosHandler.from_data(phonon_dos.ref.raw_data)
-    db_data: PhononDos_DB = handler.to_database()
-    assert isinstance(db_data, PhononDos_DB)
+    db_data: PhononDosModel = handler.to_database()
+    assert isinstance(db_data, PhononDosModel)
     assert db_data.energy_min == float(phonon_dos.ref.energies[0])
     assert db_data.energy_max == float(phonon_dos.ref.energies[-1])
 

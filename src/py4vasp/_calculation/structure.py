@@ -19,8 +19,8 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
-from py4vasp._raw.data_db import Stoichiometry_DB, Structure_DB
 from py4vasp._raw.definition import unique_selections as _schema_unique_selections
+from py4vasp._raw.models import StoichiometryModel, StructureModel
 from py4vasp._third_party import view
 from py4vasp._util import check, import_, parse
 
@@ -225,12 +225,12 @@ Atoms # atomic
         else:
             return 1
 
-    def to_database(self, steps=-1) -> Structure_DB:
+    def to_database(self, steps=-1) -> StructureModel:
         """Return database-ready data for a single structure geometry.
 
         *steps* selects which geometry to describe (default ``-1``, the final step).
         The database splits a calculation into separate ``initial`` and ``final``
-        structure models, so each :class:`Structure_DB` holds one geometry with
+        structure models, so each :class:`StructureModel` holds one geometry with
         unprefixed fields.
         """
         # Temporarily override the steps used for the database
@@ -253,7 +253,7 @@ Atoms # atomic
             self._is_slice = saved_is_slice
             self._slice = saved_slice
 
-    def _single_geometry_database(self) -> Structure_DB:
+    def _single_geometry_database(self) -> StructureModel:
         lattice = [None, None, None]
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             lattices = self.lattice_vectors()
@@ -289,11 +289,11 @@ Atoms # atomic
 
         num_atoms = self.number_atoms() or None
 
-        stoichiometry = Stoichiometry_DB()
+        stoichiometry = StoichiometryModel()
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             stoichiometry = self._stoichiometry().to_database()
 
-        return Structure_DB(
+        return StructureModel(
             num_ions=num_atoms,
             dimensionality=dimensionality,
             ion_types=stoichiometry.ion_types,
@@ -1180,7 +1180,7 @@ class Structure(view.Mixin):
         )
 
     def _to_database(self) -> dict:
-        """Return ``{"structure": {selection: Structure_DB}}`` for the database.
+        """Return ``{"structure": {selection: StructureModel}}`` for the database.
 
         Uses a custom merge instead of the generic :func:`merge_to_database`: the
         final structure is always stored, the initial structure (first ionic step
@@ -1192,7 +1192,7 @@ class Structure(view.Mixin):
 
 
 def _collect_structure_database(source, quantity_name):
-    """Build ``{selection: Structure_DB}`` from the available structure sources.
+    """Build ``{selection: StructureModel}`` from the available structure sources.
 
     The ``final`` source (or, when absent, the last step of the ``default``
     trajectory) provides the final structure, which is always included. The first
@@ -1232,7 +1232,7 @@ def _read_structure_entries(source, quantity_name):
 
 
 def _build_structure_entry(raw_structure, step):
-    """Return ``(Structure_DB, (lattice, positions))`` for a single step, or None."""
+    """Return ``(StructureModel, (lattice, positions))`` for a single step, or None."""
     with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
         handler = StructureHandler.from_data(raw_structure, steps=step)
         geometry = (np.array(handler.lattice_vectors()), np.array(handler.positions()))

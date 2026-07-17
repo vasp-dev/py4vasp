@@ -12,7 +12,7 @@ from py4vasp._calculation.exciton_eigenvector import (
     ExcitonEigenvector,
     ExcitonEigenvectorHandler,
 )
-from py4vasp._raw.data_db import ExcitonEigenvector_DB
+from py4vasp._raw.models import ExcitonEigenvectorModel
 
 
 @pytest.fixture
@@ -62,7 +62,7 @@ BSE eigenvector data:
 
 
 def test_to_database(exciton_eigenvector):
-    db_data: ExcitonEigenvector_DB = ExcitonEigenvectorHandler.from_data(
+    db_data: ExcitonEigenvectorModel = ExcitonEigenvectorHandler.from_data(
         exciton_eigenvector.ref.raw_data
     ).to_database()
     assert db_data.num_valence_bands == exciton_eigenvector.ref.NBANDSO

@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     slice_steps,
 )
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._raw.data_db import LocalMoment_DB
+from py4vasp._raw.models import LocalMomentModel
 from py4vasp._third_party import view
 from py4vasp._util import check, documentation, select
 
@@ -85,7 +85,7 @@ class LocalMomentHandler:
             spin_moments_total = np.sum(spin_moments_orbitals, axis=-1)
             spin_moment_total_min = float(np.min(spin_moments_total))
             spin_moment_total_max = float(np.max(spin_moments_total))
-        return LocalMoment_DB(
+        return LocalMomentModel(
             has_orbital_moments=self._has_orbital_moments,
             final_spin_moment_total_min=spin_moment_total_min,
             final_spin_moment_total_max=spin_moment_total_max,

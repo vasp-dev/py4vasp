@@ -1,0 +1,21 @@
+# Normalize line endings: store every text file with LF in the repository and
+# check it out with LF on all platforms. This keeps diffs free of spurious
+# whole-file churn when contributors edit on Windows.
+* text=auto eol=lf
+
+# Windows batch scripts need CRLF to execute reliably.
+*.bat text eol=crlf
+
+# Binary assets must never be line-ending normalized (defensive; the repo has
+# none today, but this protects any that get added later).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.h5 binary
+*.npy binary
+*.npz binary
+*.woff binary
+*.woff2 binary

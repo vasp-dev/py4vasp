@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import PairCorrelation_DB
+from py4vasp._raw.models import PairCorrelationModel
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, documentation, index, select
 
@@ -69,14 +69,14 @@ class PairCorrelationHandler:
         """Return all possible labels for the selection string."""
         return tuple(convert.text_to_string(label) for label in self._raw_data.labels)
 
-    def to_database(self) -> PairCorrelation_DB:
+    def to_database(self) -> PairCorrelationModel:
         """Serialize pair-correlation data for database storage."""
         distance_min, distance_max = None, None
         if not check.is_none(self._raw_data.distances):
             distance_min = float(self._raw_data.distances[0])
             distance_max = float(self._raw_data.distances[-1])
         first_peak_position, first_peak_height = self._first_peak()
-        return PairCorrelation_DB(
+        return PairCorrelationModel(
             distance_min=distance_min,
             distance_max=distance_max,
             first_peak_position=first_peak_position,

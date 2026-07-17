@@ -1,26 +1,246 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
-from dataclasses import dataclass, field
-from typing import List, Optional
+import numbers
+import re
+import types
+import typing
+from dataclasses import dataclass, fields
+from typing import Dict, List, Optional, Tuple
 
+import numpy as np
+
+from py4vasp import exception
 from py4vasp._raw.data_wrapper import VaspData
 
-__SCHEMA_VERSION__ = "0.1.0"
+# Semantic, fixed-size type aliases for model fields. The length is part of the type
+# and is enforced at construction time (see ``_coerce_field`` / ``_DatabaseModel``).
+# Use ``List[...]`` only where the number of elements is genuinely variable.
+Vector = Tuple[float, float, float]
+"""A 3-component real vector (lattice vector, k-point, dipole moment, RGB color)."""
+IntVector = Tuple[int, int, int]
+"""A 3-component integer vector (grid shape ``(nx, ny, nz)``)."""
+Voigt = Tuple[float, float, float, float, float, float]
+"""A compact symmetric tensor in Voigt order ``(xx, yy, zz, xy, yz, zx)``."""
+VoigtMatrix = Tuple[Voigt, Voigt, Voigt, Voigt, Voigt, Voigt]
+"""A 6x6 tensor in Voigt notation (e.g. the elastic modulus)."""
+
+# Counter for intermediate database-schema migrations within one py4vasp release.
+# 0 means "the released/default schema" -- the version is then just the bare py4vasp
+# series, e.g. "0.11". Increment it whenever any model below changes between releases
+# (a test enforces this, see tests/raw/test_schema_version.py); the version then reads
+# "0.11+db.1", "0.11+db.2", ... Reset it back to 0 on every new py4vasp minor release.
+__DB_SCHEMA__ = 1
+
+
+def schema_version() -> str:
+    """The version of the database model schema.
+
+    The ``<major>.<minor>`` part is taken from the current py4vasp version. When the
+    :data:`__DB_SCHEMA__` counter is 0 (the released default) the version is just that
+    series, e.g. ``"0.11"``. A non-zero counter marks an intermediate migration between
+    releases and is appended as ``"+db.<X>"``, e.g. ``"0.11+db.5"``.
+    """
+    from py4vasp import __version__
+
+    major, minor = __version__.split(".")[:2]
+    series = f"{major}.{minor}"
+    if __DB_SCHEMA__ == 0:
+        return series
+    return f"{series}+db.{__DB_SCHEMA__}"
+
+
+def parse_schema_version(version: str) -> Tuple[str, int]:
+    """Split a schema version into ``("<major>.<minor>", counter)``.
+
+    Accepts both the bare released form ``"0.11"`` (counter 0) and the intermediate
+    form ``"0.11+db.5"`` (counter 5).
+    """
+    match = re.fullmatch(r"(\d+\.\d+)(?:\+db\.(\d+))?", version)
+    if match is None:
+        raise ValueError(f"'{version}' is not a valid schema version.")
+    series, counter = match.groups()
+    return series, int(counter) if counter is not None else 0
+
+
+def _format_type(annotation) -> str:
+    """Canonical, interpreter-independent string representation of a field type.
+
+    The bare ``str(annotation)`` is not stable across Python versions (e.g. 3.14
+    renders ``Optional[float]`` as ``float | None`` while 3.11 renders it as
+    ``typing.Optional[float]``). Rebuilding the string from ``typing`` introspection
+    keeps the committed snapshot identical on every supported interpreter.
+    """
+    if isinstance(annotation, str):
+        return annotation
+    if annotation is type(None):
+        return "None"
+    origin = typing.get_origin(annotation)
+    args = typing.get_args(annotation)
+    if origin is None:
+        return getattr(annotation, "__name__", str(annotation))
+    if origin is typing.Union or origin is types.UnionType:
+        non_none = [arg for arg in args if arg is not type(None)]
+        inner = ", ".join(_format_type(arg) for arg in non_none)
+        if len(non_none) < len(args):  # NoneType present -> Optional
+            return (
+                f"Optional[{inner}]"
+                if len(non_none) == 1
+                else f"Optional[Union[{inner}]]"
+            )
+        return f"Union[{inner}]"
+    origin_name = getattr(origin, "__name__", str(origin))
+    inner = ", ".join(_format_type(arg) for arg in args)
+    return f"{origin_name}[{inner}]"
+
+
+def schema_fingerprint() -> dict:
+    """Canonical, JSON-serializable description of every database model.
+
+    Returns ``{"schema_version": schema_version(), "models": {ClassName: [[field, type],
+    ...]}}`` with classes and fields sorted by name. The models are discovered as the
+    subclasses of :class:`_DatabaseModel` defined in this module, so no registration is
+    needed (subclasses defined elsewhere, e.g. throwaway classes in tests, are ignored).
+    Only the field name and type are recorded (not the field documentation), so
+    documentation edits do not trigger a schema-version bump. A committed snapshot of
+    this fingerprint is checked by ``tests/raw/test_schema_version.py``.
+    """
+    models = [
+        cls for cls in _DatabaseModel.__subclasses__() if cls.__module__ == __name__
+    ]
+    model_fingerprints: Dict[str, list] = {}
+    for model in sorted(models, key=lambda cls: cls.__name__):
+        model_fingerprints[model.__name__] = [
+            [field_.name, _format_type(field_.type)]
+            for field_ in sorted(fields(model), key=lambda field_: field_.name)
+        ]
+    return {"schema_version": schema_version(), "models": model_fingerprints}
+
+
+def _strip_optional(annotation):
+    """Return ``(inner, is_optional)`` splitting ``Optional[X]`` into ``(X, True)``."""
+    origin = typing.get_origin(annotation)
+    if origin is typing.Union or origin is types.UnionType:
+        args = typing.get_args(annotation)
+        non_none = [arg for arg in args if arg is not type(None)]
+        is_optional = len(non_none) < len(args)
+        if len(non_none) == 1:
+            return non_none[0], is_optional
+        return typing.Union[tuple(non_none)], is_optional
+    return annotation, False
+
+
+def _coerce_field(value, annotation, name):
+    """Coerce ``value`` to native Python matching ``annotation`` and validate it.
+
+    numpy scalars become ``float``/``int``/``bool``, ``np.ndarray`` becomes nested
+    ``tuple``/``list``, so the stored model is JSON-serializable. Fixed-size ``Tuple``
+    aliases enforce their length; ``List[...]`` allows a variable number of elements.
+    Raises :class:`exception.DataMismatch` (naming the field) on any mismatch.
+    """
+    inner, is_optional = _strip_optional(annotation)
+    if isinstance(value, VaspData):
+        value = None if value.is_none() else value._data
+    if value is None:
+        if is_optional:
+            return None
+        raise exception.DataMismatch(f"Field '{name}' must not be None.")
+    origin = typing.get_origin(inner)
+    if origin is tuple:
+        return _coerce_sequence(value, typing.get_args(inner), name, fixed=True)
+    if origin is list:
+        return _coerce_sequence(value, typing.get_args(inner), name, fixed=False)
+    if origin is None:
+        return _coerce_scalar(value, inner, name)
+    raise exception.DataMismatch(
+        f"Field '{name}' has an unsupported type annotation '{annotation}'."
+    )
+
+
+def _coerce_sequence(value, args, name, *, fixed):
+    if isinstance(value, np.ndarray):
+        elements = list(value)
+    elif isinstance(value, (list, tuple)):
+        elements = list(value)
+    else:
+        raise exception.DataMismatch(
+            f"Field '{name}' expected a sequence but got '{type(value).__name__}'."
+        )
+    if fixed:
+        if len(elements) != len(args):
+            raise exception.DataMismatch(
+                f"Field '{name}' expected {len(args)} elements but got {len(elements)}."
+            )
+        return tuple(
+            _coerce_field(element, args[index], f"{name}[{index}]")
+            for index, element in enumerate(elements)
+        )
+    element_type = args[0]
+    return [
+        _coerce_field(element, element_type, f"{name}[{index}]")
+        for index, element in enumerate(elements)
+    ]
+
+
+def _coerce_scalar(value, target, name):
+    if isinstance(value, np.ndarray):
+        if value.ndim != 0:
+            raise exception.DataMismatch(
+                f"Field '{name}' expected a scalar '{target.__name__}' but got an "
+                f"array of shape {value.shape}."
+            )
+        value = value.item()
+    if target is bool:
+        if isinstance(value, (bool, np.bool_)):
+            return bool(value)
+        raise _wrong_scalar(name, target, value)
+    # bool is a subtype of int/Real, so reject it explicitly for numeric/str targets
+    if isinstance(value, (bool, np.bool_)):
+        raise _wrong_scalar(name, target, value)
+    if target is int:
+        if isinstance(value, numbers.Integral):
+            return int(value)
+        raise _wrong_scalar(name, target, value)
+    if target is float:
+        if isinstance(value, numbers.Real):
+            return float(value)
+        raise _wrong_scalar(name, target, value)
+    if target is str:
+        if isinstance(value, bytes):  # VASP strings often arrive undecoded
+            return value.decode()
+        if isinstance(value, str):
+            return str(value)
+        raise _wrong_scalar(name, target, value)
+    raise exception.DataMismatch(
+        f"Field '{name}' has an unsupported scalar type '{target}'."
+    )
+
+
+def _wrong_scalar(name, target, value):
+    return exception.DataMismatch(
+        f"Field '{name}' expected '{target.__name__}' but got "
+        f"'{type(value).__name__}'."
+    )
 
 
 @dataclass
-class _DBDataMixin:
-    """Mixin for dataclasses that will be stored in the database."""
+class _DatabaseModel:
+    """Base class for dataclasses that will be stored in the database.
+
+    On construction every field is coerced to a native, JSON-serializable Python type
+    and validated against its annotation (see :func:`_coerce_field`). This normalizes the
+    numpy scalars and arrays that the producers emit and guarantees that a field actually
+    holds the declared type and, for the fixed-size tuple aliases, the declared length.
+    """
 
     def __post_init__(self):
-        for field_name, field_value in self.__dict__.items():
-            if isinstance(field_value, VaspData):
-                setattr(self, field_name, field_value._data)
+        for field in fields(self):
+            value = getattr(self, field.name)
+            setattr(self, field.name, _coerce_field(value, field.type, field.name))
 
 
 @dataclass
-class CONTCAR_DB(_DBDataMixin):
+class CONTCARModel(_DatabaseModel):
     """Data class for storing CONTCAR data in the database."""
 
     system: Optional[str] = None
@@ -28,7 +248,7 @@ class CONTCAR_DB(_DBDataMixin):
 
 
 @dataclass
-class Dispersion_DB(_DBDataMixin):
+class DispersionModel(_DatabaseModel):
     """Data class for storing dispersion data in the database."""
 
     eigenvalue_min: Optional[float] = None
@@ -46,14 +266,14 @@ class Dispersion_DB(_DBDataMixin):
 
 
 @dataclass
-class Stoichiometry_DB(_DBDataMixin):
+class StoichiometryModel(_DatabaseModel):
     """Data class for storing stoichiometry data in the database."""
 
-    ion_types: Optional[List[str]] = field(default_factory=lambda: None)
+    ion_types: Optional[List[str]] = None
     """The distinct types of ions in the system."""
-    num_ion_types: Optional[List[int]] = field(default_factory=lambda: None)
+    num_ion_types: Optional[List[int]] = None
     """The number of ions of each type in the system."""
-    num_ion_types_primitive: Optional[List[int]] = field(default_factory=lambda: None)
+    num_ion_types_primitive: Optional[List[int]] = None
     """The number of ions of each type in the primitive cell."""
     formula: Optional[str] = None
     """The chemical formula of the system, in the format {element}{count if count > 1 else ''}, e.g. A3B2CD4."""
@@ -62,7 +282,7 @@ class Stoichiometry_DB(_DBDataMixin):
 
 
 @dataclass
-class Band_DB(_DBDataMixin):
+class BandModel(_DatabaseModel):
     """Data class for storing band structure data in the database."""
 
     num_considered_bands: Optional[int] = None
@@ -94,7 +314,7 @@ class Band_DB(_DBDataMixin):
 
 
 @dataclass
-class Bandgap_DB(_DBDataMixin):
+class BandgapModel(_DatabaseModel):
     """Data class for storing band gap data in the database."""
 
     fundamental_bandgap_spin_independent: Optional[float] = None
@@ -115,21 +335,17 @@ class Bandgap_DB(_DBDataMixin):
     """The energy of the conduction band minimum for spin-up electrons, in eV."""
     conduction_band_minimum_spin_down: Optional[float] = None
     """The energy of the conduction band minimum for spin-down electrons, in eV."""
-    kpoint_vbm_spin_independent: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
+    kpoint_vbm_spin_independent: Optional[Vector] = None
     """The k-point where the valence band maximum occurs, in fractional coordinates."""
-    kpoint_vbm_spin_up: Optional[List[float]] = field(default_factory=lambda: None)
+    kpoint_vbm_spin_up: Optional[Vector] = None
     """The k-point where the valence band maximum for spin-up electrons occurs, in fractional coordinates."""
-    kpoint_vbm_spin_down: Optional[List[float]] = field(default_factory=lambda: None)
+    kpoint_vbm_spin_down: Optional[Vector] = None
     """The k-point where the valence band maximum for spin-down electrons occurs, in fractional coordinates."""
-    kpoint_cbm_spin_independent: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
+    kpoint_cbm_spin_independent: Optional[Vector] = None
     """The k-point where the conduction band minimum occurs, in fractional coordinates."""
-    kpoint_cbm_spin_up: Optional[List[float]] = field(default_factory=lambda: None)
+    kpoint_cbm_spin_up: Optional[Vector] = None
     """The k-point where the conduction band minimum for spin-up electrons occurs, in fractional coordinates."""
-    kpoint_cbm_spin_down: Optional[List[float]] = field(default_factory=lambda: None)
+    kpoint_cbm_spin_down: Optional[Vector] = None
     """The k-point where the conduction band minimum for spin-down electrons occurs, in fractional coordinates."""
 
     direct_bandgap_spin_independent: Optional[float] = None
@@ -150,22 +366,16 @@ class Bandgap_DB(_DBDataMixin):
     """The energy of the lowest unoccupied spin-up band at the k-point where the direct band gap occurs, in eV."""
     upper_band_direct_bandgap_spin_down: Optional[float] = None
     """The energy of the lowest unoccupied spin-down band at the k-point where the direct band gap occurs, in eV."""
-    kpoint_direct_bandgap_spin_independent: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
+    kpoint_direct_bandgap_spin_independent: Optional[Vector] = None
     """The k-point where the direct band gap occurs, in fractional coordinates."""
-    kpoint_direct_bandgap_spin_up: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
+    kpoint_direct_bandgap_spin_up: Optional[Vector] = None
     """The k-point where the direct band gap for spin-up electrons occurs, in fractional coordinates."""
-    kpoint_direct_bandgap_spin_down: Optional[List[float]] = field(
-        default_factory=lambda: None
-    )
+    kpoint_direct_bandgap_spin_down: Optional[Vector] = None
     """The k-point where the direct band gap for spin-down electrons occurs, in fractional coordinates."""
 
 
 @dataclass
-class BornEffectiveCharge_DB(_DBDataMixin):
+class BornEffectiveChargeModel(_DatabaseModel):
     """Data class for storing Born effective charge data in the database."""
 
     eigenvalue_min: Optional[float] = None
@@ -179,13 +389,13 @@ class BornEffectiveCharge_DB(_DBDataMixin):
 
 
 @dataclass
-class CurrentDensity_DB(_DBDataMixin):
+class CurrentDensityModel(_DatabaseModel):
     """Data class for storing current density data in the database.
 
     The current density is a vector field on a grid; the summaries below refer to its
     magnitude |j| aggregated over all grid points and perturbations."""
 
-    grid_shape: Optional[List[int]] = field(default_factory=lambda: None)
+    grid_shape: Optional[IntVector] = None
     """The shape of the grid on which the current density is evaluated, in the order (nx, ny, nz)."""
     magnitude_min: Optional[float] = None
     """The minimum magnitude of the current density across all grid points and perturbations."""
@@ -196,7 +406,7 @@ class CurrentDensity_DB(_DBDataMixin):
 
 
 @dataclass
-class DielectricFunction_DB(_DBDataMixin):
+class DielectricFunctionModel(_DatabaseModel):
     """Data class for storing dielectric function data in the database."""
 
     energy_min: Optional[float] = None
@@ -206,29 +416,27 @@ class DielectricFunction_DB(_DBDataMixin):
 
 
 @dataclass
-class DielectricTensor_DB(_DBDataMixin):
+class DielectricTensorModel(_DatabaseModel):
     """Data class for storing dielectric tensor data in the database."""
 
     method: Optional[str] = None
     """The method used to calculate the dielectric tensor."""
 
-    total_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    total_3d_tensor: Optional[Voigt] = None
     """The full 3D dielectric tensor for the total response, including both ionic and electronic contributions. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     total_3d_isotropic_dielectric_constant: Optional[float] = None
     """The isotropic dielectric constant for the total response, calculated as the average of the diagonal elements of the total 3D dielectric tensor."""
     total_2d_polarizability: Optional[float] = None
     """The 2D polarizability for the total response, calculated from the total 3D dielectric tensor and the cell geometry."""
 
-    ionic_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    ionic_3d_tensor: Optional[Voigt] = None
     """The full 3D dielectric tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     ionic_3d_isotropic_dielectric_constant: Optional[float] = None
     """The isotropic dielectric constant for the ionic contribution, calculated as the average of the diagonal elements of the ionic 3D dielectric tensor."""
     ionic_2d_polarizability: Optional[float] = None
     """The 2D polarizability for the ionic contribution, calculated from the ionic 3D dielectric tensor and the cell geometry."""
 
-    electronic_3d_tensor: Optional[List[List[float]]] = field(
-        default_factory=lambda: None
-    )
+    electronic_3d_tensor: Optional[Voigt] = None
     """The full 3D dielectric tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     electronic_3d_isotropic_dielectric_constant: Optional[float] = None
     """The isotropic dielectric constant for the electronic contribution, calculated as the average of the diagonal elements of the electronic 3D dielectric tensor."""
@@ -237,7 +445,7 @@ class DielectricTensor_DB(_DBDataMixin):
 
 
 @dataclass
-class Dos_DB(_DBDataMixin):
+class DosModel(_DatabaseModel):
     """Data class for storing density of states data in the database."""
 
     dos_at_fermi_total: Optional[float] = None
@@ -261,29 +469,29 @@ class Dos_DB(_DBDataMixin):
 
 
 @dataclass
-class EffectiveCoulomb_DB(_DBDataMixin):
+class EffectiveCoulombModel(_DatabaseModel):
     """Data class for storing effective Coulomb interaction data in the database."""
 
     screened_U_uppercase: Optional[float] = None
-    """The value of the screened effective Coulomb interaction U, in eV."""
+    """The real part of the screened effective Coulomb interaction U, in eV."""
     screened_u_lowercase: Optional[float] = None
-    """The value of the screened effective Coulomb interaction u, in eV."""
+    """The real part of the screened effective Coulomb interaction u, in eV."""
     screened_J_uppercase: Optional[float] = None
-    """The value of the screened effective Coulomb interaction J, in eV."""
+    """The real part of the screened effective Coulomb interaction J, in eV."""
 
     bare_V_uppercase: Optional[float] = None
-    """The value of the bare effective Coulomb interaction V, in eV."""
+    """The real part of the bare effective Coulomb interaction V, in eV."""
     bare_v_lowercase: Optional[float] = None
-    """The value of the bare effective Coulomb interaction v, in eV."""
+    """The real part of the bare effective Coulomb interaction v, in eV."""
     bare_J_uppercase: Optional[float] = None
-    """The value of the bare effective Coulomb interaction J, in eV."""
+    """The real part of the bare effective Coulomb interaction J, in eV."""
 
 
 @dataclass
-class ElasticModulus_DB(_DBDataMixin):
+class ElasticModulusModel(_DatabaseModel):
     """Data class for storing elastic modulus data in the database."""
 
-    total_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    total_3d_tensor: Optional[VoigtMatrix] = None
     """The full 3D elastic modulus tensor, including both ionic and electronic contributions. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     total_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the total 3D elastic modulus tensor, in GPa."""
@@ -300,7 +508,7 @@ class ElasticModulus_DB(_DBDataMixin):
     total_fracture_toughness: Optional[float] = None
     """The fracture toughness calculated from the total bulk and shear moduli, in MPa*m^0.5."""
 
-    ionic_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    ionic_3d_tensor: Optional[VoigtMatrix] = None
     """The full 3D elastic modulus tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     ionic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the ionic contribution to the elastic modulus tensor, in GPa."""
@@ -317,9 +525,7 @@ class ElasticModulus_DB(_DBDataMixin):
     ionic_fracture_toughness: Optional[float] = None
     """The fracture toughness calculated from the ionic contribution to the bulk and shear moduli, in MPa*m^0.5."""
 
-    electronic_3d_tensor: Optional[List[List[float]]] = field(
-        default_factory=lambda: None
-    )
+    electronic_3d_tensor: Optional[VoigtMatrix] = None
     """The full 3D elastic modulus tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
     electronic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the electronic contribution to the elastic modulus tensor, in GPa."""
@@ -338,7 +544,7 @@ class ElasticModulus_DB(_DBDataMixin):
 
 
 @dataclass
-class ElectronicMinimization_DB(_DBDataMixin):
+class ElectronicMinimizationModel(_DatabaseModel):
     """Data class for storing electronic minimization data in the database."""
 
     num_electronic_steps: Optional[int] = None
@@ -354,7 +560,7 @@ class ElectronicMinimization_DB(_DBDataMixin):
 
 
 @dataclass
-class EnergyAfqmc_DB(_DBDataMixin):
+class EnergyAfqmcModel(_DatabaseModel):
     """Data class for storing AFQMC energy data in the database.
 
     AFQMC energies fluctuate around a value rather than converging to a minimum, so
@@ -411,7 +617,7 @@ class EnergyAfqmc_DB(_DBDataMixin):
 
 
 @dataclass
-class EnergyRelaxation_DB(_DBDataMixin):
+class EnergyRelaxationModel(_DatabaseModel):
     """Data class for storing ionic-relaxation energy data in the database.
 
     A relaxation converges toward a minimum, so each energy term is summarized by its
@@ -447,7 +653,7 @@ class EnergyRelaxation_DB(_DBDataMixin):
 
 
 @dataclass
-class EnergyMD_DB(_DBDataMixin):
+class EnergyMDModel(_DatabaseModel):
     """Data class for storing molecular-dynamics energy data in the database.
 
     MD energies fluctuate around a value rather than converging to a minimum, so each
@@ -505,7 +711,7 @@ class EnergyMD_DB(_DBDataMixin):
 
 
 @dataclass
-class ExcitonEigenvector_DB(_DBDataMixin):
+class ExcitonEigenvectorModel(_DatabaseModel):
     """Data class for storing exciton eigenvector data in the database."""
 
     num_kpoints: Optional[int] = None
@@ -517,7 +723,7 @@ class ExcitonEigenvector_DB(_DBDataMixin):
 
 
 @dataclass
-class Force_DB(_DBDataMixin):
+class ForceModel(_DatabaseModel):
     """Data class for storing force data in the database."""
 
     final_force_min: Optional[float] = None
@@ -540,7 +746,7 @@ class Force_DB(_DBDataMixin):
 
 
 @dataclass
-class Kpoint_DB(_DBDataMixin):
+class KpointModel(_DatabaseModel):
     """Data class for storing k-point data in the database."""
 
     mode: Optional[str] = None
@@ -549,18 +755,18 @@ class Kpoint_DB(_DBDataMixin):
     """The number of points used to sample a single line in the Brillouin zone."""
     num_kpoints_total: Optional[int] = None
     """The total number of k-points in the calculation."""
-    num_kpoints_grid: Optional[List[float]] = field(default_factory=lambda: None)
+    num_kpoints_grid: Optional[IntVector] = None
     """The number of k-points along each reciprocal lattice vector for grid sampling, in the order (kx, ky, kz)."""
     num_lines: Optional[int] = None
     """The number of lines in the Brillouin zone along which the band structure is sampled."""
-    labels: Optional[List[str]] = field(default_factory=lambda: None)
+    labels: Optional[List[str]] = None
     """The labels of the high-symmetry k-points corresponding to each line, in the order (line1_start, line1_end, line2_start, line2_end, ...)."""
-    labels_unique: Optional[List[str]] = field(default_factory=lambda: None)
+    labels_unique: Optional[List[str]] = None
     """The unique labels of the high-symmetry k-points, in alphabetical order."""
 
 
 @dataclass
-class LocalMoment_DB(_DBDataMixin):
+class LocalMomentModel(_DatabaseModel):
     """Data class for storing local magnetic moment data in the database."""
 
     has_orbital_moments: Optional[bool] = None
@@ -572,7 +778,7 @@ class LocalMoment_DB(_DBDataMixin):
 
 
 @dataclass
-class Nics_DB(_DBDataMixin):
+class NicsModel(_DatabaseModel):
     """Data class for storing NICS data in the database."""
 
     method: Optional[str] = None
@@ -580,7 +786,7 @@ class Nics_DB(_DBDataMixin):
 
 
 @dataclass
-class Optics_DB(_DBDataMixin):
+class OpticsModel(_DatabaseModel):
     """Data class for storing optical properties in the database.
 
     The optical properties are derived from the dielectric function. All spectra
@@ -605,14 +811,14 @@ class Optics_DB(_DBDataMixin):
     transmission_max: Optional[float] = None
     """The maximum transmission across the evaluated energy range."""
 
-    color_rgb: Optional[List[float]] = field(default_factory=lambda: None)
+    color_rgb: Optional[Vector] = None
     """The perceived color of the material as fractional sRGB values in [0, 1]."""
     color_hex: Optional[str] = None
     """The perceived color of the material as an HTML/HEX color code, e.g. '#2fb5ab'."""
 
 
 @dataclass
-class PairCorrelation_DB(_DBDataMixin):
+class PairCorrelationModel(_DatabaseModel):
     """Data class for storing pair correlation function data in the database."""
 
     distance_min: Optional[float] = None
@@ -626,7 +832,7 @@ class PairCorrelation_DB(_DBDataMixin):
 
 
 @dataclass
-class PhononDos_DB(_DBDataMixin):
+class PhononDosModel(_DatabaseModel):
     """Data class for storing phonon density of states data in the database."""
 
     energy_min: Optional[float] = None
@@ -636,7 +842,7 @@ class PhononDos_DB(_DBDataMixin):
 
 
 @dataclass
-class PhononBand_DB(_DBDataMixin):
+class PhononBandModel(_DatabaseModel):
     """Data class for storing phonon band structure data in the database.
 
     The dispersion (phonon frequencies) is folded into this model."""
@@ -648,7 +854,7 @@ class PhononBand_DB(_DBDataMixin):
 
 
 @dataclass
-class PhononMode_DB(_DBDataMixin):
+class PhononModeModel(_DatabaseModel):
     """Data class for storing phonon mode data in the database."""
 
     frequencies_real_max: Optional[float] = None
@@ -658,26 +864,20 @@ class PhononMode_DB(_DBDataMixin):
 
 
 @dataclass
-class PiezoelectricTensor_DB(_DBDataMixin):
+class PiezoelectricTensorModel(_DatabaseModel):
     """Data class for storing piezoelectric tensor data in the database."""
 
-    total_3d_tensor_x: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    total_3d_tensor_x: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m^2."""
-    total_3d_tensor_y: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    total_3d_tensor_y: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m^2."""
-    total_3d_tensor_z: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    total_3d_tensor_z: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction."""
-    total_3d_piezoelectric_stress_coefficient_x: Optional[float] = field(
-        default_factory=lambda: None
-    )
+    total_3d_piezoelectric_stress_coefficient_x: Optional[float] = None
     """The piezoelectric stress coefficient for the total response along x direction, in C/m^2."""
-    total_3d_piezoelectric_stress_coefficient_y: Optional[float] = field(
-        default_factory=lambda: None
-    )
+    total_3d_piezoelectric_stress_coefficient_y: Optional[float] = None
     """The piezoelectric stress coefficient for the total response along y direction, in C/m^2."""
-    total_3d_piezoelectric_stress_coefficient_z: Optional[float] = field(
-        default_factory=lambda: None
-    )
+    total_3d_piezoelectric_stress_coefficient_z: Optional[float] = None
     """The piezoelectric stress coefficient for the total response along z direction, in C/m^2."""
     total_3d_mean_absolute: Optional[float] = None
     """The mean absolute value of the elements of the total 3D piezoelectric tensor, in C/m^2."""
@@ -685,30 +885,24 @@ class PiezoelectricTensor_DB(_DBDataMixin):
     """The root mean square value of the elements of the total 3D piezoelectric tensor, in C/m^2."""
     total_3d_frobenius_norm: Optional[float] = None
     """The Frobenius norm of the total 3D piezoelectric tensor, in C/m^2."""
-    total_2d_tensor_x: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    total_2d_tensor_x: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m."""
-    total_2d_tensor_y: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    total_2d_tensor_y: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m."""
-    total_2d_tensor_z: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    total_2d_tensor_z: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the total response in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m."""
 
-    ionic_3d_tensor_x: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    ionic_3d_tensor_x: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m^2."""
-    ionic_3d_tensor_y: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    ionic_3d_tensor_y: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m^2."""
-    ionic_3d_tensor_z: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    ionic_3d_tensor_z: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m^2."""
-    ionic_3d_piezoelectric_stress_coefficient_x: Optional[float] = field(
-        default_factory=lambda: None
-    )
+    ionic_3d_piezoelectric_stress_coefficient_x: Optional[float] = None
     """The piezoelectric stress coefficient for the ionic contribution along x direction, in C/m^2."""
-    ionic_3d_piezoelectric_stress_coefficient_y: Optional[float] = field(
-        default_factory=lambda: None
-    )
+    ionic_3d_piezoelectric_stress_coefficient_y: Optional[float] = None
     """The piezoelectric stress coefficient for the ionic contribution along y direction, in C/m^2."""
-    ionic_3d_piezoelectric_stress_coefficient_z: Optional[float] = field(
-        default_factory=lambda: None
-    )
+    ionic_3d_piezoelectric_stress_coefficient_z: Optional[float] = None
     """The piezoelectric stress coefficient for the ionic contribution along z direction, in C/m^2."""
     ionic_3d_mean_absolute: Optional[float] = None
     """The mean absolute value of the elements of the ionic contribution to the 3D piezoelectric tensor, in C/m^2."""
@@ -716,36 +910,24 @@ class PiezoelectricTensor_DB(_DBDataMixin):
     """The root mean square value of the elements of the ionic contribution to the 3D piezoelectric tensor, in C/m^2."""
     ionic_3d_frobenius_norm: Optional[float] = None
     """The Frobenius norm of the ionic contribution to the 3D piezoelectric tensor, in C/m^2."""
-    ionic_2d_tensor_x: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    ionic_2d_tensor_x: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m."""
-    ionic_2d_tensor_y: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    ionic_2d_tensor_y: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m."""
-    ionic_2d_tensor_z: Optional[List[List[float]]] = field(default_factory=lambda: None)
+    ionic_2d_tensor_z: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the ionic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m."""
 
-    electronic_3d_tensor_x: Optional[List[List[float]]] = field(
-        default_factory=lambda: None
-    )
+    electronic_3d_tensor_x: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m^2."""
-    electronic_3d_tensor_y: Optional[List[List[float]]] = field(
-        default_factory=lambda: None
-    )
+    electronic_3d_tensor_y: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m^2."""
-    electronic_3d_tensor_z: Optional[List[List[float]]] = field(
-        default_factory=lambda: None
-    )
+    electronic_3d_tensor_z: Optional[Voigt] = None
     """The full 3D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m^2."""
-    electronic_3d_piezoelectric_stress_coefficient_x: Optional[float] = field(
-        default_factory=lambda: None
-    )
+    electronic_3d_piezoelectric_stress_coefficient_x: Optional[float] = None
     """The piezoelectric stress coefficient for the electronic contribution along x direction, in C/m^2."""
-    electronic_3d_piezoelectric_stress_coefficient_y: Optional[float] = field(
-        default_factory=lambda: None
-    )
+    electronic_3d_piezoelectric_stress_coefficient_y: Optional[float] = None
     """The piezoelectric stress coefficient for the electronic contribution along y direction, in C/m^2."""
-    electronic_3d_piezoelectric_stress_coefficient_z: Optional[float] = field(
-        default_factory=lambda: None
-    )
+    electronic_3d_piezoelectric_stress_coefficient_z: Optional[float] = None
     """The piezoelectric stress coefficient for the electronic contribution along z direction, in C/m^2."""
     electronic_3d_mean_absolute: Optional[float] = None
     """The mean absolute value of the elements of the electronic contribution to the 3D piezoelectric tensor, in C/m^2."""
@@ -753,40 +935,34 @@ class PiezoelectricTensor_DB(_DBDataMixin):
     """The root mean square value of the elements of the electronic contribution to the 3D piezoelectric tensor, in C/m^2."""
     electronic_3d_frobenius_norm: Optional[float] = None
     """The Frobenius norm of the electronic contribution to the 3D piezoelectric tensor, in C/m^2."""
-    electronic_2d_tensor_x: Optional[List[List[float]]] = field(
-        default_factory=lambda: None
-    )
+    electronic_2d_tensor_x: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along x direction, in C/m."""
-    electronic_2d_tensor_y: Optional[List[List[float]]] = field(
-        default_factory=lambda: None
-    )
+    electronic_2d_tensor_y: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along y direction, in C/m."""
-    electronic_2d_tensor_z: Optional[List[List[float]]] = field(
-        default_factory=lambda: None
-    )
+    electronic_2d_tensor_z: Optional[Voigt] = None
     """The full 2D piezoelectric tensor for the electronic contribution in Voigt notation in order (xx, yy, zz, xy, yz, zx) along z direction, in C/m."""
 
 
 @dataclass
-class Polarization_DB(_DBDataMixin):
+class PolarizationModel(_DatabaseModel):
     """Data class for storing polarization data in the database."""
 
     total_dipole_norm: Optional[float] = None
     """The norm of the total dipole moment vector, including both ionic and electronic contributions."""
-    total_dipole_moment: Optional[List[float]] = None
+    total_dipole_moment: Optional[Vector] = None
     """The total dipole moment vector, including both ionic and electronic contributions."""
     ionic_dipole_norm: Optional[float] = None
     """The norm of the ionic dipole moment vector."""
-    ionic_dipole_moment: Optional[List[float]] = None
+    ionic_dipole_moment: Optional[Vector] = None
     """The ionic dipole moment vector."""
     electronic_dipole_norm: Optional[float] = None
     """The norm of the electronic dipole moment vector."""
-    electronic_dipole_moment: Optional[List[float]] = None
+    electronic_dipole_moment: Optional[Vector] = None
     """The electronic dipole moment vector."""
 
 
 @dataclass
-class Potential_DB(_DBDataMixin):
+class PotentialModel(_DatabaseModel):
     """Data class for storing potential data in the database."""
 
     has_total_potential: bool = False
@@ -809,23 +985,23 @@ class Potential_DB(_DBDataMixin):
 
 
 @dataclass
-class Projector_DB(_DBDataMixin):
+class ProjectorModel(_DatabaseModel):
     """Data class for storing projector data in the database."""
 
-    orbital_types: Optional[List[str]] = field(default_factory=lambda: None)
+    orbital_types: Optional[List[str]] = None
     """The types of orbitals used for the projectors, e.g. s, p, d, f."""
 
 
 @dataclass
-class RunInfo_DB(_DBDataMixin):
+class RunInfoModel(_DatabaseModel):
     """Data class for storing general run information in the database."""
 
     vasp_version: Optional[str] = None
     """The version of VASP used for the calculation."""
 
-    grid_coarse_shape: Optional[List[int]] = field(default_factory=lambda: None)
+    grid_coarse_shape: Optional[IntVector] = None
     """The shape of the coarse grid used for the calculation, in the order (nx, ny, nz)."""
-    grid_fine_shape: Optional[List[int]] = field(default_factory=lambda: None)
+    grid_fine_shape: Optional[IntVector] = None
     """The shape of the fine grid used for the calculation, in the order (nx, ny, nz)."""
     is_success: Optional[bool] = None
     """Whether the calculation completed successfully."""
@@ -862,21 +1038,19 @@ class RunInfo_DB(_DBDataMixin):
 
 
 @dataclass
-class Stress_DB(_DBDataMixin):
+class StressModel(_DatabaseModel):
     """Data class for storing stress data in the database."""
 
     initial_stress_mean: Optional[float] = None
     """The mean trace of the stress tensor across all atoms on the initial step, in GPa."""
     final_stress_mean: Optional[float] = None
     """The mean trace of the stress tensor across all atoms on the final step, in GPa."""
-    final_stress_tensor: Optional[List[List[float]]] = field(
-        default_factory=lambda: None
-    )
+    final_stress_tensor: Optional[Voigt] = None
     """The full 3D stress tensor on the final step, in GPa, in the order (xx, yy, zz, xy, yz, zx)."""
 
 
 @dataclass
-class Structure_DB(_DBDataMixin):
+class StructureModel(_DatabaseModel):
     """Data class for storing a single structure geometry in the database.
 
     Each instance describes one geometry. The database entry for a calculation stores
@@ -900,11 +1074,11 @@ class Structure_DB(_DBDataMixin):
     """The area of the unit cell in 2D materials, calculated as the product of the two lattice vectors that are not along the vacuum direction, in Å^2."""
     cell_area_2d_span: Optional[str] = None
     """The two lattice vectors that are used to calculate the area of the unit cell in 2D materials, in the format '12', '13', or '23'."""
-    lattice_vector_1: Optional[List[float]] = field(default_factory=lambda: None)
+    lattice_vector_1: Optional[Vector] = None
     """The first lattice vector, in Å."""
-    lattice_vector_2: Optional[List[float]] = field(default_factory=lambda: None)
+    lattice_vector_2: Optional[Vector] = None
     """The second lattice vector, in Å."""
-    lattice_vector_3: Optional[List[float]] = field(default_factory=lambda: None)
+    lattice_vector_3: Optional[Vector] = None
     """The third lattice vector, in Å."""
     lattice_vector_1_length: Optional[float] = None
     """The length of the first lattice vector, in Å."""
@@ -920,11 +1094,11 @@ class Structure_DB(_DBDataMixin):
     """The angle between the first and second lattice vectors, in degrees."""
 
     # stoichiometry data folded into the structure model
-    ion_types: Optional[List[str]] = field(default_factory=lambda: None)
+    ion_types: Optional[List[str]] = None
     """The distinct types of ions in the system."""
-    num_ion_types: Optional[List[int]] = field(default_factory=lambda: None)
+    num_ion_types: Optional[List[int]] = None
     """The number of ions of each type in the system."""
-    num_ion_types_primitive: Optional[List[int]] = field(default_factory=lambda: None)
+    num_ion_types_primitive: Optional[List[int]] = None
     """The number of ions of each type in the primitive cell."""
     formula: Optional[str] = None
     """The chemical formula of the system, in the format {element}{count if count > 1 else ''}, e.g. A3B2CD4."""
@@ -933,7 +1107,7 @@ class Structure_DB(_DBDataMixin):
 
 
 @dataclass
-class Velocity_DB(_DBDataMixin):
+class VelocityModel(_DatabaseModel):
     """Data class for storing velocity data in the database."""
 
     final_velocity_min: Optional[float] = None
@@ -958,7 +1132,7 @@ class Velocity_DB(_DBDataMixin):
 
 
 @dataclass
-class Symmetry_DB(_DBDataMixin):
+class SymmetryModel(_DatabaseModel):
     """Data class for storing symmetry data in the database."""
 
     space_group: Optional[int] = None
@@ -984,7 +1158,7 @@ class Symmetry_DB(_DBDataMixin):
 
 
 @dataclass
-class Workfunction_DB(_DBDataMixin):
+class WorkfunctionModel(_DatabaseModel):
     """Data class for storing work function data in the database."""
 
     direction: Optional[int] = None

@@ -9,7 +9,7 @@ import pytest
 from py4vasp import _config, exception, raw
 from py4vasp._calculation.potential import VALID_KINDS, Potential, PotentialHandler
 from py4vasp._calculation.structure import Structure
-from py4vasp._raw.data_db import Potential_DB
+from py4vasp._raw.models import PotentialModel
 from py4vasp._third_party.view import Isosurface
 from py4vasp._util import slicing
 
@@ -374,8 +374,8 @@ def test_print(reference_potential, format_):
 
 def test_to_database(reference_potential):
     handler = PotentialHandler.from_data(reference_potential.ref.raw_potential)
-    db_data: Potential_DB = handler.to_database()
-    assert isinstance(db_data, Potential_DB)
+    db_data: PotentialModel = handler.to_database()
+    assert isinstance(db_data, PotentialModel)
 
     ref_kind = reference_potential.ref.included_kinds
     if ref_kind != "all":

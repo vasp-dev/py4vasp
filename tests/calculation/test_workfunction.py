@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from py4vasp._calculation.workfunction import Workfunction
-from py4vasp._raw.data_db import Workfunction_DB
+from py4vasp._raw.models import WorkfunctionModel
 
 
 @pytest.fixture(params=[1, 2, 3])
@@ -93,9 +93,9 @@ def test_to_database(raw_data):
 
     raw_workfunction = raw_data.workfunction("1")
     handler = WorkfunctionHandler.from_data(raw_workfunction)
-    actual: Workfunction_DB = handler.to_database()
-    assert isinstance(actual, Workfunction_DB)
-    expected = Workfunction_DB(raw_workfunction.idipol, None)
+    actual: WorkfunctionModel = handler.to_database()
+    assert isinstance(actual, WorkfunctionModel)
+    expected = WorkfunctionModel(raw_workfunction.idipol, None)
     assert actual == expected
 
 

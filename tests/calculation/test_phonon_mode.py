@@ -11,7 +11,7 @@ from py4vasp import raw
 from py4vasp._calculation.phonon_mode import PhononMode, PhononModeHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._demo.phonon import mode as phonon_mode_demo
-from py4vasp._raw.data_db import PhononMode_DB
+from py4vasp._raw.models import PhononModeModel
 
 
 @pytest.fixture
@@ -69,8 +69,8 @@ def test_print(phonon_mode, format_):
 
 def test_to_database(phonon_mode):
     handler = PhononModeHandler.from_data(phonon_mode.ref.raw_data)
-    db_data: PhononMode_DB = handler.to_database()
-    assert isinstance(db_data, PhononMode_DB)
+    db_data: PhononModeModel = handler.to_database()
+    assert isinstance(db_data, PhononModeModel)
     assert db_data.frequencies_real_max == float(
         np.max(phonon_mode.ref.frequencies.real)
     )

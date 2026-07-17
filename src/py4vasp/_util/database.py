@@ -13,6 +13,7 @@ from h5py import File
 from py4vasp import exception
 from py4vasp._raw.data import Version
 from py4vasp._raw.definition import DEFAULT_SOURCE, Schema, unique_selections
+from py4vasp._raw.models import parse_schema_version
 from py4vasp._raw.schema import Length, Link
 from py4vasp._util import convert
 
@@ -377,7 +378,7 @@ def get_all_possible_keys(
     -------
         Tuple[Dict[str, List[Tuple[str, str]]], Dict[str, Optional[str]]]
         A tuple:
-                    - A dictionary where keys are database dataclass names (e.g. Band_DB) and
+                    - A dictionary where keys are database dataclass names (e.g. BandModel) and
                         values are lists of tuples containing (attribute_name, attribute_type).
                     - A dictionary mapping all available keys (group.quantity[:selection]) to
                         their dataclass names. If no matching dataclass exists, the value is None.
@@ -390,7 +391,7 @@ def get_all_possible_keys(
 
     # Enumerate the public quantities (and group members) directly from the registry.
     # The actual database keys/types are resolved downstream from the schema selections
-    # and the *_DB dataclasses.
+    # and the *Model dataclasses.
     candidate_keys = list(QUANTITIES)
     candidate_keys += [
         f"{group}_{member}" for group, members in GROUPS.items() for member in members
@@ -413,7 +414,7 @@ def get_all_possible_keys(
         if len(selections_list) == 0:
             # Derived quantities such as `optics` have no schema/raw data of their own.
             # Record them so the mapping stays complete. A derived quantity may still
-            # have a database representation (its own *_DB dataclass) via a hand-written
+            # have a database representation (its own *Model dataclass) via a hand-written
             # `_to_database`; keep those so the dataclass is enumerated. Drop only the
             # ones without any database dataclass from the storage keys.
             output_type_dict[constructed_key] = dataclass_name
@@ -435,12 +436,12 @@ def get_all_possible_keys(
     # different models rather than one. The auto-discovery above cannot resolve this, so
     # map the selections explicitly: the default source is a relaxation or an MD run
     # (relaxation is the representative), while the `afqmc` selection always maps to
-    # EnergyAfqmc_DB. All three models are injected into ``main_keys`` below so their
+    # EnergyAfqmcModel. All three models are injected into ``main_keys`` below so their
     # fields still appear in the generated documentation.
-    energy_db_models = ("EnergyRelaxation_DB", "EnergyMD_DB", "EnergyAfqmc_DB")
+    energy_db_models = ("EnergyRelaxationModel", "EnergyMDModel", "EnergyAfqmcModel")
     if "energy" in all_keys:
-        output_type_dict["energy"] = "EnergyRelaxation_DB"
-        output_type_dict["energy:afqmc"] = "EnergyAfqmc_DB"
+        output_type_dict["energy"] = "EnergyRelaxationModel"
+        output_type_dict["energy:afqmc"] = "EnergyAfqmcModel"
 
     sort_keys_list = ["energy"]
 
@@ -486,12 +487,12 @@ def get_all_possible_keys(
 
 @functools.cache
 def _get_quantity_to_dataclass_map() -> Dict[str, str]:
-    module = __import__("py4vasp._raw.data_db", fromlist=[None])
+    module = __import__("py4vasp._raw.models", fromlist=[None])
     quantity_to_dataclass: Dict[str, str] = {}
     for class_name in dir(module):
-        if not class_name.endswith("_DB"):
+        if not class_name.endswith("Model") or class_name == "_DatabaseModel":
             continue
-        base_name = class_name[: -len("_DB")]
+        base_name = class_name[: -len("Model")]
         quantity_to_dataclass[convert.quantity_name(base_name)] = class_name
     return quantity_to_dataclass
 
@@ -510,7 +511,7 @@ def _get_dataclass_name_for_quantity(quantity_label: str) -> Optional[str]:
 
 @functools.cache
 def _get_dataclass_field_tuples(dataclass_name: str) -> List[Tuple[str, str]]:
-    module = __import__("py4vasp._raw.data_db", fromlist=[None])
+    module = __import__("py4vasp._raw.models", fromlist=[None])
     dataclass = getattr(module, dataclass_name, None)
     if dataclass is None:
         return []
@@ -560,3 +561,71 @@ def _quantity_label_to_db_key(label: str) -> str:
                 db_key = f"_{db_key}"
             return db_key
     return label
+
+
+def check_schema_snapshot(stored: dict, current: dict) -> Optional[str]:
+    """Validate that ``current`` is a legal successor of the committed ``stored`` snapshot.
+
+    Each argument is a schema fingerprint ``{"schema_version": str, "models": {...}}``.
+    Returns ``None`` when the transition is allowed, otherwise a human-readable message
+    explaining what the developer must do. The rules enforce that any change to the
+    models is accompanied by a bump of the schema version:
+
+    - Nothing changed -> OK.
+    - Models unchanged, same py4vasp series, but the counter changed -> rejected (do not
+      bump the counter without a model change).
+    - py4vasp minor series changed (a release) -> the counter must reset to 0, i.e. the
+      new version is the bare series like ``"0.12"``. A non-zero counter is rejected
+      because an intermediate version such as ``"0.11+db.17"`` was never a released
+      model version and must not be inherited across the release.
+    - Same series, models changed -> the counter must be strictly greater than the
+      stored one.
+    """
+    s_series, s_counter = parse_schema_version(stored["schema_version"])
+    c_series, c_counter = parse_schema_version(current["schema_version"])
+    models_equal = stored["models"] == current["models"]
+    if c_series != s_series:
+        if c_counter != 0:
+            return (
+                f"The py4vasp release changed the schema series to '{c_series}', so "
+                f"__DB_SCHEMA__ in models.py must reset to 0 (it is currently "
+                f"{c_counter}, giving '{current['schema_version']}')."
+            )
+        return None
+    if models_equal:
+        if c_counter != s_counter:
+            return (
+                "The database models are unchanged, so __DB_SCHEMA__ in models.py must "
+                f"stay at {s_counter} (schema version '{stored['schema_version']}'); it "
+                f"is currently {c_counter} (giving '{current['schema_version']}'). "
+                "Revert __DB_SCHEMA__ to its previous value."
+            )
+        return None
+    if c_counter <= s_counter:
+        diff = _format_model_diff(stored["models"], current["models"])
+        return (
+            "The database models changed, but __DB_SCHEMA__ in models.py was not "
+            f"increased -- it is still {c_counter} while the snapshot was recorded at "
+            f"{s_counter}. Edit models.py and set __DB_SCHEMA__ = {s_counter + 1} "
+            f"(bump it by hand; it is not updated automatically).\nChanged fields:\n{diff}"
+        )
+    return None
+
+
+def _format_model_diff(old_models: dict, new_models: dict) -> str:
+    """Human-readable summary of how two model fingerprints differ."""
+    lines: List[str] = []
+    added = sorted(set(new_models) - set(old_models))
+    removed = sorted(set(old_models) - set(new_models))
+    for name in added:
+        lines.append(f"+ model {name}")
+    for name in removed:
+        lines.append(f"- model {name}")
+    for name in sorted(set(old_models) & set(new_models)):
+        old_fields = {tuple(field) for field in old_models[name]}
+        new_fields = {tuple(field) for field in new_models[name]}
+        for field in sorted(new_fields - old_fields):
+            lines.append(f"+ {name}.{field[0]}: {field[1]}")
+        for field in sorted(old_fields - new_fields):
+            lines.append(f"- {name}.{field[0]}: {field[1]}")
+    return "\n".join(lines)

@@ -12,7 +12,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.kpoint import KpointHandler
 from py4vasp._raw import data as raw
-from py4vasp._raw.data_db import Dispersion_DB
+from py4vasp._raw.models import DispersionModel
 from py4vasp._util import check
 
 
@@ -63,7 +63,7 @@ class DispersionHandler:
             min_eigenvalue_down = float(np.min(eigenvalues_down))
             max_eigenvalue_down = float(np.max(eigenvalues_down))
 
-        return Dispersion_DB(
+        return DispersionModel(
             eigenvalue_min=min_eigenvalue,
             eigenvalue_max=max_eigenvalue,
             eigenvalue_min_up=min_eigenvalue_up,

@@ -13,7 +13,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Workfunction_DB
+from py4vasp._raw.models import WorkfunctionModel
 from py4vasp._third_party import graph
 
 
@@ -65,7 +65,7 @@ class WorkfunctionHandler:
 
     def to_database(self) -> dict:
         """Serialize workfunction data for database storage."""
-        return Workfunction_DB(
+        return WorkfunctionModel(
             direction=self._raw_workfunction.idipol,
             workfunction_value=None,
         )

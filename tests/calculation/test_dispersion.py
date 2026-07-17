@@ -9,7 +9,7 @@ import pytest
 from py4vasp._calculation._dispersion import Dispersion, DispersionHandler
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import SPIN_PROJECTION
-from py4vasp._raw.data_db import Dispersion_DB
+from py4vasp._raw.models import DispersionModel
 
 
 @pytest.fixture(params=["single_band", "spin_polarized", "line", "phonon"])
@@ -119,8 +119,8 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def _check_to_database(dispersion_):
     handler = DispersionHandler.from_data(dispersion_.ref.raw_data)
-    db_data: Dispersion_DB = handler.to_database()
-    assert isinstance(db_data, Dispersion_DB)
+    db_data: DispersionModel = handler.to_database()
+    assert isinstance(db_data, DispersionModel)
 
     eigenvalues = dispersion_.ref.eigenvalues
     assert np.isclose(db_data.eigenvalue_min, float(np.min(eigenvalues)))

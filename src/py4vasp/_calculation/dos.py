@@ -17,7 +17,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.projector import ProjectorHandler
 from py4vasp._raw import data as raw
-from py4vasp._raw.data_db import Dos_DB
+from py4vasp._raw.models import DosModel
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
 
@@ -78,7 +78,7 @@ class DosHandler:
         dos_at_raw_fermi_up = dos_at_raw_fermi_dict.get("up", None)
         dos_at_raw_fermi_down = dos_at_raw_fermi_dict.get("down", None)
 
-        return Dos_DB(
+        return DosModel(
             dos_at_fermi_total=dos_at_fermi_total,
             dos_at_fermi_up=dos_at_fermi_up,
             dos_at_fermi_down=dos_at_fermi_down,

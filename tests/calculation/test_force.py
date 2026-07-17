@@ -8,7 +8,7 @@ import pytest
 from py4vasp import _config, exception
 from py4vasp._calculation.force import Force, ForceHandler
 from py4vasp._calculation.structure import Structure
-from py4vasp._raw.data_db import Force_DB
+from py4vasp._raw.models import ForceModel
 
 
 @pytest.fixture
@@ -116,8 +116,8 @@ POSITION                                       TOTAL-FORCE (eV/Angst)
 
 def test_to_database(forces):
     handler = ForceHandler.from_data(forces.ref.raw_data)
-    db_data: Force_DB = handler.to_database()
-    assert isinstance(db_data, Force_DB)
+    db_data: ForceModel = handler.to_database()
+    assert isinstance(db_data, ForceModel)
     for prefix, suffix_ in [
         ("final", ["min", "median", "mean", "max"]),
         ("initial", ["min", "max"]),

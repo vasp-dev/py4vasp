@@ -9,7 +9,7 @@ from py4vasp._calculation.piezoelectric_tensor import (
     PiezoelectricTensorHandler,
     _extract_tensor,
 )
-from py4vasp._raw.data_db import PiezoelectricTensor_DB
+from py4vasp._raw.models import PiezoelectricTensorModel
 from py4vasp._util.tensor import symmetry_reduce
 
 
@@ -107,12 +107,12 @@ Piezoelectric tensor (C/m²)
 
 def _check_to_database(raw_tensor, piezo_ref):
     handler = PiezoelectricTensorHandler.from_data(raw_tensor)
-    db_data: PiezoelectricTensor_DB = handler.to_database()
-    assert isinstance(db_data, PiezoelectricTensor_DB)
+    db_data: PiezoelectricTensorModel = handler.to_database()
+    assert isinstance(db_data, PiezoelectricTensorModel)
     for idx, prefix in enumerate(["total", "ionic", "electronic"]):
         sum_2d_tensor_not_none = 0
         for idy, suffix in enumerate(["x", "y", "z"]):
-            assert getattr(db_data, f"{prefix}_3d_tensor_{suffix}") == list(
+            assert getattr(db_data, f"{prefix}_3d_tensor_{suffix}") == tuple(
                 _extract_tensor(piezo_ref.piezo[idx])[idy, (0, 1, 2, 5, 3, 4)]
             )
             assert (

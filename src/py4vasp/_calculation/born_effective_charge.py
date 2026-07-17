@@ -12,7 +12,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._raw.data_db import BornEffectiveCharge_DB
+from py4vasp._raw.models import BornEffectiveChargeModel
 from py4vasp._util import check
 
 
@@ -91,7 +91,7 @@ ion {ion + 1:4d}   {element}
             eigenvalue_max_index = int(np.argmax(traces))
             eigenvalue_min_index = int(np.argmin(traces))
 
-        return BornEffectiveCharge_DB(
+        return BornEffectiveChargeModel(
             eigenvalue_min=eigenvalue_min,
             eigenvalue_min_index=eigenvalue_min_index,
             eigenvalue_max=eigenvalue_max,

@@ -5,7 +5,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation._stoichiometry import Stoichiometry, StoichiometryHandler
 from py4vasp._calculation.selection import Selection
-from py4vasp._raw.data_db import Stoichiometry_DB
+from py4vasp._raw.models import StoichiometryModel
 from py4vasp._util import check, convert, import_, select
 
 ase = import_.optional("ase")
@@ -88,8 +88,8 @@ class Base:
 
     def test_to_database(self):
         handler = StoichiometryHandler.from_data(self.raw_stoichiometry)
-        db_data: Stoichiometry_DB = handler.to_database()
-        assert isinstance(db_data, Stoichiometry_DB)
+        db_data: StoichiometryModel = handler.to_database()
+        assert isinstance(db_data, StoichiometryModel)
 
         expected_ion_types = getattr(self, "ref_ion_types", self.unique_elements)
         expected_num_ion_types = getattr(self, "ref_num_ion_types", None)
@@ -273,5 +273,5 @@ def test_stoichiometry_not_collected_standalone(raw_data):
     # the handler still produces the stoichiometry model for the parent to fold in
     assert isinstance(
         StoichiometryHandler.from_data(raw_stoichiometry).to_database(),
-        Stoichiometry_DB,
+        StoichiometryModel,
     )

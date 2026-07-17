@@ -14,7 +14,7 @@ from py4vasp._calculation.energy import (
     EnergyHandler,
     _detect_energy_format,
 )
-from py4vasp._raw.data_db import EnergyAfqmc_DB, EnergyMD_DB, EnergyRelaxation_DB
+from py4vasp._raw.models import EnergyAfqmcModel, EnergyMDModel, EnergyRelaxationModel
 from py4vasp._util import convert
 
 
@@ -210,7 +210,7 @@ def test_to_database_md(MD_energy, raw_data):
     handler = EnergyHandler.from_data(raw_energy)
     database_data = handler.to_database()
 
-    assert isinstance(database_data, EnergyMD_DB)
+    assert isinstance(database_data, EnergyMDModel)
 
     labels = MD_energy.ref.labels
     values = MD_energy.ref.values
@@ -235,7 +235,7 @@ def test_to_database_relax(raw_data):
     handler = EnergyHandler.from_data(raw_energy)
     database_data = handler.to_database()
 
-    assert isinstance(database_data, EnergyRelaxation_DB)
+    assert isinstance(database_data, EnergyRelaxationModel)
 
     get_label = lambda x: convert.text_to_string(x).strip()
     labels = [get_label(label) for label in raw_energy.labels]
@@ -261,7 +261,7 @@ def test_to_database_afqmc(raw_data):
     handler = EnergyHandler.from_data(raw_energy)
     database_data = handler.to_database()
 
-    assert isinstance(database_data, EnergyAfqmc_DB)
+    assert isinstance(database_data, EnergyAfqmcModel)
 
     get_label = lambda x: convert.text_to_string(x).strip()
     labels = [get_label(label) for label in raw_energy.labels]

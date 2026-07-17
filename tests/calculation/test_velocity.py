@@ -8,7 +8,7 @@ import pytest
 from py4vasp import _config, exception
 from py4vasp._calculation.structure import Structure
 from py4vasp._calculation.velocity import Velocity, VelocityHandler
-from py4vasp._raw.data_db import Velocity_DB
+from py4vasp._raw.models import VelocityModel
 
 
 @pytest.fixture
@@ -118,8 +118,8 @@ def test_print_Sr2TiO4(Sr2TiO4, format_):
 
 def test_to_database(velocities):
     handler = VelocityHandler.from_data(velocities.ref.raw_data)
-    db_data: Velocity_DB = handler.to_database()
-    assert isinstance(db_data, Velocity_DB)
+    db_data: VelocityModel = handler.to_database()
+    assert isinstance(db_data, VelocityModel)
     has_timesteps = velocities.ref.velocities.ndim == 3
     final_velocities = (
         velocities.ref.velocities[-1] if has_timesteps else velocities.ref.velocities

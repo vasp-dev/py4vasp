@@ -14,7 +14,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import PiezoelectricTensor_DB
+from py4vasp._raw.models import PiezoelectricTensorModel
 from py4vasp._util import check
 from py4vasp._util.tensor import symmetry_reduce, tensor_constants
 
@@ -118,7 +118,7 @@ class PiezoelectricTensorHandler:
                     e_frobenius[idt],
                 ) = _compute_bulk_quantities(e_tensor)
 
-        return PiezoelectricTensor_DB(
+        return PiezoelectricTensorModel(
             total_3d_tensor_x=reduced_tensor_x[0],
             total_3d_tensor_y=reduced_tensor_y[0],
             total_3d_tensor_z=reduced_tensor_z[0],

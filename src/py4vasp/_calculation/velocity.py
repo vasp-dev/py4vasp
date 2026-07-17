@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     slice_steps,
 )
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._raw.data_db import Velocity_DB
+from py4vasp._raw.models import VelocityModel
 from py4vasp._third_party import view
 
 
@@ -83,7 +83,7 @@ class VelocityHandler:
         else:
             final_velocity_norms = np.linalg.norm(velocities[-1], axis=-1)
             initial_velocity_norms = np.linalg.norm(velocities[0], axis=-1)
-        return Velocity_DB(
+        return VelocityModel(
             final_velocity_min=float(np.min(final_velocity_norms)),
             final_velocity_max=float(np.max(final_velocity_norms)),
             final_velocity_mean=float(np.mean(final_velocity_norms)),

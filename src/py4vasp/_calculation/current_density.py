@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
-from py4vasp._raw.data_db import CurrentDensity_DB
+from py4vasp._raw.models import CurrentDensityModel
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
@@ -63,7 +63,7 @@ class CurrentDensityHandler:
             **self._read_current_densities(),
         }
 
-    def to_database(self) -> "CurrentDensity_DB":
+    def to_database(self) -> "CurrentDensityModel":
         """Serialize a scalar summary of the current density for database storage."""
         grid_shape, magnitudes = None, []
         for key in self._raw_current_density.valid_indices:
@@ -78,9 +78,9 @@ class CurrentDensityHandler:
                 nz, ny, nx = vector_field.shape[1:]
                 grid_shape = [nx, ny, nz]
         if not magnitudes:
-            return CurrentDensity_DB()
+            return CurrentDensityModel()
         magnitude = np.concatenate(magnitudes)
-        return CurrentDensity_DB(
+        return CurrentDensityModel(
             grid_shape=grid_shape,
             magnitude_min=float(np.min(magnitude)),
             magnitude_max=float(np.max(magnitude)),

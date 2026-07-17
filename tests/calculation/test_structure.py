@@ -9,7 +9,7 @@ import pytest
 from py4vasp import exception, raw
 from py4vasp._calculation._stoichiometry import Stoichiometry, StoichiometryHandler
 from py4vasp._calculation.structure import Structure, StructureHandler
-from py4vasp._raw.data_db import Structure_DB
+from py4vasp._raw.models import StructureModel
 from py4vasp._util import check
 
 REF_POSCAR = """\
@@ -574,7 +574,7 @@ def test_to_database(structures, Assert):
 
     def check_geometry(db_data, index):
         # Each model now holds a single geometry with unprefixed fields.
-        assert isinstance(db_data, Structure_DB)
+        assert isinstance(db_data, StructureModel)
         assert db_data.num_ions == num_ions
         assert db_data.dimensionality == dimensionality
         lattice, volume, area_2d = reference_geometry(index)

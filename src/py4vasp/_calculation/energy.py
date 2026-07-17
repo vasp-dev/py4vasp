@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import EnergyAfqmc_DB, EnergyMD_DB, EnergyRelaxation_DB
+from py4vasp._raw.models import EnergyAfqmcModel, EnergyMDModel, EnergyRelaxationModel
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 
@@ -177,7 +177,7 @@ class EnergyHandler:
             return self._to_md_database(default_dict)
         return self._to_relaxation_database(default_dict)
 
-    def _to_md_database(self, default_dict) -> EnergyMD_DB:
+    def _to_md_database(self, default_dict) -> EnergyMDModel:
         energy_dict = {}
         for label, values in default_dict.items():
             db_key = _DB_KEYS.get(label)
@@ -187,9 +187,9 @@ class EnergyHandler:
             energy_dict[f"{db_key}_initial"] = float(v[0])
             energy_dict[f"{db_key}_average"] = float(np.mean(v))
             energy_dict[f"{db_key}_final"] = float(v[-1])
-        return EnergyMD_DB(**energy_dict)
+        return EnergyMDModel(**energy_dict)
 
-    def _to_relaxation_database(self, default_dict) -> EnergyRelaxation_DB:
+    def _to_relaxation_database(self, default_dict) -> EnergyRelaxationModel:
         energy_dict = {}
         for label, values in default_dict.items():
             db_key = _DB_KEYS.get(label)
@@ -201,9 +201,9 @@ class EnergyHandler:
             energy_dict[f"{db_key}_min"] = float(np.min(v))
             energy_dict[f"{db_key}_step_min"] = int(np.argmin(v))
             energy_dict[f"{db_key}_final"] = float(v[-1])
-        return EnergyRelaxation_DB(**energy_dict)
+        return EnergyRelaxationModel(**energy_dict)
 
-    def _to_afqmc_database(self, default_dict) -> EnergyAfqmc_DB:
+    def _to_afqmc_database(self, default_dict) -> EnergyAfqmcModel:
         energy_dict = {}
         for label, values in default_dict.items():
             db_key = _DB_KEYS.get(label)
@@ -215,7 +215,7 @@ class EnergyHandler:
             # the step counter has no meaningful average
             if db_key != "step":
                 energy_dict[f"{db_key}_average"] = float(np.mean(v))
-        return EnergyAfqmc_DB(**energy_dict)
+        return EnergyAfqmcModel(**energy_dict)
 
     @property
     def _steps_or_last(self):
