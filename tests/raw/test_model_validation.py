@@ -1,0 +1,140 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import List, Optional
+
+import numpy as np
+import pytest
+
+from py4vasp import exception
+from py4vasp._raw.data_wrapper import VaspData
+from py4vasp._raw.models import (
+    IntVector,
+    Vector,
+    Voigt,
+    VoigtMatrix,
+    _coerce_field,
+)
+
+
+# --- scalar leaf types -----------------------------------------------------
+
+
+def test_float_accepts_numpy_float_and_int():
+    result = _coerce_field(np.float64(1.5), float, "x")
+    assert result == 1.5 and type(result) is float
+    result = _coerce_field(3, float, "x")
+    assert result == 3.0 and type(result) is float
+
+
+def test_float_rejects_string_and_bool():
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field("nope", float, "x")
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field(True, float, "x")
+
+
+def test_int_accepts_numpy_int_rejects_float_and_bool():
+    result = _coerce_field(np.int64(4), int, "x")
+    assert result == 4 and type(result) is int
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field(3.5, int, "x")
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field(True, int, "x")
+
+
+def test_bool_accepts_numpy_bool_rejects_int():
+    result = _coerce_field(np.bool_(True), bool, "x")
+    assert result is True and type(result) is bool
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field(1, bool, "x")
+
+
+def test_str_accepts_numpy_str():
+    result = _coerce_field(np.str_("Fm-3m"), str, "x")
+    assert result == "Fm-3m" and type(result) is str
+
+
+def test_zero_dim_array_coerces_to_scalar():
+    result = _coerce_field(np.array(2.0), float, "x")
+    assert result == 2.0 and type(result) is float
+
+
+# --- Optional --------------------------------------------------------------
+
+
+def test_optional_allows_none():
+    assert _coerce_field(None, Optional[float], "x") is None
+
+
+def test_non_optional_rejects_none():
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field(None, float, "x")
+
+
+def test_vaspdata_none_treated_as_none():
+    assert _coerce_field(VaspData(None), Optional[float], "x") is None
+
+
+# --- fixed-size Tuple aliases ---------------------------------------------
+
+
+def test_vector_coerces_to_tuple_of_floats():
+    result = _coerce_field([1, 2, 3], Vector, "v")
+    assert result == (1.0, 2.0, 3.0)
+    assert type(result) is tuple
+    assert all(type(x) is float for x in result)
+    result = _coerce_field(np.array([1.0, 2.0, 3.0]), Vector, "v")
+    assert result == (1.0, 2.0, 3.0) and type(result) is tuple
+
+
+def test_vector_enforces_length():
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field([1.0, 2.0], Vector, "v")
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field([1.0, 2.0, 3.0, 4.0], Vector, "v")
+
+
+def test_int_vector_rejects_float_elements():
+    result = _coerce_field([1, 2, 3], IntVector, "grid")
+    assert result == (1, 2, 3) and all(type(x) is int for x in result)
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field([1.0, 2.0, 3.0], IntVector, "grid")
+
+
+def test_voigt_enforces_length_six():
+    good = _coerce_field(np.arange(6.0), Voigt, "t")
+    assert good == (0.0, 1.0, 2.0, 3.0, 4.0, 5.0)
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field(np.arange(5.0), Voigt, "t")
+
+
+def test_voigt_matrix_enforces_six_by_six():
+    result = _coerce_field(np.zeros((6, 6)), VoigtMatrix, "m")
+    assert type(result) is tuple and len(result) == 6
+    assert all(type(row) is tuple and len(row) == 6 for row in result)
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field(np.zeros((6, 5)), VoigtMatrix, "m")
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field(np.zeros((5, 6)), VoigtMatrix, "m")
+
+
+# --- variable-length List --------------------------------------------------
+
+
+def test_list_is_variable_length_and_checks_elements():
+    assert _coerce_field(["a", "b"], List[str], "labels") == ["a", "b"]
+    assert _coerce_field([], List[str], "labels") == []
+    result = _coerce_field(np.array([1, 2, 3]), List[int], "counts")
+    assert result == [1, 2, 3] and all(type(x) is int for x in result)
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field([1, 2], List[str], "labels")
+
+
+def test_scalar_where_sequence_expected_raises():
+    with pytest.raises(exception.DataMismatch):
+        _coerce_field(1.0, Vector, "v")
+
+
+def test_error_message_names_field():
+    with pytest.raises(exception.DataMismatch, match="fermi_energy"):
+        _coerce_field("bad", float, "fermi_energy")

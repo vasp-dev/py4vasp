@@ -1,13 +1,29 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
+import numbers
 import re
 import types
 import typing
 from dataclasses import dataclass, fields
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
+
+from py4vasp import exception
 from py4vasp._raw.data_wrapper import VaspData
+
+# Semantic, fixed-size type aliases for model fields. The length is part of the type
+# and is enforced at construction time (see ``_coerce_field`` / ``_DatabaseModel``).
+# Use ``List[...]`` only where the number of elements is genuinely variable.
+Vector = Tuple[float, float, float]
+"""A 3-component real vector (lattice vector, k-point, dipole moment, RGB color)."""
+IntVector = Tuple[int, int, int]
+"""A 3-component integer vector (grid shape ``(nx, ny, nz)``)."""
+Voigt = Tuple[float, float, float, float, float, float]
+"""A compact symmetric tensor in Voigt order ``(xx, yy, zz, xy, yz, zx)``."""
+VoigtMatrix = Tuple[Voigt, Voigt, Voigt, Voigt, Voigt, Voigt]
+"""A 6x6 tensor in Voigt notation (e.g. the elastic modulus)."""
 
 # Counter for intermediate database-schema migrations within one py4vasp release.
 # 0 means "the released/default schema" -- the version is then just the bare py4vasp
@@ -91,6 +107,110 @@ def schema_fingerprint() -> dict:
             for field_ in sorted(fields(model), key=lambda field_: field_.name)
         ]
     return {"schema_version": schema_version(), "models": model_fingerprints}
+
+
+def _strip_optional(annotation):
+    """Return ``(inner, is_optional)`` splitting ``Optional[X]`` into ``(X, True)``."""
+    origin = typing.get_origin(annotation)
+    if origin is typing.Union or origin is types.UnionType:
+        args = typing.get_args(annotation)
+        non_none = [arg for arg in args if arg is not type(None)]
+        is_optional = len(non_none) < len(args)
+        if len(non_none) == 1:
+            return non_none[0], is_optional
+        return typing.Union[tuple(non_none)], is_optional
+    return annotation, False
+
+
+def _coerce_field(value, annotation, name):
+    """Coerce ``value`` to native Python matching ``annotation`` and validate it.
+
+    numpy scalars become ``float``/``int``/``bool``, ``np.ndarray`` becomes nested
+    ``tuple``/``list``, so the stored model is JSON-serializable. Fixed-size ``Tuple``
+    aliases enforce their length; ``List[...]`` allows a variable number of elements.
+    Raises :class:`exception.DataMismatch` (naming the field) on any mismatch.
+    """
+    inner, is_optional = _strip_optional(annotation)
+    if isinstance(value, VaspData):
+        value = None if value.is_none() else value._data
+    if value is None:
+        if is_optional:
+            return None
+        raise exception.DataMismatch(f"Field '{name}' must not be None.")
+    origin = typing.get_origin(inner)
+    if origin is tuple:
+        return _coerce_sequence(value, typing.get_args(inner), name, fixed=True)
+    if origin is list:
+        return _coerce_sequence(value, typing.get_args(inner), name, fixed=False)
+    if origin is None:
+        return _coerce_scalar(value, inner, name)
+    raise exception.DataMismatch(
+        f"Field '{name}' has an unsupported type annotation '{annotation}'."
+    )
+
+
+def _coerce_sequence(value, args, name, *, fixed):
+    if isinstance(value, np.ndarray):
+        elements = list(value)
+    elif isinstance(value, (list, tuple)):
+        elements = list(value)
+    else:
+        raise exception.DataMismatch(
+            f"Field '{name}' expected a sequence but got '{type(value).__name__}'."
+        )
+    if fixed:
+        if len(elements) != len(args):
+            raise exception.DataMismatch(
+                f"Field '{name}' expected {len(args)} elements but got {len(elements)}."
+            )
+        return tuple(
+            _coerce_field(element, args[index], f"{name}[{index}]")
+            for index, element in enumerate(elements)
+        )
+    element_type = args[0]
+    return [
+        _coerce_field(element, element_type, f"{name}[{index}]")
+        for index, element in enumerate(elements)
+    ]
+
+
+def _coerce_scalar(value, target, name):
+    if isinstance(value, np.ndarray):
+        if value.ndim != 0:
+            raise exception.DataMismatch(
+                f"Field '{name}' expected a scalar '{target.__name__}' but got an "
+                f"array of shape {value.shape}."
+            )
+        value = value.item()
+    if target is bool:
+        if isinstance(value, (bool, np.bool_)):
+            return bool(value)
+        raise _wrong_scalar(name, target, value)
+    # bool is a subtype of int/Real, so reject it explicitly for numeric/str targets
+    if isinstance(value, (bool, np.bool_)):
+        raise _wrong_scalar(name, target, value)
+    if target is int:
+        if isinstance(value, numbers.Integral):
+            return int(value)
+        raise _wrong_scalar(name, target, value)
+    if target is float:
+        if isinstance(value, numbers.Real):
+            return float(value)
+        raise _wrong_scalar(name, target, value)
+    if target is str:
+        if isinstance(value, str):
+            return str(value)
+        raise _wrong_scalar(name, target, value)
+    raise exception.DataMismatch(
+        f"Field '{name}' has an unsupported scalar type '{target}'."
+    )
+
+
+def _wrong_scalar(name, target, value):
+    return exception.DataMismatch(
+        f"Field '{name}' expected '{target.__name__}' but got "
+        f"'{type(value).__name__}'."
+    )
 
 
 @dataclass
