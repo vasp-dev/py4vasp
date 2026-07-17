@@ -64,10 +64,10 @@ def test_to_database(raw_data):
     db_data: PolarizationModel = handler.to_database()
     assert isinstance(db_data, PolarizationModel)
 
-    assert db_data.ionic_dipole_moment == list(raw_polarization.ion[:])
-    assert db_data.electronic_dipole_moment == list(raw_polarization.electron[:])
+    assert db_data.ionic_dipole_moment == tuple(raw_polarization.ion[:])
+    assert db_data.electronic_dipole_moment == tuple(raw_polarization.electron[:])
     total_dipole = raw_polarization.ion[:] + raw_polarization.electron[:]
-    assert db_data.total_dipole_moment == list(total_dipole)
+    assert db_data.total_dipole_moment == tuple(total_dipole)
     assert db_data.ionic_dipole_norm == float(np.linalg.norm(raw_polarization.ion[:]))
     assert db_data.electronic_dipole_norm == float(
         np.linalg.norm(raw_polarization.electron[:])

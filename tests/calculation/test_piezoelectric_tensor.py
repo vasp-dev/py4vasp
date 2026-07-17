@@ -112,7 +112,7 @@ def _check_to_database(raw_tensor, piezo_ref):
     for idx, prefix in enumerate(["total", "ionic", "electronic"]):
         sum_2d_tensor_not_none = 0
         for idy, suffix in enumerate(["x", "y", "z"]):
-            assert getattr(db_data, f"{prefix}_3d_tensor_{suffix}") == list(
+            assert getattr(db_data, f"{prefix}_3d_tensor_{suffix}") == tuple(
                 _extract_tensor(piezo_ref.piezo[idx])[idy, (0, 1, 2, 5, 3, 4)]
             )
             assert (

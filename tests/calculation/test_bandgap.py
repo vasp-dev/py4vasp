@@ -367,8 +367,8 @@ def _check_to_database(_handler, Assert):
     for fld in fields(BandgapModel):
         if fld.name.startswith("kpoint"):
             assert isinstance(
-                getattr(db_dict, fld.name), (type(None), list)
-            ), f"Expected type Optional[List[float]] for {fld.name}, got {type(getattr(db_dict, fld.name))}"
+                getattr(db_dict, fld.name), (type(None), tuple)
+            ), f"Expected type Optional[Vector] for {fld.name}, got {type(getattr(db_dict, fld.name))}"
         elif fld.name.startswith("__"):
             assert isinstance(
                 getattr(db_dict, fld.name), (type(None), str)
@@ -390,7 +390,7 @@ def _check_to_database(_handler, Assert):
                 ), f"Expected None for key '{actual_key}', but got {actual_value}."
             if actual_key.startswith("kpoint"):
                 assert actual_value is None or (
-                    isinstance(actual_value, list)
+                    isinstance(actual_value, tuple)
                     and all(isinstance(i, float) for i in actual_value)
                 ), f"{actual_key} has unexpected type {type(actual_value)}: {actual_value}"
                 assert actual_value is None or (

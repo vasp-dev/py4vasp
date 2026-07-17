@@ -216,7 +216,7 @@ def _check_to_database(tensor, Assert):
             assert v is None or isinstance(v, (int, float))
         elif fld.name.endswith("tensor"):
             assert v is None or (
-                isinstance(v, list) and all(isinstance(i, (int, float)) for i in v)
+                isinstance(v, tuple) and all(isinstance(i, (int, float)) for i in v)
             )
             assert v is None or len(v) == 6
         elif fld.name == "method":

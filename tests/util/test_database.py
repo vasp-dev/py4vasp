@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -260,9 +261,9 @@ def test_no_vaspdata_in_db():
 
     @dataclasses.dataclass
     class DummyClassDB(_DatabaseModel):
-        field1: int = None
-        field2: str = None
-        field3: bool = None
+        field1: Optional[int] = None
+        field2: Optional[str] = None
+        field3: Optional[bool] = None
 
     dummyClass = DummyClassDB(
         field1=VaspData(None), field2=VaspData("test"), field3=True

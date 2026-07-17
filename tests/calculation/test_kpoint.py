@@ -294,7 +294,10 @@ def _check_to_database(data):
     assert db_data.line_length == data.ref.line_length
     assert db_data.num_lines == getattr(data.ref, "number_lines", 1)
     assert db_data.num_kpoints_total == len(data.ref.raw_data.coordinates)
-    assert db_data.num_kpoints_grid == getattr(data.ref, "grid", None)
+    expected_grid = getattr(data.ref, "grid", None)
+    assert db_data.num_kpoints_grid == (
+        tuple(expected_grid) if expected_grid is not None else None
+    )
     if db_data.labels is not None:
         labels = [k for k in db_data.labels if k != ""]
     else:

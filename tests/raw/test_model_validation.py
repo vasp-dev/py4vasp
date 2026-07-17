@@ -8,7 +8,10 @@ import pytest
 from py4vasp import exception
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.models import (
+    BandModel,
     IntVector,
+    StressModel,
+    StructureModel,
     Vector,
     Voigt,
     VoigtMatrix,
@@ -52,6 +55,18 @@ def test_bool_accepts_numpy_bool_rejects_int():
 def test_str_accepts_numpy_str():
     result = _coerce_field(np.str_("Fm-3m"), str, "x")
     assert result == "Fm-3m" and type(result) is str
+
+
+def test_str_decodes_bytes():
+    result = _coerce_field(b"P1", str, "x")
+    assert result == "P1" and type(result) is str
+
+
+def test_complex_accepts_numpy_complex_and_float():
+    result = _coerce_field(np.complex128(1 + 2j), complex, "u")
+    assert result == (1 + 2j) and type(result) is complex
+    result = _coerce_field(3.0, complex, "u")
+    assert result == (3 + 0j) and type(result) is complex
 
 
 def test_zero_dim_array_coerces_to_scalar():
@@ -138,3 +153,50 @@ def test_scalar_where_sequence_expected_raises():
 def test_error_message_names_field():
     with pytest.raises(exception.DataMismatch, match="fermi_energy"):
         _coerce_field("bad", float, "fermi_energy")
+
+
+# --- validation wired into model construction (__post_init__) --------------
+
+
+def test_model_coerces_numpy_scalar_to_native_float():
+    model = StressModel(initial_stress_mean=np.float64(1.5))
+    assert model.initial_stress_mean == 1.5
+    assert type(model.initial_stress_mean) is float
+
+
+def test_model_coerces_numpy_array_to_tuple():
+    model = StressModel(final_stress_tensor=np.arange(6.0))
+    assert model.final_stress_tensor == (0.0, 1.0, 2.0, 3.0, 4.0, 5.0)
+    assert type(model.final_stress_tensor) is tuple
+
+
+def test_model_coerces_list_of_numpy_to_tuple_of_float():
+    model = StructureModel(lattice_vector_1=[np.float64(1.0), np.float64(2.0), np.float64(3.0)])
+    assert model.lattice_vector_1 == (1.0, 2.0, 3.0)
+    assert all(type(x) is float for x in model.lattice_vector_1)
+
+
+def test_model_defaults_stay_none():
+    model = StressModel()
+    assert model.initial_stress_mean is None
+    assert model.final_stress_tensor is None
+
+
+def test_model_rejects_wrong_length_vector():
+    with pytest.raises(exception.DataMismatch, match="final_stress_tensor"):
+        StressModel(final_stress_tensor=[1.0, 2.0])
+
+
+def test_model_rejects_wrong_scalar_type():
+    with pytest.raises(exception.DataMismatch, match="fermi_energy"):
+        BandModel(fermi_energy="not a number")
+
+
+def test_model_is_json_serializable_after_construction():
+    import dataclasses
+    import json
+
+    model = StressModel(
+        initial_stress_mean=np.float64(1.5), final_stress_tensor=np.arange(6.0)
+    )
+    json.dumps(dataclasses.asdict(model))  # must not raise

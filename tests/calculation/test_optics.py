@@ -378,12 +378,12 @@ def test_to_database(visible, Assert):
     expected_color = Color(_reference_color(eps, energies))
     Assert.allclose(db_data.color_rgb, list(expected_color.rgb))
     assert db_data.color_hex == expected_color.hex
-    # scalar fields are plain floats and the color is stored as a list / hex string
+    # scalar fields are plain floats and the color is a fixed-size tuple / hex string
     assert all(
         isinstance(getattr(db_data, name), float)
         for name in ("energy_min", "reflectivity_max", "transmission_min")
     )
-    assert isinstance(db_data.color_rgb, list)
+    assert isinstance(db_data.color_rgb, tuple)
     assert isinstance(db_data.color_hex, str)
 
 

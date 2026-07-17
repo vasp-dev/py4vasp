@@ -197,7 +197,13 @@ def _coerce_scalar(value, target, name):
         if isinstance(value, numbers.Real):
             return float(value)
         raise _wrong_scalar(name, target, value)
+    if target is complex:
+        if isinstance(value, numbers.Complex):
+            return complex(value)
+        raise _wrong_scalar(name, target, value)
     if target is str:
+        if isinstance(value, bytes):  # VASP strings often arrive undecoded
+            return value.decode()
         if isinstance(value, str):
             return str(value)
         raise _wrong_scalar(name, target, value)
@@ -215,12 +221,18 @@ def _wrong_scalar(name, target, value):
 
 @dataclass
 class _DatabaseModel:
-    """Mixin for dataclasses that will be stored in the database."""
+    """Base class for dataclasses that will be stored in the database.
+
+    On construction every field is coerced to a native, JSON-serializable Python type
+    and validated against its annotation (see :func:`_coerce_field`). This normalizes the
+    numpy scalars and arrays that the producers emit and guarantees that a field actually
+    holds the declared type and, for the fixed-size tuple aliases, the declared length.
+    """
 
     def __post_init__(self):
-        for field_name, field_value in self.__dict__.items():
-            if isinstance(field_value, VaspData):
-                setattr(self, field_name, field_value._data)
+        for field in fields(self):
+            value = getattr(self, field.name)
+            setattr(self, field.name, _coerce_field(value, field.type, field.name))
 
 
 @dataclass
@@ -456,18 +468,18 @@ class DosModel(_DatabaseModel):
 class EffectiveCoulombModel(_DatabaseModel):
     """Data class for storing effective Coulomb interaction data in the database."""
 
-    screened_U_uppercase: Optional[float] = None
+    screened_U_uppercase: Optional[complex] = None
     """The value of the screened effective Coulomb interaction U, in eV."""
-    screened_u_lowercase: Optional[float] = None
+    screened_u_lowercase: Optional[complex] = None
     """The value of the screened effective Coulomb interaction u, in eV."""
-    screened_J_uppercase: Optional[float] = None
+    screened_J_uppercase: Optional[complex] = None
     """The value of the screened effective Coulomb interaction J, in eV."""
 
-    bare_V_uppercase: Optional[float] = None
+    bare_V_uppercase: Optional[complex] = None
     """The value of the bare effective Coulomb interaction V, in eV."""
-    bare_v_lowercase: Optional[float] = None
+    bare_v_lowercase: Optional[complex] = None
     """The value of the bare effective Coulomb interaction v, in eV."""
-    bare_J_uppercase: Optional[float] = None
+    bare_J_uppercase: Optional[complex] = None
     """The value of the bare effective Coulomb interaction J, in eV."""
 
 
