@@ -722,6 +722,23 @@ schema.add(
 )
 schema.add(raw.Structure, name="poscar", file="POSCAR", data_factory=read.structure)
 #
+schema.add(
+    raw.Symmetry,
+    required=raw.Version(6, 6),
+    cell=Link("cell", "final"),
+    rotations="results/symmetry/rotations_real_space",
+    reciprocal_rotations="results/symmetry/rotations_reciprocal_space",
+    translations="results/symmetry/translations",
+    inverse_operations="results/symmetry/inverse_operations",
+    atom_permutations="results/symmetry/cell_atom_permutations",
+    primitive_lattice_vectors="results/symmetry/primitive_lattice_vectors",
+    primitive_translations="results/symmetry/primitive_translations",
+    number_of_operations="results/symmetry/number_of_operations",
+    number_of_primitive_cells="results/symmetry/number_of_primitive_cells",
+    isym="results/symmetry/isym",
+    spin_flips="results/symmetry/cell_spin_flips",
+)
+#
 schema.add(raw.System, system="input/incar/SYSTEM")
 #
 schema.add(

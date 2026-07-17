@@ -18,6 +18,11 @@ px = import_.optional("plotly.express")
 interpolate = import_.optional("scipy.interpolate")
 
 
+def _cross_2d(a, b):
+    # numpy removed the cross product of 2d vectors, so compute the scalar directly
+    return a[0] * b[1] - a[1] * b[0]
+
+
 @dataclasses.dataclass
 class Contour(trace.Trace):
     """Represents data on a 2d slice through the unit cell.
@@ -406,7 +411,7 @@ class Contour(trace.Trace):
         return not np.allclose((y_position_first_vector, x_position_second_vector), 0)
 
     def _interpolate_data(self, lattice, data):
-        area_cell = abs(np.cross(lattice[0], lattice[1]))
+        area_cell = abs(_cross_2d(lattice[0], lattice[1]))
         points_per_area = data.size / area_cell
         points_per_line = np.sqrt(points_per_area) * self._interpolation_factor
         lengths = np.sum(np.abs(lattice), axis=0)
@@ -649,7 +654,7 @@ class Contour(trace.Trace):
         ]
 
     def _shift_label(self, current_vector, other_vector):
-        invert = np.cross(current_vector, other_vector) < 0
+        invert = _cross_2d(current_vector, other_vector) < 0
         norm = np.linalg.norm(current_vector)
         shifts = self._shift_label_pixels * current_vector[::-1] / norm
         if invert:

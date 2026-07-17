@@ -130,6 +130,12 @@ def test_get_primitive_ion_numbers(ion_numbers, expected):
             [2, 3, 1, 1, 2],
             ("AsBrCa", "As-Br-Ca", ["As", "Br", "Ca"], [3, 3, 3], [1, 1, 1]),
         ),
+        # names absent but counts present: keep the counts (and primitive counts),
+        # but formula/compound/types cannot be derived without element names
+        (None, [2, 1, 4], (None, None, None, [2, 1, 4], [2, 1, 4])),
+        (None, [4, 2, 6], (None, None, None, [4, 2, 6], [2, 1, 3])),
+        # neither names nor counts: everything is None
+        (None, None, (None, None, None, None, None)),
     ],
 )
 def test_get_formula_and_compound(ion_types, ion_numbers, expectations):
@@ -189,7 +195,13 @@ def test_get_all_possible_keys():
     assert output_type_dict["band"] == output_type_dict["band:kpoints_opt"]
     assert output_type_dict["band"] == output_type_dict["band:kpoints_wan"]
     assert "band:default" not in output_type_dict
-    assert output_type_dict["current_density"] is None
+    assert output_type_dict["current_density"] == "CurrentDensity_DB"
+
+    # energy is represented by three format-specific models; there is no flat Energy_DB
+    assert output_type_dict["energy"] == "EnergyRelaxation_DB"
+    assert output_type_dict["energy:afqmc"] == "EnergyAfqmc_DB"
+    for model in ("EnergyRelaxation_DB", "EnergyMD_DB", "EnergyAfqmc_DB"):
+        assert model in all_keys and len(all_keys[model]) > 0
 
     assert (
         sum([1 for v in all_keys.values() if len(v) > 0 and isinstance(v[0], tuple)])
@@ -207,9 +219,14 @@ def basic_db_checks(demo_calc_db: _DatabaseData, minimum_counter=1):
     # Check metadata fields
     assert isinstance(demo_calc_db.metadata.path, Path)
 
-    # Check that properties has enough non-empty entries
+    # properties is a dict of dicts {quantity: {selection: model}}; count the
+    # non-empty inner models across all quantities and selections.
     non_empty_counter = sum(
-        1 for v in demo_calc_db.properties.values() if v not in (None, {}, [])
+        1
+        for selections in demo_calc_db.properties.values()
+        if isinstance(selections, dict)
+        for v in selections.values()
+        if v not in (None, {}, [])
     )
     assert non_empty_counter > minimum_counter
     assert "run_info" in demo_calc_db.properties

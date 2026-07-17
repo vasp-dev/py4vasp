@@ -17,7 +17,7 @@ authors = [
     { name = "Tomáš Bučko", email = "tomas.bucko@uniba.sk" },
     { name = "Max Liebetreu", email = "max.liebetreu@vasp.at" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "Apache-2.0"
 dependencies = [
@@ -31,6 +31,7 @@ dependencies = [
     "ipython>=8.26",
     "scipy>=1.12.0",
     "click>=8.1.8",
+    "spglib>=2.1",
 ]
 
 [project.urls]

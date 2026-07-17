@@ -85,9 +85,15 @@ def steps(request):
 def test_read_default(bandgap, steps, Assert):
     actual = bandgap.read() if steps == -1 else bandgap[steps].read()
     Assert.allclose(actual["fundamental"], bandgap.ref.fundamental[steps, 0])
+    Assert.allclose(actual["valence_band_maximum"], bandgap.ref.vbm[steps, 0])
+    Assert.allclose(actual["conduction_band_minimum"], bandgap.ref.cbm[steps, 0])
     Assert.allclose(actual["kpoint_VBM"], bandgap.ref.kpoint_vbm[steps, 0])
     Assert.allclose(actual["kpoint_CBM"], bandgap.ref.kpoint_cbm[steps, 0])
     Assert.allclose(actual["direct"], bandgap.ref.direct[steps, 0])
+    Assert.allclose(
+        actual["direct_gap_bottom"], bandgap.ref.lower_band_direct[steps, 0]
+    )
+    Assert.allclose(actual["direct_gap_top"], bandgap.ref.upper_band_direct[steps, 0])
     Assert.allclose(actual["kpoint_direct"], bandgap.ref.kpoint_direct[steps, 0])
     Assert.allclose(actual["fermi_energy"], bandgap.ref.fermi_energy[steps])
 
@@ -97,9 +103,17 @@ def test_read_spin_polarized(spin_polarized, steps, Assert):
     ref = spin_polarized.ref
     for i, suffix in enumerate(("", "_up", "_down")):
         Assert.allclose(actual[f"fundamental{suffix}"], ref.fundamental[steps, i])
+        Assert.allclose(actual[f"valence_band_maximum{suffix}"], ref.vbm[steps, i])
+        Assert.allclose(actual[f"conduction_band_minimum{suffix}"], ref.cbm[steps, i])
         Assert.allclose(actual[f"kpoint_VBM{suffix}"], ref.kpoint_vbm[steps, i])
         Assert.allclose(actual[f"kpoint_CBM{suffix}"], ref.kpoint_cbm[steps, i])
         Assert.allclose(actual[f"direct{suffix}"], ref.direct[steps, i])
+        Assert.allclose(
+            actual[f"direct_gap_bottom{suffix}"], ref.lower_band_direct[steps, i]
+        )
+        Assert.allclose(
+            actual[f"direct_gap_top{suffix}"], ref.upper_band_direct[steps, i]
+        )
         Assert.allclose(actual[f"kpoint_direct{suffix}"], ref.kpoint_direct[steps, i])
     Assert.allclose(actual["fermi_energy"], ref.fermi_energy[steps])
 
@@ -411,11 +425,12 @@ def test_to_database_spin_polarized(spin_polarized_handler, Assert):
 
 
 def test_dispatcher_to_database(bandgap):
-    """Dispatcher._to_database() must return {selection_name: handler_result}."""
+    """Dispatcher._to_database() returns {quantity: {selection: handler_result}}."""
     result = bandgap._to_database()
     assert isinstance(result, dict)
     assert "bandgap" in result
-    assert isinstance(result["bandgap"], Bandgap_DB)
+    assert isinstance(result["bandgap"], dict)
+    assert isinstance(result["bandgap"]["default"], Bandgap_DB)
 
 
 def test_dispatcher_to_dict_matches_read(raw_data, Assert):

@@ -45,6 +45,23 @@ def test_write_encodes_unicode_strings(tmp_path):
         assert np.array_equal(actual.number_ion_types, [2, 1, 4])
 
 
+def test_write_skips_field_absent_from_source_schema(tmp_path, Assert):
+    # The ionic() demo sets a q_point, but the "ion" source schema defines no q_point
+    # path. The writer must skip that field (this source simply does not store it)
+    # instead of crashing when it tries to use the unset schema target as an HDF5 key.
+    from py4vasp._demo.dielectric_function import ionic
+
+    filename = tmp_path / DEFAULT_FILE
+    raw_dielectric = ionic()
+    assert not raw_dielectric.q_point.is_none()  # the demo does set q_point
+    with h5py.File(filename, "w") as h5f:
+        write(h5f, raw.Version(99, 99, 99))
+        write(h5f, raw_dielectric, selection="ion")  # must not raise
+    with raw.access("dielectric_function", path=tmp_path, selection="ion") as actual:
+        Assert.allclose(actual.energies, raw_dielectric.energies)
+        assert actual.q_point.is_none()  # not stored by the "ion" source
+
+
 def test_write_skips_absent_mapping_entries(tmp_path):
     # A Mapping field is a per-index list whose entries may be absent (VaspData(None))
     # for the chosen selection. electron_phonon self_energy with "CRTA" has nbands_sum

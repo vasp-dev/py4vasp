@@ -120,10 +120,10 @@ def test_selections_with_only_available_true(tmp_path):
     # loadable quantities should be a subset of all quantities
     assert set(loadable) <= set(full)
     # quantities without loadable data should not appear in loadable result
+    # (the demo does generate a dielectric_function, so it is loadable and excluded here)
     absent_in_loadable = {
         "bandgap",
         "born_effective_charge",
-        "dielectric_function",
         "dielectric_tensor",
         "elastic_modulus",
         "internal_strain",

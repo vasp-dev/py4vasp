@@ -48,9 +48,11 @@ class BandgapHandler:
     def to_dict(self) -> dict:
         return {
             **self._gap_dict("fundamental"),
+            **self._band_dict("fundamental"),
             **self._kpoint_dict("VBM"),
             **self._kpoint_dict("CBM"),
             **self._gap_dict("direct"),
+            **self._band_dict("direct"),
             **self._kpoint_dict("direct"),
             "fermi_energy": self._get("Fermi energy", component=0),
         }
@@ -192,6 +194,15 @@ Fermi energy:    {fermi_energy}"""
     def _gap_dict(self, label):
         gaps = self._gap(label).T
         return {f"{label}{suffix}": gap for gap, suffix in zip(gaps, self._suffixes())}
+
+    def _band_dict(self, label):
+        result = {}
+        bottoms = self._get(GAPS[label].bottom)
+        tops = self._get(GAPS[label].top)
+        for bottom, top, suffix in zip(bottoms.T, tops.T, self._suffixes()):
+            result[GAPS[label].bottom.replace(" ", "_") + suffix] = bottom
+            result[GAPS[label].top.replace(" ", "_") + suffix] = top
+        return result
 
     def _kpoint_dict(self, label):
         kpoint = self._kpoint(label)

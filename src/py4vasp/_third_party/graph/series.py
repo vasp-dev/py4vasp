@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from dataclasses import dataclass, fields
-from typing import Generator, Optional, Tuple
+from typing import Generator, Optional, Tuple, Union
 
 import numpy as np
 
@@ -10,6 +10,37 @@ from py4vasp._third_party.graph import trace
 from py4vasp._util import import_
 
 go = import_.optional("plotly.graph_objects")
+
+# Map py4vasp's friendly marker names onto plotly symbols so that the plotly vocabulary
+# does not leak into the public interface. Unknown names are passed through unchanged.
+_SYMBOL_ALIASES = {
+    "o": "circle",
+    "*": "star",
+    "s": "square",
+    "^": "triangle-up",
+    "v": "triangle-down",
+    "x": "x",
+    "d": "diamond",
+    "+": "cross",
+}
+
+
+@dataclass
+class Marker:
+    """Style of the markers drawn for a series.
+
+    Parameters
+    ----------
+    symbol : str
+        Which marker to draw. Use one of the friendly names "o" (circle), "*" (star),
+        "s" (square), "^" (triangle-up), "v" (triangle-down), "x" (cross), "d" (diamond),
+        or "+" (plus).
+    size : Optional[float]
+        The size of the marker. If not set, a default size is used.
+    """
+
+    symbol: str
+    size: Optional[float] = None
 
 
 @dataclass
@@ -80,9 +111,12 @@ class Series(trace.Trace):
     color: Optional[str] = None
     """The color used for this series. Accepts any valid CSS color string, including
     rgba() for transparency in area plots."""
-    marker: Optional[str] = None
-    """Marker style for scatter plots. If None, displays as a line plot. Common values
-    include 'circle', 'square', 'diamond', etc."""
+    marker: Optional[Union[str, Marker]] = None
+    """Marker style for scatter plots. If None, displays as a line plot. May be a
+    :class:`Marker` or, as a shorthand, a symbol string (see :class:`Marker`)."""
+    show_legend: bool = True
+    """If False, this series is not given its own entry in the legend. Useful to let
+    several series share a single legend entry."""
     _frozen = False
 
     def __post_init__(self):
@@ -191,6 +225,13 @@ class Series(trace.Trace):
     def _is_area(self):
         return (self.weight is not None) and (self.marker is None)
 
+    def _marker_symbol_and_size(self):
+        marker = (
+            Marker(symbol=self.marker) if isinstance(self.marker, str) else self.marker
+        )
+        symbol = _SYMBOL_ALIASES.get(marker.symbol, marker.symbol)
+        return symbol, marker.size
+
     def _options_line(self, y):
         return {
             "x": self.x,
@@ -211,19 +252,21 @@ class Series(trace.Trace):
         }
 
     def _options_scaled_points(self, y, weight):
-        return {
-            "x": self.x,
-            "y": y,
-            "mode": "markers",
-            "marker": {"size": weight, "sizemode": "area", "color": self.color},
-        }
+        symbol, size = self._marker_symbol_and_size()
+        marker = {"symbol": symbol, "color": self.color}
+        if weight is not None:
+            marker.update(size=weight, sizemode="area")
+        elif size is not None:
+            marker["size"] = size
+        return {"x": self.x, "y": y, "mode": "markers", "marker": marker}
 
     def _options_colored_points(self, y, weight):
+        symbol, _ = self._marker_symbol_and_size()
         return {
             "x": self.x,
             "y": y,
             "mode": "markers",
-            "marker": {"color": weight, "coloraxis": "coloraxis"},
+            "marker": {"symbol": symbol, "color": weight, "coloraxis": "coloraxis"},
         }
 
     def _common_options(self, first_trace):
@@ -231,7 +274,7 @@ class Series(trace.Trace):
             "name": self.label,
             "text": self._convert_annotations(),
             "legendgroup": self.label,
-            "showlegend": first_trace,
+            "showlegend": first_trace and self.show_legend,
             "yaxis": "y2" if self.y2 else "y",
         }
 

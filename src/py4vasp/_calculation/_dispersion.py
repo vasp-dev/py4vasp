@@ -8,7 +8,6 @@ from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
     merge_strings,
-    merge_to_database,
     quantity,
 )
 from py4vasp._calculation.kpoint import KpointHandler
@@ -146,14 +145,9 @@ class Dispersion:
             projections,
         )
 
-    def _to_database(self) -> dict:
-        """Return {quantity[_selection]: handler_result} for database storage."""
-        return merge_to_database(
-            self._source,
-            self._quantity_name,
-            DispersionHandler.from_data,
-            DispersionHandler.to_database,
-        )
+    # Dispersion has no standalone database entry: its data is folded into the band
+    # and phonon_band models (see BandHandler / PhononBandHandler.to_database), so the
+    # dispatcher deliberately exposes no `_to_database`.
 
 
 def _band_structure(data, projections):

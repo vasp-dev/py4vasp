@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
+from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.band import _OCCUPATION_CUTOFF, Band, BandHandler
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import Projector
@@ -370,14 +371,16 @@ def test_more_projections_style(raw_data, Assert):
     Assert.allclose(band["g_down"], zero)
 
 
-def test_single_polarized_to_frame(single_band, Assert, not_core):
+def test_single_polarized_to_frame(single_band, Assert):
+    pytest.importorskip("pandas")
     actual = single_band.to_frame(fermi_energy=single_band.ref.fermi_energy_argument)
     Assert.allclose(actual.bands, single_band.ref.bands[:, 0])
     Assert.allclose(actual.occupations, single_band.ref.occupations[:, 0])
     Assert.allclose(actual.kpoint_distances, single_band.ref.kpoints.distances())
 
 
-def test_multiple_bands_to_frame(multiple_bands, Assert, not_core):
+def test_multiple_bands_to_frame(multiple_bands, Assert):
+    pytest.importorskip("pandas")
     actual = multiple_bands.to_frame()
     Assert.allclose(actual.bands, multiple_bands.ref.bands.T.flatten())
     Assert.allclose(actual.occupations, multiple_bands.ref.occupations.T.flatten())
@@ -385,7 +388,8 @@ def test_multiple_bands_to_frame(multiple_bands, Assert, not_core):
     Assert.allclose(actual.kpoint_distances, kpoint_distances)
 
 
-def test_line_with_labels_to_frame(line_with_labels, Assert, not_core):
+def test_line_with_labels_to_frame(line_with_labels, Assert):
+    pytest.importorskip("pandas")
     actual = line_with_labels.to_frame()
     kpoint_distances = np.repeat(line_with_labels.ref.kpoints.distances(), repeats=3)
     kpoint_labels = np.repeat(line_with_labels.ref.kpoints.labels(), repeats=3)
@@ -394,13 +398,15 @@ def test_line_with_labels_to_frame(line_with_labels, Assert, not_core):
     Assert.allclose(actual_kpoint_labels, kpoint_labels)
 
 
-def test_with_projectors_to_frame(with_projectors, Assert, not_core):
+def test_with_projectors_to_frame(with_projectors, Assert):
+    pytest.importorskip("pandas")
     actual = with_projectors.to_frame("Sr p")
     Assert.allclose(actual.Sr, with_projectors.ref.Sr.T.flatten())
     Assert.allclose(actual.p, with_projectors.ref.p.T.flatten())
 
 
-def test_spin_polarized_to_frame(spin_polarized, Assert, not_core):
+def test_spin_polarized_to_frame(spin_polarized, Assert):
+    pytest.importorskip("pandas")
     actual = spin_polarized.to_frame()
     ref = spin_polarized.ref
     Assert.allclose(actual.bands_up, ref.bands_up.T.flatten())
@@ -409,7 +415,8 @@ def test_spin_polarized_to_frame(spin_polarized, Assert, not_core):
     Assert.allclose(actual.occupations_down, ref.occupations_down.T.flatten())
 
 
-def test_spin_projectors_to_frame(spin_projectors, Assert, not_core):
+def test_spin_projectors_to_frame(spin_projectors, Assert):
+    pytest.importorskip("pandas")
     actual = spin_projectors.to_frame(selection="O Fe(d)")
     Assert.allclose(actual.O_up, spin_projectors.ref.O_up.T.flatten())
     Assert.allclose(actual.O_down, spin_projectors.ref.O_down.T.flatten())
@@ -690,6 +697,17 @@ def _check_to_database(_band):
         _band.ref, "fermi_energy_argument", _band.ref.fermi_energy
     )
 
+    # dispersion is folded into the band model
+    dispersion = DispersionHandler.from_data(
+        _band.ref.raw_data.dispersion
+    ).to_database()
+    assert database_data.eigenvalue_min == dispersion.eigenvalue_min
+    assert database_data.eigenvalue_max == dispersion.eigenvalue_max
+    assert database_data.eigenvalue_min_up == dispersion.eigenvalue_min_up
+    assert database_data.eigenvalue_max_up == dispersion.eigenvalue_max_up
+    assert database_data.eigenvalue_min_down == dispersion.eigenvalue_min_down
+    assert database_data.eigenvalue_max_down == dispersion.eigenvalue_max_down
+
     if getattr(_band.ref, "num_occupied_bands", None) is not None:
         assert database_data.num_occupied_bands == _band.ref.num_occupied_bands
     elif (
@@ -734,11 +752,12 @@ def test_to_database_noncollinear_projectors(noncollinear_projectors):
 
 
 def test_dispatcher_to_database_default(single_band):
-    """Dispatcher._to_database() must return {selection_name: handler_result}."""
+    """Dispatcher._to_database() returns {quantity: {selection: handler_result}}."""
     result = single_band._to_database()
     assert isinstance(result, dict)
     assert "band" in result
-    assert isinstance(result["band"], Band_DB)
+    assert isinstance(result["band"], dict)
+    assert isinstance(result["band"]["default"], Band_DB)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

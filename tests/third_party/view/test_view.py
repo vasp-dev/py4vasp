@@ -13,7 +13,8 @@ import pytest
 from py4vasp import exception
 from py4vasp._third_party.view import View
 from py4vasp._third_party.view.view import GridQuantity, IonArrow, Isosurface
-from py4vasp._util import convert, import_
+from py4vasp._util import import_
+from py4vasp._util.color import Color
 
 ase = import_.optional("ase")
 ase_cube = import_.optional("ase.io.cube")
@@ -55,7 +56,8 @@ def base_input_view(is_structure):
 
 
 @pytest.fixture(params=[True, False])
-def view(request, not_core):
+def view(request):
+    pytest.importorskip("nglview")
     is_structure = request.param
     inputs = base_input_view(is_structure)
     if is_structure:
@@ -84,7 +86,8 @@ ENDMDL
 
 
 @pytest.fixture(params=[True, False])
-def view3d(request, not_core):
+def view3d(request):
+    pytest.importorskip("nglview")
     is_structure = request.param
     inputs = base_input_view(is_structure)
     isosurface1 = Isosurface(isolevel=0.1, color="#2FB5AB", opacity=0.6)
@@ -107,7 +110,8 @@ def view3d(request, not_core):
 
 
 @pytest.fixture
-def view_multiple_grid_scalars(not_core):
+def view_multiple_grid_scalars():
+    pytest.importorskip("nglview")
     inputs = base_input_view(is_structure=False)
     isosurface = Isosurface(isolevel=0.1, color="#2FB5AB", opacity=0.6)
     charge_grid_scalar = GridQuantity(np.random.rand(2, 12, 10, 8), "charge")
@@ -118,7 +122,8 @@ def view_multiple_grid_scalars(not_core):
 
 
 @pytest.fixture(params=[True, False])
-def view_arrow(request, not_core):
+def view_arrow(request):
+    pytest.importorskip("nglview")
     is_structure = request.param
     inputs = base_input_view(is_structure)
     number_atoms = len(inputs["elements"][0])
@@ -274,7 +279,7 @@ def test_ion_arrows(view_arrow, Assert):
             output_radius = msg_archive[4]
             Assert.allclose(expected_tip, output_tip)
             Assert.allclose(expected_tail, output_tail)
-            Assert.allclose(convert.to_rgb(expected_color), output_color)
+            Assert.allclose(Color.from_hex(expected_color).rgb, output_color)
             assert expected_radius == output_radius
             idx_msg += 1
 
@@ -310,13 +315,14 @@ def test_shifted_ion_arrows(view_arrow, Assert):
             output_radius = msg_archive[4]
             Assert.allclose(expected_tip, output_tip)
             Assert.allclose(expected_tail, output_tail)
-            Assert.allclose(convert.to_rgb(expected_color), output_color)
+            Assert.allclose(Color.from_hex(expected_color).rgb, output_color)
             assert expected_radius == output_radius
             idx_msg += 1
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_supercell(is_structure, not_core):
+def test_supercell(is_structure):
+    pytest.importorskip("nglview")
     inputs = base_input_view(is_structure)
     supercell = (2, 2, 2)
     inputs["supercell"] = supercell
@@ -336,7 +342,8 @@ def test_supercell(is_structure, not_core):
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_showcell(is_structure, not_core):
+def test_showcell(is_structure):
+    pytest.importorskip("nglview")
     inputs = base_input_view(is_structure)
     inputs["show_cell"] = True
     view = View(**inputs)
@@ -345,7 +352,8 @@ def test_showcell(is_structure, not_core):
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_showaxes(is_structure, not_core):
+def test_showaxes(is_structure):
+    pytest.importorskip("nglview")
     inputs = base_input_view(is_structure)
     inputs["show_axes"] = True
     view = View(**inputs)
@@ -358,7 +366,8 @@ def test_showaxes(is_structure, not_core):
 
 
 @pytest.mark.parametrize("is_structure", [True, False])
-def test_showaxes_different_origin(is_structure, not_core):
+def test_showaxes_different_origin(is_structure):
+    pytest.importorskip("nglview")
     inputs = base_input_view(is_structure)
     inputs["show_axes"] = True
     inputs["show_axes_at"] = np.array([0.2, 0.2, 0.2])
@@ -418,7 +427,7 @@ def test_incorrect_shape_raises_error(view):
         View(view.elements, incorrect_unit_cell, view.positions)
 
 
-def test_add_requires_compatible_trajectory_fields(not_core):
+def test_add_requires_compatible_trajectory_fields():
     left = View(**base_input_view(is_structure=False))
     right = View(**base_input_view(is_structure=False))
 
@@ -432,7 +441,7 @@ def test_add_requires_compatible_trajectory_fields(not_core):
         left + View(**base_input_view(is_structure=True))
 
 
-def test_add_merges_scalar_fields_and_raises_on_conflict(not_core):
+def test_add_merges_scalar_fields_and_raises_on_conflict():
     left = View(structure_title="left title", atom_radius=0.8, **base_input_view(False))
     right = View(structure_title=None, atom_radius=0.8, **base_input_view(False))
 
@@ -445,7 +454,7 @@ def test_add_merges_scalar_fields_and_raises_on_conflict(not_core):
         left + View(camera="perspective", **base_input_view(False))
 
 
-def test_add_combines_grid_scalars_and_ion_arrows(not_core):
+def test_add_combines_grid_scalars_and_ion_arrows():
     number_atoms = len(base_input_view(False)["elements"][0])
     shared_grid = GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "shared")
     extra_grid = GridQuantity(np.ones((1, 2, 2, 2)), "extra")
@@ -483,7 +492,7 @@ def test_add_combines_grid_scalars_and_ion_arrows(not_core):
     assert combined.ion_arrows[1].label == "moments"
 
 
-def test_add_combines_special_sequences_as_sequences(not_core):
+def test_add_combines_special_sequences_as_sequences():
     number_atoms = len(base_input_view(False)["elements"][0])
     grid_left = GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "left")
     grid_right = GridQuantity(np.ones((1, 2, 2, 2)), "right")
@@ -519,7 +528,7 @@ def test_add_combines_special_sequences_as_sequences(not_core):
     assert tuple(arrow.label for arrow in combined.ion_arrows) == ("left", "right")
 
 
-def test_add_special_sequence_preserves_left_sequence_type(not_core):
+def test_add_special_sequence_preserves_left_sequence_type():
     number_atoms = len(base_input_view(False)["elements"][0])
     left_grid = [GridQuantity(np.arange(8, dtype=float).reshape(1, 2, 2, 2), "left")]
     right_grid = (
@@ -564,7 +573,7 @@ def test_add_special_sequence_preserves_left_sequence_type(not_core):
     assert [arrow.label for arrow in combined.ion_arrows] == ["left", "right"]
 
 
-def test_add_does_not_trigger_validation(not_core, monkeypatch):
+def test_add_does_not_trigger_validation(monkeypatch):
     left = View(**base_input_view(False))
     right = View(**base_input_view(False))
 

@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from py4vasp import exception, raw
-from py4vasp._calculation._stoichiometry import Stoichiometry
+from py4vasp._calculation._stoichiometry import Stoichiometry, StoichiometryHandler
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.data_db import Structure_DB
 from py4vasp._util import check
@@ -278,7 +278,8 @@ Direct
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
-def test_to_ase_Sr2TiO4(Sr2TiO4, Assert, not_core):
+def test_to_ase_Sr2TiO4(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     check_Sr2TiO4_ase(Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg), Sr2TiO4.ref, -1, Assert)
     check_Sr2TiO4_ase(Sr2TiO4[0].to_ase(**Sr2TiO4.ion_type_arg), Sr2TiO4.ref, 0, Assert)
     for steps in (slice(None), slice(1, 3)):
@@ -293,7 +294,8 @@ def check_Sr2TiO4_ase(structure, reference, steps, Assert):
     assert all(structure.pbc)
 
 
-def test_to_ase_Fe3O4(Fe3O4, Assert, not_core):
+def test_to_ase_Fe3O4(Fe3O4, Assert):
+    pytest.importorskip("ase")
     check_Fe3O4_ase(Fe3O4.to_ase(), Fe3O4.ref, -1, Assert)
     check_Fe3O4_ase(Fe3O4[0].to_ase(), Fe3O4.ref, 0, Assert)
 
@@ -306,7 +308,8 @@ def check_Fe3O4_ase(structure, reference, steps, Assert):
     assert all(structure.pbc)
 
 
-def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert, not_core):
+def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert):
+    pytest.importorskip("ase")
     structure = Ca3AsBr3.to_ase()
     Assert.allclose(structure.cell.array, Ca3AsBr3.ref.lattice_vectors)
     Assert.allclose(structure.get_scaled_positions(), Ca3AsBr3.ref.positions)
@@ -314,12 +317,14 @@ def test_to_ase_Ca3AsBr3(Ca3AsBr3, Assert, not_core):
     assert all(structure.pbc)
 
 
-def test_from_ase(Sr2TiO4, Assert, not_core):
+def test_from_ase(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     structure = Structure.from_ase(Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg))
     check_Sr2TiO4_structure(structure.read(), Sr2TiO4.ref, -1, Assert)
 
 
-def test_to_mdtraj(Sr2TiO4, Assert, not_core):
+def test_to_mdtraj(Sr2TiO4, Assert):
+    pytest.importorskip("mdtraj")
     for steps in (slice(None), slice(1, 3)):
         trajectory = Sr2TiO4[steps].to_mdtraj(**Sr2TiO4.ion_type_arg)
         check_Sr2TiO4_mdtraj(trajectory, Sr2TiO4.ref, steps, Assert)
@@ -340,7 +345,8 @@ def check_Sr2TiO4_mdtraj(trajectory, reference, steps, Assert):
     Assert.allclose(trajectory.unitcell_vectors, unitcell_vectors)
 
 
-def test_supercell_scale_all(Sr2TiO4, Assert, not_core):
+def test_supercell_scale_all(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     number_atoms = 7
     scale = 2
     supercell = Sr2TiO4.to_ase(supercell=scale, **Sr2TiO4.ion_type_arg)
@@ -349,7 +355,8 @@ def test_supercell_scale_all(Sr2TiO4, Assert, not_core):
     assert list(supercell.symbols) == 16 * ["Sr"] + 8 * ["Ti"] + 32 * ["O"]
 
 
-def test_supercell_scale_individual(Sr2TiO4, Assert, not_core):
+def test_supercell_scale_individual(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     number_atoms = 7
     scale = (2, 1, 3)
     supercell = Sr2TiO4.to_ase(supercell=scale, **Sr2TiO4.ion_type_arg)
@@ -357,7 +364,8 @@ def test_supercell_scale_individual(Sr2TiO4, Assert, not_core):
     Assert.allclose(supercell.cell.array, np.diag(scale) @ Sr2TiO4.ref.lattice_vectors)
 
 
-def test_supercell_wrong_size(Sr2TiO4, not_a_supercell, not_core):
+def test_supercell_wrong_size(Sr2TiO4, not_a_supercell):
+    pytest.importorskip("ase")
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.to_ase(not_a_supercell)
 
@@ -374,12 +382,14 @@ def test_positions(Sr2TiO4, steps, Assert):
     Assert.allclose(structure.positions(), Sr2TiO4.ref.positions[steps])
 
 
-def test_Sr2TiO4_cartesian_positions(Sr2TiO4, Assert, not_core):
+def test_Sr2TiO4_cartesian_positions(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
     expected = Sr2TiO4.to_ase(**Sr2TiO4.ion_type_arg).get_positions()
     Assert.allclose(Sr2TiO4.cartesian_positions(), expected)
 
 
-def test_cartesian_positions(Fe3O4, Ca3AsBr3, Assert, not_core):
+def test_cartesian_positions(Fe3O4, Ca3AsBr3, Assert):
+    pytest.importorskip("ase")
     check_cartesian_positions(Fe3O4, Assert)
     check_cartesian_positions(Fe3O4[0], Assert)
     check_cartesian_positions(Ca3AsBr3, Assert)
@@ -472,13 +482,15 @@ def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
         Ca3AsBr3[0]
 
 
-def test_Sr2TiO4_to_lammps(Sr2TiO4, not_core):
+def test_Sr2TiO4_to_lammps(Sr2TiO4):
+    pytest.importorskip("ase")
     assert re.match(REF_LAMMPS, Sr2TiO4.to_lammps())
     with pytest.raises(exception.NotImplemented):
         Sr2TiO4[:].to_lammps()
 
 
-def test_ZnS_to_lammps(ZnS, not_core):
+def test_ZnS_to_lammps(ZnS):
+    pytest.importorskip("ase")
     assert re.match(REF_LAMMPS_ZnS, ZnS.to_lammps())
     assert ZnS.to_lammps(standard_form=False) == REF_LAMMPS_ZnS_general
 
@@ -534,90 +546,112 @@ def test_system_dimensionality(Graphite, Sr2TiO4, Fe3O4):
 
 def test_to_database(structures, Assert):
     handler = StructureHandler.from_data(structures.ref.raw_data)
-    db_data: Structure_DB = handler.to_database()
-    assert isinstance(db_data, Structure_DB)
     has_timesteps = structures.ref.positions.ndim == 3
-    final_positions = (
+    dimensionality = structures.ref.dimensionality
+    num_ions = len(
         structures.ref.positions[-1] if has_timesteps else structures.ref.positions
     )
-    final_volume = structures.ref.volume[-1] if has_timesteps else structures.ref.volume
-    initial_volume = (
-        structures.ref.volume[0] if has_timesteps else structures.ref.volume
-    )
-    final_area_2d = (
-        (structures.ref.area_2d[-1] if structures.ref.area_2d is not None else None)
-        if has_timesteps
-        else structures.ref.area_2d
-    )
-    initial_area_2d = (
-        (structures.ref.area_2d[0] if structures.ref.area_2d is not None else None)
-        if has_timesteps
-        else structures.ref.area_2d
-    )
-    final_lattice_vectors = (
-        structures.ref.lattice_vectors[-1]
-        if has_timesteps
-        else structures.ref.lattice_vectors
-    )
-    initial_lattice_vectors = (
-        structures.ref.lattice_vectors[0]
-        if has_timesteps
-        else structures.ref.lattice_vectors
-    )
-    final_dimensionality = structures.ref.dimensionality
-    assert db_data.num_ions == len(final_positions)
-    assert db_data.dimensionality == final_dimensionality
 
-    for lattice_vectors, area_2d, volume, prefix in [
-        (final_lattice_vectors, final_area_2d, final_volume, "final"),
-        (initial_lattice_vectors, initial_area_2d, initial_volume, "initial"),
-    ]:
-        assert getattr(db_data, f"{prefix}_cell_volume") == pytest.approx(volume)
-        if final_dimensionality == 2:
-            assert getattr(db_data, f"{prefix}_cell_area_2d") == pytest.approx(area_2d)
-            assert getattr(db_data, f"{prefix}_cell_area_2d_span") == "12"
-        else:
-            assert getattr(db_data, f"{prefix}_cell_area_2d") is None
-            assert getattr(db_data, f"{prefix}_cell_area_2d_span") is None
-
-        for idx in range(3):
-            Assert.allclose(
-                getattr(db_data, f"{prefix}_lattice_vector_{idx+1}"),
-                lattice_vectors[idx],
+    def reference_geometry(index):
+        lattice = (
+            structures.ref.lattice_vectors[index]
+            if has_timesteps
+            else structures.ref.lattice_vectors
+        )
+        volume = (
+            structures.ref.volume[index] if has_timesteps else structures.ref.volume
+        )
+        area_2d = (
+            (
+                structures.ref.area_2d[index]
+                if structures.ref.area_2d is not None
+                else None
             )
+            if has_timesteps
+            else structures.ref.area_2d
+        )
+        return lattice, volume, area_2d
+
+    def check_geometry(db_data, index):
+        # Each model now holds a single geometry with unprefixed fields.
+        assert isinstance(db_data, Structure_DB)
+        assert db_data.num_ions == num_ions
+        assert db_data.dimensionality == dimensionality
+        lattice, volume, area_2d = reference_geometry(index)
+        assert db_data.cell_volume == pytest.approx(volume)
+        if dimensionality == 2:
+            assert db_data.cell_area_2d == pytest.approx(area_2d)
+            assert db_data.cell_area_2d_span == "12"
+        else:
+            assert db_data.cell_area_2d is None
+            assert db_data.cell_area_2d_span is None
+        for idx in range(3):
+            Assert.allclose(getattr(db_data, f"lattice_vector_{idx + 1}"), lattice[idx])
             assert getattr(
-                db_data, f"{prefix}_lattice_vector_{idx+1}_length"
-            ) == pytest.approx(np.linalg.norm(lattice_vectors[idx]))
-    alpha, beta, gamma = (
-        np.degrees(
-            np.arccos(
-                np.dot(lattice_vectors[i], lattice_vectors[j])
-                / (
-                    np.linalg.norm(lattice_vectors[i])
-                    * np.linalg.norm(lattice_vectors[j])
+                db_data, f"lattice_vector_{idx + 1}_length"
+            ) == pytest.approx(np.linalg.norm(lattice[idx]))
+        alpha, beta, gamma = (
+            np.degrees(
+                np.arccos(
+                    np.dot(lattice[i], lattice[j])
+                    / (np.linalg.norm(lattice[i]) * np.linalg.norm(lattice[j]))
                 )
             )
+            for i, j in ((1, 2), (0, 2), (0, 1))
         )
-        for i, j in ((1, 2), (0, 2), (0, 1))
-    )
-    assert getattr(db_data, f"{prefix}_angle_alpha") == pytest.approx(alpha)
-    assert getattr(db_data, f"{prefix}_angle_beta") == pytest.approx(beta)
-    assert getattr(db_data, f"{prefix}_angle_gamma") == pytest.approx(gamma)
+        assert db_data.angle_alpha == pytest.approx(alpha)
+        assert db_data.angle_beta == pytest.approx(beta)
+        assert db_data.angle_gamma == pytest.approx(gamma)
+
+    # the default describes the final geometry; steps=0 describes the initial one
+    check_geometry(handler.to_database(), -1)
+    check_geometry(handler.to_database(steps=0), 0)
+
+    # stoichiometry is folded into the structure model
+    stoichiometry = StoichiometryHandler.from_data(
+        structures.ref.raw_data.stoichiometry
+    ).to_database()
+    db_data = handler.to_database()
+    assert db_data.formula == stoichiometry.formula
+    assert db_data.compound == stoichiometry.compound
+    assert db_data.ion_types == stoichiometry.ion_types
+    assert db_data.num_ion_types == stoichiometry.num_ion_types
+    assert db_data.num_ion_types_primitive == stoichiometry.num_ion_types_primitive
 
 
-def test_to_database_dispatch(raw_data):
-    """The dispatcher keys the handler result by quantity name for the database."""
-    raw_structure = raw_data.structure("Sr2TiO4")
+def test_to_database_split_distinct_initial_final(raw_data):
+    """A trajectory with distinct first/last steps yields both a final and an
+    initial structure model, each describing a single geometry."""
+    raw_structure = raw_data.structure("Fe3O4")  # trajectory with shifting positions
     result = Structure.from_data(raw_structure)._to_database()
     assert set(result) == {"structure"}
-    expected = StructureHandler.from_data(raw_structure).to_database()
-    assert result["structure"] == expected
+    assert set(result["structure"]) == {"final", "initial"}
+    expected_final = StructureHandler.from_data(raw_structure).to_database(steps=-1)
+    expected_initial = StructureHandler.from_data(raw_structure).to_database(steps=0)
+    assert result["structure"]["final"] == expected_final
+    assert result["structure"]["initial"] == expected_initial
+    assert result["structure"]["final"] != result["structure"]["initial"]
+
+
+def test_to_database_identical_steps_only_final(raw_data):
+    """When the initial geometry matches the final one, only the final model is
+    stored (initial is dropped as a duplicate)."""
+    raw_structure = raw_data.structure("Sr2TiO4")  # trajectory of identical steps
+    result = Structure.from_data(raw_structure)._to_database()
+    assert set(result["structure"]) == {"final"}
+
+
+def test_to_database_single_geometry_only_final(raw_data):
+    """A single-geometry structure is stored under the final key only."""
+    raw_structure = raw_data.structure("ZnS")  # not a trajectory
+    result = Structure.from_data(raw_structure)._to_database()
+    assert set(result["structure"]) == {"final"}
 
 
 def test_to_database_collects_available_sources(tmp_path):
     """Database collection enumerates every structure source. For a CONTCAR-only
-    calculation only the ``final`` source carries data, so the result is keyed
-    ``structure_final`` (default/exciton/poscar have no data and are dropped)."""
+    calculation only the ``final`` source carries data, so the result is nested as
+    ``{"structure": {"final": ...}}`` (default/exciton/poscar have no data)."""
     import h5py
 
     import py4vasp
@@ -627,8 +661,9 @@ def test_to_database_collects_available_sources(tmp_path):
         py4vasp._raw.write.write(h5f, raw.Version(99, 99, 99))
         py4vasp._raw.write.write(h5f, contcar_demo.Sr2TiO4())
     result = py4vasp.Calculation.from_path(tmp_path).structure._to_database()
-    assert set(result) == {"structure_final"}
-    assert result["structure_final"].num_ions == 7
+    assert set(result) == {"structure"}
+    assert set(result["structure"]) == {"final"}
+    assert result["structure"]["final"].num_ions == 7
 
 
 def test_factory_methods(raw_data, check_factory_methods):

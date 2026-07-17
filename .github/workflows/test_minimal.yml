@@ -1,0 +1,37 @@
+name: test-minimal
+
+# Verify that the minimum dependency versions declared in pyproject.toml actually
+# install and pass the test suite. Uses uv's `lowest-direct` resolution to pin every
+# direct dependency to its lowest declared version (transitive deps resolve normally)
+# on the oldest supported Python. If this job fails, a declared lower bound is too low
+# and should be raised (see https://scientific-python.org/specs/spec-0000/ for guidance).
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: "0 2 * * 6"
+
+jobs:
+  test-minimal:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+    - name: Install uv and set the Python version
+      uses: astral-sh/setup-uv@v7
+      with:
+        python-version: "3.11"
+    - name: Install py4vasp with lowest-direct dependency versions
+      run: |
+        uv --version
+        python --version
+        uv lock --resolution lowest-direct
+        uv sync --no-group doc
+        uv version
+    - name: Test with pytest
+      run: |
+        uv run pytest --version
+        uv run pytest

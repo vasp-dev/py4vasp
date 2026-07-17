@@ -4,7 +4,7 @@ import copy
 
 import numpy as np
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Energy_DB
+from py4vasp._raw.data_db import EnergyAfqmc_DB, EnergyMD_DB, EnergyRelaxation_DB
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 
@@ -72,6 +72,50 @@ _DB_KEYS = {
     "weight          WEIGHT": "weight",
 }
 
+# The database keys (values of _DB_KEYS) that characterize each of the three energy
+# formats VASP produces. The format is not stored explicitly; it is inferred from which
+# labels the raw data contains.
+_MD_DB_KEYS = (
+    "ion_electron",
+    "kinetic_energy",
+    "kinetic_energy_lattice",
+    "temperature",
+    "nose_potential",
+    "nose_kinetic",
+    "total_energy",
+)
+_RELAXATION_DB_KEYS = ("free_energy", "energy_without_entropy", "energy_sigma_0")
+_AFQMC_DB_KEYS = (
+    "step",
+    "one_electron_energy",
+    "hartree_energy",
+    "exchange_energy",
+    "free_energy",
+    "free_energy_cap",
+    "weight",
+)
+# markers unique to AFQMC (free_energy is shared with relaxation, so it is not a marker)
+_AFQMC_MARKERS = frozenset(_AFQMC_DB_KEYS) - {"free_energy"}
+
+
+def _detect_energy_format(db_keys: set) -> str:
+    """Classify the energy format from the database keys present in the raw data.
+
+    The most distinctive format is checked first, keying only on markers that are unique
+    to a format. AFQMC is matched on its own unique markers before the shared
+    ``free_energy`` key is ever consulted, so the relaxation/AFQMC overlap on that key
+    cannot cause a misclassification.
+    """
+    if db_keys & _AFQMC_MARKERS:
+        return "afqmc"
+    if db_keys & frozenset(_MD_DB_KEYS):
+        return "md"
+    if db_keys & frozenset(_RELAXATION_DB_KEYS):
+        return "relaxation"
+    raise exception.NotImplemented(
+        f"Could not determine the energy format from the labels {sorted(db_keys)}."
+    )
+
 
 @documentation.format(examples=slice_.examples("energy"))
 class EnergyHandler:
@@ -121,28 +165,57 @@ class EnergyHandler:
 
     def to_database(self) -> dict:
         default_dict = self._default_dict_all()
+        present_db_keys = {
+            db_key
+            for label in default_dict
+            if (db_key := _DB_KEYS.get(label)) is not None
+        }
+        energy_format = _detect_energy_format(present_db_keys)
+        if energy_format == "afqmc":
+            return self._to_afqmc_database(default_dict)
+        if energy_format == "md":
+            return self._to_md_database(default_dict)
+        return self._to_relaxation_database(default_dict)
+
+    def _to_md_database(self, default_dict) -> EnergyMD_DB:
         energy_dict = {}
-        for original_label, db_key in _DB_KEYS.items():
-            v = default_dict.get(original_label, None)
-            if v is not None:
-                v = np.array(v)
-            energy_dict[f"{db_key}_initial"] = None if v is None else float(v[0])
-            if (db_key != "step") and (v is not None):
-                energy_dict[f"{db_key}_min"] = float(np.min(v))
-                energy_dict[f"{db_key}_step_min"] = int(np.argmin(v))
-            energy_dict[f"{db_key}_final"] = None if v is None else float(v[-1])
-        extra_dict = {}
-        for k, v in default_dict.items():
-            if k not in _DB_KEYS:
-                vs = np.array(v) if v is not None else None
-                key = convert.text_to_string(k).strip().lower().replace(" ", "_")
-                extra_dict[f"{key}_initial"] = None if vs is None else float(vs[0])
-                extra_dict[f"{key}_min"] = None if vs is None else float(np.min(vs))
-                extra_dict[f"{key}_step_min"] = (
-                    None if vs is None else int(np.argmin(vs))
-                )
-                extra_dict[f"{key}_final"] = None if vs is None else float(vs[-1])
-        return Energy_DB(**energy_dict, other_energy_data=extra_dict)
+        for label, values in default_dict.items():
+            db_key = _DB_KEYS.get(label)
+            if db_key not in _MD_DB_KEYS:
+                continue
+            v = np.array(values)
+            energy_dict[f"{db_key}_initial"] = float(v[0])
+            energy_dict[f"{db_key}_average"] = float(np.mean(v))
+            energy_dict[f"{db_key}_final"] = float(v[-1])
+        return EnergyMD_DB(**energy_dict)
+
+    def _to_relaxation_database(self, default_dict) -> EnergyRelaxation_DB:
+        energy_dict = {}
+        for label, values in default_dict.items():
+            db_key = _DB_KEYS.get(label)
+            if db_key not in _RELAXATION_DB_KEYS:
+                continue
+            v = np.array(values)
+            energy_dict[f"{db_key}_initial"] = float(v[0])
+            # a relaxation converges, so the minimum and where it occurs are meaningful
+            energy_dict[f"{db_key}_min"] = float(np.min(v))
+            energy_dict[f"{db_key}_step_min"] = int(np.argmin(v))
+            energy_dict[f"{db_key}_final"] = float(v[-1])
+        return EnergyRelaxation_DB(**energy_dict)
+
+    def _to_afqmc_database(self, default_dict) -> EnergyAfqmc_DB:
+        energy_dict = {}
+        for label, values in default_dict.items():
+            db_key = _DB_KEYS.get(label)
+            if db_key not in _AFQMC_DB_KEYS:
+                continue
+            v = np.array(values)
+            energy_dict[f"{db_key}_initial"] = float(v[0])
+            energy_dict[f"{db_key}_final"] = float(v[-1])
+            # the step counter has no meaningful average
+            if db_key != "step":
+                energy_dict[f"{db_key}_average"] = float(np.mean(v))
+        return EnergyAfqmc_DB(**energy_dict)
 
     @property
     def _steps_or_last(self):

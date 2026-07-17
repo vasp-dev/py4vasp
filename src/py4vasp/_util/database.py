@@ -233,9 +233,24 @@ def get_formula_and_compound(
     tuple[str, str, list[str], list[int], list[int]]
         The chemical formula and compound name, followed by unique ion types, their
         counts in the conventional cell, and their counts in the primitive cell.
+
+    When the element names are unavailable but the counts are known, the counts (and
+    their primitive reduction) are still returned; the name-derived formula, compound,
+    and unique-type list are ``None`` because they cannot be built without names.
     """
-    if ion_types is None or number_ion_types is None:
+    if number_ion_types is None:
         return None, None, None, None, None
+    if ion_types is None:
+        # No element names: keep the counts in their raw order (they cannot be
+        # aggregated or sorted by element) and reduce them to the primitive cell.
+        simple_numbers = list(number_ion_types)
+        return (
+            None,
+            None,
+            None,
+            simple_numbers,
+            get_primitive_ion_numbers(simple_numbers),
+        )
 
     formula_dict = {}
     # first sort, then count up numbers in case any ion type is non-unique
@@ -396,7 +411,14 @@ def get_all_possible_keys(
             if sel in GROUPS.keys():
                 output_type_dict[f"{sel}._{k}"] = dataclass_name
         if len(selections_list) == 0:
-            all_keys.pop(k)
+            # Derived quantities such as `optics` have no schema/raw data of their own.
+            # Record them so the mapping stays complete. A derived quantity may still
+            # have a database representation (its own *_DB dataclass) via a hand-written
+            # `_to_database`; keep those so the dataclass is enumerated. Drop only the
+            # ones without any database dataclass from the storage keys.
+            output_type_dict[constructed_key] = dataclass_name
+            if dataclass_name is None:
+                all_keys.pop(k)
         else:
             selections_list = [
                 sel for sel in selections_list if sel not in GROUPS.keys()
@@ -407,6 +429,18 @@ def get_all_possible_keys(
             output_type_dict[constructed_key] = dataclass_name
             for sel in non_default_selections:
                 output_type_dict[f"{constructed_key}:{sel}"] = dataclass_name
+
+    # `energy` is special: its format -- and thus its database model -- is detected from
+    # the data at runtime, so the single `energy` quantity is represented by three
+    # different models rather than one. The auto-discovery above cannot resolve this, so
+    # map the selections explicitly: the default source is a relaxation or an MD run
+    # (relaxation is the representative), while the `afqmc` selection always maps to
+    # EnergyAfqmc_DB. All three models are injected into ``main_keys`` below so their
+    # fields still appear in the generated documentation.
+    energy_db_models = ("EnergyRelaxation_DB", "EnergyMD_DB", "EnergyAfqmc_DB")
+    if "energy" in all_keys:
+        output_type_dict["energy"] = "EnergyRelaxation_DB"
+        output_type_dict["energy:afqmc"] = "EnergyAfqmc_DB"
 
     sort_keys_list = ["energy"]
 
@@ -440,6 +474,10 @@ def get_all_possible_keys(
         for dataclass_name in [_get_dataclass_name_for_quantity(k)]
         if dataclass_name is not None
     }
+    # enumerate every energy model explicitly (see the note above the override)
+    if "energy" in all_keys:
+        for model in energy_db_models:
+            main_keys[model] = _get_dataclass_field_tuples(model)
     output_type_dict = {
         k: v for k, v in sorted(output_type_dict.items(), key=lambda item: item[0])
     }

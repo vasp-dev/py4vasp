@@ -19,7 +19,37 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.data_db import ElectronicMinimization_DB
 from py4vasp._third_party import graph
-from py4vasp._util import check
+from py4vasp._util import check, index, select
+
+# VASP labels that clash with the selection grammar (parentheses mean nesting) are
+# exposed under a grammar-safe alias. The raw label is kept for display / printing.
+_LABEL_TOKEN_OVERRIDES = {"rms(c)": "rms_c"}
+
+_SELECTION_ERROR_MESSAGE = """\
+Please choose a selection including at least one of the following keywords:
+N, E, dE, deps, ncg, rms, rms_c"""
+
+# Energy-change series shown on the left axis of the convergence overview, beside the
+# "E" distance to the converged energy. Given as (column token, display label) pairs.
+_ENERGY_CHANGE_TOKENS = [("dE", "dE"), ("deps", "d eps")]
+# Columns not plotted on the secondary residual axis: the iteration index, the energies,
+# and the number of Hamiltonian evaluations. Every remaining column (rms and the density
+# / orthonormalization residual, which VASP labels rms(c) or ort) is a residual.
+_NON_RESIDUAL_TOKENS = {"N", "E", "dE", "deps", "ncg"}
+
+# Convergence entries whose magnitude is below this threshold are treated as
+# not-yet-computed and reported as NaN. This most notably affects rms(c), which VASP
+# reports as zero until density updates begin after the NELMDL delay.
+_SANITY_THRESHOLD = 1e-16
+
+# Overlay flagging the points whose sign is atypical for their series (a log axis only
+# shows the magnitude, so the sign is otherwise invisible). Drawn as small crosses in a
+# neutral colour. "Atypical" means the minority sign, so a cleanly converging quantity
+# (e.g. an always-negative dE) is not flagged at all.
+_UNUSUAL_SIGN_LABEL = "unusual sign"
+_UNUSUAL_MARKER = "x"
+_UNUSUAL_MARKER_SIZE = 8
+_UNUSUAL_COLOR = "#4d4d4d"
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     exception.Py4VaspError,
@@ -48,7 +78,8 @@ class ElectronicMinimizationHandler:
         label_rep = "{}\t\t{}\t\t{}\t\t{}\t\t{}\t{}\t\t{}\n"
         string = ""
         labels = [label.decode("utf-8") for label in getattr(self._raw_data, "label")]
-        data = self.to_dict()
+        # print the raw OSZICAR data verbatim, without the read() sanity filter
+        data = self._extract(selection=None, sanitize=False)
         electronic_iterations = data["N"]
         if not self._more_than_one_ionic_step(electronic_iterations):
             electronic_iterations = [electronic_iterations]
@@ -59,7 +90,10 @@ class ElectronicMinimizationHandler:
             for electronic_step in range(electronic_steps):
                 _data = []
                 for label in self._raw_data.label:
-                    _values_electronic = data[label.decode("utf-8")]
+                    token = _LABEL_TOKEN_OVERRIDES.get(
+                        label.decode("utf-8"), label.decode("utf-8")
+                    )
+                    _values_electronic = data[token]
                     if not self._more_than_one_ionic_step(_values_electronic):
                         _values_electronic = [_values_electronic]
                     _value = _values_electronic[ionic_step][electronic_step]
@@ -69,34 +103,151 @@ class ElectronicMinimizationHandler:
         return string
 
     def to_dict(self, selection=None) -> dict:
-        """Extract convergence data and return as a dict."""
-        return_data = {}
+        """Extract convergence data and return as a dict.
+
+        The selection is parsed with the standard :mod:`py4vasp._util.select` grammar and
+        evaluated with :class:`py4vasp._util.index.Selector`, so multiple columns
+        (``"E, dE"``) and compositions (``"E + dE"``) are supported. Entries whose
+        magnitude is below a small threshold are treated as not-yet-computed and reported
+        as NaN (see :data:`_SANITY_THRESHOLD`).
+        """
+        return self._extract(selection, sanitize=True)
+
+    def _extract(self, selection, sanitize) -> dict:
+        tokens = self._tokens()
+        step_arrays = self._step_arrays()
+        column_map = {1: {token: column for column, token in enumerate(tokens)}}
+        selectors = [index.Selector(column_map, array) for array in step_arrays]
+        is_none = np.all([array.is_none() for array in step_arrays])
         if selection is None:
-            keys_to_include = self._from_bytes_to_utf(self._raw_data.label)
+            selections = [(token,) for token in tokens]
         else:
-            labels_as_str = self._from_bytes_to_utf(self._raw_data.label)
-            if selection not in labels_as_str:
-                message = """\
-Please choose a selection including at least one of the following keywords:
-N, E, dE, deps, ncg, rms, rms(c)"""
-                raise exception.RefinementError(message)
-            keys_to_include = [selection]
-        for key in keys_to_include:
-            return_data[key] = self._read(key)
+            selections = list(select.Tree.from_selection(selection).selections())
+        return_data = {}
+        for sel in selections:
+            try:
+                key = selectors[0].label(sel)
+                columns = [selector[sel] for selector in selectors]
+            except exception.IncorrectUsage as error:
+                raise exception.RefinementError(_SELECTION_ERROR_MESSAGE) from error
+            if sanitize:
+                columns = [self._sanitize(column) for column in columns]
+            values = [list(column) for column in columns]
+            if len(values) == 1:
+                values = values[0]
+            return_data[key] = values if not is_none else {}
         return return_data
 
-    def to_graph(self, selection="E") -> graph.Graph:
-        """Graph the change in parameter with iteration number."""
-        data = self.to_dict()
-        series = graph.Series(data["N"], data[selection], selection)
-        from py4vasp._util import select as sel_util
+    def _sanitize(self, column):
+        """Report not-yet-computed (near-zero) entries as NaN."""
+        column = np.array(column, dtype=float)
+        column[np.abs(column) < _SANITY_THRESHOLD] = np.nan
+        return column
 
-        ylabel = " ".join(s.capitalize() for s in selection.split("_"))
+    def to_graph(self, selection=None) -> graph.Graph:
+        """Graph the convergence data against the iteration number.
+
+        Without a selection this produces a convergence overview: the energy changes
+        on a logarithmic left axis and the residuals on a logarithmic secondary axis.
+        With a selection, the chosen columns are plotted as-is on a logarithmic axis.
+        """
+        if selection is None:
+            return self._overview_graph()
+        return self._selection_graph(selection)
+
+    def _overview_graph(self) -> graph.Graph:
+        data = self.to_dict()
+        iterations = np.array(data["N"], dtype=float)
+        # (signed values, label, secondary axis) for each series of the overview; the
+        # distance to the converged energy is positive while E is above its final value
+        specs = [(self._energy_distance(data), "E - E_final", False)]
+        specs += [
+            (np.array(data[token], dtype=float), label, False)
+            for token, label in _ENERGY_CHANGE_TOKENS
+        ]
+        specs += [
+            (np.array(data[token], dtype=float), token, True)
+            for token in self._tokens()
+            if token not in _NON_RESIDUAL_TOKENS
+        ]
+        series = [self._make_series(iterations, *spec) for spec in specs]
+        series += self._unusual_sign_overlays(iterations, specs)
         return graph.Graph(
-            series=[series],
+            series=series,
             xlabel="Iteration number",
-            ylabel=ylabel,
+            ylabel="Energy change (eV)",
+            y2label="Residual",
+            yscale="log",
+            y2scale="log",
         )
+
+    def _unusual_sign_overlays(self, iterations, specs):
+        """One markers-only series per axis flagging the atypical-sign points (whose
+        magnitude is plotted but whose sign the log axis hides); the overlays on the two
+        axes share a single legend entry."""
+        overlays = []
+        for y2 in (False, True):
+            points = []
+            for values, _, axis in specs:
+                if axis != y2:
+                    continue
+                mask = self._unusual_sign_mask(values)
+                if mask.any():
+                    points.append((iterations[mask], np.abs(values[mask])))
+            if not points:
+                continue
+            xs, ys = zip(*points)
+            overlays.append(
+                graph.Series(
+                    np.concatenate(xs),
+                    np.concatenate(ys),
+                    _UNUSUAL_SIGN_LABEL,
+                    marker=graph.Marker(_UNUSUAL_MARKER, _UNUSUAL_MARKER_SIZE),
+                    color=_UNUSUAL_COLOR,
+                    y2=y2,
+                    show_legend=not overlays,
+                )
+            )
+        return overlays
+
+    @staticmethod
+    def _unusual_sign_mask(values):
+        """Boolean mask of the points whose sign is the minority for this series; empty
+        when the finite values do not change sign."""
+        num_positive = np.sum(values > 0)
+        num_negative = np.sum(values < 0)
+        if num_positive == 0 or num_negative == 0:
+            return np.zeros(len(values), dtype=bool)
+        return values > 0 if num_positive < num_negative else values < 0
+
+    def _energy_distance(self, data):
+        # E - E_final is positive while the energy is above its converged value; the
+        # final point is zero and therefore dropped so it does not vanish on the axis
+        values = np.array(data["E"], dtype=float)
+        values = values - values[-1]
+        values[-1] = np.nan
+        return values
+
+    def _selection_graph(self, selection) -> graph.Graph:
+        iterations = np.array(self.to_dict("N")["N"], dtype=float)
+        series = [
+            self._make_series(iterations, np.array(values, dtype=float), label)
+            for label, values in self.to_dict(selection).items()
+        ]
+        return graph.Graph(
+            series=series,
+            xlabel="Iteration number",
+            ylabel="Convergence data",
+            yscale="log",
+        )
+
+    def _make_series(self, x, values, label, y2=False) -> graph.Series:
+        """Plot |values| labelled "|label|" if any value is negative (a log axis cannot
+        show negative numbers); otherwise plot the values as they are."""
+        if np.any(values < 0):
+            values = np.abs(values)
+            label = f"|{label}|"
+        return graph.Series(x, values, label, y2=y2)
 
     def is_converged(self) -> np.ndarray:
         is_elmin_converged = self._raw_data.is_elmin_converged[self._steps_or_last]
@@ -144,22 +295,20 @@ N, E, dE, deps, ncg, rms, rms(c)"""
     def _more_than_one_ionic_step(self, data):
         return any(isinstance(_data, list) for _data in data)
 
-    def _read(self, key):
+    def _tokens(self):
+        """Selectable tokens: the raw labels with grammar-clashing ones aliased."""
+        labels = self._from_bytes_to_utf(self._raw_data.label)
+        return [_LABEL_TOKEN_OVERRIDES.get(label, label) for label in labels]
+
+    def _step_arrays(self):
+        """Split the convergence data into per-ionic-step arrays for the chosen steps."""
         data = getattr(self._raw_data, "convergence_data")
         iteration_number = data[:, 0]
         split_index = np.where(iteration_number == 1)[0]
         data = np.vsplit(data, split_index)[1:][self._steps_or_last]
         if isinstance(self._steps, slice):
-            data = [raw.VaspData(_data) for _data in data]
-        else:
-            data = [raw.VaspData(data)]
-        labels = [label.decode("utf-8") for label in self._raw_data.label]
-        data_index = labels.index(key)
-        return_data = [list(_data[:, data_index]) for _data in data]
-        is_none = [_data.is_none() for _data in data]
-        if len(return_data) == 1:
-            return_data = return_data[0]
-        return return_data if not np.all(is_none) else {}
+            return [raw.VaspData(_data) for _data in data]
+        return [raw.VaspData(data)]
 
     def _get_electronic_steps_info(self) -> tuple:
         if check.is_none(self._raw_data.convergence_data):
@@ -251,13 +400,17 @@ class ElectronicMinimization(graph.Mixin):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
-    def to_graph(self, selection="E") -> graph.Graph:
-        """Graph the change in parameter with iteration number.
+    def to_graph(self, selection=None) -> graph.Graph:
+        """Graph the convergence data against the iteration number.
 
         Parameters
         ----------
         selection: str
-            Choose strings consistent with the OSZICAR format
+            Choose strings consistent with the OSZICAR format (N, E, dE, deps, ncg, rms,
+            rms_c), optionally composed with the standard selection grammar (e.g.
+            "E + dE"). Without a selection a convergence overview is produced with the
+            energy changes on a logarithmic left axis and the residuals on a logarithmic
+            secondary axis.
 
         Returns
         -------

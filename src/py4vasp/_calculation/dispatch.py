@@ -349,7 +349,9 @@ class SuppressErrorsSourceWrapper:
         return getattr(self._source, name)
 
 
-def merge_to_database(source, quantity_name, handler_factory, method, *args, **kwargs):
+def merge_to_database(
+    source, quantity_name, handler_factory, method, *args, key_name=None, **kwargs
+):
     """Collect database results across all of a quantity's sources.
 
     Database collection is internal and never user-selected, so this enumerates
@@ -359,6 +361,11 @@ def merge_to_database(source, quantity_name, handler_factory, method, *args, **k
     name and every other source to ``quantity_source``. Leading underscores are
     stripped from *quantity_name* so private quantities (``_CONTCAR``,
     ``_stoichiometry``) appear without the underscore prefix.
+
+    A derived quantity accesses the schema and raw data under one name but should
+    store its results under another (e.g. ``optics`` derives from
+    ``dielectric_function``). Pass *key_name* to override the name used for the
+    result keys while still looking up data under *quantity_name*.
 
     Sources without data are dropped (errors are suppressed via
     :class:`SuppressErrorsSourceWrapper`). A source whose result merely duplicates
@@ -382,13 +389,14 @@ def merge_to_database(source, quantity_name, handler_factory, method, *args, **k
 
     Returns
     -------
-    dict[str, result]
-        Maps ``quantity_name`` (default source) or ``quantity_name_source``
-        (other sources) to each handler result.
+    dict[str, dict[str, result]]
+        Nested ``{quantity: {selection: result}}``. The outer key is the
+        (underscore-stripped) quantity name; the inner dict is keyed by selection
+        with the default source keyed ``"default"``. Empty quantities are omitted.
     """
     wrapped_source = SuppressErrorsSourceWrapper(source)
-    base = quantity_name.lstrip("_")
-    selection = _all_sources_selection(base)
+    base = (key_name or quantity_name).lstrip("_")
+    selection = _all_sources_selection(quantity_name.lstrip("_"))
     raw_results = _dispatch(
         wrapped_source,
         quantity_name,
@@ -398,12 +406,11 @@ def merge_to_database(source, quantity_name, handler_factory, method, *args, **k
         *args,
         **kwargs,
     )
-    results = {
-        base if sel == "default" else f"{base}_{sel}": result
-        for sel, result in raw_results.items()
-        if _result_has_data(result)
+    selections = {
+        sel: result for sel, result in raw_results.items() if _result_has_data(result)
     }
-    return _drop_duplicates_of_default(results, base)
+    selections = _drop_duplicates_of_default(selections)
+    return {base: selections} if selections else {}
 
 
 def _all_sources_selection(quantity_name):
@@ -419,15 +426,15 @@ def _all_sources_selection(quantity_name):
     return ", ".join(str(source_name) for source_name in sources)
 
 
-def _drop_duplicates_of_default(results, base):
-    """Drop non-default entries whose result equals the default result."""
-    if base not in results:
-        return results
-    default_result = results[base]
+def _drop_duplicates_of_default(selections):
+    """Drop non-default selections whose result equals the ``default`` result."""
+    if "default" not in selections:
+        return selections
+    default_result = selections["default"]
     return {
-        key: result
-        for key, result in results.items()
-        if key == base or result != default_result
+        sel: result
+        for sel, result in selections.items()
+        if sel == "default" or result != default_result
     }
 
 
