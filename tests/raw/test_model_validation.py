@@ -20,7 +20,6 @@ from py4vasp._raw.models import (
     _DatabaseModel,
 )
 
-
 # --- scalar leaf types -----------------------------------------------------
 
 
@@ -166,7 +165,9 @@ def test_model_coerces_numpy_array_to_tuple():
 
 
 def test_model_coerces_list_of_numpy_to_tuple_of_float():
-    model = StructureModel(lattice_vector_1=[np.float64(1.0), np.float64(2.0), np.float64(3.0)])
+    model = StructureModel(
+        lattice_vector_1=[np.float64(1.0), np.float64(2.0), np.float64(3.0)]
+    )
     assert model.lattice_vector_1 == (1.0, 2.0, 3.0)
     assert all(type(x) is float for x in model.lattice_vector_1)
 

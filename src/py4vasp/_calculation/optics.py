@@ -15,8 +15,8 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.models import OpticsModel
 from py4vasp._raw.definition import unique_selections as _schema_sources
+from py4vasp._raw.models import OpticsModel
 from py4vasp._third_party import graph
 from py4vasp._util import convert, index, select
 from py4vasp._util.color import Color

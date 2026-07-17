@@ -19,8 +19,8 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
-from py4vasp._raw.models import StoichiometryModel, StructureModel
 from py4vasp._raw.definition import unique_selections as _schema_unique_selections
+from py4vasp._raw.models import StoichiometryModel, StructureModel
 from py4vasp._third_party import view
 from py4vasp._util import check, import_, parse
 

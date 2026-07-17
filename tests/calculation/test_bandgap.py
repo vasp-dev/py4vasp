@@ -363,7 +363,9 @@ def test_factory_methods(raw_data, check_factory_methods):
 def _check_to_database(_handler, Assert):
     db_dict: BandgapModel = _handler.to_database()
 
-    assert isinstance(db_dict, BandgapModel), f"Expected BandgapModel, got {type(db_dict)}"
+    assert isinstance(
+        db_dict, BandgapModel
+    ), f"Expected BandgapModel, got {type(db_dict)}"
     for fld in fields(BandgapModel):
         if fld.name.startswith("kpoint"):
             assert isinstance(

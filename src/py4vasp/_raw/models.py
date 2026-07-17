@@ -83,7 +83,11 @@ def _format_type(annotation) -> str:
         non_none = [arg for arg in args if arg is not type(None)]
         inner = ", ".join(_format_type(arg) for arg in non_none)
         if len(non_none) < len(args):  # NoneType present -> Optional
-            return f"Optional[{inner}]" if len(non_none) == 1 else f"Optional[Union[{inner}]]"
+            return (
+                f"Optional[{inner}]"
+                if len(non_none) == 1
+                else f"Optional[Union[{inner}]]"
+            )
         return f"Union[{inner}]"
     origin_name = getattr(origin, "__name__", str(origin))
     inner = ", ".join(_format_type(arg) for arg in args)

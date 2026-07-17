@@ -18,7 +18,9 @@ def _snapshot(version, models_):
 
 
 MODELS_A = {"BandModel": [["fermi_energy", "Optional[float]"]]}
-MODELS_B = {"BandModel": [["fermi_energy", "Optional[float]"], ["gap", "Optional[float]"]]}
+MODELS_B = {
+    "BandModel": [["fermi_energy", "Optional[float]"], ["gap", "Optional[float]"]]
+}
 
 
 def test_parse_schema_version():
@@ -83,8 +85,18 @@ def test_check_rejects_model_change_without_counter_bump():
 
 def test_check_ok_when_py4vasp_series_advances_with_clean_reset():
     # a new py4vasp release resets to the bare series; models may or may not change
-    assert database.check_schema_snapshot(_snapshot("0.11", MODELS_A), _snapshot("0.12", MODELS_A)) is None
-    assert database.check_schema_snapshot(_snapshot("0.11+db.3", MODELS_A), _snapshot("0.12", MODELS_B)) is None
+    assert (
+        database.check_schema_snapshot(
+            _snapshot("0.11", MODELS_A), _snapshot("0.12", MODELS_A)
+        )
+        is None
+    )
+    assert (
+        database.check_schema_snapshot(
+            _snapshot("0.11+db.3", MODELS_A), _snapshot("0.12", MODELS_B)
+        )
+        is None
+    )
 
 
 def test_check_rejects_new_series_carrying_a_counter():
@@ -110,7 +122,12 @@ def test_fingerprint_top_level_shape():
 
 def test_fingerprint_includes_all_models_but_not_the_base():
     model_names = models.schema_fingerprint()["models"]
-    for name in ("BandModel", "StructureModel", "DispersionModel", "StoichiometryModel"):
+    for name in (
+        "BandModel",
+        "StructureModel",
+        "DispersionModel",
+        "StoichiometryModel",
+    ):
         assert name in model_names
     for name in ("EnergyRelaxationModel", "EnergyMDModel", "EnergyAfqmcModel"):
         assert name in model_names
@@ -155,10 +172,21 @@ def test_fingerprint_types_are_canonical_and_interpreter_independent():
     voigt = "tuple[float, float, float, float, float, float]"
     voigt_matrix = f"tuple[{', '.join([voigt] * 6)}]"
     assert dict(model_dict["StructureModel"])["lattice_vector_1"] == f"Optional[{vec3}]"
-    assert dict(model_dict["CurrentDensityModel"])["grid_shape"] == "Optional[tuple[int, int, int]]"
-    assert dict(model_dict["DielectricTensorModel"])["total_3d_tensor"] == f"Optional[{voigt}]"
-    assert dict(model_dict["StressModel"])["final_stress_tensor"] == f"Optional[{voigt}]"
-    assert dict(model_dict["ElasticModulusModel"])["total_3d_tensor"] == f"Optional[{voigt_matrix}]"
+    assert (
+        dict(model_dict["CurrentDensityModel"])["grid_shape"]
+        == "Optional[tuple[int, int, int]]"
+    )
+    assert (
+        dict(model_dict["DielectricTensorModel"])["total_3d_tensor"]
+        == f"Optional[{voigt}]"
+    )
+    assert (
+        dict(model_dict["StressModel"])["final_stress_tensor"] == f"Optional[{voigt}]"
+    )
+    assert (
+        dict(model_dict["ElasticModulusModel"])["total_3d_tensor"]
+        == f"Optional[{voigt_matrix}]"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -12,8 +12,8 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.models import RunInfoModel
 from py4vasp._raw.data_wrapper import VaspData
+from py4vasp._raw.models import RunInfoModel
 from py4vasp._util import check
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
