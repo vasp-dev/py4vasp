@@ -197,10 +197,6 @@ def _coerce_scalar(value, target, name):
         if isinstance(value, numbers.Real):
             return float(value)
         raise _wrong_scalar(name, target, value)
-    if target is complex:
-        if isinstance(value, numbers.Complex):
-            return complex(value)
-        raise _wrong_scalar(name, target, value)
     if target is str:
         if isinstance(value, bytes):  # VASP strings often arrive undecoded
             return value.decode()
@@ -468,19 +464,19 @@ class DosModel(_DatabaseModel):
 class EffectiveCoulombModel(_DatabaseModel):
     """Data class for storing effective Coulomb interaction data in the database."""
 
-    screened_U_uppercase: Optional[complex] = None
-    """The value of the screened effective Coulomb interaction U, in eV."""
-    screened_u_lowercase: Optional[complex] = None
-    """The value of the screened effective Coulomb interaction u, in eV."""
-    screened_J_uppercase: Optional[complex] = None
-    """The value of the screened effective Coulomb interaction J, in eV."""
+    screened_U_uppercase: Optional[float] = None
+    """The real part of the screened effective Coulomb interaction U, in eV."""
+    screened_u_lowercase: Optional[float] = None
+    """The real part of the screened effective Coulomb interaction u, in eV."""
+    screened_J_uppercase: Optional[float] = None
+    """The real part of the screened effective Coulomb interaction J, in eV."""
 
-    bare_V_uppercase: Optional[complex] = None
-    """The value of the bare effective Coulomb interaction V, in eV."""
-    bare_v_lowercase: Optional[complex] = None
-    """The value of the bare effective Coulomb interaction v, in eV."""
-    bare_J_uppercase: Optional[complex] = None
-    """The value of the bare effective Coulomb interaction J, in eV."""
+    bare_V_uppercase: Optional[float] = None
+    """The real part of the bare effective Coulomb interaction V, in eV."""
+    bare_v_lowercase: Optional[float] = None
+    """The real part of the bare effective Coulomb interaction v, in eV."""
+    bare_J_uppercase: Optional[float] = None
+    """The real part of the bare effective Coulomb interaction J, in eV."""
 
 
 @dataclass

@@ -521,7 +521,8 @@ def test_to_database(raw_data, Assert):
         expected = setup_overview_data(setup, read_data)
         for key in expected.keys():
             assert hasattr(data, key)
-            Assert.allclose(getattr(data, key), expected[key])
+            # only the real part of the interaction is stored in the database
+            Assert.allclose(getattr(data, key), np.real(expected[key]))
 
 
 def test_print(effective_coulomb, format_):

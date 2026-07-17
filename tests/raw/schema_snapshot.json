@@ -318,27 +318,27 @@
     "EffectiveCoulombModel": [
       [
         "bare_J_uppercase",
-        "Optional[complex]"
+        "Optional[float]"
       ],
       [
         "bare_V_uppercase",
-        "Optional[complex]"
+        "Optional[float]"
       ],
       [
         "bare_v_lowercase",
-        "Optional[complex]"
+        "Optional[float]"
       ],
       [
         "screened_J_uppercase",
-        "Optional[complex]"
+        "Optional[float]"
       ],
       [
         "screened_U_uppercase",
-        "Optional[complex]"
+        "Optional[float]"
       ],
       [
         "screened_u_lowercase",
-        "Optional[complex]"
+        "Optional[float]"
       ]
     ],
     "ElasticModulusModel": [

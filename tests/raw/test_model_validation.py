@@ -62,13 +62,6 @@ def test_str_decodes_bytes():
     assert result == "P1" and type(result) is str
 
 
-def test_complex_accepts_numpy_complex_and_float():
-    result = _coerce_field(np.complex128(1 + 2j), complex, "u")
-    assert result == (1 + 2j) and type(result) is complex
-    result = _coerce_field(3.0, complex, "u")
-    assert result == (3 + 0j) and type(result) is complex
-
-
 def test_zero_dim_array_coerces_to_scalar():
     result = _coerce_field(np.array(2.0), float, "x")
     assert result == 2.0 and type(result) is float

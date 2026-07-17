@@ -82,13 +82,15 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         V = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_V])
         v = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_v])
         Vj = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_Vj])
+        # Only the real part is stored in the database; the imaginary part of the
+        # frequency-averaged interaction is not physically meaningful here.
         return EffectiveCoulombModel(
-            screened_U_uppercase=complex(np.average(U)),
-            screened_u_lowercase=complex(np.average(u)),
-            screened_J_uppercase=complex(np.average(J)),
-            bare_V_uppercase=complex(np.average(V)),
-            bare_v_lowercase=complex(np.average(v)),
-            bare_J_uppercase=complex(np.average(Vj)),
+            screened_U_uppercase=float(np.average(U).real),
+            screened_u_lowercase=float(np.average(u).real),
+            screened_J_uppercase=float(np.average(J).real),
+            bare_V_uppercase=float(np.average(V).real),
+            bare_v_lowercase=float(np.average(v).real),
+            bare_J_uppercase=float(np.average(Vj).real),
         )
 
     def _wannier_indices_iiii(self):
