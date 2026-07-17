@@ -10,7 +10,7 @@ __SCHEMA_VERSION__ = "0.1.0"
 
 
 @dataclass
-class _DBDataMixin:
+class _DatabaseModel:
     """Mixin for dataclasses that will be stored in the database."""
 
     def __post_init__(self):
@@ -20,7 +20,7 @@ class _DBDataMixin:
 
 
 @dataclass
-class CONTCAR_DB(_DBDataMixin):
+class CONTCARModel(_DatabaseModel):
     """Data class for storing CONTCAR data in the database."""
 
     system: Optional[str] = None
@@ -28,7 +28,7 @@ class CONTCAR_DB(_DBDataMixin):
 
 
 @dataclass
-class Dispersion_DB(_DBDataMixin):
+class DispersionModel(_DatabaseModel):
     """Data class for storing dispersion data in the database."""
 
     eigenvalue_min: Optional[float] = None
@@ -46,7 +46,7 @@ class Dispersion_DB(_DBDataMixin):
 
 
 @dataclass
-class Stoichiometry_DB(_DBDataMixin):
+class StoichiometryModel(_DatabaseModel):
     """Data class for storing stoichiometry data in the database."""
 
     ion_types: Optional[List[str]] = field(default_factory=lambda: None)
@@ -62,7 +62,7 @@ class Stoichiometry_DB(_DBDataMixin):
 
 
 @dataclass
-class Band_DB(_DBDataMixin):
+class BandModel(_DatabaseModel):
     """Data class for storing band structure data in the database."""
 
     num_considered_bands: Optional[int] = None
@@ -94,7 +94,7 @@ class Band_DB(_DBDataMixin):
 
 
 @dataclass
-class Bandgap_DB(_DBDataMixin):
+class BandgapModel(_DatabaseModel):
     """Data class for storing band gap data in the database."""
 
     fundamental_bandgap_spin_independent: Optional[float] = None
@@ -165,7 +165,7 @@ class Bandgap_DB(_DBDataMixin):
 
 
 @dataclass
-class BornEffectiveCharge_DB(_DBDataMixin):
+class BornEffectiveChargeModel(_DatabaseModel):
     """Data class for storing Born effective charge data in the database."""
 
     eigenvalue_min: Optional[float] = None
@@ -179,7 +179,7 @@ class BornEffectiveCharge_DB(_DBDataMixin):
 
 
 @dataclass
-class CurrentDensity_DB(_DBDataMixin):
+class CurrentDensityModel(_DatabaseModel):
     """Data class for storing current density data in the database.
 
     The current density is a vector field on a grid; the summaries below refer to its
@@ -196,7 +196,7 @@ class CurrentDensity_DB(_DBDataMixin):
 
 
 @dataclass
-class DielectricFunction_DB(_DBDataMixin):
+class DielectricFunctionModel(_DatabaseModel):
     """Data class for storing dielectric function data in the database."""
 
     energy_min: Optional[float] = None
@@ -206,7 +206,7 @@ class DielectricFunction_DB(_DBDataMixin):
 
 
 @dataclass
-class DielectricTensor_DB(_DBDataMixin):
+class DielectricTensorModel(_DatabaseModel):
     """Data class for storing dielectric tensor data in the database."""
 
     method: Optional[str] = None
@@ -237,7 +237,7 @@ class DielectricTensor_DB(_DBDataMixin):
 
 
 @dataclass
-class Dos_DB(_DBDataMixin):
+class DosModel(_DatabaseModel):
     """Data class for storing density of states data in the database."""
 
     dos_at_fermi_total: Optional[float] = None
@@ -261,7 +261,7 @@ class Dos_DB(_DBDataMixin):
 
 
 @dataclass
-class EffectiveCoulomb_DB(_DBDataMixin):
+class EffectiveCoulombModel(_DatabaseModel):
     """Data class for storing effective Coulomb interaction data in the database."""
 
     screened_U_uppercase: Optional[float] = None
@@ -280,7 +280,7 @@ class EffectiveCoulomb_DB(_DBDataMixin):
 
 
 @dataclass
-class ElasticModulus_DB(_DBDataMixin):
+class ElasticModulusModel(_DatabaseModel):
     """Data class for storing elastic modulus data in the database."""
 
     total_3d_tensor: Optional[List[List[float]]] = field(default_factory=lambda: None)
@@ -338,7 +338,7 @@ class ElasticModulus_DB(_DBDataMixin):
 
 
 @dataclass
-class ElectronicMinimization_DB(_DBDataMixin):
+class ElectronicMinimizationModel(_DatabaseModel):
     """Data class for storing electronic minimization data in the database."""
 
     num_electronic_steps: Optional[int] = None
@@ -354,7 +354,7 @@ class ElectronicMinimization_DB(_DBDataMixin):
 
 
 @dataclass
-class EnergyAfqmc_DB(_DBDataMixin):
+class EnergyAfqmcModel(_DatabaseModel):
     """Data class for storing AFQMC energy data in the database.
 
     AFQMC energies fluctuate around a value rather than converging to a minimum, so
@@ -411,7 +411,7 @@ class EnergyAfqmc_DB(_DBDataMixin):
 
 
 @dataclass
-class EnergyRelaxation_DB(_DBDataMixin):
+class EnergyRelaxationModel(_DatabaseModel):
     """Data class for storing ionic-relaxation energy data in the database.
 
     A relaxation converges toward a minimum, so each energy term is summarized by its
@@ -447,7 +447,7 @@ class EnergyRelaxation_DB(_DBDataMixin):
 
 
 @dataclass
-class EnergyMD_DB(_DBDataMixin):
+class EnergyMDModel(_DatabaseModel):
     """Data class for storing molecular-dynamics energy data in the database.
 
     MD energies fluctuate around a value rather than converging to a minimum, so each
@@ -505,7 +505,7 @@ class EnergyMD_DB(_DBDataMixin):
 
 
 @dataclass
-class ExcitonEigenvector_DB(_DBDataMixin):
+class ExcitonEigenvectorModel(_DatabaseModel):
     """Data class for storing exciton eigenvector data in the database."""
 
     num_kpoints: Optional[int] = None
@@ -517,7 +517,7 @@ class ExcitonEigenvector_DB(_DBDataMixin):
 
 
 @dataclass
-class Force_DB(_DBDataMixin):
+class ForceModel(_DatabaseModel):
     """Data class for storing force data in the database."""
 
     final_force_min: Optional[float] = None
@@ -540,7 +540,7 @@ class Force_DB(_DBDataMixin):
 
 
 @dataclass
-class Kpoint_DB(_DBDataMixin):
+class KpointModel(_DatabaseModel):
     """Data class for storing k-point data in the database."""
 
     mode: Optional[str] = None
@@ -560,7 +560,7 @@ class Kpoint_DB(_DBDataMixin):
 
 
 @dataclass
-class LocalMoment_DB(_DBDataMixin):
+class LocalMomentModel(_DatabaseModel):
     """Data class for storing local magnetic moment data in the database."""
 
     has_orbital_moments: Optional[bool] = None
@@ -572,7 +572,7 @@ class LocalMoment_DB(_DBDataMixin):
 
 
 @dataclass
-class Nics_DB(_DBDataMixin):
+class NicsModel(_DatabaseModel):
     """Data class for storing NICS data in the database."""
 
     method: Optional[str] = None
@@ -580,7 +580,7 @@ class Nics_DB(_DBDataMixin):
 
 
 @dataclass
-class Optics_DB(_DBDataMixin):
+class OpticsModel(_DatabaseModel):
     """Data class for storing optical properties in the database.
 
     The optical properties are derived from the dielectric function. All spectra
@@ -612,7 +612,7 @@ class Optics_DB(_DBDataMixin):
 
 
 @dataclass
-class PairCorrelation_DB(_DBDataMixin):
+class PairCorrelationModel(_DatabaseModel):
     """Data class for storing pair correlation function data in the database."""
 
     distance_min: Optional[float] = None
@@ -626,7 +626,7 @@ class PairCorrelation_DB(_DBDataMixin):
 
 
 @dataclass
-class PhononDos_DB(_DBDataMixin):
+class PhononDosModel(_DatabaseModel):
     """Data class for storing phonon density of states data in the database."""
 
     energy_min: Optional[float] = None
@@ -636,7 +636,7 @@ class PhononDos_DB(_DBDataMixin):
 
 
 @dataclass
-class PhononBand_DB(_DBDataMixin):
+class PhononBandModel(_DatabaseModel):
     """Data class for storing phonon band structure data in the database.
 
     The dispersion (phonon frequencies) is folded into this model."""
@@ -648,7 +648,7 @@ class PhononBand_DB(_DBDataMixin):
 
 
 @dataclass
-class PhononMode_DB(_DBDataMixin):
+class PhononModeModel(_DatabaseModel):
     """Data class for storing phonon mode data in the database."""
 
     frequencies_real_max: Optional[float] = None
@@ -658,7 +658,7 @@ class PhononMode_DB(_DBDataMixin):
 
 
 @dataclass
-class PiezoelectricTensor_DB(_DBDataMixin):
+class PiezoelectricTensorModel(_DatabaseModel):
     """Data class for storing piezoelectric tensor data in the database."""
 
     total_3d_tensor_x: Optional[List[List[float]]] = field(default_factory=lambda: None)
@@ -768,7 +768,7 @@ class PiezoelectricTensor_DB(_DBDataMixin):
 
 
 @dataclass
-class Polarization_DB(_DBDataMixin):
+class PolarizationModel(_DatabaseModel):
     """Data class for storing polarization data in the database."""
 
     total_dipole_norm: Optional[float] = None
@@ -786,7 +786,7 @@ class Polarization_DB(_DBDataMixin):
 
 
 @dataclass
-class Potential_DB(_DBDataMixin):
+class PotentialModel(_DatabaseModel):
     """Data class for storing potential data in the database."""
 
     has_total_potential: bool = False
@@ -809,7 +809,7 @@ class Potential_DB(_DBDataMixin):
 
 
 @dataclass
-class Projector_DB(_DBDataMixin):
+class ProjectorModel(_DatabaseModel):
     """Data class for storing projector data in the database."""
 
     orbital_types: Optional[List[str]] = field(default_factory=lambda: None)
@@ -817,7 +817,7 @@ class Projector_DB(_DBDataMixin):
 
 
 @dataclass
-class RunInfo_DB(_DBDataMixin):
+class RunInfoModel(_DatabaseModel):
     """Data class for storing general run information in the database."""
 
     vasp_version: Optional[str] = None
@@ -862,7 +862,7 @@ class RunInfo_DB(_DBDataMixin):
 
 
 @dataclass
-class Stress_DB(_DBDataMixin):
+class StressModel(_DatabaseModel):
     """Data class for storing stress data in the database."""
 
     initial_stress_mean: Optional[float] = None
@@ -876,7 +876,7 @@ class Stress_DB(_DBDataMixin):
 
 
 @dataclass
-class Structure_DB(_DBDataMixin):
+class StructureModel(_DatabaseModel):
     """Data class for storing a single structure geometry in the database.
 
     Each instance describes one geometry. The database entry for a calculation stores
@@ -933,7 +933,7 @@ class Structure_DB(_DBDataMixin):
 
 
 @dataclass
-class Velocity_DB(_DBDataMixin):
+class VelocityModel(_DatabaseModel):
     """Data class for storing velocity data in the database."""
 
     final_velocity_min: Optional[float] = None
@@ -958,7 +958,7 @@ class Velocity_DB(_DBDataMixin):
 
 
 @dataclass
-class Symmetry_DB(_DBDataMixin):
+class SymmetryModel(_DatabaseModel):
     """Data class for storing symmetry data in the database."""
 
     space_group: Optional[int] = None
@@ -984,7 +984,7 @@ class Symmetry_DB(_DBDataMixin):
 
 
 @dataclass
-class Workfunction_DB(_DBDataMixin):
+class WorkfunctionModel(_DatabaseModel):
     """Data class for storing work function data in the database."""
 
     direction: Optional[int] = None

@@ -11,7 +11,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation.dos import Dos, DosHandler
 from py4vasp._calculation.projector import SPIN_PROJECTION, Projector
-from py4vasp._raw.data_db import Dos_DB
+from py4vasp._raw.models import DosModel
 
 
 @pytest.fixture
@@ -349,9 +349,9 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def _check_to_database(dos, fermi_energy=None):
     handler = DosHandler.from_data(dos.ref.raw_data)
-    dos_db: Dos_DB = handler.to_database(fermi_energy=fermi_energy)
+    dos_db: DosModel = handler.to_database(fermi_energy=fermi_energy)
 
-    assert isinstance(dos_db, Dos_DB)
+    assert isinstance(dos_db, DosModel)
 
     _fermi_energy = fermi_energy if fermi_energy is not None else dos.ref.fermi_energy
     _raw_fermi_energy = dos.ref.fermi_energy

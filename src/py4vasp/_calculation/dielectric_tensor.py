@@ -14,7 +14,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import DielectricTensor_DB
+from py4vasp._raw.models import DielectricTensorModel
 from py4vasp._util import check, convert, error
 from py4vasp._util.tensor import symmetry_reduce
 
@@ -108,7 +108,7 @@ Macroscopic static dielectric tensor (dimensionless)
             else None
         )
 
-        return DielectricTensor_DB(
+        return DielectricTensorModel(
             method=method,
             total_3d_tensor=tensor_reduced[0],
             total_3d_isotropic_dielectric_constant=isotropic_constant[0],

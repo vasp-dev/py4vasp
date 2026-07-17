@@ -20,7 +20,7 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._calculation.kpoint import KpointHandler
 from py4vasp._calculation.projector import ProjectorHandler
 from py4vasp._raw import data as raw
-from py4vasp._raw.data_db import Band_DB
+from py4vasp._raw.models import BandModel
 from py4vasp._third_party import graph
 from py4vasp._util import (
     check,
@@ -79,7 +79,7 @@ class BandHandler:
             **self._read_projections(selection),
         }
 
-    def to_database(self, selection=None, fermi_energy=None) -> Band_DB:
+    def to_database(self, selection=None, fermi_energy=None) -> BandModel:
         occupations = self._read_occupations()
         num_total_occupied = occupations.get("occupations", None)
         num_checked_bands = None
@@ -108,7 +108,7 @@ class BandHandler:
 
         dispersion = self._dispersion().to_database()
 
-        return Band_DB(
+        return BandModel(
             num_considered_bands=num_checked_bands,
             num_occupied_bands=num_total_occupied,
             num_occupied_bands_up=num_occupied_up,

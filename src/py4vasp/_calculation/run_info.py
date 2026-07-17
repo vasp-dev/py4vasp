@@ -12,7 +12,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import RunInfo_DB
+from py4vasp._raw.models import RunInfoModel
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._util import check
 
@@ -49,7 +49,7 @@ class RunInfoHandler:
 
     def to_database(self) -> dict:
         """Serialize run info for the database."""
-        return RunInfo_DB(**self.to_dict())
+        return RunInfoModel(**self.to_dict())
 
     def _read_attr(self, *keys: str):
         data = self._raw_run_info

@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Optics_DB
+from py4vasp._raw.models import OpticsModel
 from py4vasp._raw.definition import unique_selections as _schema_sources
 from py4vasp._third_party import graph
 from py4vasp._util import convert, index, select
@@ -146,7 +146,7 @@ class OpticsHandler:
             return next(iter(results.values()))
         return results
 
-    def to_database(self) -> Optics_DB:
+    def to_database(self) -> OpticsModel:
         """Serialize scalar optical properties for database storage.
 
         Extracts the energy range and the range of each coefficient for the isotropic
@@ -155,7 +155,7 @@ class OpticsHandler:
         """
         data = self.to_dict()
         color = self.color()
-        return Optics_DB(
+        return OpticsModel(
             energy_min=float(np.min(data["energies"])),
             energy_max=float(np.max(data["energies"])),
             reflectivity_min=float(np.min(data["reflectivity"])),

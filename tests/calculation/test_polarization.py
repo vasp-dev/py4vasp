@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from py4vasp._calculation.polarization import Polarization, PolarizationHandler
-from py4vasp._raw.data_db import Polarization_DB
+from py4vasp._raw.models import PolarizationModel
 
 
 @pytest.fixture
@@ -61,8 +61,8 @@ electronic dipole moment:     1.00000     2.00000     3.00000
 def test_to_database(raw_data):
     raw_polarization = raw_data.polarization("default")
     handler = PolarizationHandler.from_data(raw_polarization)
-    db_data: Polarization_DB = handler.to_database()
-    assert isinstance(db_data, Polarization_DB)
+    db_data: PolarizationModel = handler.to_database()
+    assert isinstance(db_data, PolarizationModel)
 
     assert db_data.ionic_dipole_moment == list(raw_polarization.ion[:])
     assert db_data.electronic_dipole_moment == list(raw_polarization.electron[:])

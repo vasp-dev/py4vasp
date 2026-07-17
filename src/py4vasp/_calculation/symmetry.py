@@ -12,7 +12,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Symmetry_DB
+from py4vasp._raw.models import SymmetryModel
 from py4vasp._util import check, import_
 
 spglib = import_.optional("spglib")
@@ -169,7 +169,7 @@ class SymmetryHandler:
             is_symmorphic=self.is_symmorphic(),
         )
 
-    def to_database(self) -> Symmetry_DB:
+    def to_database(self) -> SymmetryModel:
         """Serialize the symmetry data for database storage.
 
         The stored quantities deliberately reduce the symmetry operations to a few
@@ -189,7 +189,7 @@ class SymmetryHandler:
         else:
             space_group = space_group_symbol = crystal_system = None
             point_group_schoenflies = bravais_lattice = pearson_symbol = None
-        return Symmetry_DB(
+        return SymmetryModel(
             space_group=space_group,
             space_group_symbol=space_group_symbol,
             crystal_system=crystal_system,

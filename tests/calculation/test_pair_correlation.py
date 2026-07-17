@@ -10,7 +10,7 @@ from py4vasp._calculation.pair_correlation import (
     PairCorrelation,
     PairCorrelationHandler,
 )
-from py4vasp._raw.data_db import PairCorrelation_DB
+from py4vasp._raw.models import PairCorrelationModel
 
 
 @pytest.fixture
@@ -104,8 +104,8 @@ def check_to_image(pair_correlation, filename_argument, expected_filename):
 def test_to_database(pair_correlation, raw_data):
     raw_pair_correlation = raw_data.pair_correlation("Sr2TiO4")
     handler = PairCorrelationHandler.from_data(raw_pair_correlation)
-    db_data: PairCorrelation_DB = handler.to_database()
-    assert isinstance(db_data, PairCorrelation_DB)
+    db_data: PairCorrelationModel = handler.to_database()
+    assert isinstance(db_data, PairCorrelationModel)
     assert db_data.distance_min == float(pair_correlation.ref.distances[0])
     assert db_data.distance_max == float(pair_correlation.ref.distances[-1])
 
@@ -128,7 +128,7 @@ def test_to_database_first_peak():
     total = [0.0, 0.5, 0.3, 2.5, 4.0, 1.5, 1.2, 1.0]
     raw_pcf = _pair_correlation_from_total(distances, total)
     db_data = PairCorrelationHandler.from_data(raw_pcf).to_database()
-    assert isinstance(db_data, PairCorrelation_DB)
+    assert isinstance(db_data, PairCorrelationModel)
     assert db_data.first_peak_position == 4.0
     assert db_data.first_peak_height == 4.0
 

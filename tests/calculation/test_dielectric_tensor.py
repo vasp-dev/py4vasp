@@ -13,7 +13,7 @@ from py4vasp._calculation.dielectric_tensor import (
     DielectricTensorHandler,
     _calculate_2d_polarizability,
 )
-from py4vasp._raw.data_db import DielectricTensor_DB
+from py4vasp._raw.models import DielectricTensorModel
 from py4vasp._util import check
 
 
@@ -162,8 +162,8 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 def _check_to_database(tensor, Assert):
     handler = DielectricTensorHandler.from_data(tensor.ref.raw_tensor)
-    db_data: DielectricTensor_DB = handler.to_database()
-    assert isinstance(db_data, DielectricTensor_DB)
+    db_data: DielectricTensorModel = handler.to_database()
+    assert isinstance(db_data, DielectricTensorModel)
 
     assert db_data.method == tensor.ref.method
 

@@ -9,7 +9,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation.current_density import CurrentDensity, CurrentDensityHandler
 from py4vasp._calculation.structure import Structure
-from py4vasp._raw.data_db import CurrentDensity_DB
+from py4vasp._raw.models import CurrentDensityModel
 
 
 @pytest.fixture(params=("all", "x", "y", "z"))
@@ -198,7 +198,7 @@ def test_to_database(raw_data, Assert):
     raw_current = raw_data.current_density("all")
     handler = CurrentDensityHandler.from_data(raw_current)
     db_data = handler.to_database()
-    assert isinstance(db_data, CurrentDensity_DB)
+    assert isinstance(db_data, CurrentDensityModel)
     # magnitude |j| across all perturbations and grid points
     magnitudes = np.concatenate(
         [

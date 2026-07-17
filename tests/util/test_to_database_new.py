@@ -11,7 +11,7 @@ These tests define the new expected behaviour:
     Top-level keys are bare quantity names (no leading underscore, no selection
     suffix); the inner dict is keyed by selection with the default source keyed
     "default".
-  - schema_version is stored only in metadata, not on individual _DB dataclasses.
+  - schema_version is stored only in metadata, not on individual Model dataclasses.
 """
 
 import dataclasses
@@ -21,7 +21,7 @@ import pytest
 
 from py4vasp import demo
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
-from py4vasp._raw.data_db import _DBDataMixin
+from py4vasp._raw.models import _DatabaseModel
 
 # ---------------------------------------------------------------------------
 # Structural tests — these do not need a running calculation
@@ -61,10 +61,10 @@ def test_metadata_has_file_presence_flags():
 
 
 def test_dbdatamixin_no_schema_version_field():
-    """schema_version is now in metadata only; _DBDataMixin must not carry it."""
+    """schema_version is now in metadata only; _DatabaseModel must not carry it."""
 
     @dataclasses.dataclass
-    class SampleDB(_DBDataMixin):
+    class SampleDB(_DatabaseModel):
         value: int = 0
 
     instance = SampleDB(value=42)

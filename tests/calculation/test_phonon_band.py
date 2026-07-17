@@ -10,7 +10,7 @@ from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.phonon_band import PhononBand, PhononBandHandler
-from py4vasp._raw.data_db import PhononBand_DB
+from py4vasp._raw.models import PhononBandModel
 from py4vasp._util import convert
 
 
@@ -137,7 +137,7 @@ phonon band data:
 def test_to_database(phonon_band):
     handler = PhononBandHandler.from_data(phonon_band.ref.raw_data)
     db_data = handler.to_database()
-    assert isinstance(db_data, PhononBand_DB)
+    assert isinstance(db_data, PhononBandModel)
     # dispersion (phonon frequencies) is folded into the phonon band model
     dispersion = DispersionHandler.from_data(
         phonon_band.ref.raw_data.dispersion

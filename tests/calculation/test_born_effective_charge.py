@@ -10,7 +10,7 @@ from py4vasp._calculation.born_effective_charge import (
     BornEffectiveChargeHandler,
 )
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._raw.data_db import BornEffectiveCharge_DB
+from py4vasp._raw.models import BornEffectiveChargeModel
 
 
 @pytest.fixture
@@ -80,13 +80,13 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def test_to_database(Sr2TiO4):
-    born_db: BornEffectiveCharge_DB = Sr2TiO4.to_database()
+    born_db: BornEffectiveChargeModel = Sr2TiO4.to_database()
     assert born_db.eigenvalue_min == Sr2TiO4.ref.minmax_info[0]
     assert born_db.eigenvalue_max == Sr2TiO4.ref.minmax_info[2]
     assert born_db.eigenvalue_min_index == Sr2TiO4.ref.minmax_info[1]
     assert born_db.eigenvalue_max_index == Sr2TiO4.ref.minmax_info[3]
 
-    for fld in fields(BornEffectiveCharge_DB):
+    for fld in fields(BornEffectiveChargeModel):
         if fld.name.startswith("__"):
             assert isinstance(getattr(born_db, fld.name), str)
         elif fld.name.endswith("index"):

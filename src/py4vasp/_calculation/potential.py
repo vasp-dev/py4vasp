@@ -18,7 +18,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
-from py4vasp._raw.data_db import Potential_DB
+from py4vasp._raw.models import PotentialModel
 from py4vasp._third_party import view
 from py4vasp._util import (
     check,
@@ -80,7 +80,7 @@ class PotentialHandler:
         result.update(itertools.chain(*items))
         return result
 
-    def to_database(self) -> Potential_DB:
+    def to_database(self) -> PotentialModel:
         total_potential_mean = None
         total_potential_mean_up = None
         total_potential_mean_down = None
@@ -110,7 +110,7 @@ class PotentialHandler:
             for kind in VALID_KINDS
         }
 
-        return Potential_DB(
+        return PotentialModel(
             **has_potential_dict,
             total_potential_mean=total_potential_mean,
             total_potential_mean_up=total_potential_mean_up,

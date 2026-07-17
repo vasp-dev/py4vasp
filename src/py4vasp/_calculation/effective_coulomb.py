@@ -17,7 +17,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import EffectiveCoulomb_DB
+from py4vasp._raw.models import EffectiveCoulombModel
 from py4vasp._third_party import graph, numeric
 from py4vasp._util import check, convert, index, select
 
@@ -46,7 +46,7 @@ screened Hubbard u = {data["screened_u_lowercase"].real:8.4f} {data["screened_u_
 screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_uppercase"].imag:8.4f}
 """
 
-    def to_database(self) -> EffectiveCoulomb_DB:
+    def to_database(self) -> EffectiveCoulombModel:
         """Serialize effective Coulomb data for database storage."""
         wannier_iiii = self._wannier_indices_iiii()
         wannier_ijji = self._wannier_indices_ijji()
@@ -82,7 +82,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         V = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_V])
         v = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_v])
         Vj = convert.to_complex(self._raw_coulomb.bare_potential_high_cutoff[access_Vj])
-        return EffectiveCoulomb_DB(
+        return EffectiveCoulombModel(
             screened_U_uppercase=complex(np.average(U)),
             screened_u_lowercase=complex(np.average(u)),
             screened_J_uppercase=complex(np.average(J)),

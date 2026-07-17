@@ -8,7 +8,7 @@ import pytest
 from py4vasp import demo
 from py4vasp._calculation import GROUPS, QUANTITIES
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
-from py4vasp._raw.data_db import _DBDataMixin
+from py4vasp._raw.models import _DatabaseModel
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.definition import DEFAULT_SOURCE
 from py4vasp._util import database
@@ -170,7 +170,7 @@ def test_get_all_possible_keys():
         dataclass_name = output_type_dict[k]
         if dataclass_name is None:
             continue
-        if dataclass_name.endswith("_DB"):
+        if dataclass_name.endswith("Model"):
             assert dataclass_name in all_keys
             assert isinstance(all_keys[dataclass_name], list)
             if all_keys[dataclass_name]:
@@ -186,7 +186,7 @@ def test_get_all_possible_keys():
             dataclass_name = output_type_dict[grouped_key]
             if dataclass_name is None:
                 continue
-            if dataclass_name.endswith("_DB"):
+            if dataclass_name.endswith("Model"):
                 assert dataclass_name in all_keys
             else:
                 assert isinstance(dataclass_name, str)
@@ -195,12 +195,12 @@ def test_get_all_possible_keys():
     assert output_type_dict["band"] == output_type_dict["band:kpoints_opt"]
     assert output_type_dict["band"] == output_type_dict["band:kpoints_wan"]
     assert "band:default" not in output_type_dict
-    assert output_type_dict["current_density"] == "CurrentDensity_DB"
+    assert output_type_dict["current_density"] == "CurrentDensityModel"
 
-    # energy is represented by three format-specific models; there is no flat Energy_DB
-    assert output_type_dict["energy"] == "EnergyRelaxation_DB"
-    assert output_type_dict["energy:afqmc"] == "EnergyAfqmc_DB"
-    for model in ("EnergyRelaxation_DB", "EnergyMD_DB", "EnergyAfqmc_DB"):
+    # energy is represented by three format-specific models; there is no flat EnergyModel
+    assert output_type_dict["energy"] == "EnergyRelaxationModel"
+    assert output_type_dict["energy:afqmc"] == "EnergyAfqmcModel"
+    for model in ("EnergyRelaxationModel", "EnergyMDModel", "EnergyAfqmcModel"):
         assert model in all_keys and len(all_keys[model]) > 0
 
     assert (
@@ -256,10 +256,10 @@ def test_demo_db_no_longer_accepts_tags(tmp_path):
 
 
 def test_no_vaspdata_in_db():
-    """Check that VaspData objects are converted to their underlying data under the _DBDataMixin for the database wrapper classes."""
+    """Check that VaspData objects are converted to their underlying data under the _DatabaseModel for the database wrapper classes."""
 
     @dataclasses.dataclass
-    class DummyClassDB(_DBDataMixin):
+    class DummyClassDB(_DatabaseModel):
         field1: int = None
         field2: str = None
         field3: bool = None

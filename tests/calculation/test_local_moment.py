@@ -9,7 +9,7 @@ import pytest
 from py4vasp import _config, exception
 from py4vasp._calculation.local_moment import LocalMoment, LocalMomentHandler
 from py4vasp._calculation.structure import Structure
-from py4vasp._raw.data_db import LocalMoment_DB
+from py4vasp._raw.models import LocalMomentModel
 
 
 @pytest.fixture(params=[slice(None), slice(1, 3), 0, -1])
@@ -317,8 +317,8 @@ def test_incorrect_step(example_moments):
 
 def test_to_database(example_moments):
     handler = LocalMomentHandler.from_data(example_moments.ref.raw_data)
-    db_data: LocalMoment_DB = handler.to_database()
-    assert isinstance(db_data, LocalMoment_DB)
+    db_data: LocalMomentModel = handler.to_database()
+    assert isinstance(db_data, LocalMomentModel)
 
     orbital_moments = getattr(example_moments.ref, "orbital_moments", None)
     assert db_data.has_orbital_moments == (orbital_moments is not None)

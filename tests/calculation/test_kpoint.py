@@ -7,7 +7,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.kpoint import Kpoint, KpointHandler
-from py4vasp._raw.data_db import Kpoint_DB
+from py4vasp._raw.models import KpointModel
 
 
 @pytest.fixture
@@ -287,8 +287,8 @@ reciprocal
 
 def _check_to_database(data):
     handler = KpointHandler.from_data(data.ref.raw_data)
-    db_data: Kpoint_DB = handler.to_database()
-    assert isinstance(db_data, Kpoint_DB)
+    db_data: KpointModel = handler.to_database()
+    assert isinstance(db_data, KpointModel)
 
     assert db_data.mode == data.ref.mode
     assert db_data.line_length == data.ref.line_length

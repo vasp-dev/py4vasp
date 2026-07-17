@@ -14,7 +14,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import PhononDos_DB
+from py4vasp._raw.models import PhononDosModel
 from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, index, select
 
@@ -70,7 +70,7 @@ class PhononDosHandler:
             if not check.is_none(self._raw_phonon_dos.energies)
             else None
         )
-        return PhononDos_DB(energy_min=energy_min, energy_max=energy_max)
+        return PhononDosModel(energy_min=energy_min, energy_max=energy_max)
 
     def to_graph(self, selection=None) -> graph.Graph:
         data = self.to_dict(selection)

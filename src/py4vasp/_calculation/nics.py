@@ -17,7 +17,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
-from py4vasp._raw.data_db import Nics_DB
+from py4vasp._raw.models import NicsModel
 from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
 
@@ -66,7 +66,7 @@ nucleus-independent chemical shift:
 
     def to_database(self) -> dict:
         method = "grid" if self._data_is_on_grid else "positions"
-        return Nics_DB(method=method)
+        return NicsModel(method=method)
 
     def to_numpy(self, selection: Optional[str] = None):
         selected_data = self._read_selected_data(selection)

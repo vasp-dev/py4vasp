@@ -173,12 +173,12 @@ symmetry group with {NUMBER_OPERATIONS[name]} operations:
 def test_to_database(symmetry, raw_data):
     pytest.importorskip("spglib")
     from py4vasp._calculation.symmetry import SymmetryHandler
-    from py4vasp._raw.data_db import Symmetry_DB
+    from py4vasp._raw.models import SymmetryModel
 
     name = symmetry.ref.name
     handler = SymmetryHandler.from_data(raw_data.symmetry(name))
     actual = handler.to_database()
-    assert isinstance(actual, Symmetry_DB)
+    assert isinstance(actual, SymmetryModel)
     space_group = EXPECTED_SPACE_GROUP[name]
     assert actual.space_group == space_group["number"]
     assert actual.space_group_symbol == space_group["international_symbol"]

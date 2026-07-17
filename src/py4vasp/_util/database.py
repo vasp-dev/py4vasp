@@ -377,7 +377,7 @@ def get_all_possible_keys(
     -------
         Tuple[Dict[str, List[Tuple[str, str]]], Dict[str, Optional[str]]]
         A tuple:
-                    - A dictionary where keys are database dataclass names (e.g. Band_DB) and
+                    - A dictionary where keys are database dataclass names (e.g. BandModel) and
                         values are lists of tuples containing (attribute_name, attribute_type).
                     - A dictionary mapping all available keys (group.quantity[:selection]) to
                         their dataclass names. If no matching dataclass exists, the value is None.
@@ -390,7 +390,7 @@ def get_all_possible_keys(
 
     # Enumerate the public quantities (and group members) directly from the registry.
     # The actual database keys/types are resolved downstream from the schema selections
-    # and the *_DB dataclasses.
+    # and the *Model dataclasses.
     candidate_keys = list(QUANTITIES)
     candidate_keys += [
         f"{group}_{member}" for group, members in GROUPS.items() for member in members
@@ -413,7 +413,7 @@ def get_all_possible_keys(
         if len(selections_list) == 0:
             # Derived quantities such as `optics` have no schema/raw data of their own.
             # Record them so the mapping stays complete. A derived quantity may still
-            # have a database representation (its own *_DB dataclass) via a hand-written
+            # have a database representation (its own *Model dataclass) via a hand-written
             # `_to_database`; keep those so the dataclass is enumerated. Drop only the
             # ones without any database dataclass from the storage keys.
             output_type_dict[constructed_key] = dataclass_name
@@ -435,12 +435,12 @@ def get_all_possible_keys(
     # different models rather than one. The auto-discovery above cannot resolve this, so
     # map the selections explicitly: the default source is a relaxation or an MD run
     # (relaxation is the representative), while the `afqmc` selection always maps to
-    # EnergyAfqmc_DB. All three models are injected into ``main_keys`` below so their
+    # EnergyAfqmcModel. All three models are injected into ``main_keys`` below so their
     # fields still appear in the generated documentation.
-    energy_db_models = ("EnergyRelaxation_DB", "EnergyMD_DB", "EnergyAfqmc_DB")
+    energy_db_models = ("EnergyRelaxationModel", "EnergyMDModel", "EnergyAfqmcModel")
     if "energy" in all_keys:
-        output_type_dict["energy"] = "EnergyRelaxation_DB"
-        output_type_dict["energy:afqmc"] = "EnergyAfqmc_DB"
+        output_type_dict["energy"] = "EnergyRelaxationModel"
+        output_type_dict["energy:afqmc"] = "EnergyAfqmcModel"
 
     sort_keys_list = ["energy"]
 
@@ -486,12 +486,12 @@ def get_all_possible_keys(
 
 @functools.cache
 def _get_quantity_to_dataclass_map() -> Dict[str, str]:
-    module = __import__("py4vasp._raw.data_db", fromlist=[None])
+    module = __import__("py4vasp._raw.models", fromlist=[None])
     quantity_to_dataclass: Dict[str, str] = {}
     for class_name in dir(module):
-        if not class_name.endswith("_DB"):
+        if not class_name.endswith("Model") or class_name == "_DatabaseModel":
             continue
-        base_name = class_name[: -len("_DB")]
+        base_name = class_name[: -len("Model")]
         quantity_to_dataclass[convert.quantity_name(base_name)] = class_name
     return quantity_to_dataclass
 
@@ -510,7 +510,7 @@ def _get_dataclass_name_for_quantity(quantity_label: str) -> Optional[str]:
 
 @functools.cache
 def _get_dataclass_field_tuples(dataclass_name: str) -> List[Tuple[str, str]]:
-    module = __import__("py4vasp._raw.data_db", fromlist=[None])
+    module = __import__("py4vasp._raw.models", fromlist=[None])
     dataclass = getattr(module, dataclass_name, None)
     if dataclass is None:
         return []

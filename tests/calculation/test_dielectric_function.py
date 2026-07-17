@@ -12,7 +12,7 @@ from py4vasp._calculation.dielectric_function import (
     DielectricFunction,
     DielectricFunctionHandler,
 )
-from py4vasp._raw.data_db import DielectricFunction_DB
+from py4vasp._raw.models import DielectricFunctionModel
 
 
 @pytest.fixture
@@ -429,12 +429,12 @@ dielectric function:
 
 def _check_to_database(dielectric_function):
     handler = DielectricFunctionHandler.from_data(dielectric_function.ref.raw_data)
-    db_data: DielectricFunction_DB = handler.to_database()
-    assert isinstance(db_data, DielectricFunction_DB)
+    db_data: DielectricFunctionModel = handler.to_database()
+    assert isinstance(db_data, DielectricFunctionModel)
     assert db_data.energy_min == float(np.min(dielectric_function.ref.energies))
     assert db_data.energy_max == float(np.max(dielectric_function.ref.energies))
 
-    for fld in dataclasses.fields(DielectricFunction_DB):
+    for fld in dataclasses.fields(DielectricFunctionModel):
         if fld.name.startswith("__"):
             assert isinstance(getattr(db_data, fld.name), str)
         elif fld.name.endswith("index"):

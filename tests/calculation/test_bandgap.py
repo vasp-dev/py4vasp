@@ -10,7 +10,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation.bandgap import Bandgap, BandgapHandler
 from py4vasp._calculation.dispatch import DataSource
-from py4vasp._raw.data_db import Bandgap_DB
+from py4vasp._raw.models import BandgapModel
 
 VBM = 0
 CBM = 1
@@ -361,10 +361,10 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def _check_to_database(_handler, Assert):
-    db_dict: Bandgap_DB = _handler.to_database()
+    db_dict: BandgapModel = _handler.to_database()
 
-    assert isinstance(db_dict, Bandgap_DB), f"Expected Bandgap_DB, got {type(db_dict)}"
-    for fld in fields(Bandgap_DB):
+    assert isinstance(db_dict, BandgapModel), f"Expected BandgapModel, got {type(db_dict)}"
+    for fld in fields(BandgapModel):
         if fld.name.startswith("kpoint"):
             assert isinstance(
                 getattr(db_dict, fld.name), (type(None), list)
@@ -430,7 +430,7 @@ def test_dispatcher_to_database(bandgap):
     assert isinstance(result, dict)
     assert "bandgap" in result
     assert isinstance(result["bandgap"], dict)
-    assert isinstance(result["bandgap"]["default"], Bandgap_DB)
+    assert isinstance(result["bandgap"]["default"], BandgapModel)
 
 
 def test_dispatcher_to_dict_matches_read(raw_data, Assert):

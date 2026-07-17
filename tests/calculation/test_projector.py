@@ -8,7 +8,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.projector import SPIN_PROJECTION, Projector, ProjectorHandler
-from py4vasp._raw.data_db import Projector_DB
+from py4vasp._raw.models import ProjectorModel
 
 
 @pytest.fixture
@@ -333,8 +333,8 @@ def test_factory_methods(raw_data, check_factory_methods, projections):
 
 def test_to_database(all_projectors):
     handler = ProjectorHandler.from_data(all_projectors.ref.raw_data)
-    db_data: Projector_DB = handler.to_database()
-    assert isinstance(db_data, Projector_DB)
+    db_data: ProjectorModel = handler.to_database()
+    assert isinstance(db_data, ProjectorModel)
     if db_data.orbital_types is not None:
         assert sorted(db_data.orbital_types) == sorted(all_projectors.ref.orbital_types)
     else:

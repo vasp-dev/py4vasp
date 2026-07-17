@@ -358,11 +358,11 @@ def test_color_invalid_cmf_raises_error(visible):
 
 def test_to_database(visible, Assert):
     pytest.importorskip("scipy")
-    from py4vasp._raw.data_db import Optics_DB
+    from py4vasp._raw.models import OpticsModel
 
     handler = OpticsHandler.from_data(visible.ref.raw_data)
     db_data = handler.to_database()
-    assert isinstance(db_data, Optics_DB)
+    assert isinstance(db_data, OpticsModel)
 
     energies = visible.ref.energies
     eps = isotropic(visible.ref.dielectric_function)
@@ -389,14 +389,14 @@ def test_to_database(visible, Assert):
 
 def test_to_database_keyed_by_optics(visible):
     pytest.importorskip("scipy")
-    from py4vasp._raw.data_db import Optics_DB
+    from py4vasp._raw.models import OpticsModel
 
     result = visible._to_database()
     assert isinstance(result, dict)
     # the DataSource ignores the selection, so all sources collapse to a single "optics"
     assert "optics" in result
     assert isinstance(result["optics"], dict)
-    assert isinstance(result["optics"]["default"], Optics_DB)
+    assert isinstance(result["optics"]["default"], OpticsModel)
     # keys are derived from "optics", never from the underlying "dielectric_function"
     assert not any(key.startswith("dielectric_function") for key in result)
 

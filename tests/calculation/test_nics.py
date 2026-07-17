@@ -11,7 +11,7 @@ import pytest
 from py4vasp import _config, exception
 from py4vasp._calculation.nics import Nics, NicsHandler
 from py4vasp._calculation.structure import Structure
-from py4vasp._raw.data_db import Nics_DB
+from py4vasp._raw.models import NicsModel
 from py4vasp._third_party import view
 
 
@@ -524,8 +524,8 @@ def test_print(nics, format_):
 
 def test_to_database(nics):
     handler = NicsHandler.from_data(nics.ref.raw_data)
-    db_data: Nics_DB = handler.to_database()
-    assert isinstance(db_data, Nics_DB)
+    db_data: NicsModel = handler.to_database()
+    assert isinstance(db_data, NicsModel)
     assert db_data.method == nics.ref.output["method"]
 
 

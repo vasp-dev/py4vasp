@@ -11,7 +11,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
-from py4vasp._raw.data_db import CONTCAR_DB
+from py4vasp._raw.models import CONTCARModel
 from py4vasp._third_party import view
 from py4vasp._util import check, convert
 
@@ -38,8 +38,8 @@ class CONTCARHandler:
             **self._read("ion_velocities"),
         }
 
-    def to_database(self) -> CONTCAR_DB:
-        return CONTCAR_DB(
+    def to_database(self) -> CONTCARModel:
+        return CONTCARModel(
             system=(
                 convert.text_to_string(self._raw_contcar.system)
                 if not check.is_none(self._raw_contcar.system)

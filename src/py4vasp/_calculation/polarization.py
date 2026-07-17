@@ -13,7 +13,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import Polarization_DB
+from py4vasp._raw.models import PolarizationModel
 
 
 class PolarizationHandler:
@@ -68,7 +68,7 @@ electronic dipole moment: {vec_to_string(self._raw_polarization.electron[:])}"""
                 self._raw_polarization.electron[:] + self._raw_polarization.ion[:]
             )
 
-        return Polarization_DB(
+        return PolarizationModel(
             total_dipole_norm=total_norm,
             total_dipole_moment=total_dipole,
             ionic_dipole_norm=ionic_norm,

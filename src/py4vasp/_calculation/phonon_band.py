@@ -17,7 +17,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import PhononBand_DB
+from py4vasp._raw.models import PhononBandModel
 from py4vasp._third_party import graph
 from py4vasp._util import convert, documentation, index, select
 
@@ -47,9 +47,9 @@ class PhononBandHandler:
             "modes": self._modes(),
         }
 
-    def to_database(self) -> PhononBand_DB:
+    def to_database(self) -> PhononBandModel:
         dispersion = self._dispersion().to_database()
-        return PhononBand_DB(
+        return PhononBandModel(
             eigenvalue_min=dispersion.eigenvalue_min,
             eigenvalue_max=dispersion.eigenvalue_max,
         )

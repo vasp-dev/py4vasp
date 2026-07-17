@@ -9,7 +9,7 @@ from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.bandgap import Bandgap, BandgapHandler
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._raw.data_db import RunInfo_DB
+from py4vasp._raw.models import RunInfoModel
 from py4vasp._util import check
 
 
@@ -53,56 +53,56 @@ def run_info_handler(request, raw_data):
     return handler
 
 
-def _check_dict(data_db: RunInfo_DB, runinfo_ref):
+def _check_dict(models: RunInfoModel, runinfo_ref):
     # from runtime
-    assert data_db.vasp_version == runinfo_ref.runtime.vasp_version
+    assert models.vasp_version == runinfo_ref.runtime.vasp_version
 
     # from structure
     assert (
-        data_db.num_ionic_steps
+        models.num_ionic_steps
         == runinfo_ref.structure._raw_structure.positions[:].shape[0]
     )
 
     # from system
-    assert data_db.system_tag == runinfo_ref.system_name
+    assert models.system_tag == runinfo_ref.system_name
 
     # from contcar
-    assert data_db.has_selective_dynamics == (
+    assert models.has_selective_dynamics == (
         not check.is_none(runinfo_ref.contcar._raw_contcar.selective_dynamics)
     )
-    assert data_db.has_ion_velocities == (
+    assert models.has_ion_velocities == (
         not check.is_none(runinfo_ref.contcar._raw_contcar.ion_velocities)
     )
-    assert data_db.has_lattice_velocities == (
+    assert models.has_lattice_velocities == (
         not check.is_none(runinfo_ref.contcar._raw_contcar.lattice_velocities)
     )
 
     # from phonon dispersion
     assert (
-        data_db.phonon_num_qpoints
+        models.phonon_num_qpoints
         == runinfo_ref.phonon_dispersion._raw_dispersion.eigenvalues[:].shape[0]
     )
     assert (
-        data_db.phonon_num_modes
+        models.phonon_num_modes
         == runinfo_ref.phonon_dispersion._raw_dispersion.eigenvalues[:].shape[1]
     )
 
     # extra collection
-    assert data_db.grid_coarse_shape is None
-    assert data_db.grid_fine_shape is None
-    assert data_db.is_success is None
-    assert data_db.fermi_energy == runinfo_ref.fermi_energy
-    assert data_db.is_collinear == (runinfo_ref.len_dos == 2)
-    assert data_db.is_noncollinear == (runinfo_ref.len_dos == 4)
-    assert data_db.is_metallic == all(
+    assert models.grid_coarse_shape is None
+    assert models.grid_fine_shape is None
+    assert models.is_success is None
+    assert models.fermi_energy == runinfo_ref.fermi_energy
+    assert models.is_collinear == (runinfo_ref.len_dos == 2)
+    assert models.is_noncollinear == (runinfo_ref.len_dos == 4)
+    assert models.is_metallic == all(
         runinfo_ref.bandgap._output_gap("fundamental", to_string=False) <= 0.0
     )
-    assert data_db.is_magnetic is None
-    assert data_db.magnetization_order is None
+    assert models.is_magnetic is None
+    assert models.magnetization_order is None
 
 
 def test_read(run_info):
-    _check_dict(RunInfo_DB(**run_info.read()), run_info.ref)
+    _check_dict(RunInfoModel(**run_info.read()), run_info.ref)
 
 
 def test_to_dict_matches_read(run_info_handler):
@@ -123,7 +123,7 @@ def test_dispatcher_to_database(run_info):
     assert isinstance(result, dict)
     assert "run_info" in result
     assert isinstance(result["run_info"], dict)
-    assert isinstance(result["run_info"]["default"], RunInfo_DB)
+    assert isinstance(result["run_info"]["default"], RunInfoModel)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

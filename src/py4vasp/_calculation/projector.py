@@ -11,7 +11,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._raw import data as raw
-from py4vasp._raw.data_db import Projector_DB
+from py4vasp._raw.models import ProjectorModel
 from py4vasp._util import check, convert, index, select
 
 SPIN_PROJECTION = "is_spin_projection"
@@ -117,7 +117,7 @@ class ProjectorHandler:
         return {"atom": atom_dict, "orbital": orbital_dict, "spin": spin_dict}
 
     def to_database(self) -> dict:
-        return Projector_DB(
+        return ProjectorModel(
             orbital_types=(
                 sorted(list(self._init_orbital_dict().keys()), key=self._sort_key)
                 if not check.is_none(self._raw_projector.orbital_types)

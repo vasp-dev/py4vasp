@@ -12,7 +12,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._raw.data_db import PhononMode_DB
+from py4vasp._raw.models import PhononModeModel
 from py4vasp._util import check, convert
 
 
@@ -56,7 +56,7 @@ class PhononModeHandler:
         frequencies_imag_max = (
             float(np.max(frequencies.imag)) if frequencies is not None else None
         )
-        return PhononMode_DB(
+        return PhononModeModel(
             frequencies_real_max=frequencies_real_max,
             frequencies_imag_max=frequencies_imag_max,
         )

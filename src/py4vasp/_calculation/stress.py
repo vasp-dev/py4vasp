@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     slice_steps,
 )
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._raw.data_db import Stress_DB
+from py4vasp._raw.models import StressModel
 from py4vasp._util import tensor
 
 
@@ -76,7 +76,7 @@ in kB   {stress_to_string(stress)}
         else:
             initial_stress_tensor = stress
             final_stress_tensor = stress
-        return Stress_DB(
+        return StressModel(
             initial_stress_mean=np.trace(initial_stress_tensor) / 3.0,
             final_stress_mean=np.trace(final_stress_tensor) / 3.0,
             final_stress_tensor=tensor.symmetry_reduce(final_stress_tensor),

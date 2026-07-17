@@ -13,7 +13,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._raw.data_db import DielectricFunction_DB
+from py4vasp._raw.models import DielectricFunctionModel
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, index, select
 
@@ -51,7 +51,7 @@ class DielectricFunctionHandler:
 
     def to_database(self) -> dict:
         """Serialize dielectric function data for database storage."""
-        return DielectricFunction_DB(
+        return DielectricFunctionModel(
             energy_min=(
                 float(np.min(self._raw_dielectric_function.energies[:]))
                 if not check.is_none(self._raw_dielectric_function.energies)

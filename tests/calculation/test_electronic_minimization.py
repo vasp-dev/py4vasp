@@ -12,7 +12,7 @@ from py4vasp._calculation.electronic_minimization import (
     ElectronicMinimization,
     ElectronicMinimizationHandler,
 )
-from py4vasp._raw.data_db import ElectronicMinimization_DB
+from py4vasp._raw.models import ElectronicMinimizationModel
 from py4vasp._third_party.graph import Marker
 
 
@@ -265,10 +265,10 @@ def test_is_converged(electronic_minimization):
 def test_to_database(electronic_minimization, raw_data):
     raw_elmin = raw_data.electronic_minimization()
     handler = ElectronicMinimizationHandler.from_data(raw_elmin)
-    database_data: ElectronicMinimization_DB = handler.to_database()
+    database_data: ElectronicMinimizationModel = handler.to_database()
     overview_data = electronic_minimization.ref.overview_data
 
-    assert isinstance(database_data, ElectronicMinimization_DB)
+    assert isinstance(database_data, ElectronicMinimizationModel)
 
     for fld in fields(database_data):
         k = fld.name

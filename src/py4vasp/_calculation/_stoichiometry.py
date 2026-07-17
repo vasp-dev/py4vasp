@@ -12,7 +12,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._calculation.selection import Selection
-from py4vasp._raw.data_db import Stoichiometry_DB
+from py4vasp._raw.models import StoichiometryModel
 from py4vasp._util import check, convert, database, documentation, import_, select
 
 mdtraj = import_.optional("mdtraj")
@@ -105,7 +105,7 @@ class StoichiometryHandler:
         """Return the number of atoms in the system."""
         return int(np.sum(self._raw_stoichiometry.number_ion_types))
 
-    def to_database(self) -> Stoichiometry_DB:
+    def to_database(self) -> StoichiometryModel:
         """Return database-ready stoichiometry data."""
         ion_types = (
             list(self._ion_types(None))
@@ -120,7 +120,7 @@ class StoichiometryHandler:
         formula, compound, simple_types, simple_numbers, primitive_numbers = (
             database.get_formula_and_compound(ion_types, num_ion_types)
         )
-        return Stoichiometry_DB(
+        return StoichiometryModel(
             ion_types=simple_types,
             num_ion_types=simple_numbers,
             num_ion_types_primitive=primitive_numbers,
