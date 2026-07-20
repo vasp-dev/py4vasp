@@ -699,6 +699,7 @@ schema.add(
     positions="intermediate/ion_dynamics/position_ions",
     idipol="input/incar/IDIPOL",
     ldipol="input/incar/LDIPOL",
+    symmetry=Link("symmetry", DEFAULT_SOURCE),
 )
 schema.add(
     raw.Structure,
@@ -709,6 +710,7 @@ schema.add(
     positions="results/positions/position_ions",
     idipol="input/incar/IDIPOL",
     ldipol="input/incar/LDIPOL",
+    symmetry=Link("symmetry", DEFAULT_SOURCE),
 )
 schema.add(
     raw.Structure,

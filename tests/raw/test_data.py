@@ -218,3 +218,18 @@ def test_metadata_has_file_presence_flags():
     field_names = {f.name for f in dataclasses.fields(CalculationMetaData)}
     for flag in ("has_incar", "has_poscar", "has_kpoints", "has_potcar"):
         assert flag in field_names, f"Missing flag {flag!r} in CalculationMetaData"
+
+
+def test_structure_has_optional_symmetry_field():
+    """raw.Structure carries an optional symmetry field, none-sentinel by default."""
+    from py4vasp import raw
+
+    field_names = {f.name for f in dataclasses.fields(raw.Structure)}
+    assert "symmetry" in field_names
+    structure = raw.Structure(
+        stoichiometry=raw.Stoichiometry(number_ion_types=[1], ion_types=["Si"]),
+        cell=raw.Cell(lattice_vectors=np.eye(3), scale=VaspData(1.0)),
+        positions=np.zeros((1, 3)),
+    )
+    # old files that do not store symmetry leave the field at the none sentinel
+    assert structure.symmetry.is_none()
