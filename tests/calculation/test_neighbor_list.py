@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import pytest
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation.neighbor_list import NeighborList, _replica_counts
 from py4vasp._calculation.structure import StructureHandler
 
@@ -157,3 +157,64 @@ def test_neighbor_pairs_are_symmetric():
     map_ = _result_to_map(result)
     for (i, j, ox, oy, oz) in map_:
         assert (j, i, -ox, -oy, -oz) in map_
+
+
+# --- selection ---------------------------------------------------------------
+
+
+def _elements(structure):
+    return StructureHandler.from_data(structure).to_dict()["elements"]
+
+
+def _filter_map(brute_map, elements, source_type, neighbor_type=None):
+    return {
+        key: value
+        for key, value in brute_map.items()
+        if elements[key[0]] == source_type
+        and (neighbor_type is None or elements[key[1]] == neighbor_type)
+    }
+
+
+def test_read_pair_selection(Assert):
+    structure = _tilted_structure()
+    elements = _elements(structure)
+    result = NeighborList.from_data(structure).read("Si~C", cutoff=4.0)
+    assert set(result) == {"Si~C"}
+    expected = _filter_map(_brute_force_map(structure, 4.0), elements, "Si", "C")
+    _compare_maps(_result_to_map(result["Si~C"]), expected, Assert)
+
+
+def test_read_pair_selection_reversed(Assert):
+    structure = _tilted_structure()
+    elements = _elements(structure)
+    result = NeighborList.from_data(structure).read("C~Si", cutoff=4.0)
+    expected = _filter_map(_brute_force_map(structure, 4.0), elements, "C", "Si")
+    _compare_maps(_result_to_map(result["C~Si"]), expected, Assert)
+
+
+def test_read_bare_element_selection(Assert):
+    structure = _tilted_structure()
+    elements = _elements(structure)
+    result = NeighborList.from_data(structure).read("Si", cutoff=4.0)
+    expected = _filter_map(_brute_force_map(structure, 4.0), elements, "Si")
+    _compare_maps(_result_to_map(result["Si"]), expected, Assert)
+
+
+def test_read_multiple_selections(Assert):
+    structure = _tilted_structure()
+    elements = _elements(structure)
+    result = NeighborList.from_data(structure).read("Si~C, C~C", cutoff=4.0)
+    assert set(result) == {"Si~C", "C~C"}
+    brute = _brute_force_map(structure, 4.0)
+    _compare_maps(
+        _result_to_map(result["Si~C"]), _filter_map(brute, elements, "Si", "C"), Assert
+    )
+    _compare_maps(
+        _result_to_map(result["C~C"]), _filter_map(brute, elements, "C", "C"), Assert
+    )
+
+
+def test_read_unknown_element_raises():
+    structure = _tilted_structure()
+    with pytest.raises(exception.IncorrectUsage):
+        NeighborList.from_data(structure).read("Xx~C", cutoff=4.0)

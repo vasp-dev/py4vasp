@@ -8,8 +8,10 @@ import itertools
 import numpy as np
 from scipy.spatial import cKDTree
 
+from py4vasp import exception
 from py4vasp._calculation.dispatch import DataSource, merge_default, quantity
 from py4vasp._calculation.structure import StructureHandler
+from py4vasp._util import select
 
 # NeighborList owns no raw data of its own; it derives cell, positions, and atom
 # types from the structure. Dispatch therefore accesses the "structure" schema
@@ -52,6 +54,37 @@ def _replica_counts(lattice_vectors, cutoff):
     return np.ceil(cutoff / perpendicular_width - _REPLICA_TOL).astype(int)
 
 
+def _selection_label(selection):
+    return " ".join(str(part) for part in selection)
+
+
+def _part_mask(part, elements, source, neighbor):
+    """Boolean mask selecting the pairs that match one selection element."""
+    if isinstance(part, select.Group) and part.separator == select.pair_separator:
+        source_type, neighbor_type = part.group
+        _raise_if_unknown(source_type, elements)
+        _raise_if_unknown(neighbor_type, elements)
+        return (source == source_type) & (neighbor == neighbor_type)
+    if isinstance(part, str):
+        _raise_if_unknown(part, elements)
+        return source == part
+    message = (
+        f"The selection '{part}' is not supported. Please select pairs of atom "
+        "types with a tilde, e.g. 'Sr~Ti', or a single atom type, e.g. 'Sr'."
+    )
+    raise exception.IncorrectUsage(message)
+
+
+def _raise_if_unknown(atom_type, elements):
+    if not np.any(elements == atom_type):
+        available = ", ".join(dict.fromkeys(elements))
+        message = (
+            f"The atom type '{atom_type}' is not present in the structure. "
+            f"The available atom types are: {available}."
+        )
+        raise exception.IncorrectUsage(message)
+
+
 class NeighborListHandler:
     """Computes the neighbor list from a single raw.Structure object."""
 
@@ -63,8 +96,28 @@ class NeighborListHandler:
         return cls(raw_structure, steps=steps)
 
     def to_dict(self, selection=None, *, cutoff) -> dict:
-        """Compute the neighbor list and store it in a dictionary."""
-        return self._all_pairs(cutoff)
+        """Compute the neighbor list and store it in a dictionary.
+
+        Without a selection the flat dictionary of all pairs is returned. When a
+        selection is given, the result is keyed by the selection label and each
+        value is the flat dictionary restricted to that pair of atom types.
+        """
+        pairs = self._all_pairs(cutoff)
+        if selection is None:
+            return pairs
+        elements = np.array(self._structure._stoichiometry().elements())
+        tree = select.Tree.from_selection(selection)
+        return {
+            _selection_label(sel): self._filter_pairs(pairs, sel, elements)
+            for sel in tree.selections()
+        }
+
+    def _filter_pairs(self, pairs, selection, elements):
+        source = elements[pairs["indices"][:, 0]]
+        neighbor = elements[pairs["indices"][:, 1]]
+        masks = [_part_mask(part, elements, source, neighbor) for part in selection]
+        mask = np.logical_and.reduce(masks)
+        return {key: value[mask] for key, value in pairs.items()}
 
     def _lattice_vectors(self):
         return np.asarray(self._structure.lattice_vectors())
