@@ -9,6 +9,29 @@ def flat_index(shape, *multi_index):
     return np.ravel_multi_index(multi_index, shape)
 
 
+def gaussian_density(shape, lattice_vectors, centers, width=1.0):
+    """Sum of periodic Gaussian peaks at the given fractional centers."""
+    lengths = np.linalg.norm(lattice_vectors, axis=1)
+    axes = [np.arange(n) / n for n in shape]
+    charge = np.zeros(shape)
+    for center in centers:
+        distance2 = np.zeros(shape)
+        grids = np.meshgrid(*axes, indexing="ij")
+        for grid, frac_center, length in zip(grids, center, lengths):
+            delta = (grid - frac_center + 0.5) % 1.0 - 0.5
+            distance2 = distance2 + (delta * length) ** 2
+        charge = charge + np.exp(-distance2 / (2 * width**2))
+    return charge
+
+
+def grid_point(shape, center):
+    return tuple(int(round(c * n)) % n for c, n in zip(center, shape))
+
+
+def label_at(labels, center):
+    return labels[grid_point(labels.shape, center)]
+
+
 def test_local_maximum_points_to_itself(Assert):
     # single peak in the corner of a 3x3x3 grid; with periodic boundaries every
     # other point is a direct (possibly diagonal) neighbor of the peak.
@@ -42,3 +65,30 @@ def test_metric_weights_gradient_by_distance():
     source = flat_index(charge.shape, 1, 1, 1)
     steeper_neighbor = flat_index(charge.shape, 1, 2, 1)
     assert pointers[source] == steeper_neighbor
+
+
+def test_single_peak_is_one_basin():
+    shape = (20, 18, 16)
+    lattice_vectors = np.diag((6.0, 5.0, 4.0))
+    charge = gaussian_density(shape, lattice_vectors, [(0.5, 0.5, 0.5)])
+
+    labels = bader.basins(charge, lattice_vectors)
+
+    assert labels.shape == shape
+    assert np.issubdtype(labels.dtype, np.integer)
+    assert np.array_equal(np.unique(labels), [0])
+
+
+def test_two_peaks_split_into_two_basins():
+    shape = (24, 12, 12)
+    lattice_vectors = np.diag((8.0, 4.0, 4.0))
+    left, right = (0.25, 0.5, 0.5), (0.75, 0.5, 0.5)
+    charge = gaussian_density(shape, lattice_vectors, [left, right])
+
+    labels = bader.basins(charge, lattice_vectors)
+
+    assert len(np.unique(labels)) == 2
+    assert label_at(labels, left) != label_at(labels, right)
+    # points nearer a peak belong to that peak's basin
+    assert label_at(labels, (0.1, 0.5, 0.5)) == label_at(labels, left)
+    assert label_at(labels, (0.9, 0.5, 0.5)) == label_at(labels, right)
