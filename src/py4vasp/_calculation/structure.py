@@ -27,6 +27,7 @@ from py4vasp._util import check, import_, parse
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
 mdtraj = import_.optional("mdtraj")
+spglib = import_.optional("spglib")
 
 __all__ = ["Structure"]
 
@@ -224,6 +225,47 @@ Atoms # atomic
             return len(range_[self._slice])
         else:
             return 1
+
+    def equivalent_atoms(self) -> np.ndarray:
+        """Return the orbit index of every atom under VASP's symmetry operations."""
+        return self._orbit_labels()
+
+    def _raw_symmetry(self):
+        """Return the raw symmetry, raising if the structure does not provide it."""
+        symmetry = self._raw_structure.symmetry
+        if check.is_none(symmetry):
+            message = (
+                "The structure does not provide symmetry information; it requires VASP "
+                "6.6 or later. Symmetry-derived properties such as the Wyckoff "
+                "positions or the equivalent atoms cannot be computed."
+            )
+            raise exception.NoData(message)
+        return symmetry
+
+    def _orbit_labels(self) -> np.ndarray:
+        """Group the atoms into orbits (equivalence classes) of VASP's operations.
+
+        Two atoms belong to the same orbit if some symmetry operation maps one onto
+        the other. The classes are computed from ``atom_permutations`` with a union-find
+        pass and relabeled to consecutive indices starting at 0.
+        """
+        symmetry = self._raw_symmetry()
+        permutations = np.array(symmetry.atom_permutations) - 1  # Fortran to 0-based
+        permutations = permutations.reshape(-1, permutations.shape[-1])
+        number_atoms = permutations.shape[-1]
+        if number_atoms != self.number_atoms():
+            message = (
+                f"The symmetry describes {number_atoms} atoms but the structure has "
+                f"{self.number_atoms()}; the structure and its symmetry are inconsistent."
+            )
+            raise exception.DataMismatch(message)
+        labels = np.arange(number_atoms)
+        for permutation in permutations:
+            for atom, image in enumerate(permutation):
+                low, high = sorted((labels[atom], labels[image]))
+                labels[labels == high] = low
+        _, orbits = np.unique(labels, return_inverse=True)
+        return orbits
 
     def to_database(self, steps=-1) -> StructureModel:
         """Return database-ready data for a single structure geometry.
@@ -1177,6 +1219,39 @@ class Structure(view.Mixin):
             None,
             self._handler_factory,
             StructureHandler.number_steps,
+        )
+
+    def equivalent_atoms(self):
+        """Group the atoms into orbits of the symmetry operations VASP determined.
+
+        Atoms that some symmetry operation maps onto each other are equivalent and
+        share an orbit index. This uses the symmetry VASP recognized for the crystal,
+        so any symmetry lowering (e.g. from magnetic order) is reflected here. It
+        requires the structure to carry symmetry information (VASP 6.6 or later).
+
+        Returns
+        -------
+        np.ndarray
+            The orbit index of every atom. Atoms with the same index are equivalent
+            under the symmetry operations.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        In cubic perovskite SrTiO3 the strontium and titanium atoms each sit on their
+        own site while the three oxygen atoms are equivalent.
+
+        >>> calculation.structure.equivalent_atoms()
+        array([0, 1, 2, 2, 2]...)
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.equivalent_atoms,
         )
 
     def _to_database(self) -> dict:

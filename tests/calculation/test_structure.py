@@ -669,7 +669,10 @@ def test_to_database_collects_available_sources(tmp_path):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.structure("Sr2TiO4")
     parameters = {"__getitem__": {"steps": slice(None)}}
-    check_factory_methods(Structure, data, parameters)
+    # the Sr2TiO4 trajectory carries no symmetry, so the symmetry-derived methods
+    # raise NoData; they are exercised on the perovskite fixture instead
+    skip_methods = ["equivalent_atoms", "wyckoff_positions", "standardized_cell"]
+    check_factory_methods(Structure, data, parameters, skip_methods=skip_methods)
 
 
 # ---------------------------------------------------------------------------
@@ -683,3 +686,18 @@ def test_srtio3_demo_carries_symmetry(raw_data):
     assert not check.is_none(raw_structure.symmetry)
     assert raw_structure.symmetry.number_of_operations == 48
     assert np.array(raw_structure.symmetry.atom_permutations).shape == (1, 48, 5)
+
+
+@pytest.fixture
+def perovskite(raw_data):
+    return make_structure(raw_data.structure("SrTiO3"))
+
+
+def test_equivalent_atoms(perovskite, Assert):
+    # Sr and Ti each sit on their own site, the three oxygens form one orbit
+    Assert.allclose(perovskite.equivalent_atoms(), np.array([0, 1, 2, 2, 2]))
+
+
+def test_equivalent_atoms_without_symmetry(Sr2TiO4):
+    with pytest.raises(exception.NoData):
+        Sr2TiO4.equivalent_atoms()
