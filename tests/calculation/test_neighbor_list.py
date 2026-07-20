@@ -230,6 +230,28 @@ def test_read_unsupported_selection_raises():
         NeighborList.from_data(structure).read("Si:C", cutoff=4.0)
 
 
+def test_read_sorted_by_default():
+    structure = _tilted_structure()
+    distances = NeighborList.from_data(structure).read(cutoff=4.0)["distances"]
+    assert np.all(np.diff(distances) >= 0)
+
+
+def test_read_unsorted_has_same_pairs(Assert):
+    structure = _tilted_structure()
+    neighbor_list = NeighborList.from_data(structure)
+    unsorted = neighbor_list.read(cutoff=4.0, sorted=False)
+    ordered = neighbor_list.read(cutoff=4.0, sorted=True)
+    _compare_maps(_result_to_map(ordered), _result_to_map(unsorted), Assert)
+    Assert.allclose(ordered["distances"], np.sort(unsorted["distances"]))
+
+
+def test_read_sorted_within_selection():
+    structure = _tilted_structure()
+    result = NeighborList.from_data(structure).read("Si~C", cutoff=4.0)
+    distances = result["Si~C"]["distances"]
+    assert np.all(np.diff(distances) >= 0)
+
+
 # --- aliases, steps, print, factory, exposure --------------------------------
 
 

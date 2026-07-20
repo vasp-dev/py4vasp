@@ -77,6 +77,12 @@ def _selection_label(selection):
     return " ".join(str(part) for part in selection)
 
 
+def _sort_by_distance(pairs):
+    """Reorder every array of the flat neighbor dict by increasing distance."""
+    order = np.argsort(pairs["distances"], kind="stable")
+    return {key: value[order] for key, value in pairs.items()}
+
+
 def _part_mask(part, elements, source, neighbor):
     """Boolean mask selecting the pairs that match one selection element."""
     if isinstance(part, select.Group) and part.separator == select.pair_separator:
@@ -114,14 +120,17 @@ class NeighborListHandler:
     def from_data(cls, raw_structure, steps=None) -> "NeighborListHandler":
         return cls(raw_structure, steps=steps)
 
-    def to_dict(self, selection=None, *, cutoff) -> dict:
+    def to_dict(self, selection=None, *, cutoff, sorted=True) -> dict:
         """Compute the neighbor list and store it in a dictionary.
 
         Without a selection the flat dictionary of all pairs is returned. When a
         selection is given, the result is keyed by the selection label and each
-        value is the flat dictionary restricted to that pair of atom types.
+        value is the flat dictionary restricted to that pair of atom types. If
+        *sorted* is set, the pairs are ordered by increasing distance.
         """
         pairs = self._all_pairs(cutoff)
+        if sorted:
+            pairs = _sort_by_distance(pairs)
         if selection is None:
             return pairs
         elements = np.array(self._structure._stoichiometry().elements())
@@ -258,7 +267,7 @@ class NeighborList:
     def _handler_factory(self, raw_data):
         return NeighborListHandler.from_data(raw_data, steps=self._steps)
 
-    def read(self, selection=None, *, cutoff) -> dict:
+    def read(self, selection=None, *, cutoff, sorted=True) -> dict:
         """Compute the neighbor list and store it in a dictionary.
 
         Parameters
@@ -270,6 +279,8 @@ class NeighborList:
         cutoff : float
             The neighbor cutoff radius in Å. Only pairs closer than this radius
             are returned.
+        sorted : bool
+            If True (default), the pairs are ordered by increasing distance.
 
         Returns
         -------
@@ -305,11 +316,12 @@ class NeighborList:
             self._handler_factory,
             NeighborListHandler.to_dict,
             cutoff=cutoff,
+            sorted=sorted,
         )
 
-    def to_dict(self, selection=None, *, cutoff) -> dict:
+    def to_dict(self, selection=None, *, cutoff, sorted=True) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection, cutoff=cutoff)
+        return self.read(selection, cutoff=cutoff, sorted=sorted)
 
     def selections(self) -> list:
         """Return every pair of atom types that can be selected.
