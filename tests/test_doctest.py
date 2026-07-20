@@ -15,6 +15,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     force,
     kpoint,
     local_moment,
+    neighbor_list,
     optics,
     projector,
     structure,
@@ -46,6 +47,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.force)
         + find_examples(_calculation.kpoint)
         + find_examples(_calculation.local_moment)
+        + find_examples(_calculation.neighbor_list)
         + find_examples(_calculation.optics)
         + find_examples(_calculation.projector)
         + find_examples(_calculation.structure)
@@ -60,6 +62,7 @@ def _all_calculation_examples():
 # mapped to the package it needs; they run in test_calculation_full which skips via
 # importorskip when that package is missing. Everything else runs in test_calculation.
 _FULL_INSTALL_EXAMPLES = {
+    "py4vasp._calculation.neighbor_list.NeighborList.read": "scipy",
     "py4vasp._calculation.optics.Optics.color": "scipy",
     "py4vasp._calculation.symmetry.Symmetry.space_group": "spglib",
     "py4vasp._calculation.symmetry.Symmetry.point_group_schoenflies": "spglib",

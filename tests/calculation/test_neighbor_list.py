@@ -1,11 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 
 from py4vasp import exception, raw
+from py4vasp._calculation import Calculation
 from py4vasp._calculation.neighbor_list import NeighborList, _replica_counts
 from py4vasp._calculation.structure import StructureHandler
 
@@ -62,9 +64,9 @@ def _tilted_structure():
     return _raw_structure(lattice, positions, ["Si", "C"], [2, 2])
 
 
-def _brute_force_map(raw_structure, cutoff):
+def _brute_force_map(raw_structure, cutoff, steps=None):
     """Independent O(N^2) neighbor search over an over-generous set of images."""
-    handler = StructureHandler.from_data(raw_structure)
+    handler = StructureHandler.from_data(raw_structure, steps=steps)
     lattice = np.asarray(handler.lattice_vectors())
     home = (np.asarray(handler.positions()) % 1.0) @ lattice
     volume = np.abs(np.linalg.det(lattice))
@@ -218,3 +220,64 @@ def test_read_unknown_element_raises():
     structure = _tilted_structure()
     with pytest.raises(exception.IncorrectUsage):
         NeighborList.from_data(structure).read("Xx~C", cutoff=4.0)
+
+
+def test_read_unsupported_selection_raises():
+    # a range (":") is not a meaningful pair selection for a neighbor list
+    structure = _tilted_structure()
+    with pytest.raises(exception.IncorrectUsage):
+        NeighborList.from_data(structure).read("Si:C", cutoff=4.0)
+
+
+# --- aliases, steps, print, factory, exposure --------------------------------
+
+
+def test_to_dict_is_alias_of_read(Assert):
+    structure = _tilted_structure()
+    neighbor_list = NeighborList.from_data(structure)
+    from_read = neighbor_list.read(cutoff=4.0)
+    from_dict = neighbor_list.to_dict(cutoff=4.0)
+    assert from_read.keys() == from_dict.keys()
+    for key in from_read:
+        Assert.allclose(from_dict[key], from_read[key])
+
+
+def test_read_single_step(raw_data, Assert):
+    # Sr2TiO4 demo data is a trajectory; [step] selects a single geometry.
+    structure = raw_data.structure("Sr2TiO4")
+    result = NeighborList.from_data(structure)[0].read(cutoff=4.5)
+    expected = _brute_force_map(structure, 4.5, steps=0)
+    _compare_maps(_result_to_map(result), expected, Assert)
+
+
+def test_read_multiple_steps_not_implemented(raw_data):
+    structure = raw_data.structure("Sr2TiO4")
+    with pytest.raises(exception.NotImplemented):
+        NeighborList.from_data(structure)[0:2].read(cutoff=4.5)
+
+
+def test_print(raw_data, format_):
+    structure = raw_data.structure("Sr2TiO4")
+    neighbor_list = NeighborList.from_data(structure)
+    actual, _ = format_(neighbor_list)
+    assert actual == {"text/plain": "neighbor list of 7 atoms (Sr, Ti, O)"}
+
+
+def test_factory_methods_access_structure(raw_data):
+    # NeighborList owns no data of its own; from_path/from_file must access the
+    # structure in the schema rather than a nonexistent "neighbor_list" entry.
+    data = raw_data.structure("Sr2TiO4")
+    instances = (NeighborList.from_path(), NeighborList.from_file("vaspout.h5"))
+    calls = (lambda nl: nl.read(cutoff=4.0), lambda nl: str(nl))
+    for neighbor_list in instances:
+        for call in calls:
+            with patch("py4vasp.raw.access") as mock_access:
+                mock_access.return_value.__enter__.return_value = data
+                call(neighbor_list)
+                mock_access.assert_called_once()
+                assert mock_access.call_args.args[0] == "structure"
+
+
+def test_calculation_exposes_neighbor_list():
+    calculation = Calculation.from_path(".")
+    assert isinstance(calculation.neighbor_list, NeighborList)

@@ -3,15 +3,24 @@
 """Neighbor list of all atom pairs within a cutoff radius, derived from a
 :class:`~py4vasp.calculation.structure`."""
 
+import copy
 import itertools
 
 import numpy as np
-from scipy.spatial import cKDTree
 
 from py4vasp import exception
-from py4vasp._calculation.dispatch import DataSource, merge_default, quantity
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._util import select
+from py4vasp._util import import_, select
+
+# scipy is only required for the full (not core) installation, so import it
+# lazily; the k-d tree is only touched when a neighbor list is actually computed.
+spatial = import_.optional("scipy.spatial")
 
 # NeighborList owns no raw data of its own; it derives cell, positions, and atom
 # types from the structure. Dispatch therefore accesses the "structure" schema
@@ -112,6 +121,11 @@ class NeighborListHandler:
             for sel in tree.selections()
         }
 
+    def __str__(self) -> str:
+        elements = self._structure._stoichiometry().elements()
+        atom_types = ", ".join(dict.fromkeys(elements))
+        return f"neighbor list of {len(elements)} atoms ({atom_types})"
+
     def _filter_pairs(self, pairs, selection, elements):
         source = elements[pairs["indices"][:, 0]]
         neighbor = elements[pairs["indices"][:, 1]]
@@ -129,13 +143,20 @@ class NeighborListHandler:
         periodic image that could hold a neighbor (see :func:`_replica_counts`),
         and uses a k-d tree to find the pairs within the cutoff in N log N time.
         """
+        positions = np.asarray(self._structure.positions())
+        if positions.ndim != 2:
+            message = (
+                "Computing a neighbor list for multiple steps is not implemented. "
+                "Please select a single step, e.g. neighbor_list[0]."
+            )
+            raise exception.NotImplemented(message)
         lattice_vectors = self._lattice_vectors()
-        home = (np.asarray(self._structure.positions()) % 1.0) @ lattice_vectors
+        home = (positions % 1.0) @ lattice_vectors
         offsets = self._cell_offsets(lattice_vectors, cutoff)
         images = (home[:, np.newaxis, :] + offsets @ lattice_vectors).reshape(-1, 3)
         number_offsets = len(offsets)
-        home_tree = cKDTree(home)
-        image_tree = cKDTree(images)
+        home_tree = spatial.cKDTree(home)
+        image_tree = spatial.cKDTree(images)
         distance_matrix = home_tree.sparse_distance_matrix(
             image_tree, cutoff, output_type="coo_matrix"
         )
@@ -178,6 +199,11 @@ class NeighborList:
         """Create a NeighborList dispatcher from raw structure data."""
         return cls(source=DataSource(raw_structure))
 
+    def __getitem__(self, steps) -> "NeighborList":
+        new = copy.copy(self)
+        new._steps = steps
+        return new
+
     def _handler_factory(self, raw_data):
         return NeighborListHandler.from_data(raw_data, steps=self._steps)
 
@@ -201,6 +227,25 @@ class NeighborList:
             ``distances``, the cartesian ``distance_vectors`` from i to j, and
             the integer ``cell_offsets`` locating the periodic image of j. When a
             selection is given the result is keyed by the selection label.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Compute all atom pairs within a radius of 3 Å
+
+        >>> neighbors = calculation.neighbor_list.read(cutoff=3.0)
+        >>> sorted(neighbors)
+        ['cell_offsets', 'distance_vectors', 'distances', 'indices']
+
+        Restrict the neighbor list to Sr-Ti pairs
+
+        >>> selection = calculation.neighbor_list.read("Sr~Ti", cutoff=3.5)
+        >>> list(selection)
+        ['Sr~Ti']
+        >>> selection["Sr~Ti"]["distances"]
+        array([...])
         """
         return merge_default(
             self._source,
@@ -214,3 +259,15 @@ class NeighborList:
     def to_dict(self, selection=None, *, cutoff) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection, cutoff=cutoff)
+
+    def __str__(self, selection=None) -> str:
+        return merge_strings(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            NeighborListHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self) if not cycle else "...")
