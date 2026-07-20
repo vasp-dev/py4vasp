@@ -670,3 +670,16 @@ def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.structure("Sr2TiO4")
     parameters = {"__getitem__": {"steps": slice(None)}}
     check_factory_methods(Structure, data, parameters)
+
+
+# ---------------------------------------------------------------------------
+# Symmetry-derived properties (SrTiO3 perovskite carries a matching symmetry)
+# ---------------------------------------------------------------------------
+
+
+def test_srtio3_demo_carries_symmetry(raw_data):
+    """The SrTiO3 demo pairs the structure with its cubic Pm-3m symmetry."""
+    raw_structure = raw_data.structure("SrTiO3")
+    assert not check.is_none(raw_structure.symmetry)
+    assert raw_structure.symmetry.number_of_operations == 48
+    assert np.array(raw_structure.symmetry.atom_permutations).shape == (1, 48, 5)
