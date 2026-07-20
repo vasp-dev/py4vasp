@@ -127,9 +127,14 @@ class NeighborListHandler:
         return f"neighbor list of {len(elements)} atoms ({atom_types})"
 
     def selections(self) -> list:
-        """Return every pair of atom types that can be selected."""
+        """Return every pair of atom types that can be selected.
+
+        Pair selection is directed (``'Si~C'`` keeps Si→C neighbors, ``'C~Si'``
+        keeps C→Si), so both orderings are listed. Iterating over the result
+        therefore partitions the complete neighbor list without omission.
+        """
         atom_types = self._structure._stoichiometry().ion_types_list()
-        pairs = itertools.combinations_with_replacement(atom_types, 2)
+        pairs = itertools.product(atom_types, repeat=2)
         return [f"{a}{select.pair_separator}{b}" for a, b in pairs]
 
     def _filter_pairs(self, pairs, selection, elements):
@@ -166,17 +171,20 @@ class NeighborListHandler:
         distance_matrix = home_tree.sparse_distance_matrix(
             image_tree, cutoff, output_type="coo_matrix"
         )
-        # distance == 0 is the atom paired with its own home image; drop it but
-        # keep the (nonzero) pairings of an atom with its own periodic replicas.
-        keep = distance_matrix.data > 0
-        source = distance_matrix.row[keep]
-        image = distance_matrix.col[keep]
+        source = distance_matrix.row
+        image = distance_matrix.col
         neighbor = image // number_offsets
+        offset = offsets[image % number_offsets]
+        # exclude only the atom paired with its own home image (same atom, zero
+        # offset); an atom still neighbors its own replicas at nonzero offsets,
+        # and two distinct atoms sharing a position remain a genuine pair.
+        keep = ~((neighbor == source) & np.all(offset == 0, axis=1))
+        source, neighbor, offset = source[keep], neighbor[keep], offset[keep]
         return {
             "indices": np.stack([source, neighbor], axis=1),
             "distances": distance_matrix.data[keep],
-            "distance_vectors": images[image] - home[source],
-            "cell_offsets": offsets[image % number_offsets],
+            "distance_vectors": images[image[keep]] - home[source],
+            "cell_offsets": offset,
         }
 
     @staticmethod
@@ -271,12 +279,14 @@ class NeighborList:
 
         Each entry is a valid ``selection`` argument for :py:meth:`read`, so you
         can iterate over the result to obtain the neighbor list of every atom-type
-        pair separately.
+        pair separately. Pair selection is directed, so both orderings of a
+        cross-type pair are listed and iterating partitions the complete neighbor
+        list without omission.
 
         Returns
         -------
         list
-            All atom-type pairs of the structure as ``'X~Y'`` strings.
+            All ordered atom-type pairs of the structure as ``'X~Y'`` strings.
 
         Examples
         --------
@@ -284,7 +294,7 @@ class NeighborList:
         >>> calculation = demo.calculation(path)
 
         >>> calculation.neighbor_list.selections()
-        ['Sr~Sr', 'Sr~Ti', 'Sr~O', 'Ti~Ti', 'Ti~O', 'O~O']
+        ['Sr~Sr', 'Sr~Ti', 'Sr~O', 'Ti~Sr', 'Ti~Ti', 'Ti~O', 'O~Sr', 'O~Ti', 'O~O']
         """
         return merge_default(
             self._source,

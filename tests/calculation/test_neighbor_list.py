@@ -287,7 +287,9 @@ def test_selections(raw_data):
     structure = raw_data.structure("Sr2TiO4")
     neighbor_list = NeighborList.from_data(structure)
     assert neighbor_list.selections() == [
-        "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O"
+        "Sr~Sr", "Sr~Ti", "Sr~O",
+        "Ti~Sr", "Ti~Ti", "Ti~O",
+        "O~Sr", "O~Ti", "O~O",
     ]
 
 
@@ -298,3 +300,15 @@ def test_selections_are_valid(raw_data):
     for selection in neighbor_list.selections():
         result = neighbor_list.read(selection, cutoff=3.5)
         assert set(result) == {selection}
+
+
+def test_selections_partition_all_pairs(raw_data):
+    # iterating over selections must cover every pair of the full list exactly once
+    structure = raw_data.structure("Sr2TiO4")
+    neighbor_list = NeighborList.from_data(structure)
+    total = len(neighbor_list.read(cutoff=3.5)["distances"])
+    per_selection = sum(
+        len(neighbor_list.read(selection, cutoff=3.5)[selection]["distances"])
+        for selection in neighbor_list.selections()
+    )
+    assert per_selection == total
