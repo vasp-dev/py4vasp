@@ -269,7 +269,9 @@ Atoms # atomic
         dataset = self._symmetry_dataset()
         element_of_orbit = {
             int(orbit): element
-            for orbit, element in zip(self._orbit_labels(), self._stoichiometry().elements())
+            for orbit, element in zip(
+                self._orbit_labels(), self._stoichiometry().elements()
+            )
         }
         elements = [element_of_orbit[int(type_)] for type_ in dataset.std_types]
         return StandardizedCell(

@@ -28,6 +28,13 @@ def test_creating_default_calculation(tmp_path):
     demo.calculation(tmp_path / "specific_example")
 
 
+def test_creating_perovskite_calculation(tmp_path):
+    # the "perovskite" selection pairs a structure with its symmetry so the
+    # symmetry-derived structure examples have consistent data
+    calculation = demo.calculation(tmp_path / "perovskite_example", "perovskite")
+    assert calculation.structure.number_atoms() == 5
+
+
 finder = doctest.DocTestFinder()
 
 

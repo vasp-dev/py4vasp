@@ -725,7 +725,9 @@ def test_wyckoff_positions_honor_vasp_symmetry(perovskite, Assert):
     from py4vasp._calculation.symmetry import SymmetryHandler
 
     raw_structure = perovskite.ref.raw_data
-    expected_number = SymmetryHandler.from_data(raw_structure.symmetry).space_group().number
+    expected_number = (
+        SymmetryHandler.from_data(raw_structure.symmetry).space_group().number
+    )
     handler = StructureHandler.from_data(raw_structure)
     orbits = perovskite.equivalent_atoms()
     cell = (handler.lattice_vectors(), handler.positions(), orbits)

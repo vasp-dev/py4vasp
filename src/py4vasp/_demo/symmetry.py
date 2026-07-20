@@ -222,7 +222,9 @@ def _inverse_operations(rotations):
     for rotation in rotations:
         target = np.rint(np.linalg.inv(rotation)).astype(int)
         match = next(
-            index for index, other in enumerate(rotations) if np.array_equal(other, target)
+            index
+            for index, other in enumerate(rotations)
+            if np.array_equal(other, target)
         )
         inverse.append(match + 1)
     return inverse
