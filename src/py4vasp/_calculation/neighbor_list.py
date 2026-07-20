@@ -126,6 +126,12 @@ class NeighborListHandler:
         atom_types = ", ".join(dict.fromkeys(elements))
         return f"neighbor list of {len(elements)} atoms ({atom_types})"
 
+    def selections(self) -> list:
+        """Return every pair of atom types that can be selected."""
+        atom_types = self._structure._stoichiometry().ion_types_list()
+        pairs = itertools.combinations_with_replacement(atom_types, 2)
+        return [f"{a}{select.pair_separator}{b}" for a, b in pairs]
+
     def _filter_pairs(self, pairs, selection, elements):
         source = elements[pairs["indices"][:, 0]]
         neighbor = elements[pairs["indices"][:, 1]]
@@ -259,6 +265,34 @@ class NeighborList:
     def to_dict(self, selection=None, *, cutoff) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection, cutoff=cutoff)
+
+    def selections(self) -> list:
+        """Return every pair of atom types that can be selected.
+
+        Each entry is a valid ``selection`` argument for :py:meth:`read`, so you
+        can iterate over the result to obtain the neighbor list of every atom-type
+        pair separately.
+
+        Returns
+        -------
+        list
+            All atom-type pairs of the structure as ``'X~Y'`` strings.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.neighbor_list.selections()
+        ['Sr~Sr', 'Sr~Ti', 'Sr~O', 'Ti~Ti', 'Ti~O', 'O~O']
+        """
+        return merge_default(
+            self._source,
+            _DATA_QUANTITY,
+            None,
+            self._handler_factory,
+            NeighborListHandler.selections,
+        )
 
     def __str__(self, selection=None) -> str:
         return merge_strings(

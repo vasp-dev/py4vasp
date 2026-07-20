@@ -281,3 +281,20 @@ def test_factory_methods_access_structure(raw_data):
 def test_calculation_exposes_neighbor_list():
     calculation = Calculation.from_path(".")
     assert isinstance(calculation.neighbor_list, NeighborList)
+
+
+def test_selections(raw_data):
+    structure = raw_data.structure("Sr2TiO4")
+    neighbor_list = NeighborList.from_data(structure)
+    assert neighbor_list.selections() == [
+        "Sr~Sr", "Sr~Ti", "Sr~O", "Ti~Ti", "Ti~O", "O~O"
+    ]
+
+
+def test_selections_are_valid(raw_data):
+    # every selection returned must be accepted by read
+    structure = raw_data.structure("Sr2TiO4")
+    neighbor_list = NeighborList.from_data(structure)
+    for selection in neighbor_list.selections():
+        result = neighbor_list.read(selection, cutoff=3.5)
+        assert set(result) == {selection}
