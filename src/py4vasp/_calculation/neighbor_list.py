@@ -35,10 +35,13 @@ _REPLICA_TOL = 1e-9
 
 # Default cutoff (Å) used when rendering the neighbor table for __str__/print,
 # where no radius can be supplied. Roughly a first-shell bonding distance.
-_DEFAULT_CUTOFF = 3.0
+_DEFAULT_CUTOFF = 3.5
 
 # Header of the VASP-style nearest-neighbor table produced by __str__/to_string.
 _NEIGHBOR_TABLE_HEADER = " ion  position               nearest neighbor table"
+
+# Neighbors wrap onto indented continuation lines after this many per line (VASP).
+_NEIGHBORS_PER_LINE = 8
 
 
 def _replica_counts(lattice_vectors, cutoff):
@@ -136,26 +139,29 @@ class NeighborListHandler:
 
         Each row lists an ion (1-based), its direct coordinates, and its
         neighbors as ``index distance`` pairs sorted by increasing distance.
+        Long neighbor lists wrap onto indented continuation lines.
         """
         pairs = self._all_pairs(cutoff)
         positions = np.asarray(self._structure.positions())
-        lines = [_NEIGHBOR_TABLE_HEADER]
-        lines += [
-            self._table_row(atom, position, pairs)
-            for atom, position in enumerate(positions)
-        ]
+        lines = [f"(neighbors within {cutoff} Å)", _NEIGHBOR_TABLE_HEADER]
+        for atom, position in enumerate(positions):
+            lines += self._table_rows(atom, position, pairs)
         return "\n".join(lines)
 
-    def _table_row(self, atom, position, pairs):
+    def _table_rows(self, atom, position, pairs):
         mask = pairs["indices"][:, 0] == atom
         neighbors = pairs["indices"][mask, 1]
         distances = pairs["distances"][mask]
         order = np.lexsort((neighbors, distances))
-        row = f"{atom + 1:4d}{position[0]:7.3f}{position[1]:7.3f}{position[2]:7.3f}-"
-        entries = "".join(
-            f"{neighbors[k] + 1:4d}{distances[k]:5.2f}" for k in order
-        )
-        return row + entries
+        entries = [f"{neighbors[k] + 1:4d}{distances[k]:5.2f}" for k in order]
+        prefix = f"{atom + 1:4d}{position[0]:7.3f}{position[1]:7.3f}{position[2]:7.3f}-"
+        indent = " " * len(prefix)
+        starts = range(0, max(len(entries), 1), _NEIGHBORS_PER_LINE)
+        return [
+            (prefix if start == 0 else indent)
+            + "".join(entries[start : start + _NEIGHBORS_PER_LINE])
+            for start in starts
+        ]
 
     def selections(self) -> list:
         """Return every pair of atom types that can be selected.
@@ -349,8 +355,9 @@ class NeighborList:
         Returns
         -------
         str
-            A VASP OUTCAR-style table with one row per ion. Each row contains the
-            1-based ion index, its direct coordinates, and its neighbors as
+            A VASP OUTCAR-style table with one row per ion (neighbor lists longer
+            than eight wrap onto indented continuation lines). Each row contains
+            the 1-based ion index, its direct coordinates, and its neighbors as
             ``index distance`` pairs sorted by increasing distance.
 
         Examples
@@ -359,6 +366,7 @@ class NeighborList:
         >>> calculation = demo.calculation(path)
 
         >>> print(calculation.neighbor_list.to_string(cutoff=3.0))
+        (neighbors within 3.0 Å)
          ion  position               nearest neighbor table
            1  ...
         """

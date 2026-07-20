@@ -262,20 +262,38 @@ _HEADER = " ion  position               nearest neighbor table"
 
 def test_print(raw_data, format_):
     # a single atom in a cubic cell of edge 2.5 Å has its six periodic images as
-    # nearest neighbors (all at 2.50 Å) within the default 3.0 Å print cutoff.
+    # nearest neighbors (all at 2.50 Å) within the default 3.5 Å print cutoff.
     structure = _raw_structure(
         [[2.5, 0, 0], [0, 2.5, 0], [0, 0, 2.5]], [[0, 0, 0]], ["H"], [1]
     )
     neighbor_list = NeighborList.from_data(structure)
     row = "   1  0.000  0.000  0.000-" + "   1 2.50" * 6
+    expected = f"(neighbors within 3.5 Å)\n{_HEADER}\n{row}"
     actual, _ = format_(neighbor_list)
-    assert actual == {"text/plain": f"{_HEADER}\n{row}"}
+    assert actual == {"text/plain": expected}
 
 
 def test_str_uses_default_cutoff(raw_data):
     structure = raw_data.structure("SrTiO3")
     neighbor_list = NeighborList.from_data(structure)
-    assert str(neighbor_list) == neighbor_list.to_string(cutoff=3.0)
+    assert str(neighbor_list) == neighbor_list.to_string(cutoff=3.5)
+
+
+def _parse_table(text):
+    """Parse a neighbor-table string into (lines, {ion0: [(neighbor1, dist), ...]})."""
+    lines = text.splitlines()
+    per_ion = {}
+    current = None
+    for line in lines[2:]:  # skip the cutoff line and the column header
+        tokens = line[26:].split()  # neighbor block starts after the fixed columns
+        contacts = list(
+            zip((int(t) for t in tokens[0::2]), (float(t) for t in tokens[1::2]))
+        )
+        if line[:26].strip():  # the first line of an ion carries index + position
+            current = int(line[:4]) - 1
+            per_ion[current] = []
+        per_ion[current].extend(contacts)
+    return lines, per_ion
 
 
 def test_to_string_lists_all_neighbors_sorted(raw_data):
@@ -283,19 +301,26 @@ def test_to_string_lists_all_neighbors_sorted(raw_data):
     neighbor_list = NeighborList.from_data(structure)
     reference = neighbor_list.read(cutoff=3.0)
     counts = Counter(int(atom) for atom in reference["indices"][:, 0])
-    lines = neighbor_list.to_string(cutoff=3.0).splitlines()
-    assert lines[0] == _HEADER
-    seen = {}
-    for line in lines[1:]:
-        ion = int(line[:4])
-        tokens = line[26:].split()  # neighbor block starts after the fixed columns
-        neighbor_indices = [int(token) for token in tokens[0::2]]
-        neighbor_distances = [float(token) for token in tokens[1::2]]
-        assert neighbor_distances == sorted(neighbor_distances)
-        assert all(1 <= index <= 5 for index in neighbor_indices)  # 5 atoms, 1-based
-        if neighbor_indices:
-            seen[ion - 1] = len(neighbor_indices)
-    assert seen == dict(counts)
+    lines, per_ion = _parse_table(neighbor_list.to_string(cutoff=3.0))
+    assert lines[0] == "(neighbors within 3.0 Å)"
+    assert lines[1] == _HEADER
+    for contacts in per_ion.values():
+        distances = [distance for _, distance in contacts]
+        indices = [index for index, _ in contacts]
+        assert distances == sorted(distances)
+        assert all(1 <= index <= 5 for index in indices)  # 5 atoms, 1-based
+    assert {atom: len(contacts) for atom, contacts in per_ion.items()} == dict(counts)
+
+
+def test_to_string_wraps_at_eight_neighbors(raw_data):
+    # in SrTiO3 at 3 Å the octahedral O sites have 14 neighbors, forcing a wrap
+    structure = raw_data.structure("SrTiO3")
+    neighbor_list = NeighborList.from_data(structure)
+    lines = neighbor_list.to_string(cutoff=3.0).splitlines()[2:]
+    for line in lines:
+        assert len(line[26:].split()) // 2 <= 8  # at most 8 neighbors per line
+    # a wrapped ion emits a continuation line indented under the neighbor column
+    assert any(line.startswith(" " * 26) and line.strip() for line in lines)
 
 
 def test_factory_methods_access_structure(raw_data):
