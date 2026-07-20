@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
+from collections import Counter
 from unittest.mock import patch
 
 import numpy as np
@@ -256,11 +257,45 @@ def test_read_multiple_steps_not_implemented(raw_data):
         NeighborList.from_data(structure)[0:2].read(cutoff=4.5)
 
 
+_HEADER = " ion  position               nearest neighbor table"
+
+
 def test_print(raw_data, format_):
-    structure = raw_data.structure("Sr2TiO4")
+    # a single atom in a cubic cell of edge 2.5 Å has its six periodic images as
+    # nearest neighbors (all at 2.50 Å) within the default 3.0 Å print cutoff.
+    structure = _raw_structure(
+        [[2.5, 0, 0], [0, 2.5, 0], [0, 0, 2.5]], [[0, 0, 0]], ["H"], [1]
+    )
     neighbor_list = NeighborList.from_data(structure)
+    row = "   1  0.000  0.000  0.000-" + "   1 2.50" * 6
     actual, _ = format_(neighbor_list)
-    assert actual == {"text/plain": "neighbor list of 7 atoms (Sr, Ti, O)"}
+    assert actual == {"text/plain": f"{_HEADER}\n{row}"}
+
+
+def test_str_uses_default_cutoff(raw_data):
+    structure = raw_data.structure("SrTiO3")
+    neighbor_list = NeighborList.from_data(structure)
+    assert str(neighbor_list) == neighbor_list.to_string(cutoff=3.0)
+
+
+def test_to_string_lists_all_neighbors_sorted(raw_data):
+    structure = raw_data.structure("SrTiO3")
+    neighbor_list = NeighborList.from_data(structure)
+    reference = neighbor_list.read(cutoff=3.0)
+    counts = Counter(int(atom) for atom in reference["indices"][:, 0])
+    lines = neighbor_list.to_string(cutoff=3.0).splitlines()
+    assert lines[0] == _HEADER
+    seen = {}
+    for line in lines[1:]:
+        ion = int(line[:4])
+        tokens = line[26:].split()  # neighbor block starts after the fixed columns
+        neighbor_indices = [int(token) for token in tokens[0::2]]
+        neighbor_distances = [float(token) for token in tokens[1::2]]
+        assert neighbor_distances == sorted(neighbor_distances)
+        assert all(1 <= index <= 5 for index in neighbor_indices)  # 5 atoms, 1-based
+        if neighbor_indices:
+            seen[ion - 1] = len(neighbor_indices)
+    assert seen == dict(counts)
 
 
 def test_factory_methods_access_structure(raw_data):

@@ -33,6 +33,13 @@ _DATA_QUANTITY = "structure"
 # far smaller than any physically meaningful fraction of a replica.
 _REPLICA_TOL = 1e-9
 
+# Default cutoff (Å) used when rendering the neighbor table for __str__/print,
+# where no radius can be supplied. Roughly a first-shell bonding distance.
+_DEFAULT_CUTOFF = 3.0
+
+# Header of the VASP-style nearest-neighbor table produced by __str__/to_string.
+_NEIGHBOR_TABLE_HEADER = " ion  position               nearest neighbor table"
+
 
 def _replica_counts(lattice_vectors, cutoff):
     """Number of periodic replicas needed along each lattice direction.
@@ -122,9 +129,33 @@ class NeighborListHandler:
         }
 
     def __str__(self) -> str:
-        elements = self._structure._stoichiometry().elements()
-        atom_types = ", ".join(dict.fromkeys(elements))
-        return f"neighbor list of {len(elements)} atoms ({atom_types})"
+        return self.to_string()
+
+    def to_string(self, cutoff=_DEFAULT_CUTOFF) -> str:
+        """Render the nearest-neighbor table up to *cutoff* (VASP OUTCAR style).
+
+        Each row lists an ion (1-based), its direct coordinates, and its
+        neighbors as ``index distance`` pairs sorted by increasing distance.
+        """
+        pairs = self._all_pairs(cutoff)
+        positions = np.asarray(self._structure.positions())
+        lines = [_NEIGHBOR_TABLE_HEADER]
+        lines += [
+            self._table_row(atom, position, pairs)
+            for atom, position in enumerate(positions)
+        ]
+        return "\n".join(lines)
+
+    def _table_row(self, atom, position, pairs):
+        mask = pairs["indices"][:, 0] == atom
+        neighbors = pairs["indices"][mask, 1]
+        distances = pairs["distances"][mask]
+        order = np.lexsort((neighbors, distances))
+        row = f"{atom + 1:4d}{position[0]:7.3f}{position[1]:7.3f}{position[2]:7.3f}-"
+        entries = "".join(
+            f"{neighbors[k] + 1:4d}{distances[k]:5.2f}" for k in order
+        )
+        return row + entries
 
     def selections(self) -> list:
         """Return every pair of atom types that can be selected.
@@ -302,6 +333,42 @@ class NeighborList:
             None,
             self._handler_factory,
             NeighborListHandler.selections,
+        )
+
+    def to_string(self, cutoff=_DEFAULT_CUTOFF) -> str:
+        """Render the nearest-neighbor table up to *cutoff*.
+
+        This is the string produced by ``print`` (which uses the default cutoff);
+        use this method to obtain the table for a different radius.
+
+        Parameters
+        ----------
+        cutoff : float
+            The neighbor cutoff radius in Å.
+
+        Returns
+        -------
+        str
+            A VASP OUTCAR-style table with one row per ion. Each row contains the
+            1-based ion index, its direct coordinates, and its neighbors as
+            ``index distance`` pairs sorted by increasing distance.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> print(calculation.neighbor_list.to_string(cutoff=3.0))
+         ion  position               nearest neighbor table
+           1  ...
+        """
+        return merge_strings(
+            self._source,
+            _DATA_QUANTITY,
+            None,
+            self._handler_factory,
+            NeighborListHandler.to_string,
+            cutoff,
         )
 
     def __str__(self, selection=None) -> str:

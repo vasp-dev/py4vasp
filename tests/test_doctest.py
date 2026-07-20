@@ -63,6 +63,7 @@ def _all_calculation_examples():
 # importorskip when that package is missing. Everything else runs in test_calculation.
 _FULL_INSTALL_EXAMPLES = {
     "py4vasp._calculation.neighbor_list.NeighborList.read": "scipy",
+    "py4vasp._calculation.neighbor_list.NeighborList.to_string": "scipy",
     "py4vasp._calculation.optics.Optics.color": "scipy",
     "py4vasp._calculation.symmetry.Symmetry.space_group": "spglib",
     "py4vasp._calculation.symmetry.Symmetry.point_group_schoenflies": "spglib",
