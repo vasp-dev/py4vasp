@@ -119,8 +119,8 @@ class SymmetryHandler:
                 raw_symmetry.primitive_lattice_vectors
             ),
             "primitive_translations": np.array(raw_symmetry.primitive_translations),
-            "number_of_operations": int(raw_symmetry.number_of_operations[()]),
-            "number_of_primitive_cells": int(raw_symmetry.number_of_primitive_cells[()]),
+            "number_of_operations": int(raw_symmetry.number_of_operations),
+            "number_of_primitive_cells": int(raw_symmetry.number_of_primitive_cells),
             "isym": int(raw_symmetry.isym),
         }
         if not check.is_none(raw_symmetry.spin_flips):
