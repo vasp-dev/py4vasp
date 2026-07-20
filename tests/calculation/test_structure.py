@@ -701,3 +701,35 @@ def test_equivalent_atoms(perovskite, Assert):
 def test_equivalent_atoms_without_symmetry(Sr2TiO4):
     with pytest.raises(exception.NoData):
         Sr2TiO4.equivalent_atoms()
+
+
+def test_wyckoff_positions(perovskite):
+    pytest.importorskip("spglib")
+    from py4vasp._calculation.structure import Wyckoff
+
+    actual = perovskite.wyckoff_positions()
+    assert isinstance(actual, Wyckoff)
+    assert actual.letters == ["a", "b", "c", "c", "c"]
+    assert actual.site_symmetries == ["m-3m", "m-3m", "4/mm.m", "4/mm.m", "4/mm.m"]
+
+
+def test_wyckoff_positions_honor_vasp_symmetry(perovskite, Assert):
+    # the orbit-relabeled cell must reproduce VASP's space group (not a higher one)
+    # and spglib's equivalent atoms must match the VASP orbit partition
+    spglib = pytest.importorskip("spglib")
+    from py4vasp._calculation.symmetry import SymmetryHandler
+
+    raw_structure = perovskite.ref.raw_data
+    expected_number = SymmetryHandler.from_data(raw_structure.symmetry).space_group().number
+    handler = StructureHandler.from_data(raw_structure)
+    orbits = perovskite.equivalent_atoms()
+    cell = (handler.lattice_vectors(), handler.positions(), orbits)
+    dataset = spglib.get_symmetry_dataset(cell)
+    assert dataset.number == expected_number
+    Assert.allclose(dataset.equivalent_atoms, orbits)
+
+
+def test_wyckoff_positions_without_symmetry(Sr2TiO4):
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.NoData):
+        Sr2TiO4.wyckoff_positions()

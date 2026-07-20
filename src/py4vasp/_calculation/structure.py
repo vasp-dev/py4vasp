@@ -19,6 +19,7 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
+from py4vasp._calculation.symmetry import _SYMPREC
 from py4vasp._raw.definition import unique_selections as _schema_unique_selections
 from py4vasp._raw.models import StoichiometryModel, StructureModel
 from py4vasp._third_party import view
@@ -42,6 +43,16 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     # reading them can raise a low-level RuntimeError which we treat as "no data"
     RuntimeError,
 )
+
+
+@dataclass
+class Wyckoff:
+    """The Wyckoff positions of the atoms, consistent with the symmetry VASP found."""
+
+    letters: list
+    "The Wyckoff letter of every atom, e.g. ``['a', 'b', 'c', 'c', 'c']``."
+    site_symmetries: list
+    "The site-symmetry symbol of every atom in international notation, e.g. ``m-3m``."
 
 
 class StructureHandler:
@@ -229,6 +240,30 @@ Atoms # atomic
     def equivalent_atoms(self) -> np.ndarray:
         """Return the orbit index of every atom under VASP's symmetry operations."""
         return self._orbit_labels()
+
+    def wyckoff_positions(self) -> "Wyckoff":
+        """Return the Wyckoff positions of the atoms consistent with VASP's symmetry."""
+        dataset = self._symmetry_dataset()
+        return Wyckoff(
+            letters=list(dataset.wyckoffs),
+            site_symmetries=list(dataset.site_symmetry_symbols),
+        )
+
+    def _symmetry_dataset(self):
+        """Classify the crystal with spglib using VASP's symmetry.
+
+        The atoms are labeled by their orbit under VASP's operations before spglib
+        analyzes the cell. This prevents spglib from relating atoms that VASP treats
+        as inequivalent, so the resulting dataset reflects the symmetry VASP found
+        rather than the possibly higher symmetry of the bare geometry.
+        """
+        orbits = self._orbit_labels()
+        positions = self.positions()
+        if positions.ndim == 3:
+            message = "Computing the symmetry properties of multiple steps is not implemented."
+            raise exception.NotImplemented(message)
+        cell = (self.lattice_vectors(), positions, orbits)
+        return spglib.get_symmetry_dataset(cell, symprec=_SYMPREC)
 
     def _raw_symmetry(self):
         """Return the raw symmetry, raising if the structure does not provide it."""
@@ -1252,6 +1287,40 @@ class Structure(view.Mixin):
             None,
             self._handler_factory,
             StructureHandler.equivalent_atoms,
+        )
+
+    def wyckoff_positions(self):
+        """Determine the Wyckoff positions of the atoms in the crystal.
+
+        The atoms are classified into Wyckoff positions using the symmetry VASP
+        recognized for the crystal. Each atom is labeled by its orbit before the
+        classification, so the assignment reflects VASP's symmetry rather than the
+        possibly higher symmetry the geometry alone would suggest. This requires the
+        structure to carry symmetry information (VASP 6.6 or later) and the spglib
+        package to be installed.
+
+        Returns
+        -------
+        Wyckoff
+            The Wyckoff letter and the site-symmetry symbol of every atom.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        In cubic perovskite SrTiO3 strontium occupies the Wyckoff position a,
+        titanium the position b, and the three oxygen atoms the position c.
+
+        >>> calculation.structure.wyckoff_positions()
+        Wyckoff(letters=['a', 'b', 'c', 'c', 'c'], site_symmetries=['m-3m', 'm-3m', '4/mm.m', '4/mm.m', '4/mm.m'])
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.wyckoff_positions,
         )
 
     def _to_database(self) -> dict:
