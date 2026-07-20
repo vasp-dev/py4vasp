@@ -55,6 +55,18 @@ class Wyckoff:
     "The site-symmetry symbol of every atom in international notation, e.g. ``m-3m``."
 
 
+@dataclass
+class StandardizedCell:
+    """The standardized (conventional) cell spglib derives from VASP's symmetry."""
+
+    lattice_vectors: np.ndarray
+    "The lattice vectors of the standardized conventional cell in Å."
+    positions: np.ndarray
+    "The direct coordinates of the atoms in the standardized cell."
+    elements: list
+    "The chemical element of every atom in the standardized cell."
+
+
 class StructureHandler:
     """Processes structural data from a single raw.Structure object."""
 
@@ -247,6 +259,20 @@ Atoms # atomic
         return Wyckoff(
             letters=list(dataset.wyckoffs),
             site_symmetries=list(dataset.site_symmetry_symbols),
+        )
+
+    def standardized_cell(self) -> "StandardizedCell":
+        """Return the standardized conventional cell consistent with VASP's symmetry."""
+        dataset = self._symmetry_dataset()
+        element_of_orbit = {
+            int(orbit): element
+            for orbit, element in zip(self._orbit_labels(), self._stoichiometry().elements())
+        }
+        elements = [element_of_orbit[int(type_)] for type_ in dataset.std_types]
+        return StandardizedCell(
+            lattice_vectors=np.array(dataset.std_lattice),
+            positions=np.array(dataset.std_positions),
+            elements=elements,
         )
 
     def _symmetry_dataset(self):
@@ -1321,6 +1347,40 @@ class Structure(view.Mixin):
             None,
             self._handler_factory,
             StructureHandler.wyckoff_positions,
+        )
+
+    def standardized_cell(self):
+        """Determine the standardized conventional cell of the crystal.
+
+        spglib maps the crystal onto a standardized conventional cell. The atoms are
+        labeled by their orbit under VASP's operations first, so the standardization
+        respects the symmetry VASP recognized. This requires the structure to carry
+        symmetry information (VASP 6.6 or later) and the spglib package.
+
+        Returns
+        -------
+        StandardizedCell
+            The lattice vectors, direct coordinates, and elements of the atoms in the
+            standardized conventional cell.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        For cubic perovskite SrTiO3 the conventional cell coincides with the primitive
+        cell, so it contains one strontium, one titanium, and three oxygen atoms.
+
+        >>> cell = calculation.structure.standardized_cell()
+        >>> cell.elements
+        ['Sr', 'Ti', 'O', 'O', 'O']
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.standardized_cell,
         )
 
     def _to_database(self) -> dict:

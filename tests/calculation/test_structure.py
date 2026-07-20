@@ -733,3 +733,23 @@ def test_wyckoff_positions_without_symmetry(Sr2TiO4):
     pytest.importorskip("spglib")
     with pytest.raises(exception.NoData):
         Sr2TiO4.wyckoff_positions()
+
+
+def test_standardized_cell(perovskite, Assert):
+    pytest.importorskip("spglib")
+    from py4vasp._calculation.structure import StandardizedCell
+
+    actual = perovskite.standardized_cell()
+    assert isinstance(actual, StandardizedCell)
+    Assert.allclose(actual.lattice_vectors, 4.0 * np.eye(3))
+    expected_positions = np.array(
+        [[0, 0, 0], [0.5, 0.5, 0.5], [0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0]]
+    )
+    Assert.allclose(actual.positions, expected_positions)
+    assert actual.elements == ["Sr", "Ti", "O", "O", "O"]
+
+
+def test_standardized_cell_without_symmetry(Sr2TiO4):
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.NoData):
+        Sr2TiO4.standardized_cell()
