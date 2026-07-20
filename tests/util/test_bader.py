@@ -1,7 +1,9 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
+import pytest
 
+from py4vasp import exception
 from py4vasp._util import bader
 
 
@@ -92,3 +94,53 @@ def test_two_peaks_split_into_two_basins():
     # points nearer a peak belong to that peak's basin
     assert label_at(labels, (0.1, 0.5, 0.5)) == label_at(labels, left)
     assert label_at(labels, (0.9, 0.5, 0.5)) == label_at(labels, right)
+
+
+def test_displaced_peak_assigns_to_nearest_atom():
+    # the density peaks are displaced inwards from the atoms, mimicking a pseudo
+    # density that is not peaked at the nuclei.
+    shape = (24, 12, 12)
+    lattice_vectors = np.diag((8.0, 4.0, 4.0))
+    # atom 0 is on the right, atom 1 on the left, so the correct labeling differs
+    # from the arbitrary enumeration of the maxima and requires the snapping.
+    atoms = np.array([(0.75, 0.5, 0.5), (0.25, 0.5, 0.5)])
+    peaks = [(0.30, 0.5, 0.5), (0.70, 0.5, 0.5)]
+    charge = gaussian_density(shape, lattice_vectors, peaks)
+
+    labels = bader.basins(charge, lattice_vectors, atoms)
+
+    assert set(np.unique(labels)) <= {0, 1}
+    assert label_at(labels, atoms[0]) == 0
+    assert label_at(labels, atoms[1]) == 1
+    assert label_at(labels, (0.1, 0.5, 0.5)) == 1
+    assert label_at(labels, (0.9, 0.5, 0.5)) == 0
+
+
+def test_interstitial_maximum_merges_into_nearest_atom():
+    shape = (30, 12, 12)
+    lattice_vectors = np.diag((9.0, 4.0, 4.0))
+    atoms = np.array([(0.2, 0.5, 0.5), (0.8, 0.5, 0.5)])
+    charge = gaussian_density(
+        shape, lattice_vectors, list(atoms), width=0.9
+    ) + 0.6 * gaussian_density(shape, lattice_vectors, [(0.45, 0.5, 0.5)], width=0.4)
+
+    # without atoms the interstitial peak is a basin of its own
+    assert len(np.unique(bader.basins(charge, lattice_vectors))) == 3
+
+    labels = bader.basins(charge, lattice_vectors, atoms)
+
+    assert set(np.unique(labels)) == {0, 1}
+    # the interstitial peak at 0.45 is closest to atom 0 at 0.2
+    assert label_at(labels, (0.45, 0.5, 0.5)) == 0
+
+
+def test_incorrect_charge_dimension_raises():
+    with pytest.raises(exception.IncorrectUsage):
+        bader.basins(np.zeros((4, 4)), np.diag((1.0, 1.0, 1.0)))
+
+
+def test_incorrect_positions_shape_raises():
+    charge = np.zeros((4, 4, 4))
+    lattice_vectors = np.diag((1.0, 1.0, 1.0))
+    with pytest.raises(exception.IncorrectUsage):
+        bader.basins(charge, lattice_vectors, np.zeros((2, 2)))

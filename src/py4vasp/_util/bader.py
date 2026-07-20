@@ -5,6 +5,8 @@ import itertools
 
 import numpy as np
 
+from py4vasp import exception
+
 # the 26 neighbor offsets on a 3d grid (all combinations of -1, 0, 1 except origin)
 _OFFSETS = np.array(
     [offset for offset in itertools.product((-1, 0, 1), repeat=3) if any(offset)]
@@ -42,10 +44,28 @@ def basins(charge, lattice_vectors, positions=None):
         point to a basin.
     """
     charge = np.asarray(charge)
-    pointers = _ascent_pointers(charge, np.asarray(lattice_vectors))
+    lattice_vectors = np.asarray(lattice_vectors)
+    _raise_error_if_charge_not_3d(charge)
+    pointers = _ascent_pointers(charge, lattice_vectors)
     maxima = _resolve_to_maxima(pointers)
-    labels = _label_consecutively(maxima)
+    if positions is None:
+        return _label_consecutively(maxima).reshape(charge.shape)
+    positions = np.asarray(positions)
+    _raise_error_if_positions_invalid(positions)
+    labels = _label_by_nearest_atom(maxima, charge.shape, lattice_vectors, positions)
     return labels.reshape(charge.shape)
+
+
+def _label_by_nearest_atom(maxima, shape, lattice_vectors, positions):
+    "Assign the basin of each maximum to the nearest atom (minimum image)."
+    unique_maxima, inverse = np.unique(maxima, return_inverse=True)
+    grid_indices = np.stack(np.unravel_index(unique_maxima, shape), axis=1)
+    fractional = grid_indices / np.array(shape)
+    distance = fractional[:, np.newaxis, :] - positions[np.newaxis, :, :]
+    distance = (distance + 0.5) % 1.0 - 0.5
+    cartesian = distance @ lattice_vectors
+    nearest_atom = np.argmin(np.sum(cartesian**2, axis=-1), axis=1)
+    return nearest_atom[inverse]
 
 
 def _resolve_to_maxima(pointers):
@@ -85,3 +105,19 @@ def _ascent_pointers(charge, lattice_vectors):
         best_slope = np.where(improved, slope, best_slope)
         pointers = np.where(improved, neighbor, pointers)
     return pointers.ravel()
+
+
+def _raise_error_if_charge_not_3d(charge):
+    if charge.ndim != 3:
+        raise exception.IncorrectUsage(
+            "The charge density must be sampled on a 3d grid, but an array with "
+            f"{charge.ndim} dimensions was provided."
+        )
+
+
+def _raise_error_if_positions_invalid(positions):
+    if positions.ndim != 2 or positions.shape[1] != 3:
+        raise exception.IncorrectUsage(
+            "The positions must have shape (number_atoms, 3), but an array with "
+            f"shape {positions.shape} was provided."
+        )
