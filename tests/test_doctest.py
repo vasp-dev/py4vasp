@@ -67,6 +67,7 @@ _FULL_INSTALL_EXAMPLES = {
     "py4vasp._calculation.symmetry.Symmetry.pearson_symbol": "spglib",
     "py4vasp._calculation.structure.Structure.wyckoff_positions": "spglib",
     "py4vasp._calculation.structure.Structure.standardized_cell": "spglib",
+    "py4vasp._calculation.structure.Structure.prototype": "spglib",
 }
 
 

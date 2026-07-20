@@ -671,7 +671,12 @@ def test_factory_methods(raw_data, check_factory_methods):
     parameters = {"__getitem__": {"steps": slice(None)}}
     # the Sr2TiO4 trajectory carries no symmetry, so the symmetry-derived methods
     # raise NoData; they are exercised on the perovskite fixture instead
-    skip_methods = ["equivalent_atoms", "wyckoff_positions", "standardized_cell"]
+    skip_methods = [
+        "equivalent_atoms",
+        "wyckoff_positions",
+        "standardized_cell",
+        "prototype",
+    ]
     check_factory_methods(Structure, data, parameters, skip_methods=skip_methods)
 
 
@@ -753,3 +758,15 @@ def test_standardized_cell_without_symmetry(Sr2TiO4):
     pytest.importorskip("spglib")
     with pytest.raises(exception.NoData):
         Sr2TiO4.standardized_cell()
+
+
+def test_prototype(perovskite):
+    pytest.importorskip("spglib")
+    # AFLOW label: stoichiometry_Pearson_spacegroup_Wyckoff (Sr a, Ti b, O c)
+    assert perovskite.prototype() == "ABC3_cP5_221_a_b_c"
+
+
+def test_prototype_without_symmetry(Sr2TiO4):
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.NoData):
+        Sr2TiO4.prototype()

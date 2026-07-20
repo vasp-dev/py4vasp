@@ -1,8 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
+import math
+from collections import Counter
 from contextlib import suppress
 from dataclasses import dataclass
+from functools import reduce
 from typing import Union
 
 import numpy as np
@@ -19,7 +22,7 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
-from py4vasp._calculation.symmetry import _SYMPREC
+from py4vasp._calculation.symmetry import _SYMPREC, SymmetryHandler
 from py4vasp._raw.definition import unique_selections as _schema_unique_selections
 from py4vasp._raw.models import StoichiometryModel, StructureModel
 from py4vasp._third_party import view
@@ -274,6 +277,26 @@ Atoms # atomic
             positions=np.array(dataset.std_positions),
             elements=elements,
         )
+
+    def prototype(self) -> str:
+        """Return the AFLOW prototype label of the crystal, e.g. ``ABC3_cP5_221_a_b_c``.
+
+        The label combines the reduced stoichiometry, the Pearson symbol, the space
+        group number, and the Wyckoff sequence per species. The Wyckoff letters come
+        from spglib's standard setting; no affine-normalizer relabeling is applied, so
+        the label may use an equivalent letter choice for space groups whose normalizer
+        permutes Wyckoff letters.
+        """
+        symmetry = SymmetryHandler.from_data(self._raw_symmetry())
+        dataset = self._symmetry_dataset()
+        elements = self._stoichiometry().elements()
+        stoichiometry = _stoichiometry_prefix(elements)
+        wyckoff = _wyckoff_sequence(
+            elements, dataset.crystallographic_orbits, dataset.wyckoffs
+        )
+        pearson = symmetry.pearson_symbol()
+        number = symmetry.space_group().number
+        return f"{stoichiometry}_{pearson}_{number}_{wyckoff}"
 
     def _symmetry_dataset(self):
         """Classify the crystal with spglib using VASP's symmetry.
@@ -1383,6 +1406,45 @@ class Structure(view.Mixin):
             StructureHandler.standardized_cell,
         )
 
+    def prototype(self):
+        """Determine the AFLOW prototype label of the crystal.
+
+        The prototype label is a compact fingerprint of the structure type combining
+        the reduced stoichiometry, the Pearson symbol, the space group number, and the
+        Wyckoff positions occupied by each species, e.g. ``ABC3_cP5_221_a_b_c`` for
+        cubic perovskite. It is derived from the symmetry VASP recognized, so any
+        symmetry lowering is reflected. This requires the structure to carry symmetry
+        information (VASP 6.6 or later) and the spglib package.
+
+        The Wyckoff letters follow spglib's standard setting. For space groups whose
+        affine normalizer permutes Wyckoff letters, the label may use an equivalent
+        letter choice rather than the AFLOW-canonical one (e.g. zinc blende comes out
+        as ``AB_cF8_216_a_d`` instead of ``a_c``).
+
+        Returns
+        -------
+        str
+            The AFLOW prototype label of the crystal.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        Cubic perovskite SrTiO3 has one strontium (Wyckoff a), one titanium (b), and
+        three oxygen atoms (c) in a primitive cubic cell of five atoms.
+
+        >>> calculation.structure.prototype()
+        'ABC3_cP5_221_a_b_c'
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.prototype,
+        )
+
     def _to_database(self) -> dict:
         """Return ``{"structure": {selection: StructureModel}}`` for the database.
 
@@ -1481,6 +1543,41 @@ def _same_geometry(first, second):
 def _cell_from_ase(structure):
     lattice_vectors = np.array([structure.get_cell()])
     return raw.Cell(lattice_vectors, scale=raw.VaspData(1.0))
+
+
+def _stoichiometry_prefix(elements):
+    """Build the stoichiometry part of the prototype label, e.g. ``ABC3`` for SrTiO3."""
+    order = list(dict.fromkeys(elements))
+    counts = [elements.count(element) for element in order]
+    divisor = reduce(math.gcd, counts)
+    return "".join(
+        chr(ord("A") + index) + ("" if count // divisor == 1 else str(count // divisor))
+        for index, count in enumerate(counts)
+    )
+
+
+def _wyckoff_sequence(elements, orbits, letters):
+    """Build the Wyckoff part of the prototype label, one group per species.
+
+    Each species contributes its occupied Wyckoff letters (one per orbit), sorted and
+    prefixed with the count when a letter is occupied by more than one orbit. Groups
+    for the different species are separated by an underscore, e.g. ``a_b_c``.
+    """
+    parts = []
+    for species in dict.fromkeys(elements):
+        letter_of_orbit = {
+            int(orbit): letter
+            for element, orbit, letter in zip(elements, orbits, letters)
+            if element == species
+        }
+        counts = Counter(letter_of_orbit.values())
+        parts.append(
+            "".join(
+                (str(count) if count > 1 else "") + letter
+                for letter, count in sorted(counts.items())
+            )
+        )
+    return "_".join(parts)
 
 
 def _replace_or_set_elements(poscar, elements):
