@@ -301,6 +301,16 @@ def test_str_uses_default_cutoff(raw_data):
     assert str(neighbor_list) == neighbor_list.to_string(cutoff=3.5)
 
 
+def test_str_trajectory_degrades_gracefully(raw_data):
+    # Sr2TiO4 demo data is a trajectory; a multi-step selection cannot render a
+    # single table, but str()/print() must not raise (they run in display code).
+    structure = raw_data.structure("Sr2TiO4")
+    neighbor_list = NeighborList.from_data(structure)
+    assert "trajectory" in str(neighbor_list[0:2])
+    # selecting a single step still renders the table
+    assert str(neighbor_list[0]).startswith("(neighbors within")
+
+
 def _parse_table(text):
     """Parse a neighbor-table string into (lines, {ion0: [(neighbor1, dist), ...]})."""
     lines = text.splitlines()

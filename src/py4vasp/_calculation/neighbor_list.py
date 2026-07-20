@@ -141,6 +141,13 @@ class NeighborListHandler:
         }
 
     def __str__(self) -> str:
+        # str()/print() run in implicit display code, so degrade gracefully for a
+        # multi-step selection instead of letting to_string raise NotImplemented.
+        if np.asarray(self._structure.positions()).ndim != 2:
+            return (
+                "neighbor list for a trajectory - select a single step to display "
+                "the table, e.g. print(neighbor_list[0])"
+            )
         return self.to_string()
 
     def to_string(self, cutoff=_DEFAULT_CUTOFF) -> str:
