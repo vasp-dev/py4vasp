@@ -3,9 +3,12 @@
 """Neighbor list of all atom pairs within a cutoff radius, derived from a
 :class:`~py4vasp.calculation.structure`."""
 
-import numpy as np
+import itertools
 
-from py4vasp._calculation.dispatch import DataSource, quantity
+import numpy as np
+from scipy.spatial import cKDTree
+
+from py4vasp._calculation.dispatch import DataSource, merge_default, quantity
 from py4vasp._calculation.structure import StructureHandler
 
 # NeighborList owns no raw data of its own; it derives cell, positions, and atom
@@ -59,8 +62,48 @@ class NeighborListHandler:
     def from_data(cls, raw_structure, steps=None) -> "NeighborListHandler":
         return cls(raw_structure, steps=steps)
 
+    def to_dict(self, selection=None, *, cutoff) -> dict:
+        """Compute the neighbor list and store it in a dictionary."""
+        return self._all_pairs(cutoff)
+
     def _lattice_vectors(self):
         return np.asarray(self._structure.lattice_vectors())
+
+    def _all_pairs(self, cutoff) -> dict:
+        """All atom pairs within *cutoff*, respecting periodic boundaries.
+
+        The search wraps the atoms into the unit cell, replicates them into every
+        periodic image that could hold a neighbor (see :func:`_replica_counts`),
+        and uses a k-d tree to find the pairs within the cutoff in N log N time.
+        """
+        lattice_vectors = self._lattice_vectors()
+        home = (np.asarray(self._structure.positions()) % 1.0) @ lattice_vectors
+        offsets = self._cell_offsets(lattice_vectors, cutoff)
+        images = (home[:, np.newaxis, :] + offsets @ lattice_vectors).reshape(-1, 3)
+        number_offsets = len(offsets)
+        home_tree = cKDTree(home)
+        image_tree = cKDTree(images)
+        distance_matrix = home_tree.sparse_distance_matrix(
+            image_tree, cutoff, output_type="coo_matrix"
+        )
+        # distance == 0 is the atom paired with its own home image; drop it but
+        # keep the (nonzero) pairings of an atom with its own periodic replicas.
+        keep = distance_matrix.data > 0
+        source = distance_matrix.row[keep]
+        image = distance_matrix.col[keep]
+        neighbor = image // number_offsets
+        return {
+            "indices": np.stack([source, neighbor], axis=1),
+            "distances": distance_matrix.data[keep],
+            "distance_vectors": images[image] - home[source],
+            "cell_offsets": offsets[image % number_offsets],
+        }
+
+    @staticmethod
+    def _cell_offsets(lattice_vectors, cutoff):
+        counts = _replica_counts(lattice_vectors, cutoff)
+        ranges = [np.arange(-count, count + 1) for count in counts]
+        return np.array(list(itertools.product(*ranges)))
 
 
 @quantity("neighbor_list")
@@ -84,3 +127,37 @@ class NeighborList:
 
     def _handler_factory(self, raw_data):
         return NeighborListHandler.from_data(raw_data, steps=self._steps)
+
+    def read(self, selection=None, *, cutoff) -> dict:
+        """Compute the neighbor list and store it in a dictionary.
+
+        Parameters
+        ----------
+        selection : str
+            Select pairs of atom types with a tilde, e.g. 'Sr~Ti'. Combine
+            multiple selections with commas or whitespace. When no selection is
+            given, all pairs are returned.
+        cutoff : float
+            The neighbor cutoff radius in Å. Only pairs closer than this radius
+            are returned.
+
+        Returns
+        -------
+        dict
+            Contains the atom ``indices`` (i, j) of each pair, their
+            ``distances``, the cartesian ``distance_vectors`` from i to j, and
+            the integer ``cell_offsets`` locating the periodic image of j. When a
+            selection is given the result is keyed by the selection label.
+        """
+        return merge_default(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            NeighborListHandler.to_dict,
+            cutoff=cutoff,
+        )
+
+    def to_dict(self, selection=None, *, cutoff) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection, cutoff=cutoff)

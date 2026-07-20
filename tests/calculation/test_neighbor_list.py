@@ -1,10 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import itertools
+
 import numpy as np
 import pytest
 
 from py4vasp import raw
 from py4vasp._calculation.neighbor_list import NeighborList, _replica_counts
+from py4vasp._calculation.structure import StructureHandler
 
 
 def test_replica_counts_cubic():
@@ -32,3 +35,125 @@ def test_replica_counts_tilted_cell():
     # direction 0 and miss neighbors; the perpendicular-width criterion must not.
     naive = int(np.ceil(0.95 / np.linalg.norm(lattice[0])))
     assert counts[0] > naive
+
+
+# --- helpers -----------------------------------------------------------------
+
+
+def _raw_structure(lattice, positions, ion_types, number_ion_types):
+    return raw.Structure(
+        raw.Stoichiometry(
+            number_ion_types=np.array(number_ion_types), ion_types=ion_types
+        ),
+        raw.Cell(lattice_vectors=np.array(lattice, dtype=float), scale=raw.VaspData(1.0)),
+        positions=np.array(positions, dtype=float),
+    )
+
+
+def _tilted_structure():
+    """A strongly sheared cell (a0, a1 enclose a small angle) with four atoms."""
+    lattice = [[3.0, 0.0, 0.0], [2.9, 0.8, 0.0], [0.1, 0.2, 3.0]]
+    positions = [
+        [0.0, 0.0, 0.0],
+        [0.5, 0.5, 0.5],
+        [0.25, 0.1, 0.6],
+        [0.7, 0.8, 0.2],
+    ]
+    return _raw_structure(lattice, positions, ["Si", "C"], [2, 2])
+
+
+def _brute_force_map(raw_structure, cutoff):
+    """Independent O(N^2) neighbor search over an over-generous set of images."""
+    handler = StructureHandler.from_data(raw_structure)
+    lattice = np.asarray(handler.lattice_vectors())
+    home = (np.asarray(handler.positions()) % 1.0) @ lattice
+    volume = np.abs(np.linalg.det(lattice))
+    cross = np.cross(lattice[[1, 2, 0]], lattice[[2, 0, 1]])
+    reps = np.ceil(cutoff / (volume / np.linalg.norm(cross, axis=1))).astype(int) + 1
+    offsets = itertools.product(*[range(-r, r + 1) for r in reps])
+    result = {}
+    for offset in offsets:
+        shift = np.array(offset, dtype=float) @ lattice
+        for i in range(len(home)):
+            for j in range(len(home)):
+                vector = home[j] + shift - home[i]
+                distance = np.linalg.norm(vector)
+                if 0 < distance <= cutoff:
+                    result[(i, j, *offset)] = (distance, vector)
+    return result
+
+
+def _result_to_map(result):
+    """Reshape a flat neighbor-list dict into {(i, j, offset): (distance, vector)}."""
+    indices = np.asarray(result["indices"])
+    offsets = np.asarray(result["cell_offsets"])
+    distances = np.asarray(result["distances"])
+    vectors = np.asarray(result["distance_vectors"])
+    map_ = {}
+    for row in range(len(distances)):
+        i, j = indices[row]
+        key = (int(i), int(j), *(int(x) for x in offsets[row]))
+        map_[key] = (distances[row], vectors[row])
+    return map_
+
+
+def _compare_maps(actual, expected, Assert):
+    assert set(actual) == set(expected)
+    for key, (distance, vector) in expected.items():
+        Assert.allclose(actual[key][0], distance)
+        Assert.allclose(actual[key][1], vector)
+
+
+# --- default (all pairs) -----------------------------------------------------
+
+
+def test_simple_cubic_neighbors(Assert):
+    # a single atom in a cubic cell of edge 3 Å has exactly its six periodic
+    # images within a cutoff between 3 (faces) and 3*sqrt(2)~4.24 (edges).
+    structure = _raw_structure([[3, 0, 0], [0, 3, 0], [0, 0, 3]], [[0, 0, 0]], ["H"], [1])
+    result = NeighborList.from_data(structure).read(cutoff=3.3)
+    assert len(result["distances"]) == 6
+    assert np.all(result["indices"] == 0)
+    Assert.allclose(result["distances"], np.full(6, 3.0))
+    expected_offsets = {
+        (1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)
+    }
+    assert {tuple(int(x) for x in off) for off in result["cell_offsets"]} == expected_offsets
+
+
+def test_read_returns_expected_fields(Assert):
+    structure = _raw_structure([[3, 0, 0], [0, 3, 0], [0, 0, 3]], [[0, 0, 0]], ["H"], [1])
+    result = NeighborList.from_data(structure).read(cutoff=3.3)
+    assert set(result) == {"indices", "distances", "distance_vectors", "cell_offsets"}
+    assert result["indices"].shape == (6, 2)
+    assert result["distance_vectors"].shape == (6, 3)
+    assert result["cell_offsets"].shape == (6, 3)
+    assert np.issubdtype(result["indices"].dtype, np.integer)
+    assert np.issubdtype(result["cell_offsets"].dtype, np.integer)
+    assert np.issubdtype(result["distances"].dtype, np.floating)
+
+
+@pytest.mark.parametrize(
+    "name, cutoff",
+    [("SrTiO3", 4.3), ("ZnS", 4.1), ("BN", 3.7), ("Sr2TiO4", 4.5)],
+)
+def test_read_matches_brute_force(name, cutoff, raw_data, Assert):
+    structure = raw_data.structure(name)
+    result = NeighborList.from_data(structure).read(cutoff=cutoff)
+    _compare_maps(_result_to_map(result), _brute_force_map(structure, cutoff), Assert)
+
+
+def test_read_matches_brute_force_tilted_cell(Assert):
+    # robustness for a strongly sheared cell (small enclosed angle)
+    structure = _tilted_structure()
+    result = NeighborList.from_data(structure).read(cutoff=4.0)
+    _compare_maps(_result_to_map(result), _brute_force_map(structure, 4.0), Assert)
+
+
+def test_neighbor_pairs_are_symmetric():
+    # every (i, j, offset) has its mirror (j, i, -offset)
+    structure = _tilted_structure()
+    result = NeighborList.from_data(structure).read(cutoff=4.0)
+    map_ = _result_to_map(result)
+    for (i, j, ox, oy, oz) in map_:
+        assert (j, i, -ox, -oy, -oz) in map_
