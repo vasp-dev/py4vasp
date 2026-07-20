@@ -48,7 +48,9 @@ def _raw_structure(lattice, positions, ion_types, number_ion_types):
         raw.Stoichiometry(
             number_ion_types=np.array(number_ion_types), ion_types=ion_types
         ),
-        raw.Cell(lattice_vectors=np.array(lattice, dtype=float), scale=raw.VaspData(1.0)),
+        raw.Cell(
+            lattice_vectors=np.array(lattice, dtype=float), scale=raw.VaspData(1.0)
+        ),
         positions=np.array(positions, dtype=float),
     )
 
@@ -113,19 +115,30 @@ def _compare_maps(actual, expected, Assert):
 def test_simple_cubic_neighbors(Assert):
     # a single atom in a cubic cell of edge 3 Å has exactly its six periodic
     # images within a cutoff between 3 (faces) and 3*sqrt(2)~4.24 (edges).
-    structure = _raw_structure([[3, 0, 0], [0, 3, 0], [0, 0, 3]], [[0, 0, 0]], ["H"], [1])
+    structure = _raw_structure(
+        [[3, 0, 0], [0, 3, 0], [0, 0, 3]], [[0, 0, 0]], ["H"], [1]
+    )
     result = NeighborList.from_data(structure).read(cutoff=3.3)
     assert len(result["distances"]) == 6
     assert np.all(result["indices"] == 0)
     Assert.allclose(result["distances"], np.full(6, 3.0))
     expected_offsets = {
-        (1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)
+        (1, 0, 0),
+        (-1, 0, 0),
+        (0, 1, 0),
+        (0, -1, 0),
+        (0, 0, 1),
+        (0, 0, -1),
     }
-    assert {tuple(int(x) for x in off) for off in result["cell_offsets"]} == expected_offsets
+    assert {
+        tuple(int(x) for x in off) for off in result["cell_offsets"]
+    } == expected_offsets
 
 
 def test_read_returns_expected_fields(Assert):
-    structure = _raw_structure([[3, 0, 0], [0, 3, 0], [0, 0, 3]], [[0, 0, 0]], ["H"], [1])
+    structure = _raw_structure(
+        [[3, 0, 0], [0, 3, 0], [0, 0, 3]], [[0, 0, 0]], ["H"], [1]
+    )
     result = NeighborList.from_data(structure).read(cutoff=3.3)
     assert set(result) == {"indices", "distances", "distance_vectors", "cell_offsets"}
     assert result["indices"].shape == (6, 2)
@@ -158,7 +171,7 @@ def test_neighbor_pairs_are_symmetric():
     structure = _tilted_structure()
     result = NeighborList.from_data(structure).read(cutoff=4.0)
     map_ = _result_to_map(result)
-    for (i, j, ox, oy, oz) in map_:
+    for i, j, ox, oy, oz in map_:
         assert (j, i, -ox, -oy, -oz) in map_
 
 
@@ -379,9 +392,15 @@ def test_selections(raw_data):
     structure = raw_data.structure("Sr2TiO4")
     neighbor_list = NeighborList.from_data(structure)
     assert neighbor_list.selections() == [
-        "Sr~Sr", "Sr~Ti", "Sr~O",
-        "Ti~Sr", "Ti~Ti", "Ti~O",
-        "O~Sr", "O~Ti", "O~O",
+        "Sr~Sr",
+        "Sr~Ti",
+        "Sr~O",
+        "Ti~Sr",
+        "Ti~Ti",
+        "Ti~O",
+        "O~Sr",
+        "O~Ti",
+        "O~O",
     ]
 
 
