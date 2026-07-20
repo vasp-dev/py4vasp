@@ -770,3 +770,15 @@ def test_prototype_without_symmetry(Sr2TiO4):
     pytest.importorskip("spglib")
     with pytest.raises(exception.NoData):
         Sr2TiO4.prototype()
+
+
+def test_to_database_prototype(perovskite):
+    pytest.importorskip("spglib")
+    handler = StructureHandler.from_data(perovskite.ref.raw_data)
+    assert handler.to_database().prototype == "ABC3_cP5_221_a_b_c"
+
+
+def test_to_database_prototype_absent_without_symmetry(Sr2TiO4):
+    # structures without symmetry (or without spglib) leave the field empty
+    handler = StructureHandler.from_data(Sr2TiO4.ref.raw_data)
+    assert handler.to_database().prototype is None

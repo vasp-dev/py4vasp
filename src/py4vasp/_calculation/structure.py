@@ -419,6 +419,11 @@ Atoms # atomic
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             stoichiometry = self._stoichiometry().to_database()
 
+        # the prototype needs symmetry and spglib; leave it empty when unavailable
+        prototype = None
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            prototype = self.prototype()
+
         return StructureModel(
             num_ions=num_atoms,
             dimensionality=dimensionality,
@@ -427,6 +432,7 @@ Atoms # atomic
             num_ion_types_primitive=stoichiometry.num_ion_types_primitive,
             formula=stoichiometry.formula,
             compound=stoichiometry.compound,
+            prototype=prototype,
             cell_volume=volume,
             cell_area_2d=cell_area_2d,
             cell_area_2d_span=cell_area_2d_span,
