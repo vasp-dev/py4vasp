@@ -6,6 +6,10 @@ import click
 
 import py4vasp
 from py4vasp import exception
+from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.symmetry import _SYMPREC
+
+_HDF5_SUFFIXES = (".h5", ".hdf5")
 
 
 @click.group()
@@ -54,3 +58,41 @@ def _convert_to_lammps(path, selection):
     else:
         result = calculation.structure.to_lammps(selection=selection)
     return result
+
+
+@cli.command()
+@click.argument(
+    "file", type=click.Path(exists=True, readable=True, path_type=pathlib.Path)
+)
+@click.option(
+    "-p",
+    "--primitive",
+    is_flag=True,
+    help="Reduce the structure to its primitive cell instead of keeping the input cell.",
+)
+@click.option(
+    "--symprec",
+    type=float,
+    default=_SYMPREC,
+    show_default=True,
+    help="Symmetry tolerance in Å passed to spglib.",
+)
+def symmetrize(file, primitive, symprec):
+    """Symmetrize the structure in FILE and write it in POSCAR format.
+
+    FILE may be a POSCAR, CONTCAR, or HDF5 file containing a structure. By default
+    the symmetrized structure is written in POSCAR format to stdout.
+    """
+    try:
+        structure = _read_structure(file)
+        result = structure.symmetrize(to_primitive=primitive, symprec=symprec)
+        poscar = result.to_POSCAR()
+    except exception.Py4VaspError as error:
+        raise click.ClickException(*error.args) from error
+    print(poscar)
+
+
+def _read_structure(file):
+    if file.suffix in _HDF5_SUFFIXES:
+        return py4vasp.Calculation.from_file(file).structure
+    return Structure.from_POSCAR(file.read_text())
