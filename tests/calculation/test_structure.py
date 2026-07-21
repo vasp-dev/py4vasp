@@ -784,3 +784,137 @@ def test_to_database_prototype_absent_without_symmetry(Sr2TiO4):
     # structures without symmetry (or without spglib) leave the field empty
     handler = StructureHandler.from_data(Sr2TiO4.ref.raw_data)
     assert handler.to_database().prototype is None
+
+
+# ---------------------------------------------------------------------------
+# Symmetrize (derived from the bare geometry, no VASP symmetry data required)
+# ---------------------------------------------------------------------------
+
+_IDEAL_PEROVSKITE = np.array(
+    [
+        [0.0, 0.0, 0.0],  # Sr
+        [0.5, 0.5, 0.5],  # Ti
+        [0.5, 0.5, 0.0],  # O
+        [0.5, 0.0, 0.5],  # O
+        [0.0, 0.5, 0.5],  # O
+    ]
+)
+# small generic displacements (< symprec=0.1) that break the cubic symmetry
+_PEROVSKITE_DISTORTION = np.array(
+    [
+        [0.004, -0.003, 0.002],
+        [-0.002, 0.004, -0.003],
+        [0.003, 0.002, -0.004],
+        [-0.004, -0.002, 0.003],
+        [0.002, 0.003, -0.002],
+    ]
+)
+# a snapped special position matches the ideal one to well below this tolerance
+_SNAP_TOLERANCE = 1e8  # Assert.allclose scales this by 1e-14 -> atol/rtol = 1e-6
+
+
+def _perovskite_poscar(positions):
+    lines = [
+        "SrTiO3",
+        "4.0",
+        "1.0 0.0 0.0",
+        "0.0 1.0 0.0",
+        "0.0 0.0 1.0",
+        "Sr Ti O",
+        "1 1 3",
+        "Direct",
+    ]
+    lines += [" ".join(f"{x:.10f}" for x in position) for position in positions]
+    return "\n".join(lines)
+
+
+def _positions_relative_to_first_atom(positions):
+    """The symmetrized structure is anchored to the first atom, so compare offsets."""
+    return np.remainder(np.array(positions) - positions[0], 1)
+
+
+def test_symmetrize_snaps_atoms_keeping_the_cell(Assert):
+    pytest.importorskip("spglib")
+    poscar = _perovskite_poscar(_IDEAL_PEROVSKITE + _PEROVSKITE_DISTORTION)
+    symmetrized = Structure.from_POSCAR(poscar).symmetrize(symprec=0.1)
+    assert isinstance(symmetrized, Structure)
+    actual = symmetrized.read()
+    # the cell and the number and order of atoms are preserved
+    Assert.allclose(actual["lattice_vectors"], 4.0 * np.eye(3))
+    assert actual["elements"] == ["Sr", "Ti", "O", "O", "O"]
+    # the atoms are snapped onto the ideal cubic perovskite geometry
+    relative = _positions_relative_to_first_atom(actual["positions"])
+    Assert.allclose(relative, _IDEAL_PEROVSKITE, tolerance=_SNAP_TOLERANCE)
+
+
+def test_symmetrize_result_is_symmetric():
+    spglib = pytest.importorskip("spglib")
+    poscar = _perovskite_poscar(_IDEAL_PEROVSKITE + _PEROVSKITE_DISTORTION)
+    symmetrized = Structure.from_POSCAR(poscar).symmetrize(symprec=0.1).read()
+    cell = (symmetrized["lattice_vectors"], symmetrized["positions"], [0, 1, 2, 2, 2])
+    # the snapped geometry is exactly cubic (Pm-3m) at a much tighter tolerance
+    assert spglib.get_symmetry_dataset(cell, symprec=1e-5).number == 221
+
+
+def test_symmetrize_of_symmetric_structure_is_unchanged(Assert):
+    pytest.importorskip("spglib")
+    structure = Structure.from_POSCAR(_perovskite_poscar(_IDEAL_PEROVSKITE))
+    actual = structure.symmetrize().read()
+    relative = _positions_relative_to_first_atom(actual["positions"])
+    Assert.allclose(relative, _IDEAL_PEROVSKITE, tolerance=_SNAP_TOLERANCE)
+    assert actual["elements"] == ["Sr", "Ti", "O", "O", "O"]
+
+
+def test_symmetrize_respects_symprec():
+    spglib = pytest.importorskip("spglib")
+    poscar = _perovskite_poscar(_IDEAL_PEROVSKITE + _PEROVSKITE_DISTORTION)
+    structure = Structure.from_POSCAR(poscar)
+    # a tolerance smaller than the distortion hides the symmetry, so nothing snaps
+    actual = structure.symmetrize(symprec=1e-6).read()
+    cell = (actual["lattice_vectors"], actual["positions"], [0, 1, 2, 2, 2])
+    assert spglib.get_symmetry_dataset(cell, symprec=1e-5).number == 1
+
+
+def test_symmetrize_multiple_steps_not_implemented(Sr2TiO4):
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.NotImplemented):
+        Sr2TiO4[:].symmetrize()
+
+
+_BCC_POSCAR = """\
+Fe
+3.0
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+Fe
+2
+Direct
+0.002 0.000 -0.001
+0.500 0.501 0.499"""
+
+
+def test_symmetrize_to_primitive_reduces_atoms(Assert):
+    spglib = pytest.importorskip("spglib")
+    primitive = Structure.from_POSCAR(_BCC_POSCAR).symmetrize(
+        to_primitive=True, symprec=0.1
+    )
+    assert isinstance(primitive, Structure)
+    actual = primitive.read()
+    # the body-centered conventional cell reduces to a single-atom primitive cell
+    assert actual["elements"] == ["Fe"]
+    Assert.allclose(primitive.volume(), 13.5)
+    cell = (actual["lattice_vectors"], actual["positions"], [0])
+    assert spglib.get_symmetry_dataset(cell, symprec=1e-5).number == 229
+
+
+def test_symmetrize_to_primitive_keeps_species_order(Assert):
+    spglib = pytest.importorskip("spglib")
+    poscar = _perovskite_poscar(_IDEAL_PEROVSKITE + _PEROVSKITE_DISTORTION)
+    actual = (
+        Structure.from_POSCAR(poscar).symmetrize(to_primitive=True, symprec=0.1).read()
+    )
+    # the primitive and conventional cells coincide for cubic perovskite
+    assert actual["elements"] == ["Sr", "Ti", "O", "O", "O"]
+    cell = (actual["lattice_vectors"], actual["positions"], [0, 1, 2, 2, 2])
+    assert spglib.get_symmetry_dataset(cell, symprec=1e-5).number == 221
