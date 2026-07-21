@@ -12,6 +12,10 @@ from py4vasp._calculation import Calculation
 from py4vasp._calculation.neighbor_list import NeighborList, _replica_counts
 from py4vasp._calculation.structure import StructureHandler
 
+# NeighborList runs its pair search with scipy's cKDTree, which is not part of the
+# py4vasp-core install. Skip the whole module when scipy is unavailable.
+pytest.importorskip("scipy")
+
 
 def test_replica_counts_cubic():
     # A cube of edge a has perpendicular width a along every direction, so the
