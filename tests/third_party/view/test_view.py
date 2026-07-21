@@ -184,6 +184,22 @@ def test_view_stores_grid_domains():
     assert view.grid_domains == [grid_domain]
 
 
+def test_grid_domains_rendering_not_implemented():
+    inputs = base_input_view(is_structure=True)
+    grid_domain = view_module.GridDomain(np.zeros((1, 3, 3, 3), dtype=int), "basins", ["A"])
+    view = View(grid_domains=[grid_domain], **inputs)
+    with pytest.raises(exception.NotImplemented):
+        view.to_ngl()
+    with pytest.raises(exception.NotImplemented):
+        view.to_vasp_viewer_config()
+
+
+def test_view_without_grid_domains_renders_config():
+    view = View(**base_input_view(is_structure=True))
+    config = view.to_vasp_viewer_config()
+    assert "atoms_trajectory" in config
+
+
 def test_structure_to_view(view, Assert):
     widget = view.to_ngl()
     for idx_traj in range(len(view.lattice_vectors)):

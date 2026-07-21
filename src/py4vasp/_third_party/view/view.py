@@ -451,6 +451,7 @@ class View:
         >>> calculation.structure.to_view().to_ngl()
         NGLWidget(...)
         """
+        self._raise_error_if_grid_domains_not_implemented()
         self._verify("ngl")
         trajectory = [self._create_atoms(i) for i in self._iterate_trajectory_frames()]
         ngl_trajectory = nglview.ASETrajectory(trajectory)
@@ -483,6 +484,7 @@ class View:
         structure, isosurfaces and arrows at atom centers. The attributes of View are
         added to a dictionary with which to initialize a VASP Viewer widget.
         """
+        self._raise_error_if_grid_domains_not_implemented()
         self._verify()
         structure: dict = {
             "atoms_trajectory": self._convert_to_list(self.positions),
@@ -592,6 +594,12 @@ class View:
                 [int(index), str(label)] for index, label in phonon.path_labels
             ]
         return config
+
+    def _raise_error_if_grid_domains_not_implemented(self):
+        if self.grid_domains:
+            raise exception.NotImplemented(
+                "Visualizing grid domains is not implemented yet."
+            )
 
     def _verify(self, mode=None):
         self._raise_error_if_present_on_multiple_steps(self.grid_scalars, mode)
@@ -779,7 +787,7 @@ class View:
 def _merge_view_fields(left_view, right_view):
     merged = {}
     for field in fields(View):
-        if field.name in ("grid_scalars", "ion_arrows"):
+        if field.name in ("grid_scalars", "grid_domains", "ion_arrows"):
             merged[field.name] = _merge_special_sequence(
                 getattr(left_view, field.name),
                 getattr(right_view, field.name),
