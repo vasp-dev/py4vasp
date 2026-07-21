@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -159,3 +160,54 @@ def test_incorrect_charge_dimension_raises():
     bader_ = make_bader(np.diag((1.0, 1.0, 1.0)), [(0.0, 0.0, 0.0)], ["H"])
     with pytest.raises(exception.IncorrectUsage):
         bader_.basins(np.zeros((4, 4)), snap_to_atoms=False)
+
+
+@pytest.fixture
+def two_atom_bader():
+    shape = (24, 12, 12)
+    lattice_vectors = np.diag((8.0, 4.0, 4.0))
+    atoms = [(0.25, 0.5, 0.5), (0.75, 0.5, 0.5)]
+    charge = gaussian_density(shape, lattice_vectors, atoms)
+    bader_ = make_bader(lattice_vectors, atoms, ["Na", "Cl"])
+    return SimpleNamespace(bader=bader_, charge=charge, shape=shape)
+
+
+def test_to_view_sets_grid_domains(two_atom_bader, Assert):
+    bader_, charge, shape = two_atom_bader.bader, two_atom_bader.charge, two_atom_bader.shape
+
+    view = bader_.to_view(charge)
+
+    assert len(view.grid_domains) == 1
+    domain = view.grid_domains[0]
+    assert domain.quantity.shape == (1, *shape)
+    assert np.issubdtype(domain.quantity.dtype, np.integer)
+    assert list(domain.labels) == ["Na_1", "Cl_1"]
+    # with the default threshold nothing is hidden and ids are the snapped
+    # basins shifted to 1..n_atoms
+    expected = bader_.basins(charge, snap_to_atoms=True) + 1
+    Assert.allclose(domain.quantity[0], expected)
+    assert set(np.unique(domain.quantity)) == {1, 2}
+
+
+def test_to_view_threshold_hides_low_density(two_atom_bader):
+    bader_, charge = two_atom_bader.bader, two_atom_bader.charge
+    threshold = 0.5 * charge.max()
+
+    domain = bader_.to_view(charge, threshold=threshold).grid_domains[0]
+
+    hidden = charge < threshold
+    assert np.all(domain.quantity[0][hidden] == 0)
+    assert np.all(domain.quantity[0][~hidden] >= 1)
+
+
+def test_plot_is_alias_of_to_view(Assert):
+    shape = (20, 10, 10)
+    lattice_vectors = np.diag((5.0, 4.0, 4.0))
+    atoms = [(0.5, 0.5, 0.5)]
+    charge = gaussian_density(shape, lattice_vectors, atoms)
+    bader_ = make_bader(lattice_vectors, atoms, ["H"])
+
+    from_plot = bader_.plot(charge).grid_domains[0]
+    from_view = bader_.to_view(charge).grid_domains[0]
+
+    Assert.allclose(from_plot.quantity, from_view.quantity)

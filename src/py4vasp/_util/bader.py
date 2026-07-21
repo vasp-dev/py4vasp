@@ -6,6 +6,7 @@ import itertools
 import numpy as np
 
 from py4vasp import exception
+from py4vasp._third_party import view
 
 # the 26 neighbor offsets on a 3d grid (all combinations of -1, 0, 1 except origin)
 _OFFSETS = np.array(
@@ -13,7 +14,7 @@ _OFFSETS = np.array(
 )
 
 
-class Bader:
+class Bader(view.Mixin):
     """Bader charge analysis of a density defined on a grid.
 
     This class partitions a charge density into atomic basins following the
@@ -25,7 +26,7 @@ class Bader:
     ----------
     structure
         A structure handler providing the geometry of the system via
-        ``lattice_vectors``, ``positions``, and ``to_view``.
+        ``lattice_vectors``, ``positions``, ``to_dict``, and ``to_view``.
     """
 
     def __init__(self, structure):
@@ -58,6 +59,41 @@ class Bader:
         """
         positions = self._structure.positions() if snap_to_atoms else None
         return _partition(charge, self._structure.lattice_vectors(), positions)
+
+    def to_view(self, charge, threshold=0.0, supercell=None):
+        """Visualize the Bader basins as labeled domains within the structure.
+
+        Parameters
+        ----------
+        charge : np.ndarray
+            The charge density sampled on a 3d grid with shape ``(nx, ny, nz)``.
+        threshold : float
+            Grid points where the density is below this absolute value are
+            assigned to the background domain ``0`` and hidden. The default of
+            ``0`` keeps every point.
+        supercell : int | np.ndarray | None
+            If present the structure is replicated the specified number of times
+            along each direction.
+
+        Returns
+        -------
+        View
+            A visualization where every grid point carries the index of the atom
+            its basin was snapped to (``1`` to number of atoms), or ``0`` if it is
+            below the threshold. The domains are labeled by the atom names.
+        """
+        charge = np.asarray(charge)
+        domains = self.basins(charge, snap_to_atoms=True) + 1
+        domains[charge < threshold] = 0
+        viewer = self._structure.to_view(supercell)
+        viewer.grid_domains = [
+            view.GridDomain(
+                quantity=domains[np.newaxis],
+                label="basins",
+                labels=self._structure.to_dict()["names"],
+            )
+        ]
+        return viewer
 
 
 def _partition(charge, lattice_vectors, positions=None):
