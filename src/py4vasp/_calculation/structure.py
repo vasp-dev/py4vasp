@@ -374,9 +374,13 @@ Atoms # atomic
             lattice, positions, numbers = spglib.standardize_cell(
                 cell, to_primitive=True, no_idealize=False, symprec=symprec
             )
-            positions, elements = _group_by_species(positions, numbers, element_of_number)
+            positions, elements = _group_by_species(
+                positions, numbers, element_of_number
+            )
         else:
-            lattice, positions = _symmetrize_in_cell(lattice, positions, numbers, symprec)
+            lattice, positions = _symmetrize_in_cell(
+                lattice, positions, numbers, symprec
+            )
         return _raw_structure(lattice, positions, elements)
 
     def to_database(self, steps=-1) -> StructureModel:
@@ -1629,9 +1633,13 @@ def _cell_from_ase(structure):
 
 def _species_numbers(elements):
     """Map each atom's element to a consecutive integer species number for spglib."""
-    number_of_element = {element: number for number, element in enumerate(dict.fromkeys(elements))}
+    number_of_element = {
+        element: number for number, element in enumerate(dict.fromkeys(elements))
+    }
     numbers = [number_of_element[element] for element in elements]
-    element_of_number = {number: element for element, number in number_of_element.items()}
+    element_of_number = {
+        number: element for element, number in number_of_element.items()
+    }
     return numbers, element_of_number
 
 

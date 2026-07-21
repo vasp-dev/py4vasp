@@ -911,7 +911,9 @@ def test_symmetrize_to_primitive_reduces_atoms(Assert):
 def test_symmetrize_to_primitive_keeps_species_order(Assert):
     spglib = pytest.importorskip("spglib")
     poscar = _perovskite_poscar(_IDEAL_PEROVSKITE + _PEROVSKITE_DISTORTION)
-    actual = Structure.from_POSCAR(poscar).symmetrize(to_primitive=True, symprec=0.1).read()
+    actual = (
+        Structure.from_POSCAR(poscar).symmetrize(to_primitive=True, symprec=0.1).read()
+    )
     # the primitive and conventional cells coincide for cubic perovskite
     assert actual["elements"] == ["Sr", "Ti", "O", "O", "O"]
     cell = (actual["lattice_vectors"], actual["positions"], [0, 1, 2, 2, 2])

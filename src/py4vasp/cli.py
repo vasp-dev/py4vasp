@@ -122,5 +122,7 @@ def _read_structure(file):
 
 def _raise_if_hdf5_output(destination):
     if destination is not None and destination.suffix in _HDF5_SUFFIXES:
-        message = "Writing the symmetrized structure to an HDF5 file is not implemented."
+        message = (
+            "Writing the symmetrized structure to an HDF5 file is not implemented."
+        )
         raise exception.NotImplemented(message)
