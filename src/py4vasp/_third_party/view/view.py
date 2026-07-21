@@ -111,6 +111,31 @@ class GridQuantity:
 
 
 @dataclass
+class GridDomain:
+    """Dataclass to store a partition of a grid into labeled integer domains.
+
+    In contrast to a :class:`~py4vasp.view.GridQuantity`, which stores a continuous
+    field visualized as isosurfaces, a ``GridDomain`` stores an integer label for
+    every grid point assigning it to one of several domains (for example the Bader
+    basins of a charge density). The ``labels`` provide a name for each domain.
+
+    Examples
+    --------
+    >>> from py4vasp.view import GridDomain
+    >>> quantity = [[[[0, 1], [1, 2]], [[1, 1], [2, 2]]]]
+    >>> GridDomain(quantity=quantity, label='basins', labels=['Sr_1', 'Ti_1'])
+    GridDomain(quantity=[[[[...]]]], label='basins', labels=['Sr_1', 'Ti_1'])
+    """
+
+    quantity: npt.ArrayLike
+    """The integer domain index for every grid point. Expected shape is (number of steps, grid size x, grid size y, grid size z)."""
+    label: str
+    """Name of the domain partition."""
+    labels: Sequence[str] = None
+    """Sequence of labels naming each domain. The domain with index ``i`` in ``quantity`` is named by ``labels[i]``."""
+
+
+@dataclass
 class IonArrow:
     """Dataclass to store a vectorial quantity defined at the ion positions and the settings for the arrows to be plotted for this quantity.
 
@@ -349,6 +374,8 @@ class View:
     """Ion positions for all structures in the trajectory, in Direct coordinates. Expected shape is (number of steps, number of ions, 3)."""
     grid_scalars: Optional[Sequence[GridQuantity]] = None
     """This sequence stores quantities that are generated on a grid. Expected shape is (number of quantities,)."""
+    grid_domains: Optional[Sequence[GridDomain]] = None
+    """This sequence stores partitions of a grid into labeled integer domains. Expected shape is (number of quantities,)."""
     ion_arrows: Optional[Sequence[IonArrow]] = None
     """This sequence stores arrows at the atom-centers. Expected shape is (number of quantities,)."""
     phonon: Optional[PhononDispersion] = None

@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from py4vasp._third_party.view import (
     CrystalSymmetry,
+    GridDomain,
     GridQuantity,
     IonArrow,
     Isosurface,
@@ -11,6 +12,7 @@ from py4vasp._third_party.view import (
 
 __all__ = [
     "CrystalSymmetry",
+    "GridDomain",
     "GridQuantity",
     "IonArrow",
     "Isosurface",
