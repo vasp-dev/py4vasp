@@ -116,6 +116,34 @@ def test_camera(view, camera):
     assert camera == state["_selections_camera_mode"]
 
 
+def test_volume_dataset_axis_order():
+    # The VASP Viewer uploads the flat buffer into a 3D texture whose first grid
+    # axis (grid[0]) varies fastest in memory. Regression test that the config
+    # produces data in that layout so the density is not axis-swapped/distorted.
+    na, nb, nc = 2, 3, 4
+    volume = np.arange(na * nb * nc, dtype=float).reshape(na, nb, nc)
+    grid_quantity = GridQuantity(
+        quantity=volume[np.newaxis],
+        label="charge",
+        isosurfaces=[Isosurface(0.5, "#ffffff", 0.6)],
+    )
+    view = View(
+        elements=[["Si"]],
+        lattice_vectors=[np.eye(3)],
+        positions=[[[0.0, 0.0, 0.0]]],
+        grid_scalars=[grid_quantity],
+    )
+    dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
+    grid = tuple(int(value) for value in np.asarray(dataset["grid"]))
+    # replicate the viewer's flatten (np.asarray(...).tobytes(), i.e. C order)
+    buffer = np.asarray(dataset["data"], dtype=np.float32).ravel()
+    nx, ny, nz = grid
+    # the viewer reads reconstructed[x, y, z] = buffer[x + nx * y + nx * ny * z]
+    reconstructed = buffer.reshape(nz, ny, nx).T
+    assert grid == (na, nb, nc)
+    assert np.array_equal(reconstructed, volume)
+
+
 @hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
 def test_isosurface(view):

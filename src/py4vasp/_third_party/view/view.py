@@ -382,12 +382,13 @@ class View:
             # TODO allow multiple isolevels for the same volume dataset (viewer-side requirement)
             structure["volume_datasets"] = []
             for grid_quantity in self.grid_scalars:
+                data, grid = self._volume_data_and_grid(grid_quantity)
                 if len(grid_quantity.isosurfaces) > 0:
                     structure["volume_datasets"].extend(
                         {
                             "label": grid_quantity.label + f" ({idi})",
-                            "data": self._convert_to_list(grid_quantity.quantity[0]),
-                            "grid": grid_quantity.quantity.shape[1:],
+                            "data": data,
+                            "grid": grid,
                             "initial_iso_value": isosurface.isolevel,
                             "color_surface": isosurface.color,
                         }
@@ -397,8 +398,8 @@ class View:
                     structure["volume_datasets"].append(
                         {
                             "label": grid_quantity.label,
-                            "data": self._convert_to_list(grid_quantity.quantity[0]),
-                            "grid": grid_quantity.quantity.shape[1:],
+                            "data": data,
+                            "grid": grid,
                         }
                     )
 
@@ -483,6 +484,18 @@ class View:
             raise exception.IncorrectUsage(
                 f"Lattice vectors must be a 3x3 unit cell but have the shape {cell_shape}."
             )
+
+    def _volume_data_and_grid(self, grid_quantity):
+        # The VASP Viewer uploads the flat data buffer into a 3D texture whose
+        # first grid axis (grid[0]) varies fastest in memory, and maps that axis
+        # onto the first lattice vector. py4vasp stores grid quantities as
+        # (steps, na, nb, nc) with the last axis varying fastest (C order), so we
+        # reverse the spatial axes to make the na axis the fastest-varying one.
+        # The grid itself stays (na, nb, nc); only the memory layout changes.
+        quantity = np.asarray(grid_quantity.quantity)
+        grid = quantity.shape[1:]
+        data = self._convert_to_list(quantity[0].T)
+        return data, grid
 
     def _convert_to_list(self, attribute):
         if isinstance(attribute, list):
