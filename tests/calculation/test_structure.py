@@ -879,3 +879,40 @@ def test_symmetrize_multiple_steps_not_implemented(Sr2TiO4):
     pytest.importorskip("spglib")
     with pytest.raises(exception.NotImplemented):
         Sr2TiO4[:].symmetrize()
+
+
+_BCC_POSCAR = """\
+Fe
+3.0
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+Fe
+2
+Direct
+0.002 0.000 -0.001
+0.500 0.501 0.499"""
+
+
+def test_symmetrize_to_primitive_reduces_atoms(Assert):
+    spglib = pytest.importorskip("spglib")
+    primitive = Structure.from_POSCAR(_BCC_POSCAR).symmetrize(
+        to_primitive=True, symprec=0.1
+    )
+    assert isinstance(primitive, Structure)
+    actual = primitive.read()
+    # the body-centered conventional cell reduces to a single-atom primitive cell
+    assert actual["elements"] == ["Fe"]
+    Assert.allclose(primitive.volume(), 13.5)
+    cell = (actual["lattice_vectors"], actual["positions"], [0])
+    assert spglib.get_symmetry_dataset(cell, symprec=1e-5).number == 229
+
+
+def test_symmetrize_to_primitive_keeps_species_order(Assert):
+    spglib = pytest.importorskip("spglib")
+    poscar = _perovskite_poscar(_IDEAL_PEROVSKITE + _PEROVSKITE_DISTORTION)
+    actual = Structure.from_POSCAR(poscar).symmetrize(to_primitive=True, symprec=0.1).read()
+    # the primitive and conventional cells coincide for cubic perovskite
+    assert actual["elements"] == ["Sr", "Ti", "O", "O", "O"]
+    cell = (actual["lattice_vectors"], actual["positions"], [0, 1, 2, 2, 2])
+    assert spglib.get_symmetry_dataset(cell, symprec=1e-5).number == 221
