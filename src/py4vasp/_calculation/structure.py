@@ -353,6 +353,32 @@ Atoms # atomic
         _, orbits = np.unique(labels, return_inverse=True)
         return orbits
 
+    def symmetrize(self, to_primitive=False, symprec=_SYMPREC):
+        """Snap the atoms onto their high-symmetry positions for a single frame.
+
+        The symmetry is derived from the bare geometry with spglib, so this works
+        even for structures that do not carry VASP's symmetry information (e.g. one
+        read from a POSCAR file). With *to_primitive* the cell is reduced to its
+        idealized primitive form; otherwise the input cell and the number of atoms
+        are kept and the atoms are snapped onto their exact symmetric positions.
+        """
+        positions = self.positions()
+        if positions.ndim == 3:
+            message = "Symmetrizing multiple steps is not implemented."
+            raise exception.NotImplemented(message)
+        lattice = self.lattice_vectors()
+        elements = self._stoichiometry().elements()
+        numbers, element_of_number = _species_numbers(elements)
+        cell = (lattice, positions, numbers)
+        if to_primitive:
+            lattice, positions, numbers = spglib.standardize_cell(
+                cell, to_primitive=True, no_idealize=False, symprec=symprec
+            )
+            positions, elements = _group_by_species(positions, numbers, element_of_number)
+        else:
+            lattice, positions = _symmetrize_in_cell(lattice, positions, numbers, symprec)
+        return _raw_structure(lattice, positions, elements)
+
     def to_database(self, steps=-1) -> StructureModel:
         """Return database-ready data for a single structure geometry.
 
@@ -1414,6 +1440,54 @@ class Structure(view.Mixin):
             StructureHandler.standardized_cell,
         )
 
+    def symmetrize(self, to_primitive=False, symprec=_SYMPREC):
+        """Symmetrize the structure and return it as a new :class:`Structure`.
+
+        spglib derives the symmetry from the bare geometry, so this works for any
+        single structure, including one read from a POSCAR file that carries no
+        symmetry information. Reading the returned structure yields the same result
+        you would obtain from a VASP calculation on the symmetrized structure.
+
+        Parameters
+        ----------
+        to_primitive : bool
+            If False (default) the input cell and the number of atoms are kept and
+            only the atoms are snapped onto their exact high-symmetry positions. If
+            True the cell is reduced to its idealized primitive form, which may
+            change the number of atoms.
+        symprec : float
+            Distance tolerance (in Å) spglib uses to detect the symmetry. Increase
+            it to symmetrize structures that deviate more strongly from the ideal
+            positions.
+
+        Returns
+        -------
+        Structure
+            A new structure with the atoms on their high-symmetry positions.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        Symmetrizing the cubic perovskite and reducing it to the primitive cell
+        leaves the five atoms of the SrTiO3 formula unit.
+
+        >>> symmetrized = calculation.structure.symmetrize(to_primitive=True)
+        >>> symmetrized.read()["elements"]
+        ['Sr', 'Ti', 'O', 'O', 'O']
+        """
+        raw_structure = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.symmetrize,
+            to_primitive,
+            symprec,
+        )
+        return Structure.from_data(raw_structure)
+
     def prototype(self):
         """Determine the AFLOW prototype label of the crystal.
 
@@ -1551,6 +1625,63 @@ def _same_geometry(first, second):
 def _cell_from_ase(structure):
     lattice_vectors = np.array([structure.get_cell()])
     return raw.Cell(lattice_vectors, scale=raw.VaspData(1.0))
+
+
+def _species_numbers(elements):
+    """Map each atom's element to a consecutive integer species number for spglib."""
+    number_of_element = {element: number for number, element in enumerate(dict.fromkeys(elements))}
+    numbers = [number_of_element[element] for element in elements]
+    element_of_number = {number: element for element, number in number_of_element.items()}
+    return numbers, element_of_number
+
+
+def _group_by_species(positions, numbers, element_of_number):
+    """Group atoms of the same species contiguously, keeping the input species order."""
+    order = np.argsort(numbers, kind="stable")
+    positions = np.array(positions)[order]
+    elements = [element_of_number[int(numbers[index])] for index in order]
+    return positions, elements
+
+
+def _symmetrize_in_cell(lattice, positions, numbers, symprec):
+    """Snap the atoms onto their high-symmetry positions keeping the cell.
+
+    spglib only idealizes the positions in its standardized setting. Following
+    ``ase.spacegroup.symmetrize``, the idealized standard positions are rotated
+    back into the input orientation and mapped onto the original atoms via the
+    primitive-cell correspondence. This preserves the input number of atoms and
+    their ordering while idealizing the cell to be exactly consistent with the
+    detected symmetry.
+    """
+    cell = (lattice, positions, numbers)
+    dataset = spglib.get_symmetry_dataset(cell, symprec=symprec)
+    primitive_lattice = spglib.find_primitive(cell, symprec=symprec)[0]
+    rotation = dataset.std_rotation_matrix
+    ideal_cartesian = dataset.std_positions @ (dataset.std_lattice @ rotation)
+    cartesian = positions @ lattice
+    atom_to_primitive = list(dataset.mapping_to_primitive)
+    ideal_to_primitive = list(dataset.std_mapping_to_primitive)
+    reference = ideal_cartesian[ideal_to_primitive.index(0)]
+    aligned = ideal_cartesian + (cartesian[atom_to_primitive.index(0)] - reference)
+    primitive = primitive_lattice @ rotation
+    inverse_primitive = np.linalg.inv(primitive)
+    symmetrized = np.zeros_like(cartesian)
+    for atom, primitive_index in enumerate(atom_to_primitive):
+        ideal = aligned[ideal_to_primitive.index(primitive_index)]
+        shift = np.rint((ideal - cartesian[atom]) @ inverse_primitive)
+        symmetrized[atom] = ideal - shift @ primitive
+    new_lattice = dataset.transformation_matrix.T @ dataset.std_lattice @ rotation
+    new_positions = np.remainder(symmetrized @ np.linalg.inv(new_lattice), 1)
+    return new_lattice, new_positions
+
+
+def _raw_structure(lattice_vectors, positions, elements):
+    """Assemble a single-frame raw.Structure from lattice, positions, and elements."""
+    return raw.Structure(
+        stoichiometry=_stoichiometry.raw_stoichiometry_from_elements(elements),
+        cell=raw.Cell(np.array(lattice_vectors), scale=raw.VaspData(1.0)),
+        positions=np.array(positions),
+    )
 
 
 def _stoichiometry_prefix(elements):

@@ -423,9 +423,14 @@ class Stoichiometry:
 
 def raw_stoichiometry_from_ase(structure):
     """Convert the given ase Atoms object to a raw.Stoichiometry."""
+    return raw_stoichiometry_from_elements(list(structure.symbols))
+
+
+def raw_stoichiometry_from_elements(elements):
+    """Run-length encode a per-atom element sequence into a raw.Stoichiometry."""
     number_ion_types = []
     ion_types = []
-    for element in structure.symbols:
+    for element in elements:
         if ion_types and ion_types[-1] == element:
             number_ion_types[-1] += 1
         else:
