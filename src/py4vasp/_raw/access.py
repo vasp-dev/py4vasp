@@ -112,11 +112,17 @@ class _State:
     def _check_version(self, h5f, required, quantity):
         if not required:
             return
-        version = raw.Version(
-            major=h5f[schema.version.major][()],
-            minor=h5f[schema.version.minor][()],
-            patch=h5f[schema.version.patch][()],
-        )
+        try:
+            version = raw.Version(
+                major=h5f[schema.version.major][()],
+                minor=h5f[schema.version.minor][()],
+                patch=h5f[schema.version.patch][()],
+            )
+        except KeyError:
+            # A file without version datasets cannot satisfy a version requirement;
+            # treat it as an outdated version so optional links degrade to no data.
+            message = f"The {quantity} is not available because {h5f.filename} does not specify a VASP version. It requires at least {required}."
+            raise exception.OutdatedVaspVersion(message) from None
         if version < required:
             message = f"The {quantity} is not available in VASP {version}. It requires at least {required}."
             raise exception.OutdatedVaspVersion(message)

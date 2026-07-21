@@ -28,6 +28,13 @@ def test_creating_default_calculation(tmp_path):
     demo.calculation(tmp_path / "specific_example")
 
 
+def test_creating_perovskite_calculation(tmp_path):
+    # the "perovskite" selection pairs a structure with its symmetry so the
+    # symmetry-derived structure examples have consistent data
+    calculation = demo.calculation(tmp_path / "perovskite_example", "perovskite")
+    assert calculation.structure.number_atoms() == 5
+
+
 finder = doctest.DocTestFinder()
 
 
@@ -65,6 +72,9 @@ _FULL_INSTALL_EXAMPLES = {
     "py4vasp._calculation.symmetry.Symmetry.point_group_schoenflies": "spglib",
     "py4vasp._calculation.symmetry.Symmetry.bravais_lattice": "spglib",
     "py4vasp._calculation.symmetry.Symmetry.pearson_symbol": "spglib",
+    "py4vasp._calculation.structure.Structure.wyckoff_positions": "spglib",
+    "py4vasp._calculation.structure.Structure.standardized_cell": "spglib",
+    "py4vasp._calculation.structure.Structure.prototype": "spglib",
 }
 
 

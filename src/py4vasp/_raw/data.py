@@ -838,6 +838,8 @@ class Structure:
     "The direction along which dipole correction is applied, if any."
     ldipol: Optional[int] = NONE()
     "Whether dipole correction is applied."
+    symmetry: Optional[Symmetry] = NONE()
+    "Symmetry operations VASP detected for the structure (VASP 6.6 and later)."
 
 
 @dataclasses.dataclass

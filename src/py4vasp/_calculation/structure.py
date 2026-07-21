@@ -1,8 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
+import math
+from collections import Counter
 from contextlib import suppress
 from dataclasses import dataclass
+from functools import reduce
 from typing import Union
 
 import numpy as np
@@ -19,6 +22,7 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
+from py4vasp._calculation.symmetry import _SYMPREC, SymmetryHandler
 from py4vasp._raw.definition import unique_selections as _schema_unique_selections
 from py4vasp._raw.models import StoichiometryModel, StructureModel
 from py4vasp._third_party import view
@@ -27,6 +31,7 @@ from py4vasp._util import check, import_, parse
 ase = import_.optional("ase")
 ase_io = import_.optional("ase.io")
 mdtraj = import_.optional("mdtraj")
+spglib = import_.optional("spglib")
 
 __all__ = ["Structure"]
 
@@ -41,6 +46,28 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     # reading them can raise a low-level RuntimeError which we treat as "no data"
     RuntimeError,
 )
+
+
+@dataclass
+class Wyckoff:
+    """The Wyckoff positions of the atoms, consistent with the symmetry VASP found."""
+
+    letters: list
+    "The Wyckoff letter of every atom, e.g. ``['a', 'b', 'c', 'c', 'c']``."
+    site_symmetries: list
+    "The site-symmetry symbol of every atom in international notation, e.g. ``m-3m``."
+
+
+@dataclass
+class StandardizedCell:
+    """The standardized (conventional) cell spglib derives from VASP's symmetry."""
+
+    lattice_vectors: np.ndarray
+    "The lattice vectors of the standardized conventional cell in Å."
+    positions: np.ndarray
+    "The direct coordinates of the atoms in the standardized cell."
+    elements: list
+    "The chemical element of every atom in the standardized cell."
 
 
 class StructureHandler:
@@ -225,6 +252,107 @@ Atoms # atomic
         else:
             return 1
 
+    def equivalent_atoms(self) -> np.ndarray:
+        """Return the orbit index of every atom under VASP's symmetry operations."""
+        return self._orbit_labels()
+
+    def wyckoff_positions(self) -> "Wyckoff":
+        """Return the Wyckoff positions of the atoms consistent with VASP's symmetry."""
+        dataset = self._symmetry_dataset()
+        return Wyckoff(
+            letters=list(dataset.wyckoffs),
+            site_symmetries=list(dataset.site_symmetry_symbols),
+        )
+
+    def standardized_cell(self) -> "StandardizedCell":
+        """Return the standardized conventional cell consistent with VASP's symmetry."""
+        dataset = self._symmetry_dataset()
+        element_of_orbit = {
+            int(orbit): element
+            for orbit, element in zip(
+                self._orbit_labels(), self._stoichiometry().elements()
+            )
+        }
+        elements = [element_of_orbit[int(type_)] for type_ in dataset.std_types]
+        return StandardizedCell(
+            lattice_vectors=np.array(dataset.std_lattice),
+            positions=np.array(dataset.std_positions),
+            elements=elements,
+        )
+
+    def prototype(self) -> str:
+        """Return the AFLOW prototype label of the crystal, e.g. ``ABC3_cP5_221_a_b_c``.
+
+        The label combines the reduced stoichiometry, the Pearson symbol, the space
+        group number, and the Wyckoff sequence per species. The Wyckoff letters come
+        from spglib's standard setting; no affine-normalizer relabeling is applied, so
+        the label may use an equivalent letter choice for space groups whose normalizer
+        permutes Wyckoff letters.
+        """
+        symmetry = SymmetryHandler.from_data(self._raw_symmetry())
+        dataset = self._symmetry_dataset()
+        elements = self._stoichiometry().elements()
+        stoichiometry = _stoichiometry_prefix(elements)
+        wyckoff = _wyckoff_sequence(
+            elements, dataset.crystallographic_orbits, dataset.wyckoffs
+        )
+        pearson = symmetry.pearson_symbol()
+        number = symmetry.space_group().number
+        return f"{stoichiometry}_{pearson}_{number}_{wyckoff}"
+
+    def _symmetry_dataset(self):
+        """Classify the crystal with spglib using VASP's symmetry.
+
+        The atoms are labeled by their orbit under VASP's operations before spglib
+        analyzes the cell. This prevents spglib from relating atoms that VASP treats
+        as inequivalent, so the resulting dataset reflects the symmetry VASP found
+        rather than the possibly higher symmetry of the bare geometry.
+        """
+        orbits = self._orbit_labels()
+        positions = self.positions()
+        if positions.ndim == 3:
+            message = "Computing the symmetry properties of multiple steps is not implemented."
+            raise exception.NotImplemented(message)
+        cell = (self.lattice_vectors(), positions, orbits)
+        return spglib.get_symmetry_dataset(cell, symprec=_SYMPREC)
+
+    def _raw_symmetry(self):
+        """Return the raw symmetry, raising if the structure does not provide it."""
+        symmetry = self._raw_structure.symmetry
+        if check.is_none(symmetry):
+            message = (
+                "The structure does not provide symmetry information; it requires VASP "
+                "6.6 or later. Symmetry-derived properties such as the Wyckoff "
+                "positions or the equivalent atoms cannot be computed."
+            )
+            raise exception.NoData(message)
+        return symmetry
+
+    def _orbit_labels(self) -> np.ndarray:
+        """Group the atoms into orbits (equivalence classes) of VASP's operations.
+
+        Two atoms belong to the same orbit if some symmetry operation maps one onto
+        the other. The classes are computed from ``atom_permutations`` with a union-find
+        pass and relabeled to consecutive indices starting at 0.
+        """
+        symmetry = self._raw_symmetry()
+        permutations = np.array(symmetry.atom_permutations) - 1  # Fortran to 0-based
+        permutations = permutations.reshape(-1, permutations.shape[-1])
+        number_atoms = permutations.shape[-1]
+        if number_atoms != self.number_atoms():
+            message = (
+                f"The symmetry describes {number_atoms} atoms but the structure has "
+                f"{self.number_atoms()}; the structure and its symmetry are inconsistent."
+            )
+            raise exception.DataMismatch(message)
+        labels = np.arange(number_atoms)
+        for permutation in permutations:
+            for atom, image in enumerate(permutation):
+                low, high = sorted((labels[atom], labels[image]))
+                labels[labels == high] = low
+        _, orbits = np.unique(labels, return_inverse=True)
+        return orbits
+
     def to_database(self, steps=-1) -> StructureModel:
         """Return database-ready data for a single structure geometry.
 
@@ -293,6 +421,11 @@ Atoms # atomic
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
             stoichiometry = self._stoichiometry().to_database()
 
+        # the prototype needs symmetry and spglib; leave it empty when unavailable
+        prototype = None
+        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
+            prototype = self.prototype()
+
         return StructureModel(
             num_ions=num_atoms,
             dimensionality=dimensionality,
@@ -301,6 +434,7 @@ Atoms # atomic
             num_ion_types_primitive=stoichiometry.num_ion_types_primitive,
             formula=stoichiometry.formula,
             compound=stoichiometry.compound,
+            prototype=prototype,
             cell_volume=volume,
             cell_area_2d=cell_area_2d,
             cell_area_2d_span=cell_area_2d_span,
@@ -1179,6 +1313,146 @@ class Structure(view.Mixin):
             StructureHandler.number_steps,
         )
 
+    def equivalent_atoms(self):
+        """Group the atoms into orbits of the symmetry operations VASP determined.
+
+        Atoms that some symmetry operation maps onto each other are equivalent and
+        share an orbit index. This uses the symmetry VASP recognized for the crystal,
+        so any symmetry lowering (e.g. from magnetic order) is reflected here. It
+        requires the structure to carry symmetry information (VASP 6.6 or later).
+
+        Returns
+        -------
+        np.ndarray
+            The orbit index of every atom. Atoms with the same index are equivalent
+            under the symmetry operations.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        In cubic perovskite SrTiO3 the strontium and titanium atoms each sit on their
+        own site while the three oxygen atoms are equivalent.
+
+        >>> calculation.structure.equivalent_atoms()
+        array([0, 1, 2, 2, 2]...)
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.equivalent_atoms,
+        )
+
+    def wyckoff_positions(self):
+        """Determine the Wyckoff positions of the atoms in the crystal.
+
+        The atoms are classified into Wyckoff positions using the symmetry VASP
+        recognized for the crystal. Each atom is labeled by its orbit before the
+        classification, so the assignment reflects VASP's symmetry rather than the
+        possibly higher symmetry the geometry alone would suggest. This requires the
+        structure to carry symmetry information (VASP 6.6 or later) and the spglib
+        package to be installed.
+
+        Returns
+        -------
+        Wyckoff
+            The Wyckoff letter and the site-symmetry symbol of every atom.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        In cubic perovskite SrTiO3 strontium occupies the Wyckoff position a,
+        titanium the position b, and the three oxygen atoms the position c.
+
+        >>> calculation.structure.wyckoff_positions()
+        Wyckoff(letters=['a', 'b', 'c', 'c', 'c'], site_symmetries=['m-3m', 'm-3m', '4/mm.m', '4/mm.m', '4/mm.m'])
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.wyckoff_positions,
+        )
+
+    def standardized_cell(self):
+        """Determine the standardized conventional cell of the crystal.
+
+        spglib maps the crystal onto a standardized conventional cell. The atoms are
+        labeled by their orbit under VASP's operations first, so the standardization
+        respects the symmetry VASP recognized. This requires the structure to carry
+        symmetry information (VASP 6.6 or later) and the spglib package.
+
+        Returns
+        -------
+        StandardizedCell
+            The lattice vectors, direct coordinates, and elements of the atoms in the
+            standardized conventional cell.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        For cubic perovskite SrTiO3 the conventional cell coincides with the primitive
+        cell, so it contains one strontium, one titanium, and three oxygen atoms.
+
+        >>> cell = calculation.structure.standardized_cell()
+        >>> cell.elements
+        ['Sr', 'Ti', 'O', 'O', 'O']
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.standardized_cell,
+        )
+
+    def prototype(self):
+        """Determine the AFLOW prototype label of the crystal.
+
+        The prototype label is a compact fingerprint of the structure type combining
+        the reduced stoichiometry, the Pearson symbol, the space group number, and the
+        Wyckoff positions occupied by each species, e.g. ``ABC3_cP5_221_a_b_c`` for
+        cubic perovskite. It is derived from the symmetry VASP recognized, so any
+        symmetry lowering is reflected. This requires the structure to carry symmetry
+        information (VASP 6.6 or later) and the spglib package.
+
+        The Wyckoff letters follow spglib's standard setting. For space groups whose
+        affine normalizer permutes Wyckoff letters, the label may use an equivalent
+        letter choice rather than the AFLOW-canonical one (e.g. zinc blende comes out
+        as ``AB_cF8_216_a_d`` instead of ``a_c``).
+
+        Returns
+        -------
+        str
+            The AFLOW prototype label of the crystal.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        Cubic perovskite SrTiO3 has one strontium (Wyckoff a), one titanium (b), and
+        three oxygen atoms (c) in a primitive cubic cell of five atoms.
+
+        >>> calculation.structure.prototype()
+        'ABC3_cP5_221_a_b_c'
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.prototype,
+        )
+
     def _to_database(self) -> dict:
         """Return ``{"structure": {selection: StructureModel}}`` for the database.
 
@@ -1277,6 +1551,41 @@ def _same_geometry(first, second):
 def _cell_from_ase(structure):
     lattice_vectors = np.array([structure.get_cell()])
     return raw.Cell(lattice_vectors, scale=raw.VaspData(1.0))
+
+
+def _stoichiometry_prefix(elements):
+    """Build the stoichiometry part of the prototype label, e.g. ``ABC3`` for SrTiO3."""
+    order = list(dict.fromkeys(elements))
+    counts = [elements.count(element) for element in order]
+    divisor = reduce(math.gcd, counts)
+    return "".join(
+        chr(ord("A") + index) + ("" if count // divisor == 1 else str(count // divisor))
+        for index, count in enumerate(counts)
+    )
+
+
+def _wyckoff_sequence(elements, orbits, letters):
+    """Build the Wyckoff part of the prototype label, one group per species.
+
+    Each species contributes its occupied Wyckoff letters (one per orbit), sorted and
+    prefixed with the count when a letter is occupied by more than one orbit. Groups
+    for the different species are separated by an underscore, e.g. ``a_b_c``.
+    """
+    parts = []
+    for species in dict.fromkeys(elements):
+        letter_of_orbit = {
+            int(orbit): letter
+            for element, orbit, letter in zip(elements, orbits, letters)
+            if element == species
+        }
+        counts = Counter(letter_of_orbit.values())
+        parts.append(
+            "".join(
+                (str(count) if count > 1 else "") + letter
+                for letter, count in sorted(counts.items())
+            )
+        )
+    return "_".join(parts)
 
 
 def _replace_or_set_elements(poscar, elements):

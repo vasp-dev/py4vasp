@@ -192,6 +192,22 @@ def test_optional_type_become_none_instead_of_raising_error(mock_access):
     assert mock_get_version.call_count == 3
 
 
+def test_missing_version_treated_as_outdated(mock_access):
+    # A file without version datasets cannot satisfy a version requirement, so a
+    # version-gated quantity must raise OutdatedVaspVersion (which optional links
+    # then turn into the none sentinel) rather than leaking a raw KeyError.
+    mock_file, sources = mock_access
+    h5f = mock_file.return_value.__enter__.return_value
+
+    def raise_key_error(key):
+        raise KeyError(key)
+
+    h5f.__getitem__.side_effect = raise_key_error
+    with pytest.raises(exception.OutdatedVaspVersion):
+        with raw.access("with_link"):
+            pass
+
+
 def initialize_version_mock(mock_file):
     mock_get_version = mock_file.return_value.__enter__.return_value.__getitem__
     version = {

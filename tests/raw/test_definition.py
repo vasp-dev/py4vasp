@@ -19,6 +19,15 @@ def test_schema_is_valid():
     schema.verify()
 
 
+def test_structure_links_symmetry():
+    from py4vasp._raw.schema import Link
+
+    for name in ("default", "final"):
+        symmetry = schema.sources["structure"][name].data.symmetry
+        assert isinstance(symmetry, Link)
+        assert symmetry.quantity == "symmetry"
+
+
 def test_get_schema(complex_schema):
     mock_schema, _ = complex_schema
     with patch("py4vasp._raw.definition.schema", mock_schema):

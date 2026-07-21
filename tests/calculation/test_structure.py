@@ -669,4 +669,118 @@ def test_to_database_collects_available_sources(tmp_path):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.structure("Sr2TiO4")
     parameters = {"__getitem__": {"steps": slice(None)}}
-    check_factory_methods(Structure, data, parameters)
+    # the Sr2TiO4 trajectory carries no symmetry, so the symmetry-derived methods
+    # raise NoData; they are exercised on the perovskite fixture instead
+    skip_methods = [
+        "equivalent_atoms",
+        "wyckoff_positions",
+        "standardized_cell",
+        "prototype",
+    ]
+    check_factory_methods(Structure, data, parameters, skip_methods=skip_methods)
+
+
+# ---------------------------------------------------------------------------
+# Symmetry-derived properties (SrTiO3 perovskite carries a matching symmetry)
+# ---------------------------------------------------------------------------
+
+
+def test_srtio3_demo_carries_symmetry(raw_data):
+    """The SrTiO3 demo pairs the structure with its cubic Pm-3m symmetry."""
+    raw_structure = raw_data.structure("SrTiO3")
+    assert not check.is_none(raw_structure.symmetry)
+    assert raw_structure.symmetry.number_of_operations == 48
+    assert np.array(raw_structure.symmetry.atom_permutations).shape == (1, 48, 5)
+
+
+@pytest.fixture
+def perovskite(raw_data):
+    return make_structure(raw_data.structure("SrTiO3"))
+
+
+def test_equivalent_atoms(perovskite, Assert):
+    # Sr and Ti each sit on their own site, the three oxygens form one orbit
+    Assert.allclose(perovskite.equivalent_atoms(), np.array([0, 1, 2, 2, 2]))
+
+
+def test_equivalent_atoms_without_symmetry(Sr2TiO4):
+    with pytest.raises(exception.NoData):
+        Sr2TiO4.equivalent_atoms()
+
+
+def test_wyckoff_positions(perovskite):
+    pytest.importorskip("spglib")
+    from py4vasp._calculation.structure import Wyckoff
+
+    actual = perovskite.wyckoff_positions()
+    assert isinstance(actual, Wyckoff)
+    assert actual.letters == ["a", "b", "c", "c", "c"]
+    assert actual.site_symmetries == ["m-3m", "m-3m", "4/mm.m", "4/mm.m", "4/mm.m"]
+
+
+def test_wyckoff_positions_honor_vasp_symmetry(perovskite, Assert):
+    # the orbit-relabeled cell must reproduce VASP's space group (not a higher one)
+    # and spglib's equivalent atoms must match the VASP orbit partition
+    spglib = pytest.importorskip("spglib")
+    from py4vasp._calculation.symmetry import SymmetryHandler
+
+    raw_structure = perovskite.ref.raw_data
+    expected_number = (
+        SymmetryHandler.from_data(raw_structure.symmetry).space_group().number
+    )
+    handler = StructureHandler.from_data(raw_structure)
+    orbits = perovskite.equivalent_atoms()
+    cell = (handler.lattice_vectors(), handler.positions(), orbits)
+    dataset = spglib.get_symmetry_dataset(cell)
+    assert dataset.number == expected_number
+    Assert.allclose(dataset.equivalent_atoms, orbits)
+
+
+def test_wyckoff_positions_without_symmetry(Sr2TiO4):
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.NoData):
+        Sr2TiO4.wyckoff_positions()
+
+
+def test_standardized_cell(perovskite, Assert):
+    pytest.importorskip("spglib")
+    from py4vasp._calculation.structure import StandardizedCell
+
+    actual = perovskite.standardized_cell()
+    assert isinstance(actual, StandardizedCell)
+    Assert.allclose(actual.lattice_vectors, 4.0 * np.eye(3))
+    expected_positions = np.array(
+        [[0, 0, 0], [0.5, 0.5, 0.5], [0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0]]
+    )
+    Assert.allclose(actual.positions, expected_positions)
+    assert actual.elements == ["Sr", "Ti", "O", "O", "O"]
+
+
+def test_standardized_cell_without_symmetry(Sr2TiO4):
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.NoData):
+        Sr2TiO4.standardized_cell()
+
+
+def test_prototype(perovskite):
+    pytest.importorskip("spglib")
+    # AFLOW label: stoichiometry_Pearson_spacegroup_Wyckoff (Sr a, Ti b, O c)
+    assert perovskite.prototype() == "ABC3_cP5_221_a_b_c"
+
+
+def test_prototype_without_symmetry(Sr2TiO4):
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.NoData):
+        Sr2TiO4.prototype()
+
+
+def test_to_database_prototype(perovskite):
+    pytest.importorskip("spglib")
+    handler = StructureHandler.from_data(perovskite.ref.raw_data)
+    assert handler.to_database().prototype == "ABC3_cP5_221_a_b_c"
+
+
+def test_to_database_prototype_absent_without_symmetry(Sr2TiO4):
+    # structures without symmetry (or without spglib) leave the field empty
+    handler = StructureHandler.from_data(Sr2TiO4.ref.raw_data)
+    assert handler.to_database().prototype is None

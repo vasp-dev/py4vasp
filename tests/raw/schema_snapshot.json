@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.11+db.1",
+  "schema_version": "0.11+db.2",
   "models": {
     "BandModel": [
       [
@@ -1261,6 +1261,10 @@
       [
         "num_ions",
         "Optional[int]"
+      ],
+      [
+        "prototype",
+        "Optional[str]"
       ]
     ],
     "SymmetryModel": [

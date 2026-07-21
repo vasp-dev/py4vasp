@@ -82,6 +82,7 @@ def SrTiO3():
                 [0.5, 0.5, 0.0],
             ]
         ),
+        symmetry=_demo.symmetry.SrTiO3(),
     )
 
 

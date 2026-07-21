@@ -109,10 +109,19 @@ def _generate_spin_texture_data(h5f, waveh5f=None):
     write(h5f, _demo.band.spin_texture("x~z"), selection="kpoints_opt")
 
 
+def _generate_perovskite_data(h5f, waveh5f=None):
+    # cubic SrTiO3 with its matching Pm-3m symmetry, so the symmetry-derived
+    # structure properties (Wyckoff positions, equivalent atoms, ...) are consistent
+    write(h5f, _demo.structure.SrTiO3())
+    write(h5f, _demo.symmetry.SrTiO3())
+    write(h5f, _demo.system.Sr2TiO4())
+
+
 _DATA_GENERATORS = {
     None: _generate_default_data,
     "default": _generate_default_data,
     "collinear": _generate_collinear_data,
     "noncollinear": _generate_noncollinear_data,
     "spin_texture": _generate_spin_texture_data,
+    "perovskite": _generate_perovskite_data,
 }
