@@ -77,22 +77,50 @@ def _convert_to_lammps(path, selection):
     show_default=True,
     help="Symmetry tolerance in Å passed to spglib.",
 )
-def symmetrize(file, primitive, symprec):
+@click.option(
+    "-i",
+    "--in-place",
+    "in_place",
+    is_flag=True,
+    help="Overwrite FILE with the symmetrized structure.",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(path_type=pathlib.Path),
+    help="Write the symmetrized structure to this file instead of stdout.",
+)
+def symmetrize(file, primitive, symprec, in_place, output):
     """Symmetrize the structure in FILE and write it in POSCAR format.
 
     FILE may be a POSCAR, CONTCAR, or HDF5 file containing a structure. By default
-    the symmetrized structure is written in POSCAR format to stdout.
+    the symmetrized structure is written in POSCAR format to stdout; use
+    -o/--output or -i/--in-place to write it to a file instead.
     """
+    if in_place and output:
+        message = "The options -i/--in-place and -o/--output are mutually exclusive."
+        raise click.UsageError(message)
+    destination = file if in_place else output
     try:
+        _raise_if_hdf5_output(destination)
         structure = _read_structure(file)
         result = structure.symmetrize(to_primitive=primitive, symprec=symprec)
         poscar = result.to_POSCAR()
     except exception.Py4VaspError as error:
         raise click.ClickException(*error.args) from error
-    print(poscar)
+    if destination is None:
+        print(poscar)
+    else:
+        destination.write_text(poscar)
 
 
 def _read_structure(file):
     if file.suffix in _HDF5_SUFFIXES:
         return py4vasp.Calculation.from_file(file).structure
     return Structure.from_POSCAR(file.read_text())
+
+
+def _raise_if_hdf5_output(destination):
+    if destination is not None and destination.suffix in _HDF5_SUFFIXES:
+        message = "Writing the symmetrized structure to an HDF5 file is not implemented."
+        raise exception.NotImplemented(message)

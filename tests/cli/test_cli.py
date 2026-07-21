@@ -176,3 +176,60 @@ def test_symmetrize_missing_file():
     runner = CliRunner()
     result = runner.invoke(cli, ["symmetrize", "does_not_exist"])
     assert result.exit_code != 0
+
+
+def _set_symmetrized_poscar(mock_structure, text):
+    structure = mock_structure.from_POSCAR.return_value
+    structure.symmetrize.return_value.to_POSCAR.return_value = text
+
+
+@pytest.mark.parametrize("flag", ("-o", "--output"))
+def test_symmetrize_output_file(mock_structure, tmp_path, flag):
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "symmetrized.vasp"
+    _set_symmetrized_poscar(mock_structure, "SYMMETRIZED")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["symmetrize", str(poscar), flag, str(output)])
+    assert result.exit_code == 0
+    assert output.read_text() == "SYMMETRIZED"
+    assert result.output == ""  # nothing written to stdout
+
+
+@pytest.mark.parametrize("flag", ("-i", "--in-place"))
+def test_symmetrize_in_place(mock_structure, tmp_path, flag):
+    poscar = _write(tmp_path / "POSCAR")
+    _set_symmetrized_poscar(mock_structure, "SYMMETRIZED")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["symmetrize", str(poscar), flag])
+    assert result.exit_code == 0
+    mock_structure.from_POSCAR.assert_called_once_with("contents")
+    assert poscar.read_text() == "SYMMETRIZED"
+    assert result.output == ""
+
+
+def test_symmetrize_in_place_and_output_are_exclusive(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "out.vasp"
+    runner = CliRunner()
+    result = runner.invoke(cli, ["symmetrize", str(poscar), "-i", "-o", str(output)])
+    assert result.exit_code != 0
+    assert "mutually exclusive" in result.output
+
+
+@pytest.mark.parametrize("suffix", (".h5", ".hdf5"))
+def test_symmetrize_output_to_hdf5_not_implemented(mock_structure, tmp_path, suffix):
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / f"out{suffix}"
+    runner = CliRunner()
+    result = runner.invoke(cli, ["symmetrize", str(poscar), "-o", str(output)])
+    assert result.exit_code != 0
+    assert "not implemented" in result.output.lower()
+    assert not output.exists()
+
+
+def test_symmetrize_in_place_hdf5_not_implemented(mock_calculation, tmp_path):
+    hdf5 = _write(tmp_path / "vaspout.h5")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["symmetrize", str(hdf5), "-i"])
+    assert result.exit_code != 0
+    assert "not implemented" in result.output.lower()
