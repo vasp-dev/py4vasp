@@ -259,6 +259,24 @@ def test_charges_of_different_density_in_same_basins(two_atom_bader, Assert):
     Assert.allclose(sum(charges.values()), 1.0)
 
 
+def expected_bader_string(charges):
+    width = max(len(name) for name in charges)
+    lines = [f"    {name:<{width}}   {charge:.4f}" for name, charge in charges.items()]
+    return "Bader charges:\n" + "\n".join(lines)
+
+
+def test_str_matches_formatted_charges(two_atom_bader):
+    analysis = two_atom_bader.bader
+    assert str(analysis) == expected_bader_string(analysis.charges())
+
+
+def test_str_single_atom_exact():
+    shape = (4, 4, 4)
+    lattice_vectors = np.diag((4.0, 4.0, 4.0))
+    analysis = make_bader(lattice_vectors, [(0.0, 0.0, 0.0)], ["H"], np.ones(shape))
+    assert str(analysis) == "Bader charges:\n    H_1   1.0000"
+
+
 def test_charges_shape_mismatch_raises(two_atom_bader):
     with pytest.raises(exception.IncorrectUsage):
         two_atom_bader.bader.charges(np.ones((2, 2, 2)))

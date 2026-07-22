@@ -61,6 +61,14 @@ class BaderAnalysis(view.Mixin):
             labels = _label_consecutively(maxima)
         self._basins = labels.reshape(self._density.shape)
 
+    def __str__(self):
+        charges = self.charges()
+        width = max(len(name) for name in charges)
+        lines = [
+            f"    {name:<{width}}   {charge:.4f}" for name, charge in charges.items()
+        ]
+        return "Bader charges:\n" + "\n".join(lines)
+
     def basins(self):
         """Return the basin partition of the density.
 
