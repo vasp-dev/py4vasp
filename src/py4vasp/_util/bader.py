@@ -67,6 +67,33 @@ class BaderAnalysis(view.Mixin):
         """
         return self._basins
 
+    def charges(self, density=None):
+        """Integrate a density within each basin.
+
+        Parameters
+        ----------
+        density : np.ndarray or None
+            The density to integrate on the same grid as the analysis. If None
+            (default), the density used to construct the basins is integrated,
+            which yields the Bader charges. Passing a different density integrates
+            that quantity within the existing basins, which is useful to combine
+            basins defined by one density with values taken from another.
+
+        Returns
+        -------
+        dict
+            Maps every atom label to the value integrated within its basin.
+        """
+        density = self._density if density is None else np.asarray(density)
+        _raise_error_if_density_not_3d(density)
+        _raise_error_if_shape_differs(density, self._density)
+        names = self._structure.to_dict()["names"]
+        volume_element = self._structure.volume() / density.size
+        totals = np.bincount(
+            self._basins.ravel(), weights=density.ravel(), minlength=len(names)
+        )
+        return dict(zip(names, totals * volume_element))
+
     def to_view(self, threshold=0.0, supercell=None):
         """Visualize the Bader basins as labeled domains within the structure.
 
@@ -156,4 +183,12 @@ def _raise_error_if_density_not_3d(density):
         raise exception.IncorrectUsage(
             "The density must be sampled on a 3d grid, but an array with "
             f"{density.ndim} dimensions was provided."
+        )
+
+
+def _raise_error_if_shape_differs(density, reference):
+    if density.shape != reference.shape:
+        raise exception.IncorrectUsage(
+            f"The density has shape {density.shape} which does not match the grid "
+            f"{reference.shape} used to construct the basins."
         )

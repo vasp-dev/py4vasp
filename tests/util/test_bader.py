@@ -200,6 +200,39 @@ def test_to_view_threshold_hides_low_density(two_atom_bader):
     assert np.all(domain.quantity[0][~hidden] >= 1)
 
 
+def test_charges_sum_to_total_integral(two_atom_bader, Assert):
+    bader_, charge = two_atom_bader.bader, two_atom_bader.charge
+    charges = bader_.charges()
+    volume = 8.0 * 4.0 * 4.0
+    total = charge.sum() * volume / charge.size
+    Assert.allclose(sum(charges.values()), total)
+
+
+def test_charges_keyed_by_atom_names_and_symmetric(two_atom_bader, Assert):
+    charges = two_atom_bader.bader.charges()
+    assert list(charges) == ["Na_1", "Cl_1"]
+    # the two peaks are identical and symmetric, so the charges match
+    Assert.allclose(charges["Na_1"], charges["Cl_1"])
+
+
+def test_charges_of_different_density_in_same_basins(two_atom_bader, Assert):
+    bader_, shape = two_atom_bader.bader, two_atom_bader.shape
+    volume = 8.0 * 4.0 * 4.0
+    charges = bader_.charges(np.ones(shape))
+    # integrating a uniform density recovers the basin volumes, summing to the cell
+    Assert.allclose(sum(charges.values()), volume)
+
+
+def test_charges_shape_mismatch_raises(two_atom_bader):
+    with pytest.raises(exception.IncorrectUsage):
+        two_atom_bader.bader.charges(np.ones((2, 2, 2)))
+
+
+def test_charges_non_3d_raises(two_atom_bader):
+    with pytest.raises(exception.IncorrectUsage):
+        two_atom_bader.bader.charges(np.ones((4, 4)))
+
+
 def test_plot_is_alias_of_to_view(Assert):
     shape = (20, 10, 10)
     lattice_vectors = np.diag((5.0, 4.0, 4.0))
