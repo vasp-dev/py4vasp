@@ -10,7 +10,7 @@ import pytest
 
 from py4vasp import _config, exception, raw
 from py4vasp._calculation.nics import Nics, NicsHandler
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.models import NicsModel
 from py4vasp._third_party import view
 
@@ -527,6 +527,25 @@ def test_to_database(nics):
     db_data: NicsModel = handler.to_database()
     assert isinstance(db_data, NicsModel)
     assert db_data.method == nics.ref.output["method"]
+
+
+def test_bader_charge_conserves_total(raw_data, Assert):
+    raw_nics = raw_data.nics("on-a-grid")
+    nics = Nics.from_data(raw_nics)
+    structure = StructureHandler.from_data(raw_nics.structure)
+
+    charges = nics.bader_charge()
+
+    assert list(charges) == structure.to_dict()["names"]
+    grid = nics.to_view().grid_scalars[0].quantity[0]
+    total = grid.sum() * structure.volume() / grid.size
+    Assert.allclose(sum(charges.values()), total)
+
+
+def test_bader_charge_in_points_mode_raises(raw_data):
+    nics = Nics.from_data(raw_data.nics("at-points"))
+    with pytest.raises(exception.IncorrectUsage):
+        nics.bader_charge()
 
 
 def test_factory_methods(raw_data, check_factory_methods):

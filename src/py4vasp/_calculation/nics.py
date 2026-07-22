@@ -7,6 +7,7 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation.bader import BaderMixin
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
@@ -111,6 +112,10 @@ nucleus-independent chemical shift:
     def _structure(self):
         return StructureHandler.from_data(self._raw_nics.structure)
 
+    def _bader_grid(self, selection):
+        self._raise_error_if_used_in_points_mode()
+        return self._read_selected_data(selection or _DEFAULT_SELECTION)
+
     @property
     def _data_is_on_grid(self):
         return check.is_none(self._raw_nics.positions)
@@ -212,8 +217,13 @@ nucleus-independent chemical shift:
 
 
 @quantity("nics")
-class Nics(view.Mixin):
+class Nics(view.Mixin, BaderMixin):
     """This class accesses information on the nucleus-independent chemical shift (NICS).
+
+    Because the NICS is a shielding field rather than a density, its Bader basins
+    are not physically meaningful on their own. Use ``bader_charge`` with an
+    external ``bader_analysis`` built from the charge density to integrate the NICS
+    within charge-density basins.
 
     Examples
     --------
