@@ -144,6 +144,42 @@ def test_volume_dataset_axis_order():
     assert np.array_equal(reconstructed, volume)
 
 
+def _single_grid_view(isosurfaces):
+    volume = np.arange(2 * 2 * 2, dtype=float).reshape(2, 2, 2)
+    return View(
+        elements=[["Si"]],
+        lattice_vectors=[np.eye(3)],
+        positions=[[[0.0, 0.0, 0.0]]],
+        grid_scalars=[
+            GridQuantity(
+                quantity=volume[np.newaxis], label="q", isosurfaces=isosurfaces
+            )
+        ],
+    )
+
+
+def test_opposite_sign_isolevels_sent_once_with_sign_modes():
+    # NICS-style ±v on one field: the data is emitted once, and each isolevel is
+    # tagged with a sign mode so the viewer renders the matching lobe.
+    view = _single_grid_view(
+        [Isosurface(1.0, "#0000ff", 0.6), Isosurface(-1.0, "#ff0000", 0.6)]
+    )
+    datasets = view.to_vasp_viewer_config()["volume_datasets"]
+    assert len(datasets) == 1  # one field, not one dataset per isolevel
+    assert datasets[0]["isosurfaces"] == [
+        {"iso_value": 1.0, "color_surface": "#0000ff", "sign_mode": "positive"},
+        {"iso_value": -1.0, "color_surface": "#ff0000", "sign_mode": "negative"},
+    ]
+
+
+def test_same_sign_isolevels_keep_default_sign_mode():
+    view = _single_grid_view(
+        [Isosurface(0.2, "#0000ff", 0.6), Isosurface(0.8, "#00ff00", 0.6)]
+    )
+    isosurfaces = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert [iso["sign_mode"] for iso in isosurfaces] == ["default", "default"]
+
+
 @hasVaspView
 @pytest.mark.skip(reason="Not yet implemented")
 def test_isosurface(view):

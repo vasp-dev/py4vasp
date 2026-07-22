@@ -379,29 +379,10 @@ class View:
             ]
         if self.grid_scalars is not None:
             # TODO allow time-dependent isosurfaces (viewer-side requirement)
-            # TODO allow multiple isolevels for the same volume dataset (viewer-side requirement)
-            structure["volume_datasets"] = []
-            for grid_quantity in self.grid_scalars:
-                data, grid = self._volume_data_and_grid(grid_quantity)
-                if len(grid_quantity.isosurfaces) > 0:
-                    structure["volume_datasets"].extend(
-                        {
-                            "label": grid_quantity.label + f" ({idi})",
-                            "data": data,
-                            "grid": grid,
-                            "initial_iso_value": isosurface.isolevel,
-                            "color_surface": isosurface.color,
-                        }
-                        for idi, isosurface in enumerate(grid_quantity.isosurfaces)
-                    )
-                else:
-                    structure["volume_datasets"].append(
-                        {
-                            "label": grid_quantity.label,
-                            "data": data,
-                            "grid": grid,
-                        }
-                    )
+            structure["volume_datasets"] = [
+                self._volume_dataset(grid_quantity)
+                for grid_quantity in self.grid_scalars
+            ]
 
         # === Lattice options ===
         if self.shift is not None:
@@ -484,6 +465,36 @@ class View:
             raise exception.IncorrectUsage(
                 f"Lattice vectors must be a 3x3 unit cell but have the shape {cell_shape}."
             )
+
+    def _volume_dataset(self, grid_quantity):
+        # The field is sent ONCE; each isosurface becomes a separate volume on the
+        # viewer side sharing this data. When a quantity carries both positive and
+        # negative isolevels (e.g. NICS +v / -v), each is tagged with a sign mode so
+        # the viewer renders the matching lobe instead of duplicating the positive
+        # one. A same-sign set keeps the default (sign-agnostic) rendering.
+        data, grid = self._volume_data_and_grid(grid_quantity)
+        entry = {"label": grid_quantity.label, "data": data, "grid": grid}
+        isosurfaces = grid_quantity.isosurfaces or []
+        if len(isosurfaces) > 0:
+            levels = [isosurface.isolevel for isosurface in isosurfaces]
+            mixed_sign = any(level > 0 for level in levels) and any(
+                level < 0 for level in levels
+            )
+            entry["isosurfaces"] = [
+                {
+                    "iso_value": isosurface.isolevel,
+                    "color_surface": isosurface.color,
+                    "sign_mode": self._sign_mode(isosurface.isolevel, mixed_sign),
+                }
+                for isosurface in isosurfaces
+            ]
+        return entry
+
+    @staticmethod
+    def _sign_mode(isolevel, mixed_sign):
+        if not mixed_sign:
+            return "default"
+        return "negative" if isolevel < 0 else "positive"
 
     def _volume_data_and_grid(self, grid_quantity):
         # The VASP Viewer uploads the flat data buffer into a 3D texture whose
