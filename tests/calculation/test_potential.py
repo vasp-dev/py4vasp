@@ -7,8 +7,9 @@ import numpy as np
 import pytest
 
 from py4vasp import _config, exception, raw
+from py4vasp._calculation.density import Density
 from py4vasp._calculation.potential import VALID_KINDS, Potential, PotentialHandler
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.models import PotentialModel
 from py4vasp._third_party.view import Isosurface
 from py4vasp._util import slicing
@@ -408,6 +409,36 @@ def test_to_database(reference_potential):
         if (total_potential_magnetization is not None)
         else None
     )
+
+
+def test_bader_charge_conserves_total(raw_data, Assert):
+    raw_potential = raw_data.potential("Sr2TiO4 total")
+    potential = Potential.from_data(raw_potential)
+    structure = StructureHandler.from_data(raw_potential.structure)
+
+    charges = potential.bader_charge()
+
+    assert list(charges) == structure.to_dict()["names"]
+    grid = potential.read()["total"]
+    total = grid.sum() * structure.volume() / grid.size
+    Assert.allclose(sum(charges.values()), total)
+
+
+def test_bader_charge_uses_external_analysis(raw_data, Assert):
+    raw_potential = raw_data.potential("Sr2TiO4 total")
+    potential = Potential.from_data(raw_potential)
+    density = Density.from_data(raw_data.density("Sr2TiO4"))
+    structure = StructureHandler.from_data(raw_potential.structure)
+
+    analysis = density.bader_analysis()
+    charges = potential.bader_charge(bader_analysis=analysis)
+
+    # integrating the potential in the density-defined basins equals doing so
+    # directly through the analysis object
+    manual = analysis.charges(potential.read()["total"])
+    assert charges.keys() == manual.keys()
+    for key in charges:
+        Assert.allclose(charges[key], manual[key])
 
 
 def test_factory_methods(raw_data, check_factory_methods):

@@ -8,6 +8,7 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation.bader import BaderMixin
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
@@ -164,6 +165,9 @@ class PotentialHandler:
     def _structure(self):
         return StructureHandler.from_data(self._raw_potential.structure)
 
+    def _bader_grid(self, selection):
+        return dict(self._get_potentials(selection or "total"))
+
     def _get_potentials(self, selection, is_magnetic=False):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
@@ -237,7 +241,7 @@ class PotentialHandler:
 
 
 @quantity("potential")
-class Potential(view.Mixin):
+class Potential(view.Mixin, BaderMixin):
     """The local potential describes the interactions between electrons and ions.
 
     In DFT calculations, the local potential consists of various contributions, each
