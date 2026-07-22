@@ -69,6 +69,9 @@ class BaderAnalysis(view.Mixin):
         ]
         return "Bader charges:\n" + "\n".join(lines)
 
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
     def basins(self):
         """Return the basin partition of the density.
 
@@ -115,9 +118,11 @@ class BaderAnalysis(view.Mixin):
         Parameters
         ----------
         threshold : float
-            Grid points where the density is below this absolute value are
-            assigned to the background domain ``0`` and hidden. The default of
-            ``0`` keeps every point.
+            Grid points where the density is below ``threshold`` times the maximum
+            density are assigned to the background domain ``0`` and hidden. Because
+            the cutoff is relative to the maximum, it is independent of the grid
+            sampling and of the total number of electrons. The default of ``0``
+            keeps every point.
         supercell : int | np.ndarray | None
             If present the structure is replicated the specified number of times
             along each direction.
@@ -130,7 +135,7 @@ class BaderAnalysis(view.Mixin):
             below the threshold. The domains are labeled by the atom names.
         """
         domains = self._basins + 1
-        domains[self._density < threshold] = 0
+        domains[self._density < threshold * self._density.max()] = 0
         viewer = copy.copy(self._view)
         if supercell is not None:
             viewer.supercell = supercell

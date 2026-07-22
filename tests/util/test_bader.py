@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import itertools
+import unittest.mock
 from types import SimpleNamespace
 
 import numpy as np
@@ -226,15 +227,31 @@ def test_to_view_sets_grid_domains(two_atom_bader, Assert):
     assert set(np.unique(domain.quantity)) == {1, 2}
 
 
-def test_to_view_threshold_hides_low_density(two_atom_bader):
-    bader_, charge = two_atom_bader.bader, two_atom_bader.charge
-    threshold = 0.5 * charge.max()
+def test_to_view_threshold_is_fraction_of_maximum():
+    shape = (24, 12, 12)
+    lattice_vectors = np.diag((8.0, 4.0, 4.0))
+    atoms = [(0.25, 0.5, 0.5), (0.75, 0.5, 0.5)]
+    # scale the density so an absolute cutoff and a fraction-of-max cutoff differ
+    charge = 100.0 * gaussian_density(shape, lattice_vectors, atoms)
+    bader_ = make_bader(lattice_vectors, atoms, ["Na", "Cl"], charge)
 
-    domain = bader_.to_view(threshold=threshold).grid_domains[0]
+    # the threshold is a fraction of the maximum density, so it is independent of
+    # the grid sampling and of the total number of electrons
+    domain = bader_.to_view(threshold=0.5).grid_domains[0]
 
-    hidden = charge < threshold
+    hidden = charge < 0.5 * charge.max()
     assert np.all(domain.quantity[0][hidden] == 0)
     assert np.all(domain.quantity[0][~hidden] >= 1)
+    # the fraction-of-max cutoff is not the same as an absolute cutoff of 0.5
+    assert hidden.sum() != np.count_nonzero(charge < 0.5)
+
+
+def test_repr_pretty_renders_string(two_atom_bader):
+    printer = unittest.mock.MagicMock()
+
+    two_atom_bader.bader._repr_pretty_(printer, cycle=False)
+
+    printer.text.assert_called_once_with(str(two_atom_bader.bader))
 
 
 def test_charges_sum_to_total_integral(two_atom_bader, Assert):
