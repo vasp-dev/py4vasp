@@ -545,6 +545,10 @@ def test_bader_charge_multiple_selections(raw_data):
     assert all(isinstance(value, dict) for value in result.values())
 
 
+def test_all_electron_is_selectable(nonpolarized_density):
+    assert "all_electron" in nonpolarized_density.selections()["density"]
+
+
 def test_all_electron_adds_core_to_scalar(raw_data, Assert):
     raw_density = raw_data.density("all_electron")
     density = Density.from_data(raw_density)
