@@ -7,7 +7,7 @@ import pytest
 
 from py4vasp import _config, exception, raw
 from py4vasp._calculation.exciton_density import ExcitonDensity
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.structure import Structure, StructureHandler
 
 
 @pytest.fixture
@@ -108,6 +108,19 @@ exciton charge density:
     grid: 10, 12, 14
     excitons: 3"""
     assert actual == {"text/plain": expected_text}
+
+
+def test_bader_charge_conserves_total(raw_data, Assert):
+    raw_density = raw_data.exciton_density()
+    density = ExcitonDensity.from_data(raw_density)
+    structure = StructureHandler.from_data(raw_density.structure)
+
+    charges = density.bader_charge()
+
+    assert list(charges) == structure.to_dict()["names"]
+    grid = np.array(raw_density.exciton_charge[0]).T
+    total = grid.sum() * structure.volume() / grid.size
+    Assert.allclose(sum(charges.values()), total)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

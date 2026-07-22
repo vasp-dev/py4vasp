@@ -9,6 +9,7 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation.bader import BaderMixin
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
@@ -176,6 +177,10 @@ class PartialDensityHandler:
     def _structure(self):
         return StructureHandler.from_data(self._raw_partial_density.structure)
 
+    def _bader_grid(self, selection):
+        selection = selection or "total"
+        return {selection: self.to_numpy(selection)}
+
     def _spin_polarized(self):
         return self._raw_partial_density.partial_charge.shape[2] == 2
 
@@ -332,7 +337,7 @@ class PartialDensityHandler:
 
 
 @quantity("partial_density")
-class PartialDensity(view.Mixin):
+class PartialDensity(view.Mixin, BaderMixin):
     """Partial charges describe the fraction of the charge density in a certain energy,
     band, or k-point range.
 

@@ -6,6 +6,7 @@ import numpy as np
 
 from py4vasp import _config, exception, raw
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
+from py4vasp._calculation.bader import BaderMixin
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
@@ -78,6 +79,12 @@ class ExcitonDensityHandler:
     def _structure(self) -> StructureHandler:
         return StructureHandler.from_data(self._raw_exciton_density.structure)
 
+    def _bader_grid(self, selection):
+        map_ = self._create_map()
+        selector = index.Selector({0: map_}, self._raw_exciton_density.exciton_charge)
+        tree = select.Tree.from_selection(selection or _DEFAULT_SELECTION)
+        return {selector.label(sel): selector[sel].T for sel in tree.selections()}
+
     def _create_map(self) -> dict:
         num_excitons = self._raw_exciton_density.exciton_charge.shape[0]
         return {str(choice + 1): choice for choice in range(num_excitons)}
@@ -88,7 +95,7 @@ class ExcitonDensityHandler:
 
 
 @quantity("density", group="exciton")
-class ExcitonDensity(view.Mixin):
+class ExcitonDensity(view.Mixin, BaderMixin):
     """This class accesses exciton charge densities of VASP.
 
     The exciton charge densities can be calculated via the BSE/TDHF algorithm in

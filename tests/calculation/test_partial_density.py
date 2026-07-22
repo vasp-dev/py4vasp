@@ -413,6 +413,19 @@ def test_interpolation_setting_change(PolarizedNonSplitPartialDensity):
     assert not np.allclose(graph_def.series.data, graph_less_interp_points.series.data)
 
 
+def test_bader_charge_conserves_total(raw_data, Assert):
+    raw_pd = raw_data.partial_density("spin_polarized")
+    partial_density = PartialDensity.from_data(raw_pd)
+    structure = StructureHandler.from_data(raw_pd.structure)
+
+    charges = partial_density.bader_charge()
+
+    assert list(charges) == structure.to_dict()["names"]
+    grid = partial_density.to_numpy("total")
+    total = grid.sum() * structure.volume() / grid.size
+    Assert.allclose(sum(charges.values()), total)
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.partial_density("spin_polarized")
     check_factory_methods(PartialDensity, data)
