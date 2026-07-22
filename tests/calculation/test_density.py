@@ -545,6 +545,27 @@ def test_bader_charge_multiple_selections(raw_data):
     assert all(isinstance(value, dict) for value in result.values())
 
 
+def test_all_electron_adds_core_to_scalar(raw_data, Assert):
+    raw_density = raw_data.density("all_electron")
+    density = Density.from_data(raw_density)
+
+    actual = density.read()
+
+    charge = np.array(raw_density.charge)
+    core = np.array(raw_density.core)
+    Assert.allclose(actual["charge"], (charge[0] + core[0]).T)
+    Assert.allclose(actual["magnetization"], charge[1].T)
+
+
+def test_all_electron_bader_charge_includes_core(raw_data, Assert):
+    density = Density.from_data(raw_data.density("all_electron"))
+
+    charges = density.bader_charge()
+
+    scalar = density.to_numpy()[0]
+    Assert.allclose(sum(charges.values()), scalar.sum() / scalar.size)
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.density("Fe3O4 collinear")
     parameters = {"to_contour": {"a": 0.3}}

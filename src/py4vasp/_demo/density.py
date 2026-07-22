@@ -13,3 +13,14 @@ def Fe3O4(selection):
     structure = _demo.structure.Fe3O4()
     grid = (_demo.number_components(selection), *_demo.GRID_DIMENSIONS)
     return raw.Density(structure=structure, charge=_demo.wrap_random_data(grid))
+
+
+def all_electron():
+    structure = _demo.structure.Fe3O4()
+    grid = (_demo.COLLINEAR, *_demo.GRID_DIMENSIONS)
+    core_grid = (1, *_demo.GRID_DIMENSIONS)
+    return raw.Density(
+        structure=structure,
+        charge=_demo.wrap_random_data(grid),
+        core=_demo.wrap_random_data(core_grid),
+    )

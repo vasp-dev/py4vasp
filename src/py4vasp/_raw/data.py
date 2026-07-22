@@ -199,6 +199,8 @@ class Density:
     "The atomic structure to represent the densities."
     charge: VaspData
     "The data of electronic charge and magnetization density."
+    core: VaspData = NONE()
+    "Optional core density added to the scalar charge, e.g. for the all-electron density."
 
 
 @dataclasses.dataclass
