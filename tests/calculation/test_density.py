@@ -8,8 +8,9 @@ import pytest
 
 from py4vasp import _config, exception, raw
 from py4vasp._calculation.density import Density
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._third_party.view import Isosurface
+from py4vasp._util.bader import BaderAnalysis
 
 
 @pytest.fixture(params=[None, "kinetic_energy"])
@@ -501,6 +502,48 @@ def test_magnetization_without_component(selection, raw_data):
 def test_print(reference_density, format_):
     actual, _ = format_(reference_density)
     assert actual == {"text/plain": reference_density.ref.string}
+
+
+def test_bader_analysis_returns_analysis(raw_data):
+    raw_density = raw_data.density("Sr2TiO4")
+    density = Density.from_data(raw_density)
+    analysis = density.bader_analysis()
+    assert isinstance(analysis, BaderAnalysis)
+    view = analysis.plot()
+    assert len(view.grid_domains) == 1
+
+
+def test_bader_charge_conserves_total(raw_data, Assert):
+    raw_density = raw_data.density("Sr2TiO4")
+    density = Density.from_data(raw_density)
+    structure = StructureHandler.from_data(raw_density.structure)
+
+    charges = density.bader_charge()
+
+    assert list(charges) == structure.to_dict()["names"]
+    scalar = density.to_numpy()[0]
+    total = scalar.sum() * structure.volume() / scalar.size
+    Assert.allclose(sum(charges.values()), total)
+
+
+def test_bader_charge_combined_equals_explicit(raw_data, Assert):
+    density = Density.from_data(raw_data.density("Fe3O4 collinear"))
+
+    combined = density.bader_charge("m(basins=scalar)")
+    explicit = density.bader_charge("m", bader_analysis=density.bader_analysis("scalar"))
+
+    assert combined.keys() == explicit.keys()
+    for key in combined:
+        Assert.allclose(combined[key], explicit[key])
+
+
+def test_bader_charge_multiple_selections(raw_data):
+    density = Density.from_data(raw_data.density("Fe3O4 collinear"))
+
+    result = density.bader_charge("scalar, m")
+
+    assert len(result) == 2
+    assert all(isinstance(value, dict) for value in result.values())
 
 
 def test_factory_methods(raw_data, check_factory_methods):

@@ -16,6 +16,7 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
+from py4vasp._calculation.bader import BaderMixin
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import graph, view
@@ -190,6 +191,15 @@ class DensityHandler:
     def _structure(self):
         return StructureHandler.from_data(self._raw_density.structure)
 
+    def _bader_grid(self, selection):
+        map_ = self._create_map()
+        selector = index.Selector({0: map_}, self._raw_density.charge)
+        tree = select.Tree.from_selection(selection or _INTERNAL)
+        selections = self._filter_noncollinear_magnetization_from_selections(tree)
+        return {
+            self._label(selector.label(sel)): selector[sel].T for sel in selections
+        }
+
     def _read_density(self):
         density = self.to_numpy()
         if self._selection:
@@ -272,7 +282,7 @@ class DensityHandler:
 
 
 @quantity("density")
-class Density(view.Mixin):
+class Density(view.Mixin, BaderMixin):
     """This class accesses various densities (charge, magnetization, ...) of VASP.
 
     The charge density is one key quantity optimized by VASP. With this class you
