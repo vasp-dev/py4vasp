@@ -38,8 +38,8 @@ def label_at(labels, center):
     return labels[grid_point(labels.shape, center)]
 
 
-def make_bader(lattice_vectors, positions, elements):
-    """Build a Bader instance wrapping a structure with the given geometry."""
+def make_bader(lattice_vectors, positions, elements, density, snap_to_atoms=True):
+    """Build a BaderAnalysis wrapping a structure with the given geometry."""
     groups = [(name, len(list(g))) for name, g in itertools.groupby(elements)]
     raw_structure = raw.Structure(
         raw.Stoichiometry(
@@ -49,7 +49,8 @@ def make_bader(lattice_vectors, positions, elements):
         raw.Cell(lattice_vectors=np.asarray(lattice_vectors), scale=raw.VaspData(1.0)),
         positions=np.asarray(positions, dtype=float),
     )
-    return bader.Bader(StructureHandler.from_data(raw_structure))
+    structure = StructureHandler.from_data(raw_structure)
+    return bader.BaderAnalysis(structure, density, snap_to_atoms=snap_to_atoms)
 
 
 def test_local_maximum_points_to_itself(Assert):
@@ -91,9 +92,9 @@ def test_single_peak_is_one_basin():
     shape = (20, 18, 16)
     lattice_vectors = np.diag((6.0, 5.0, 4.0))
     charge = gaussian_density(shape, lattice_vectors, [(0.5, 0.5, 0.5)])
-    bader_ = make_bader(lattice_vectors, [(0.5, 0.5, 0.5)], ["H"])
+    bader_ = make_bader(lattice_vectors, [(0.5, 0.5, 0.5)], ["H"], charge, False)
 
-    labels = bader_.basins(charge, snap_to_atoms=False)
+    labels = bader_.basins()
 
     assert labels.shape == shape
     assert np.issubdtype(labels.dtype, np.integer)
@@ -105,9 +106,9 @@ def test_two_peaks_split_into_two_basins():
     lattice_vectors = np.diag((8.0, 4.0, 4.0))
     left, right = (0.25, 0.5, 0.5), (0.75, 0.5, 0.5)
     charge = gaussian_density(shape, lattice_vectors, [left, right])
-    bader_ = make_bader(lattice_vectors, [(0.0, 0.0, 0.0)], ["H"])
+    bader_ = make_bader(lattice_vectors, [(0.0, 0.0, 0.0)], ["H"], charge, False)
 
-    labels = bader_.basins(charge, snap_to_atoms=False)
+    labels = bader_.basins()
 
     assert len(np.unique(labels)) == 2
     assert label_at(labels, left) != label_at(labels, right)
@@ -126,9 +127,9 @@ def test_displaced_peak_assigns_to_nearest_atom():
     atoms = [(0.75, 0.5, 0.5), (0.25, 0.5, 0.5)]
     peaks = [(0.30, 0.5, 0.5), (0.70, 0.5, 0.5)]
     charge = gaussian_density(shape, lattice_vectors, peaks)
-    bader_ = make_bader(lattice_vectors, atoms, ["Na", "Cl"])
+    bader_ = make_bader(lattice_vectors, atoms, ["Na", "Cl"], charge)
 
-    labels = bader_.basins(charge, snap_to_atoms=True)
+    labels = bader_.basins()
 
     assert set(np.unique(labels)) <= {0, 1}
     assert label_at(labels, atoms[0]) == 0
@@ -144,12 +145,12 @@ def test_interstitial_maximum_merges_into_nearest_atom():
     charge = gaussian_density(
         shape, lattice_vectors, atoms, width=0.9
     ) + 0.6 * gaussian_density(shape, lattice_vectors, [(0.45, 0.5, 0.5)], width=0.4)
-    bader_ = make_bader(lattice_vectors, atoms, ["Na", "Cl"])
 
     # without snapping the interstitial peak is a basin of its own
-    assert len(np.unique(bader_.basins(charge, snap_to_atoms=False))) == 3
+    no_snap = make_bader(lattice_vectors, atoms, ["Na", "Cl"], charge, False)
+    assert len(np.unique(no_snap.basins())) == 3
 
-    labels = bader_.basins(charge, snap_to_atoms=True)
+    labels = make_bader(lattice_vectors, atoms, ["Na", "Cl"], charge).basins()
 
     assert set(np.unique(labels)) == {0, 1}
     # the interstitial peak at 0.45 is closest to atom 0 at 0.2
@@ -157,9 +158,8 @@ def test_interstitial_maximum_merges_into_nearest_atom():
 
 
 def test_incorrect_charge_dimension_raises():
-    bader_ = make_bader(np.diag((1.0, 1.0, 1.0)), [(0.0, 0.0, 0.0)], ["H"])
     with pytest.raises(exception.IncorrectUsage):
-        bader_.basins(np.zeros((4, 4)), snap_to_atoms=False)
+        make_bader(np.diag((1.0, 1.0, 1.0)), [(0.0, 0.0, 0.0)], ["H"], np.zeros((4, 4)))
 
 
 @pytest.fixture
@@ -168,14 +168,14 @@ def two_atom_bader():
     lattice_vectors = np.diag((8.0, 4.0, 4.0))
     atoms = [(0.25, 0.5, 0.5), (0.75, 0.5, 0.5)]
     charge = gaussian_density(shape, lattice_vectors, atoms)
-    bader_ = make_bader(lattice_vectors, atoms, ["Na", "Cl"])
+    bader_ = make_bader(lattice_vectors, atoms, ["Na", "Cl"], charge)
     return SimpleNamespace(bader=bader_, charge=charge, shape=shape)
 
 
 def test_to_view_sets_grid_domains(two_atom_bader, Assert):
-    bader_, charge, shape = two_atom_bader.bader, two_atom_bader.charge, two_atom_bader.shape
+    bader_, shape = two_atom_bader.bader, two_atom_bader.shape
 
-    view = bader_.to_view(charge)
+    view = bader_.to_view()
 
     assert len(view.grid_domains) == 1
     domain = view.grid_domains[0]
@@ -184,7 +184,7 @@ def test_to_view_sets_grid_domains(two_atom_bader, Assert):
     assert list(domain.labels) == ["Na_1", "Cl_1"]
     # with the default threshold nothing is hidden and ids are the snapped
     # basins shifted to 1..n_atoms
-    expected = bader_.basins(charge, snap_to_atoms=True) + 1
+    expected = bader_.basins() + 1
     Assert.allclose(domain.quantity[0], expected)
     assert set(np.unique(domain.quantity)) == {1, 2}
 
@@ -193,7 +193,7 @@ def test_to_view_threshold_hides_low_density(two_atom_bader):
     bader_, charge = two_atom_bader.bader, two_atom_bader.charge
     threshold = 0.5 * charge.max()
 
-    domain = bader_.to_view(charge, threshold=threshold).grid_domains[0]
+    domain = bader_.to_view(threshold=threshold).grid_domains[0]
 
     hidden = charge < threshold
     assert np.all(domain.quantity[0][hidden] == 0)
@@ -205,9 +205,9 @@ def test_plot_is_alias_of_to_view(Assert):
     lattice_vectors = np.diag((5.0, 4.0, 4.0))
     atoms = [(0.5, 0.5, 0.5)]
     charge = gaussian_density(shape, lattice_vectors, atoms)
-    bader_ = make_bader(lattice_vectors, atoms, ["H"])
+    bader_ = make_bader(lattice_vectors, atoms, ["H"], charge)
 
-    from_plot = bader_.plot(charge).grid_domains[0]
-    from_view = bader_.to_view(charge).grid_domains[0]
-
-    Assert.allclose(from_plot.quantity, from_view.quantity)
+    Assert.allclose(
+        bader_.plot().grid_domains[0].quantity,
+        bader_.to_view().grid_domains[0].quantity,
+    )

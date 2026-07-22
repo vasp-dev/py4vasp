@@ -14,59 +14,64 @@ _OFFSETS = np.array(
 )
 
 
-class Bader(view.Mixin):
+class BaderAnalysis(view.Mixin):
     """Bader charge analysis of a density defined on a grid.
 
-    This class partitions a charge density into atomic basins following the
-    grid-based steepest-ascent algorithm. It is constructed from a structure so
-    that the lattice vectors, atomic positions, and atom labels are all available
-    to the analysis.
+    This class partitions a density into atomic basins following the grid-based
+    steepest-ascent algorithm. The density is provided at construction time, so
+    the (comparatively expensive) partition is computed once and reused by all
+    methods. The structure supplies the lattice vectors, atomic positions, and
+    atom labels the analysis needs.
 
     Parameters
     ----------
     structure
         A structure handler providing the geometry of the system via
-        ``lattice_vectors``, ``positions``, ``to_dict``, and ``to_view``.
+        ``lattice_vectors``, ``positions``, ``volume``, ``to_dict``, and
+        ``to_view``.
+    density : np.ndarray
+        The density sampled on a 3d grid with shape ``(nx, ny, nz)``, in the
+        orientation returned by :py:meth:`Density.to_numpy`.
+    snap_to_atoms : bool
+        VASP pseudo densities need not be peaked at the nuclei, so the raw maxima
+        may sit in bonds or interstitial regions. If True (default), every
+        maximum is snapped to its nearest atom and the basins are labeled by atom
+        index. If False, the basins are labeled by an arbitrary index enumerating
+        the distinct maxima.
     """
 
-    def __init__(self, structure):
+    def __init__(self, structure, density, snap_to_atoms=True):
         self._structure = structure
+        self._density = np.asarray(density)
+        _raise_error_if_density_not_3d(self._density)
+        self._snap_to_atoms = snap_to_atoms
+        lattice_vectors = structure.lattice_vectors()
+        maxima = _resolve_to_maxima(_ascent_pointers(self._density, lattice_vectors))
+        if snap_to_atoms:
+            labels = _label_by_nearest_atom(
+                maxima, self._density.shape, lattice_vectors, structure.positions()
+            )
+        else:
+            labels = _label_consecutively(maxima)
+        self._basins = labels.reshape(self._density.shape)
 
-    def basins(self, charge, snap_to_atoms=True):
-        """Partition a charge-density grid into Bader basins.
-
-        Every grid point is assigned to a basin by following the steepest ascent
-        of the density until a local maximum is reached; all points reaching the
-        same maximum form one basin.
-
-        Parameters
-        ----------
-        charge : np.ndarray
-            The charge density sampled on a 3d grid with shape ``(nx, ny, nz)``,
-            in the orientation returned by :py:meth:`Density.to_numpy`.
-        snap_to_atoms : bool
-            VASP pseudo densities need not be peaked at the nuclei, so the raw
-            maxima may sit in bonds or interstitial regions. If True (default),
-            every maximum is snapped to its nearest atom and the resulting basins
-            are labeled by atom index. If False, the basins are labeled by an
-            arbitrary index enumerating the distinct maxima.
+    def basins(self):
+        """Return the basin partition of the density.
 
         Returns
         -------
         np.ndarray
-            An integer array of the same shape as ``charge`` assigning every grid
-            point to a basin.
+            An integer array of the same shape as the density assigning every grid
+            point to a basin. With ``snap_to_atoms`` the label is the index of the
+            nearest atom, otherwise an arbitrary index enumerating the maxima.
         """
-        positions = self._structure.positions() if snap_to_atoms else None
-        return _partition(charge, self._structure.lattice_vectors(), positions)
+        return self._basins
 
-    def to_view(self, charge, threshold=0.0, supercell=None):
+    def to_view(self, threshold=0.0, supercell=None):
         """Visualize the Bader basins as labeled domains within the structure.
 
         Parameters
         ----------
-        charge : np.ndarray
-            The charge density sampled on a 3d grid with shape ``(nx, ny, nz)``.
         threshold : float
             Grid points where the density is below this absolute value are
             assigned to the background domain ``0`` and hidden. The default of
@@ -82,9 +87,8 @@ class Bader(view.Mixin):
             its basin was snapped to (``1`` to number of atoms), or ``0`` if it is
             below the threshold. The domains are labeled by the atom names.
         """
-        charge = np.asarray(charge)
-        domains = self.basins(charge, snap_to_atoms=True) + 1
-        domains[charge < threshold] = 0
+        domains = self._basins + 1
+        domains[self._density < threshold] = 0
         viewer = self._structure.to_view(supercell)
         viewer.grid_domains = [
             view.GridDomain(
@@ -94,19 +98,6 @@ class Bader(view.Mixin):
             )
         ]
         return viewer
-
-
-def _partition(charge, lattice_vectors, positions=None):
-    charge = np.asarray(charge)
-    lattice_vectors = np.asarray(lattice_vectors)
-    _raise_error_if_charge_not_3d(charge)
-    pointers = _ascent_pointers(charge, lattice_vectors)
-    maxima = _resolve_to_maxima(pointers)
-    if positions is None:
-        return _label_consecutively(maxima).reshape(charge.shape)
-    positions = np.asarray(positions)
-    labels = _label_by_nearest_atom(maxima, charge.shape, lattice_vectors, positions)
-    return labels.reshape(charge.shape)
 
 
 def _label_by_nearest_atom(maxima, shape, lattice_vectors, positions):
@@ -160,9 +151,9 @@ def _ascent_pointers(charge, lattice_vectors):
     return pointers.ravel()
 
 
-def _raise_error_if_charge_not_3d(charge):
-    if charge.ndim != 3:
+def _raise_error_if_density_not_3d(density):
+    if density.ndim != 3:
         raise exception.IncorrectUsage(
-            "The charge density must be sampled on a 3d grid, but an array with "
-            f"{charge.ndim} dimensions was provided."
+            "The density must be sampled on a 3d grid, but an array with "
+            f"{density.ndim} dimensions was provided."
         )
