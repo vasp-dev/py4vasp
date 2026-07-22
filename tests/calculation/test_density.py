@@ -522,8 +522,7 @@ def test_bader_charge_conserves_total(raw_data, Assert):
 
     assert list(charges) == structure.to_dict()["names"]
     scalar = density.to_numpy()[0]
-    total = scalar.sum() * structure.volume() / scalar.size
-    Assert.allclose(sum(charges.values()), total)
+    Assert.allclose(sum(charges.values()), scalar.sum() / scalar.size)
 
 
 def test_bader_charge_combined_equals_explicit(raw_data, Assert):

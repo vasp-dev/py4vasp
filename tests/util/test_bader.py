@@ -38,8 +38,8 @@ def label_at(labels, center):
     return labels[grid_point(labels.shape, center)]
 
 
-def make_bader(lattice_vectors, positions, elements, density, snap_to_atoms=True):
-    """Build a BaderAnalysis wrapping a structure with the given geometry."""
+def make_structure(lattice_vectors, positions, elements):
+    """Build a StructureHandler with the given geometry."""
     groups = [(name, len(list(g))) for name, g in itertools.groupby(elements)]
     raw_structure = raw.Structure(
         raw.Stoichiometry(
@@ -49,8 +49,45 @@ def make_bader(lattice_vectors, positions, elements, density, snap_to_atoms=True
         raw.Cell(lattice_vectors=np.asarray(lattice_vectors), scale=raw.VaspData(1.0)),
         positions=np.asarray(positions, dtype=float),
     )
-    structure = StructureHandler.from_data(raw_structure)
+    return StructureHandler.from_data(raw_structure)
+
+
+def make_bader(lattice_vectors, positions, elements, density, snap_to_atoms=True):
+    """Build a BaderAnalysis wrapping a structure with the given geometry."""
+    structure = make_structure(lattice_vectors, positions, elements)
     return bader.BaderAnalysis(structure, density, snap_to_atoms=snap_to_atoms)
+
+
+class ClosableStructure:
+    """Wrap a structure handler to emulate an HDF5 source that closes.
+
+    Any data access after ``closed`` is set raises, mimicking reading a lazily
+    loaded VASP quantity after its file context has been left.
+    """
+
+    def __init__(self, handler):
+        self._handler = handler
+        self.closed = False
+
+    def _access(self, name, *args, **kwargs):
+        if self.closed:
+            raise RuntimeError("Unable to synchronously read data (file closed)")
+        return getattr(self._handler, name)(*args, **kwargs)
+
+    def lattice_vectors(self):
+        return self._access("lattice_vectors")
+
+    def positions(self):
+        return self._access("positions")
+
+    def volume(self):
+        return self._access("volume")
+
+    def to_dict(self, *args, **kwargs):
+        return self._access("to_dict", *args, **kwargs)
+
+    def to_view(self, *args, **kwargs):
+        return self._access("to_view", *args, **kwargs)
 
 
 def test_local_maximum_points_to_itself(Assert):
@@ -203,8 +240,8 @@ def test_to_view_threshold_hides_low_density(two_atom_bader):
 def test_charges_sum_to_total_integral(two_atom_bader, Assert):
     bader_, charge = two_atom_bader.bader, two_atom_bader.charge
     charges = bader_.charges()
-    volume = 8.0 * 4.0 * 4.0
-    total = charge.sum() * volume / charge.size
+    # VASP convention: sum(density) / density.size is the total electron count
+    total = charge.sum() / charge.size
     Assert.allclose(sum(charges.values()), total)
 
 
@@ -217,10 +254,9 @@ def test_charges_keyed_by_atom_names_and_symmetric(two_atom_bader, Assert):
 
 def test_charges_of_different_density_in_same_basins(two_atom_bader, Assert):
     bader_, shape = two_atom_bader.bader, two_atom_bader.shape
-    volume = 8.0 * 4.0 * 4.0
     charges = bader_.charges(np.ones(shape))
-    # integrating a uniform density recovers the basin volumes, summing to the cell
-    Assert.allclose(sum(charges.values()), volume)
+    # a uniform density of one integrates to one electron over the whole grid
+    Assert.allclose(sum(charges.values()), 1.0)
 
 
 def test_charges_shape_mismatch_raises(two_atom_bader):
@@ -231,6 +267,23 @@ def test_charges_shape_mismatch_raises(two_atom_bader):
 def test_charges_non_3d_raises(two_atom_bader):
     with pytest.raises(exception.IncorrectUsage):
         two_atom_bader.bader.charges(np.ones((4, 4)))
+
+
+def test_analysis_reads_no_structure_data_after_construction():
+    # bader_analysis() is returned to the user after the HDF5 file context closed,
+    # so the analysis must capture everything it needs at construction time.
+    shape = (24, 12, 12)
+    lattice_vectors = np.diag((8.0, 4.0, 4.0))
+    atoms = [(0.25, 0.5, 0.5), (0.75, 0.5, 0.5)]
+    charge = gaussian_density(shape, lattice_vectors, atoms)
+    structure = ClosableStructure(make_structure(lattice_vectors, atoms, ["Na", "Cl"]))
+
+    analysis = bader.BaderAnalysis(structure, charge)
+    structure.closed = True  # emulate leaving the file context
+
+    assert list(analysis.charges()) == ["Na_1", "Cl_1"]
+    assert analysis.basins().shape == shape
+    assert len(analysis.to_view().grid_domains) == 1
 
 
 def test_plot_is_alias_of_to_view(Assert):

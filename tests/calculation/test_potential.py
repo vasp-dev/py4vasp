@@ -420,8 +420,7 @@ def test_bader_charge_conserves_total(raw_data, Assert):
 
     assert list(charges) == structure.to_dict()["names"]
     grid = potential.read()["total"]
-    total = grid.sum() * structure.volume() / grid.size
-    Assert.allclose(sum(charges.values()), total)
+    Assert.allclose(sum(charges.values()), grid.sum() / grid.size)
 
 
 def test_bader_charge_uses_external_analysis(raw_data, Assert):

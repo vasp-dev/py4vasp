@@ -422,8 +422,7 @@ def test_bader_charge_conserves_total(raw_data, Assert):
 
     assert list(charges) == structure.to_dict()["names"]
     grid = partial_density.to_numpy("total")
-    total = grid.sum() * structure.volume() / grid.size
-    Assert.allclose(sum(charges.values()), total)
+    Assert.allclose(sum(charges.values()), grid.sum() / grid.size)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Grid-based Bader partitioning of a charge density into atomic basins."""
+import copy
 import itertools
 
 import numpy as np
@@ -42,15 +43,19 @@ class BaderAnalysis(view.Mixin):
     """
 
     def __init__(self, structure, density, snap_to_atoms=True):
-        self._structure = structure
         self._density = np.asarray(density)
         _raise_error_if_density_not_3d(self._density)
-        self._snap_to_atoms = snap_to_atoms
-        lattice_vectors = structure.lattice_vectors()
+        # Materialize everything derived from the structure now, while the raw data
+        # is still available. The analysis is typically returned to the user after
+        # the file context has closed, so it must not read lazily loaded data later.
+        lattice_vectors = np.asarray(structure.lattice_vectors())
+        positions = np.asarray(structure.positions())
+        self._names = list(structure.to_dict()["names"])
+        self._view = structure.to_view()
         maxima = _resolve_to_maxima(_ascent_pointers(self._density, lattice_vectors))
         if snap_to_atoms:
             labels = _label_by_nearest_atom(
-                maxima, self._density.shape, lattice_vectors, structure.positions()
+                maxima, self._density.shape, lattice_vectors, positions
             )
         else:
             labels = _label_consecutively(maxima)
@@ -83,17 +88,18 @@ class BaderAnalysis(view.Mixin):
         Returns
         -------
         dict
-            Maps every atom label to the value integrated within its basin.
+            Maps every atom label to the value integrated within its basin. The
+            density follows the VASP convention where ``sum(density) / density.size``
+            equals the total number of electrons, so summing over all basins
+            reproduces that total.
         """
         density = self._density if density is None else np.asarray(density)
         _raise_error_if_density_not_3d(density)
         _raise_error_if_shape_differs(density, self._density)
-        names = self._structure.to_dict()["names"]
-        volume_element = self._structure.volume() / density.size
         totals = np.bincount(
-            self._basins.ravel(), weights=density.ravel(), minlength=len(names)
+            self._basins.ravel(), weights=density.ravel(), minlength=len(self._names)
         )
-        return dict(zip(names, totals * volume_element))
+        return dict(zip(self._names, totals / density.size))
 
     def to_view(self, threshold=0.0, supercell=None):
         """Visualize the Bader basins as labeled domains within the structure.
@@ -117,12 +123,14 @@ class BaderAnalysis(view.Mixin):
         """
         domains = self._basins + 1
         domains[self._density < threshold] = 0
-        viewer = self._structure.to_view(supercell)
+        viewer = copy.copy(self._view)
+        if supercell is not None:
+            viewer.supercell = supercell
         viewer.grid_domains = [
             view.GridDomain(
                 quantity=domains[np.newaxis],
                 label="basins",
-                labels=self._structure.to_dict()["names"],
+                labels=self._names,
             )
         ]
         return viewer

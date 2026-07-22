@@ -538,8 +538,7 @@ def test_bader_charge_conserves_total(raw_data, Assert):
 
     assert list(charges) == structure.to_dict()["names"]
     grid = nics.to_view().grid_scalars[0].quantity[0]
-    total = grid.sum() * structure.volume() / grid.size
-    Assert.allclose(sum(charges.values()), total)
+    Assert.allclose(sum(charges.values()), grid.sum() / grid.size)
 
 
 def test_bader_charge_in_points_mode_raises(raw_data):
