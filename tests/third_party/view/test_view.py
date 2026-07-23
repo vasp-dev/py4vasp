@@ -12,7 +12,12 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._third_party.view import View
-from py4vasp._third_party.view.view import GridQuantity, IonArrow, Isosurface
+from py4vasp._third_party.view.view import (
+    GridQuantity,
+    IonArrow,
+    Isosurface,
+    PhononDispersion,
+)
 from py4vasp._util import import_
 from py4vasp._util.color import Color
 
@@ -246,6 +251,25 @@ def test_fail_isosurface(view_multiple_grid_scalars):
     with pytest.raises(exception.NotImplemented):
         view.grid_scalars = grid_scalars
         widget = view.to_ngl()
+
+
+def test_fail_phonon_in_ngl():
+    pytest.importorskip("nglview")
+    phonon = PhononDispersion(
+        eigenvectors=np.zeros((1, 6, 2, 3), dtype=complex),
+        frequencies=np.zeros((1, 6)),
+        qpoints=np.zeros((1, 3)),
+        supercell_matrix=np.eye(3),
+        primitive_index=[0, 1],
+    )
+    view = View(
+        elements=[["Ga", "As"]],
+        lattice_vectors=[4 * np.eye(3)],
+        positions=[[[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]],
+        phonon=phonon,
+    )
+    with pytest.raises(exception.NotImplemented):
+        view.to_ngl()
 
 
 def test_ion_arrows(view_arrow, Assert):

@@ -493,8 +493,15 @@ class View:
     def _verify(self, mode=None):
         self._raise_error_if_present_on_multiple_steps(self.grid_scalars, mode)
         self._raise_error_if_present_on_multiple_steps(self.ion_arrows, mode)
+        self._raise_error_if_phonon_not_supported(mode)
         self._raise_error_if_number_steps_inconsistent()
         self._raise_error_if_any_shape_is_incorrect()
+
+    def _raise_error_if_phonon_not_supported(self, mode=None):
+        if mode == "ngl" and self.phonon is not None:
+            raise exception.NotImplemented(
+                "Visualizing phonon modes is not available for NGLView. "
+            )
 
     def _raise_error_if_present_on_multiple_steps(self, attributes, mode=None):
         if not attributes:
