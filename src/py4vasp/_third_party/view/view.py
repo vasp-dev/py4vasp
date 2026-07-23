@@ -475,9 +475,7 @@ class View:
         config = {
             "phonon_eigenvectors_re": self._convert_to_list(eigenvectors.real),
             "phonon_eigenvectors_im": self._convert_to_list(eigenvectors.imag),
-            "phonon_frequencies": self._convert_to_list(
-                np.asarray(phonon.frequencies)
-            ),
+            "phonon_frequencies": self._convert_to_list(np.asarray(phonon.frequencies)),
             "phonon_qpoints": self._convert_to_list(np.asarray(phonon.qpoints)),
             "phonon_supercell_matrix": self._convert_to_list(
                 np.asarray(phonon.supercell_matrix)

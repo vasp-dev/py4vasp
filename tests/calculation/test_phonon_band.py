@@ -6,10 +6,12 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from py4vasp import exception, raw
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.phonon_band import PhononBand, PhononBandHandler
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import PhononBandModel
 from py4vasp._util import convert
 
@@ -144,6 +146,46 @@ def test_to_database(phonon_band):
     ).to_database()
     assert db_data.eigenvalue_min == dispersion.eigenvalue_min
     assert db_data.eigenvalue_max == dispersion.eigenvalue_max
+
+
+def test_to_view(phonon_band, Assert):
+    view = phonon_band.to_view()
+    raw_band = phonon_band.ref.raw_data
+    # displayed geometry is the primitive cell
+    expected = StructureHandler.from_data(
+        raw.Structure(
+            stoichiometry=raw_band.stoichiometry,
+            cell=raw_band.dispersion.kpoints.cell,
+            positions=raw_band.primitive_positions,
+        )
+    ).to_view()
+    Assert.allclose(view.positions, expected.positions)
+    Assert.allclose(view.lattice_vectors, expected.lattice_vectors)
+    assert view.elements.tolist() == expected.elements.tolist()
+    # phonon dispersion attached
+    phonon = view.phonon
+    number_atoms = phonon_band.ref.modes.shape[2]
+    Assert.allclose(phonon.eigenvectors, phonon_band.ref.modes)
+    Assert.allclose(phonon.frequencies, phonon_band.ref.bands)
+    Assert.allclose(phonon.qpoints, np.array(raw_band.dispersion.kpoints.coordinates))
+    Assert.allclose(phonon.supercell_matrix, np.eye(3))
+    Assert.allclose(phonon.primitive_index, np.arange(number_atoms))
+    labels = phonon_band.ref.qpoints.labels()
+    expected_labels = [[i, label] for i, label in enumerate(labels) if label] or None
+    assert phonon.path_labels == expected_labels
+
+
+def test_to_view_supercell(phonon_band, Assert):
+    view = phonon_band.to_view(supercell=2)
+    Assert.allclose(view.supercell, (2, 2, 2))
+
+
+def test_to_view_without_primitive_positions_raises(raw_data):
+    raw_band = raw_data.phonon_band("default")
+    raw_band.primitive_positions = raw.VaspData(None)
+    band = PhononBand.from_data(raw_band)
+    with pytest.raises(exception.NoData):
+        band.to_view()
 
 
 def test_raw_data_exposes_primitive_positions(raw_data, Assert):
