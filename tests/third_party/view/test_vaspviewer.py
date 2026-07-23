@@ -12,7 +12,12 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._third_party.view import View
-from py4vasp._third_party.view.view import GridQuantity, IonArrow, Isosurface
+from py4vasp._third_party.view.view import (
+    GridQuantity,
+    IonArrow,
+    Isosurface,
+    PhononDispersion,
+)
 from py4vasp._util import convert, import_
 
 vaspview = import_.optional("vasp.viewer")
@@ -142,6 +147,55 @@ def test_volume_dataset_axis_order():
     reconstructed = buffer.reshape(nz, ny, nx).T
     assert grid == (na, nb, nc)
     assert np.array_equal(reconstructed, volume)
+
+
+def _phonon_dispersion():
+    n_qpoints, n_bands, n_atoms_prim = 4, 6, 2
+    size = n_qpoints * n_bands * n_atoms_prim * 3
+    real = np.arange(size, dtype=float).reshape(n_qpoints, n_bands, n_atoms_prim, 3)
+    eigenvectors = real + 1j * real[::-1]
+    return PhononDispersion(
+        eigenvectors=eigenvectors,
+        frequencies=np.arange(n_qpoints * n_bands, dtype=float).reshape(
+            n_qpoints, n_bands
+        ),
+        qpoints=np.linspace(0.0, 0.5, n_qpoints * 3).reshape(n_qpoints, 3),
+        supercell_matrix=np.eye(3),
+        primitive_index=np.array([0, 1]),
+        path_labels=[[0, "Gamma"], [3, "X"]],
+    )
+
+
+def _phonon_view(phonon):
+    return View(
+        elements=[["Ga", "As"]],
+        lattice_vectors=[4 * np.eye(3)],
+        positions=[[[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]]],
+        phonon=phonon,
+    )
+
+
+def test_phonon_dispersion_serialized_to_config():
+    phonon = _phonon_dispersion()
+    config = _phonon_view(phonon).to_vasp_viewer_config()
+    eigenvectors = np.asarray(phonon.eigenvectors)
+    Assert = np.testing.assert_allclose
+    Assert(np.asarray(config["phonon_eigenvectors_re"]), eigenvectors.real)
+    Assert(np.asarray(config["phonon_eigenvectors_im"]), eigenvectors.imag)
+    Assert(np.asarray(config["phonon_frequencies"]), np.asarray(phonon.frequencies))
+    Assert(np.asarray(config["phonon_qpoints"]), np.asarray(phonon.qpoints))
+    Assert(
+        np.asarray(config["phonon_supercell_matrix"]),
+        np.asarray(phonon.supercell_matrix),
+    )
+    assert list(config["phonon_primitive_index"]) == [0, 1]
+    assert config["phonon_path_labels"] == [[0, "Gamma"], [3, "X"]]
+
+
+def test_phonon_fields_absent_without_phonon_data():
+    config = _phonon_view(None).to_vasp_viewer_config()
+    phonon_keys = [key for key in config if key.startswith("phonon_")]
+    assert phonon_keys == []
 
 
 def _single_grid_view(isosurfaces):

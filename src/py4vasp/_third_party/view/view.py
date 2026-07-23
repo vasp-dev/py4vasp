@@ -132,6 +132,50 @@ class IonArrow:
     """Radius of the arrows"""
 
 
+@dataclass
+class PhononDispersion:
+    """Dataclass storing a phonon dispersion for interactive visualization.
+
+    The eigenvectors are defined on the primitive cell for each **q** point along
+    a path through the Brillouin zone. Together with the ``supercell_matrix`` and
+    ``primitive_index`` mapping, the viewer reconstructs the atomic displacements
+    in the displayed cell and animates the selected mode, while the frequencies
+    drive the interactive dispersion plot.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from py4vasp.view import PhononDispersion
+    >>> eigenvectors = np.zeros((1, 6, 2, 3), dtype=complex)
+    >>> PhononDispersion(
+    ...     eigenvectors=eigenvectors,
+    ...     frequencies=np.zeros((1, 6)),
+    ...     qpoints=np.zeros((1, 3)),
+    ...     supercell_matrix=np.eye(3),
+    ...     primitive_index=[0, 1],
+    ... )
+    PhononDispersion(eigenvectors=array([[[[...]]]]...), ...)
+    """
+
+    eigenvectors: npt.ArrayLike
+    """Complex eigenvectors of the primitive cell. Expected shape is
+    (number of q-points, number of bands, number of primitive atoms, 3)."""
+    frequencies: npt.ArrayLike
+    """Phonon frequencies. Expected shape is (number of q-points, number of bands)."""
+    qpoints: npt.ArrayLike
+    """**q** points along the path in fractional coordinates of the primitive
+    reciprocal lattice. Expected shape is (number of q-points, 3)."""
+    supercell_matrix: npt.ArrayLike
+    """Matrix M relating primitive and displayed cell such that f_prim = M · f_super.
+    Expected shape is (3, 3)."""
+    primitive_index: npt.ArrayLike
+    """For each atom in the displayed cell, the index of the corresponding
+    primitive-cell atom. Expected shape is (number of displayed atoms,)."""
+    path_labels: Optional[Sequence] = None
+    """Optional high-symmetry labels for the dispersion plot as a sequence of
+    ``[q_index, label]`` pairs."""
+
+
 _x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color="#000000")
 _y_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 3, 0)), color="#000000")
 _z_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 0, 3)), color="#000000")
@@ -255,6 +299,8 @@ class View:
     """This sequence stores quantities that are generated on a grid. Expected shape is (number of quantities,)."""
     ion_arrows: Optional[Sequence[IonArrow]] = None
     """This sequence stores arrows at the atom-centers. Expected shape is (number of quantities,)."""
+    phonon: Optional[PhononDispersion] = None
+    """Optional phonon dispersion to visualize as animated modes (only available for VASP Viewer)."""
     supercell: npt.ArrayLike = (1, 1, 1)
     """Defines how many multiples of the cell are drawn along each coordinate axes, in integer values. Valid shapes are (1,), or (3,), and valid dtype=int."""
     show_cell: bool = True
@@ -414,11 +460,37 @@ class View:
                 self.show_axes_at
             )
 
+        # === Phonon options ===
+        if self.phonon is not None:
+            structure.update(self._phonon_config(self.phonon))
+
         # === Meta options ===
         if self.structure_title:
             structure["selections_descriptor"] = self.structure_title
 
         return structure
+
+    def _phonon_config(self, phonon):
+        eigenvectors = np.asarray(phonon.eigenvectors)
+        config = {
+            "phonon_eigenvectors_re": self._convert_to_list(eigenvectors.real),
+            "phonon_eigenvectors_im": self._convert_to_list(eigenvectors.imag),
+            "phonon_frequencies": self._convert_to_list(
+                np.asarray(phonon.frequencies)
+            ),
+            "phonon_qpoints": self._convert_to_list(np.asarray(phonon.qpoints)),
+            "phonon_supercell_matrix": self._convert_to_list(
+                np.asarray(phonon.supercell_matrix)
+            ),
+            "phonon_primitive_index": [
+                int(index) for index in np.asarray(phonon.primitive_index)
+            ],
+        }
+        if phonon.path_labels is not None:
+            config["phonon_path_labels"] = [
+                [int(index), str(label)] for index, label in phonon.path_labels
+            ]
+        return config
 
     def _verify(self, mode=None):
         self._raise_error_if_present_on_multiple_steps(self.grid_scalars, mode)
