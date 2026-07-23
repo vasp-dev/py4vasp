@@ -652,6 +652,8 @@ class PhononBand:
     "The atom types in the crystal."
     eigenvectors: VaspData
     "The eigenvectors of the phonon modes."
+    primitive_positions: VaspData = NONE()
+    "Positions of the atoms in the primitive cell (optional, used for visualization)."
 
 
 @dataclasses.dataclass

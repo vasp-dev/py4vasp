@@ -146,6 +146,13 @@ def test_to_database(phonon_band):
     assert db_data.eigenvalue_max == dispersion.eigenvalue_max
 
 
+def test_raw_data_exposes_primitive_positions(raw_data, Assert):
+    raw_band = raw_data.phonon_band("default")
+    positions = np.array(raw_band.primitive_positions)
+    number_atoms = np.sum(np.array(raw_band.stoichiometry.number_ion_types))
+    assert positions.shape == (number_atoms, 3)
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_band("default")
     check_factory_methods(PhononBand, data)
