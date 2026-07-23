@@ -246,7 +246,7 @@ class PhononBand(graph.Mixin):
         """Visualize the phonon dispersion as animated modes in the primitive cell.
 
         The resulting :class:`~py4vasp.view.View` shows the primitive cell together
-        with the full phonon dispersion. 
+        with the full phonon dispersion.
 
         Parameters
         ----------
