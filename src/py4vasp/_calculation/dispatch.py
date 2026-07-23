@@ -16,10 +16,12 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp import raw as _raw_module
+from py4vasp._raw.definition import schema as _schema
 from py4vasp._raw.definition import selections as schema_selections
 from py4vasp._raw.definition import unique_selections as schema_unique_selections
+from py4vasp._raw.schema import DEFAULT_SELECTION, Link
 from py4vasp._third_party.graph import Graph
-from py4vasp._util import select
+from py4vasp._util import check, select
 
 _REGISTRY = {}
 
@@ -73,6 +75,20 @@ def quantity(name, group=None):
 
         if not isinstance(getattr(cls, "_path", None), property):
             cls._path = property(lambda self: self._source.path or pathlib.Path.cwd())
+
+        # Provide a default is_available that checks the schema against the data.
+        # A quantity may define its own is_available to refine this behavior; in
+        # that case we keep the custom implementation.
+        if "is_available" not in cls.__dict__:
+
+            def is_available(self, enforce_optional=False, method=None):
+                return data_available(
+                    self._source,
+                    self._quantity_name,
+                    enforce_optional=enforce_optional,
+                )
+
+            cls.is_available = is_available
 
         if group is None:
             _REGISTRY[name] = cls
@@ -500,6 +516,112 @@ def merge_strings(
     if len(results) == 1:
         return next(iter(results.values()))
     return "\n".join(results.values())
+
+
+def data_available(
+    source,
+    quantity_name,
+    enforce_optional=False,
+    enforce_optional_linked=False,
+    selection=None,
+):
+    """Check whether the data a quantity's schema lists is available.
+
+    The check inspects which datasets exist in the source without loading the
+    array data into memory. A field is "listed" when the schema specifies a
+    location for it; fields the schema leaves unset are ignored.
+
+    Parameters
+    ----------
+    source : Source
+        The data source (FileSource, DataSource, ...).
+    quantity_name : str
+        Name used to look up the quantity in the schema and the source.
+    enforce_optional : bool
+        If True, the optional fields of *quantity_name* must also be available.
+        If False (default), only the required fields are checked.
+    enforce_optional_linked : bool
+        If True, the optional fields of quantities linked from *quantity_name*
+        must also be available. If False (default), linked quantities only need
+        their required data. Custom ``is_available`` implementations may enable
+        this when a method depends on optional data of a linked quantity.
+    selection : str | None
+        Which source of the quantity to check. Defaults to the schema default.
+
+    Returns
+    -------
+    bool
+        True if every listed field consistent with the enforce flags is present.
+    """
+    spec = _schema_specification(quantity_name, selection)
+    try:
+        with source.access(quantity_name, selection=selection) as raw_data:
+            return _data_available(
+                spec, raw_data, enforce_optional, enforce_optional_linked
+            )
+    except (
+        exception.FileAccessError,
+        exception.OutdatedVaspVersion,
+        exception.NoData,
+    ):
+        return False
+
+
+def _schema_specification(quantity_name, selection):
+    try:
+        sources = _schema.sources[quantity_name.lstrip("_")]
+    except KeyError:
+        return None
+    source = sources.get(selection or DEFAULT_SELECTION)
+    return source.data if source is not None else None
+
+
+def _data_available(
+    spec, raw_data, enforce_optional, enforce_optional_linked, seen=None
+):
+    seen = seen or set()
+    if spec is None:
+        # Sources built by a data_factory have no introspectable schema; treat
+        # the resolved data as available whenever it is present.
+        return raw_data is not None and not check.is_none(raw_data)
+    for field in dataclasses.fields(spec):
+        specification = getattr(spec, field.name)
+        if check.is_none(specification):
+            continue  # the schema does not list this field
+        if _field_is_optional(field) and not enforce_optional:
+            continue
+        value = getattr(raw_data, field.name)
+        if isinstance(specification, Link):
+            if not _linked_data_available(
+                specification, value, enforce_optional_linked, seen
+            ):
+                return False
+        elif check.is_none(value):
+            return False
+    return True
+
+
+def _linked_data_available(link, value, enforce_optional_linked, seen):
+    if check.is_none(value):
+        return False
+    key = (link.quantity, link.source)
+    if key in seen:
+        return True
+    nested_spec = _schema_specification(link.quantity, link.source)
+    return _data_available(
+        nested_spec,
+        value,
+        enforce_optional_linked,
+        enforce_optional_linked,
+        seen | {key},
+    )
+
+
+def _field_is_optional(field):
+    return (
+        field.default is not dataclasses.MISSING
+        or field.default_factory is not dataclasses.MISSING
+    )
 
 
 def slice_steps(data, steps, default_ndim):

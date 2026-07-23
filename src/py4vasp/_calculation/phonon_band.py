@@ -11,6 +11,7 @@ from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    data_available,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -273,6 +274,41 @@ class PhononBand(graph.Mixin):
             self._handler_factory,
             PhononBandHandler.to_view,
             supercell=supercell,
+        )
+
+    def is_available(self, enforce_optional=False, method=None):
+        """Check whether the data required for the phonon band structure is available.
+
+        Parameters
+        ----------
+        enforce_optional : bool
+            If True, the optional data of the phonon band structure (the
+            primitive-cell positions) must also be available. Defaults to False,
+            i.e., only the data required for the band structure itself is checked.
+        method : str | None
+            If ``"to_view"``, additionally require the primitive-cell positions,
+            because :meth:`to_view` needs them to place the atoms. For any other
+            method the default schema check is used.
+
+        Returns
+        -------
+        bool
+            True if the requested data is available.
+        """
+        if data_available(
+            self._source,
+            self._quantity_name,
+            enforce_optional=True,
+            enforce_optional_linked=True,
+        ):
+            return True
+        if method == "to_view":
+            # to_view needs the required data plus the optional primitive positions
+            return data_available(
+                self._source, self._quantity_name, enforce_optional=True
+            )
+        return data_available(
+            self._source, self._quantity_name, enforce_optional=enforce_optional
         )
 
     def _to_database(self) -> dict:
