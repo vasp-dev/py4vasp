@@ -226,8 +226,8 @@ instead of the constructor Calculation()."""
         For every quantity that py4vasp can access (e.g. ``"structure"``, ``"band"``,
         or grouped quantities like ``"exciton.density"``) this collects the selections
         (sources) defined in the schema. Only the schema and the existence of the
-        relevant datasets are inspected; the data itself is never loaded. There are 
-        some exceptions for quantities & methods that require knowledge of specific data 
+        relevant datasets are inspected; the data itself is never loaded. There are
+        some exceptions for quantities & methods that require knowledge of specific data
         to determine whether they might fail, but even then only the relevant subset
         of the data is loaded.
 

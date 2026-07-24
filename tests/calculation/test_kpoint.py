@@ -343,4 +343,7 @@ def test_is_available(raw_data):
     for method in ("read", "distances", "number_lines", "line_length"):
         assert without_number.is_available("default", method=method) is False
     # grid modes are unaffected by the missing number
-    assert Kpoint.from_data(raw_without_number).is_available("default", method="mode") is True
+    assert (
+        Kpoint.from_data(raw_without_number).is_available("default", method="mode")
+        is True
+    )
