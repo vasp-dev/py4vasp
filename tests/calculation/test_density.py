@@ -8,6 +8,7 @@ import pytest
 
 from py4vasp import _config, exception, raw
 from py4vasp._calculation.density import Density
+from py4vasp._calculation.dispatch import DictSource
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._third_party.view import Isosurface
 from py4vasp._util.bader import BaderAnalysis
@@ -547,6 +548,24 @@ def test_bader_charge_multiple_selections(raw_data):
 
 def test_all_electron_is_selectable(nonpolarized_density):
     assert "all_electron" in nonpolarized_density.selections()["density"]
+
+
+def test_bader_honors_getitem_source(raw_data, Assert):
+    # a source that distinguishes the default (pseudo) from the all_electron data
+    pseudo = raw_data.density("Fe3O4 collinear")
+    all_electron = raw_data.density("all_electron")
+    source = DictSource({"density": pseudo, ("density", "all_electron"): all_electron})
+    density = Density(source)
+
+    from_getitem = density["all_electron"].bader_charge()
+    from_selection = density.bader_charge("all_electron")
+
+    assert from_getitem.keys() == from_selection.keys()
+    for key in from_getitem:
+        Assert.allclose(from_getitem[key], from_selection[key])
+    # and the get-item form must not silently fall back to the pseudo source
+    pseudo_charges = density.bader_charge()
+    assert from_getitem != pseudo_charges
 
 
 def test_all_electron_read_excludes_core(raw_data, Assert):

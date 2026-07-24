@@ -36,6 +36,16 @@ def _bader_charge(self, selection=None, *, bader_analysis=None, snap_to_atoms=Tr
 class BaderMixin:
     """Add a Bader charge analysis to a quantity defined on a real-space grid."""
 
+    def _bader_selection(self, selection):
+        # Honor a source chosen via item access (e.g. density["all_electron"]) the
+        # same way read and plot do, combining it with the method selection.
+        source = getattr(self, "_selection_name", None)
+        if source is None:
+            return selection
+        if selection is None:
+            return source
+        return f"{source}({selection})"
+
     def bader_analysis(self, selection=None, *, snap_to_atoms=True):
         """Partition the selected density into atomic Bader basins.
 
@@ -65,7 +75,7 @@ class BaderMixin:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            self._bader_selection(selection),
             self._handler_factory,
             _bader_analysis,
             snap_to_atoms=snap_to_atoms,
@@ -94,6 +104,19 @@ class BaderMixin:
             ``{atom: charge}`` for a single selection, or
             ``{selection: {atom: charge}}`` for several.
 
+        Notes
+        -----
+        The returned charge is the integral of the *selected* density within the
+        basins. ``bader_charge("all_electron")`` therefore integrates the
+        all-electron valence density in all-electron basins. To reproduce the
+        Henkelman workflow instead -- basins from the all-electron density but the
+        integral of the pseudo (valence) density -- combine both explicitly::
+
+            calc.density.bader_charge(bader_analysis=calc.density.bader_analysis("all_electron"))
+
+        The two differ by how the valence charge is distributed near the nuclei
+        (typically a few hundredths of an electron), not by the basins.
+
         Examples
         --------
         >>> from py4vasp import demo
@@ -104,7 +127,7 @@ class BaderMixin:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            self._bader_selection(selection),
             self._handler_factory,
             _bader_charge,
             bader_analysis=bader_analysis,
