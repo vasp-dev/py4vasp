@@ -11,7 +11,8 @@ from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
-    data_available,
+    available_in_raw,
+    check_availability,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -276,8 +277,12 @@ class PhononBand(graph.Mixin):
             supercell=supercell,
         )
 
-    def is_available(self, enforce_optional=False, method=None):
+    @check_availability
+    def is_available(self, raw_data, enforce_optional, method):
         """Check whether the data required for the phonon band structure is available.
+
+        The data is accessed once and probed in memory, so refining the default
+        check does not trigger additional file accesses.
 
         Parameters
         ----------
@@ -287,28 +292,27 @@ class PhononBand(graph.Mixin):
             i.e., only the data required for the band structure itself is checked.
         method : str | None
             If ``"to_view"``, additionally require the primitive-cell positions,
-            because :meth:`to_view` needs them to place the atoms. For any other
-            method the default schema check is used.
+            because :meth:`to_view` needs them to place the atoms.
 
         Returns
         -------
         bool
             True if the requested data is available.
         """
-        if data_available(
-            self._source,
+        if available_in_raw(
             self._quantity_name,
+            raw_data,
             enforce_optional=True,
             enforce_optional_linked=True,
         ):
             return True
         if method == "to_view":
             # to_view needs the required data plus the optional primitive positions
-            return data_available(
-                self._source, self._quantity_name, enforce_optional=True
+            return available_in_raw(
+                self._quantity_name, raw_data, enforce_optional=True
             )
-        return data_available(
-            self._source, self._quantity_name, enforce_optional=enforce_optional
+        return available_in_raw(
+            self._quantity_name, raw_data, enforce_optional=enforce_optional
         )
 
     def _to_database(self) -> dict:

@@ -8,6 +8,7 @@ Provides Source classes, dispatch functions, merge strategies, and the
 
 import contextlib
 import dataclasses
+import functools
 import inspect
 import pathlib
 import typing
@@ -80,15 +81,7 @@ def quantity(name, group=None):
         # A quantity may define its own is_available to refine this behavior; in
         # that case we keep the custom implementation.
         if "is_available" not in cls.__dict__:
-
-            def is_available(self, enforce_optional=False, method=None):
-                return data_available(
-                    self._source,
-                    self._quantity_name,
-                    enforce_optional=enforce_optional,
-                )
-
-            cls.is_available = is_available
+            cls.is_available = _default_is_available
 
         if group is None:
             _REGISTRY[name] = cls
@@ -518,25 +511,62 @@ def merge_strings(
     return "\n".join(results.values())
 
 
-def data_available(
-    source,
+def check_availability(check):
+    """Decorate an ``is_available`` implementation with a single data access.
+
+    The decorated function is called as ``check(self, raw_data, enforce_optional,
+    method)`` where ``raw_data`` is obtained from exactly one access to the
+    quantity's data. Because the raw data is loaded once and passed in, the
+    implementation may probe it repeatedly (e.g. call :func:`available_in_raw`
+    with different flags) without triggering further file accesses. If the data
+    cannot be accessed at all (missing file, outdated version, no data), the
+    quantity is reported as unavailable.
+    """
+
+    @functools.wraps(check)
+    def wrapper(self, enforce_optional=False, method=None):
+        try:
+            with self._source.access(self._quantity_name) as raw_data:
+                return check(self, raw_data, enforce_optional, method)
+        except (
+            exception.FileAccessError,
+            exception.OutdatedVaspVersion,
+            exception.NoData,
+        ):
+            return False
+
+    return wrapper
+
+
+@check_availability
+def _default_is_available(self, raw_data, enforce_optional, method):
+    """Default ``is_available``: check the schema against the accessed data."""
+    return available_in_raw(
+        self._quantity_name, raw_data, enforce_optional=enforce_optional
+    )
+
+
+def available_in_raw(
     quantity_name,
+    raw_data,
     enforce_optional=False,
     enforce_optional_linked=False,
     selection=None,
 ):
-    """Check whether the data a quantity's schema lists is available.
+    """Check availability of a quantity's data in an already-accessed raw object.
 
-    The check inspects which datasets exist in the source without loading the
-    array data into memory. A field is "listed" when the schema specifies a
-    location for it; fields the schema leaves unset are ignored.
+    This performs no file access; it inspects *raw_data* (obtained from a single
+    prior access) against the schema. A field is "listed" when the schema
+    specifies a location for it; fields the schema leaves unset are ignored.
+    ``is_available`` implementations decorated with :func:`check_availability`
+    call this to evaluate different flag combinations on one loaded object.
 
     Parameters
     ----------
-    source : Source
-        The data source (FileSource, DataSource, ...).
     quantity_name : str
-        Name used to look up the quantity in the schema and the source.
+        Name used to look up the quantity in the schema.
+    raw_data
+        The raw data object returned by accessing the quantity.
     enforce_optional : bool
         If True, the optional fields of *quantity_name* must also be available.
         If False (default), only the required fields are checked.
@@ -554,10 +584,51 @@ def data_available(
         True if every listed field consistent with the enforce flags is present.
     """
     spec = _schema_specification(quantity_name, selection)
+    return _data_available(spec, raw_data, enforce_optional, enforce_optional_linked)
+
+
+def data_available(
+    source,
+    quantity_name,
+    enforce_optional=False,
+    enforce_optional_linked=False,
+    selection=None,
+):
+    """Check whether the data a quantity's schema lists is available.
+
+    Convenience wrapper that opens a single access to *source* and delegates to
+    :func:`available_in_raw`. The check inspects which datasets exist without
+    loading the array data into memory.
+
+    Parameters
+    ----------
+    source : Source
+        The data source (FileSource, DataSource, ...).
+    quantity_name : str
+        Name used to look up the quantity in the schema and the source.
+    enforce_optional : bool
+        If True, the optional fields of *quantity_name* must also be available.
+        If False (default), only the required fields are checked.
+    enforce_optional_linked : bool
+        If True, the optional fields of quantities linked from *quantity_name*
+        must also be available. If False (default), linked quantities only need
+        their required data.
+    selection : str | None
+        Which source of the quantity to check. Defaults to the schema default.
+
+    Returns
+    -------
+    bool
+        True if every listed field consistent with the enforce flags is present.
+    """
     try:
         with source.access(quantity_name, selection=selection) as raw_data:
-            return _data_available(
-                spec, raw_data, enforce_optional, enforce_optional_linked
+            return available_in_raw(
+                quantity_name,
+                raw_data,
+                enforce_optional=enforce_optional,
+                enforce_optional_linked=enforce_optional_linked,
+                selection=selection,
             )
     except (
         exception.FileAccessError,

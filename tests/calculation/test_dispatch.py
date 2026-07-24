@@ -1113,7 +1113,7 @@ class TestIsAvailableInjected:
     def test_default_enforce_optional_is_false(self, tmp_path):
         calc = self._calc(tmp_path)
         with patch(
-            "py4vasp._calculation.dispatch.data_available", return_value=True
+            "py4vasp._calculation.dispatch.available_in_raw", return_value=True
         ) as mock_available:
             calc.density.is_available()
         _, kwargs = mock_available.call_args

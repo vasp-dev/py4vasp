@@ -195,6 +195,16 @@ def test_is_available_to_view_requires_primitive_positions(raw_data):
     assert quantity.is_available(enforce_optional=True) is False
 
 
+def test_is_available_accesses_data_once(raw_data):
+    band = raw_data.phonon_band("default")
+    band.primitive_positions = raw.VaspData(None)
+    quantity = PhononBand.from_path()
+    with patch("py4vasp.raw.access") as mock_access:
+        mock_access.return_value.__enter__.return_value = band
+        assert quantity.is_available(method="to_view") is False
+    mock_access.assert_called_once()
+
+
 def test_is_available_unspecialized_method_uses_default(raw_data):
     band = raw_data.phonon_band("default")
     band.primitive_positions = raw.VaspData(None)
@@ -221,6 +231,4 @@ def test_raw_data_exposes_primitive_positions(raw_data, Assert):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_band("default")
-    # is_available refines the default check by probing the schema more than once,
-    # so it does not follow the single-access contract this helper verifies.
-    check_factory_methods(PhononBand, data, skip_methods=["is_available"])
+    check_factory_methods(PhononBand, data)
