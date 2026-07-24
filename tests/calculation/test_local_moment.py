@@ -348,8 +348,8 @@ def test_is_available(raw_data):
     nonpolarized = LocalMoment.from_data(raw_data.local_moment("charge_only"))
     collinear = LocalMoment.from_data(raw_data.local_moment("collinear"))
     for method in ("magnetic", "projected_magnetic", "to_view"):
-        assert nonpolarized.is_available(method=method) is False
-        assert collinear.is_available(method=method) is True
+        assert nonpolarized.is_available("default", method=method) is False
+        assert collinear.is_available("default", method=method) is True
     # charge-related access works for any configuration
-    assert nonpolarized.is_available() is True
-    assert nonpolarized.is_available(method="charge") is True
+    assert nonpolarized.is_available("default") is True
+    assert nonpolarized.is_available("default", method="charge") is True

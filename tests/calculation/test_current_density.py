@@ -216,13 +216,11 @@ def test_to_database(raw_data, Assert):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.current_density("x")
-    # is_available resolves the real "nmr" source rather than the default one this
-    # helper assumes, so it is checked separately (test_is_available).
-    check_factory_methods(CurrentDensity, data, skip_methods=["is_available"])
+    check_factory_methods(CurrentDensity, data)
 
 
 def test_is_available(tmp_path):
     from py4vasp import demo
 
     calc = demo.calculation(tmp_path / "example")
-    assert calc.current_density.is_available() is True
+    assert calc.current_density.is_available("nmr") is True

@@ -556,7 +556,7 @@ def test_is_available(raw_data):
         raw_data.effective_coulomb("crpar")
     )
     # the default frequency plot needs more than one frequency
-    assert single_frequency.is_available(method="to_graph") is False
-    assert multiple_frequencies.is_available(method="to_graph") is True
+    assert single_frequency.is_available("default", method="to_graph") is False
+    assert multiple_frequencies.is_available("default", method="to_graph") is True
     # reading the data works regardless of the number of frequencies
-    assert single_frequency.is_available() is True
+    assert single_frequency.is_available("default") is True

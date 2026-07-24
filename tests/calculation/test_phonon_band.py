@@ -181,7 +181,7 @@ def test_to_view_supercell(phonon_band, Assert):
 
 
 def test_is_available_to_view_with_primitive_positions(phonon_band):
-    assert phonon_band.is_available(method="to_view") is True
+    assert phonon_band.is_available("default", method="to_view") is True
 
 
 def test_is_available_to_view_requires_primitive_positions(raw_data):
@@ -189,9 +189,9 @@ def test_is_available_to_view_requires_primitive_positions(raw_data):
     band.primitive_positions = raw.VaspData(None)
     quantity = PhononBand.from_data(band)
     # to_view needs the optional primitive positions specifically
-    assert quantity.is_available(method="to_view") is False
+    assert quantity.is_available("default", method="to_view") is False
     # the default check only requires the non-optional data
-    assert quantity.is_available() is True
+    assert quantity.is_available("default") is True
 
 
 def test_is_available_accesses_data_once(raw_data):
@@ -200,7 +200,7 @@ def test_is_available_accesses_data_once(raw_data):
     quantity = PhononBand.from_path()
     with patch("py4vasp.raw.access") as mock_access:
         mock_access.return_value.__enter__.return_value = band
-        assert quantity.is_available(method="to_view") is False
+        assert quantity.is_available("default", method="to_view") is False
     mock_access.assert_called_once()
 
 
@@ -209,7 +209,7 @@ def test_is_available_unspecialized_method_uses_default(raw_data):
     band.primitive_positions = raw.VaspData(None)
     quantity = PhononBand.from_data(band)
     # a method the override does not specialize falls back to the mandatory-only check
-    assert quantity.is_available(method="to_dict") is True
+    assert quantity.is_available("default", method="to_dict") is True
 
 
 def test_to_view_without_primitive_positions_raises(raw_data):

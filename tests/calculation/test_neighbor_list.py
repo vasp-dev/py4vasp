@@ -435,4 +435,4 @@ def test_is_available(tmp_path):
     # neighbor_list derives its data from the structure quantity; is_available must
     # resolve that rather than the (non-existent) "neighbor_list" schema entry.
     calc = demo.calculation(tmp_path / "example")
-    assert calc.neighbor_list.is_available() is True
+    assert calc.neighbor_list.is_available("default") is True

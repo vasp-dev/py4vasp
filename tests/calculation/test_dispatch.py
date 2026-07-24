@@ -1099,20 +1099,20 @@ class TestIsAvailableInjected:
 
     def test_injected_on_all_quantities(self, tmp_path):
         calc = self._calc(tmp_path)
-        assert calc.density.is_available() is True
-        assert calc.structure.is_available() is True
-        assert calc.energy.is_available() is True
+        assert calc.density.is_available("default") is True
+        assert calc.structure.is_available("default") is True
+        assert calc.energy.is_available("default") is True
 
     def test_returns_false_when_quantity_absent(self, tmp_path):
         calc = self._calc(tmp_path)
         # born_effective_charge is not part of the default demo data
-        assert calc.born_effective_charge.is_available() is False
+        assert calc.born_effective_charge.is_available("default") is False
 
     def test_method_argument_is_ignored_by_default(self, tmp_path):
         calc = self._calc(tmp_path)
-        assert (
-            calc.density.is_available(method="to_view") == calc.density.is_available()
-        )
+        assert calc.density.is_available(
+            "default", method="to_view"
+        ) == calc.density.is_available("default")
 
     def test_default_does_not_enforce_optional(self, tmp_path):
         calc = self._calc(tmp_path)
@@ -1121,9 +1121,24 @@ class TestIsAvailableInjected:
         with patch(
             "py4vasp._calculation.dispatch.is_available_raw", return_value=True
         ) as mock_available:
-            calc.energy.is_available()
+            calc.energy.is_available("default")
         _, kwargs = mock_available.call_args
         assert kwargs.get("enforce_optional", ()) == ()
+
+    def test_selection_none_returns_dict_over_sources(self, tmp_path):
+        calc = self._calc(tmp_path)
+        result = calc.structure.is_available()
+        assert isinstance(result, dict)
+        # structure exposes several sources; the primary one is available
+        assert result["default"] is True
+        assert all(isinstance(value, bool) for value in result.values())
+
+    def test_selection_none_uses_method_per_source(self, tmp_path):
+        calc = self._calc(tmp_path)
+        # density has no magnetization in the default demo, so to_quiver is unavailable
+        result = calc.density.is_available(method="to_quiver")
+        assert isinstance(result, dict)
+        assert result["default"] is False
 
     def test_public_is_available_hides_enforce_optional(self):
         import inspect
@@ -1144,4 +1159,5 @@ class TestIsAvailableSourceResolution:
         # current_density's only schema source is "nmr" (no "default"); is_available
         # must resolve it rather than fail on the missing "default" source.
         calc = self._calc(tmp_path)
-        assert calc.current_density.is_available() is True
+        assert calc.current_density.is_available("nmr") is True
+        assert calc.current_density.is_available() == {"nmr": True}

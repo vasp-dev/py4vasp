@@ -534,9 +534,9 @@ def is_available(self, selection=None, method=None):
     Parameters
     ----------
     selection : str | None
-        Restrict the check to a particular source of the quantity, using the same
-        ``selection`` string accepted by :meth:`read`. Defaults to the primary
-        source of the quantity.
+        A particular source of the quantity, using the same ``selection`` string
+        accepted by :meth:`read`. If ``None`` (default), every source of the
+        quantity is checked and the result is returned as a dictionary.
     method : str | None
         The method you intend to call, e.g. ``"to_view"``. Most quantities report
         the same availability for every method, but some require additional data
@@ -544,19 +544,32 @@ def is_available(self, selection=None, method=None):
 
     Returns
     -------
-    bool
-        True if the data required for *method* (with the given *selection*) is
-        available.
+    bool | dict[str, bool]
+        If *selection* is given, ``True`` when the data required for *method* with
+        that selection is available. If *selection* is ``None``, a dictionary
+        mapping every source of the quantity to its availability, e.g.
+        ``{"default": True, "final": False}``.
     """
     quantity = _availability_quantity_of(self)
+    if selection is not None:
+        return _availability_of_source(self, quantity, selection, method)
+    return {
+        source: _availability_of_source(self, quantity, source, method)
+        for source in schema_unique_selections(quantity)
+    }
+
+
+def _availability_of_source(instance, quantity, selection, method):
+    """Open a single access for one source and evaluate its availability."""
     source = _effective_source(quantity, selection)
     try:
-        with self._source.access(quantity, selection=source) as raw_data:
-            return self._is_available(raw_data, selection, method)
+        with instance._source.access(quantity, selection=source) as raw_data:
+            return instance._is_available(raw_data, selection, method)
     except (
         exception.FileAccessError,
         exception.OutdatedVaspVersion,
         exception.NoData,
+        FileNotFoundError,
     ):
         return False
 

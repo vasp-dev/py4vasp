@@ -720,16 +720,16 @@ def test_is_available_symmetry_methods(perovskite, raw_data):
     # perovskite carries symmetry; this Sr2TiO4 is complete but has no symmetry
     without_symmetry = make_structure(raw_data.structure("Sr2TiO4"))
     for method in _SYMMETRY_METHODS:
-        assert perovskite.is_available(method=method) is True
-        assert without_symmetry.is_available(method=method) is False
+        assert perovskite.is_available("default", method=method) is True
+        assert without_symmetry.is_available("default", method=method) is False
 
 
 def test_is_available_default_and_other_methods(perovskite, raw_data):
     without_symmetry = make_structure(raw_data.structure("Sr2TiO4"))
-    assert perovskite.is_available() is True
-    assert without_symmetry.is_available() is True
+    assert perovskite.is_available("default") is True
+    assert without_symmetry.is_available("default") is True
     # methods that do not need symmetry stay available without it
-    assert without_symmetry.is_available(method="to_view") is True
+    assert without_symmetry.is_available("default", method="to_view") is True
 
 
 def test_wyckoff_positions(perovskite):

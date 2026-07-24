@@ -334,13 +334,13 @@ def test_is_available(raw_data):
 
     line = Kpoint.from_data(raw_data.kpoint("line with_labels"))
     grid = Kpoint.from_data(raw_data.kpoint("explicit with_labels"))
-    assert line.is_available(method="distances") is True
-    assert grid.is_available(method="distances") is True
+    assert line.is_available("default", method="distances") is True
+    assert grid.is_available("default", method="distances") is True
     # line mode without the number of points per line cannot split the path
     raw_without_number = raw_data.kpoint("line with_labels")
     raw_without_number.number = raw.VaspData(None)
     without_number = Kpoint.from_data(raw_without_number)
     for method in ("read", "distances", "number_lines", "line_length"):
-        assert without_number.is_available(method=method) is False
+        assert without_number.is_available("default", method=method) is False
     # grid modes are unaffected by the missing number
-    assert Kpoint.from_data(raw_without_number).is_available(method="mode") is True
+    assert Kpoint.from_data(raw_without_number).is_available("default", method="mode") is True

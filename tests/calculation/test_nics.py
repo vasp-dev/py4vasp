@@ -535,21 +535,21 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def test_is_available_on_a_grid(nics_on_a_grid):
-    assert nics_on_a_grid.is_available() is True
-    assert nics_on_a_grid.is_available(method="to_view") is True
-    assert nics_on_a_grid.is_available(method="to_contour") is True
+    assert nics_on_a_grid.is_available("default") is True
+    assert nics_on_a_grid.is_available("default", method="to_view") is True
+    assert nics_on_a_grid.is_available("default", method="to_contour") is True
 
 
 def test_is_available_at_points(nics_at_points):
-    assert nics_at_points.is_available() is True
+    assert nics_at_points.is_available("default") is True
     # to_view / to_contour only work on grid data
-    assert nics_at_points.is_available(method="to_view") is False
-    assert nics_at_points.is_available(method="to_contour") is False
+    assert nics_at_points.is_available("default", method="to_view") is False
+    assert nics_at_points.is_available("default", method="to_contour") is False
 
 
 def test_is_available_without_payload(raw_data):
     raw_nics = raw_data.nics("on-a-grid")
     raw_nics.nics_grid = raw.VaspData(None)
     quantity = Nics.from_data(raw_nics)
-    assert quantity.is_available() is False
-    assert quantity.is_available(method="to_view") is False
+    assert quantity.is_available("default") is False
+    assert quantity.is_available("default", method="to_view") is False
