@@ -9,6 +9,7 @@ import pytest
 from py4vasp import _config
 from py4vasp._calculation.partial_density import PartialDensity
 from py4vasp._calculation.structure import Structure, StructureHandler
+from py4vasp._util.bader import BaderAnalysis
 from py4vasp._util.slicing import plane
 from py4vasp.exception import IncorrectUsage, NoData, NotImplemented
 
@@ -417,14 +418,22 @@ def test_bader_charge_conserves_total(raw_data, Assert):
     raw_pd = raw_data.partial_density("spin_polarized")
     partial_density = PartialDensity.from_data(raw_pd)
     structure = StructureHandler.from_data(raw_pd.structure)
+    grid = partial_density.to_numpy("total")
+    # only the charge density defines basins, so supply them externally
+    analysis = BaderAnalysis(structure, grid)
 
-    charges = partial_density.bader_charge()
+    charges = partial_density.bader_charge(bader_analysis=analysis)
 
     assert list(charges) == structure.to_dict()["names"]
-    grid = partial_density.to_numpy("total")
     Assert.allclose(sum(charges.values()), grid.sum() / grid.size)
+
+
+def test_bader_charge_requires_analysis(raw_data):
+    partial_density = PartialDensity.from_data(raw_data.partial_density("spin_polarized"))
+    with pytest.raises(IncorrectUsage):
+        partial_density.bader_charge()
 
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.partial_density("spin_polarized")
-    check_factory_methods(PartialDensity, data)
+    check_factory_methods(PartialDensity, data, skip_methods=["bader_charge"])

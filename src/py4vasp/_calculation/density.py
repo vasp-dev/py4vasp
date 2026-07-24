@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
-from py4vasp._calculation.bader import BaderMixin
+from py4vasp._calculation.bader import BaderAnalysisMixin
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import graph, view
@@ -290,7 +290,7 @@ class DensityHandler:
 
 
 @quantity("density")
-class Density(view.Mixin, BaderMixin):
+class Density(view.Mixin, BaderAnalysisMixin):
     """This class accesses various densities (charge, magnetization, ...) of VASP.
 
     The charge density is one key quantity optimized by VASP. With this class you

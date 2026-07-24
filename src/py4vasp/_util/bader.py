@@ -182,33 +182,20 @@ def analysis_from_selection(
     )
 
 
-def charges_from_selection(
-    structure,
-    grid_for_selection,
-    selection,
-    snap_to_atoms=True,
-    analysis=None,
-    reference_for_selection=None,
-):
-    """Integrate the selected density within Bader basins.
+def charges_from_selection(grid_for_selection, selection, analysis):
+    """Integrate the selected grid(s) within the basins of ``analysis``.
 
-    The basins are taken from ``analysis`` if given, otherwise from an inner
-    ``basins=Y`` selection (partitioning the density selected by ``Y``), otherwise
-    from the integrated density itself (or its ``reference_for_selection`` when one
-    is provided). Returns ``{atom: charge}`` for a single selection or
+    ``analysis`` is a :class:`BaderAnalysis` supplying the basins (only the charge
+    density can define them, so it is always provided by the caller rather than
+    reconstructed here). Returns ``{atom: charge}`` for a single selection or
     ``{selection: {atom: charge}}`` for several.
     """
+    _raise_error_if_no_analysis(analysis)
     results = {}
     for parsed in select.Tree.from_selection(selection).selections():
-        basin_source = _basin_source(parsed)
-        _raise_error_if_basins_and_analysis(basin_source, analysis)
-        integrand_selection = _remaining_selection(parsed)
+        integrand_selection = _selection_string(parsed)
         for label, density in grid_for_selection(integrand_selection).items():
-            basis = _basis_analysis(
-                structure, grid_for_selection, basin_source, analysis, density,
-                snap_to_atoms, reference_for_selection, integrand_selection,
-            )
-            results[label] = basis.charges(density)
+            results[label] = analysis.charges(density)
     if len(results) == 1:
         return next(iter(results.values()))
     return results
@@ -220,41 +207,8 @@ def _reference(reference_for_selection, selection):
     return reference_for_selection(selection)
 
 
-def _basin_source(parsed):
-    for part in parsed:
-        if isinstance(part, select.Assignment) and part.left_operand == "basins":
-            return part.right_operand
-    return None
-
-
-def _remaining_selection(parsed):
-    parts = [part for part in parsed if not _is_basins_assignment(part)]
-    return select.selections_to_string([parts]) if parts else None
-
-
-def _is_basins_assignment(part):
-    return isinstance(part, select.Assignment) and part.left_operand == "basins"
-
-
-def _basis_analysis(
-    structure,
-    grid_for_selection,
-    basin_source,
-    analysis,
-    density,
-    snap_to_atoms,
-    reference_for_selection,
-    integrand_selection,
-):
-    if analysis is not None:
-        return analysis
-    if basin_source is not None:
-        (basin_density,) = grid_for_selection(basin_source).values()
-        return BaderAnalysis(structure, basin_density, snap_to_atoms=snap_to_atoms)
-    reference = _reference(reference_for_selection, integrand_selection)
-    return BaderAnalysis(
-        structure, density, snap_to_atoms=snap_to_atoms, reference=reference
-    )
+def _selection_string(parsed):
+    return select.selections_to_string([list(parsed)]) if parsed else None
 
 
 def _label_by_nearest_atom(maxima, shape, lattice_vectors, positions):
@@ -324,11 +278,12 @@ def _raise_error_if_shape_differs(density, reference):
         )
 
 
-def _raise_error_if_basins_and_analysis(basin_source, analysis):
-    if basin_source is not None and analysis is not None:
+def _raise_error_if_no_analysis(analysis):
+    if analysis is None:
         raise exception.IncorrectUsage(
-            "Specify the basin-defining density either via a 'basins=' selection "
-            "or via the bader_analysis argument, but not both."
+            "bader_charge requires the basins to be supplied via the bader_analysis "
+            "argument. Bader basins are defined by the charge density, so obtain them "
+            "from calc.density.bader_analysis() and pass the result here."
         )
 
 

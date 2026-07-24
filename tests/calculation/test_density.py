@@ -519,28 +519,37 @@ def test_bader_charge_conserves_total(raw_data, Assert):
     density = Density.from_data(raw_density)
     structure = StructureHandler.from_data(raw_density.structure)
 
-    charges = density.bader_charge()
+    charges = density.bader_charge(bader_analysis=density.bader_analysis())
 
     assert list(charges) == structure.to_dict()["names"]
     scalar = density.to_numpy()[0]
     Assert.allclose(sum(charges.values()), scalar.sum() / scalar.size)
 
 
-def test_bader_charge_combined_equals_explicit(raw_data, Assert):
+def test_bader_charge_requires_analysis(raw_data):
+    density = Density.from_data(raw_data.density("Sr2TiO4"))
+    with pytest.raises(exception.IncorrectUsage):
+        density.bader_charge()
+
+
+def test_bader_charge_integrates_component_in_given_basins(raw_data, Assert):
     density = Density.from_data(raw_data.density("Fe3O4 collinear"))
+    analysis = density.bader_analysis("scalar")
 
-    combined = density.bader_charge("m(basins=scalar)")
-    explicit = density.bader_charge("m", bader_analysis=density.bader_analysis("scalar"))
+    # integrating the magnetization in scalar-defined basins goes through the
+    # analysis object directly
+    charges = density.bader_charge("m", bader_analysis=analysis)
+    manual = analysis.charges(density.to_numpy()[1])
 
-    assert combined.keys() == explicit.keys()
-    for key in combined:
-        Assert.allclose(combined[key], explicit[key])
+    assert charges.keys() == manual.keys()
+    for key in charges:
+        Assert.allclose(charges[key], manual[key])
 
 
 def test_bader_charge_multiple_selections(raw_data):
     density = Density.from_data(raw_data.density("Fe3O4 collinear"))
 
-    result = density.bader_charge("scalar, m")
+    result = density.bader_charge("scalar, m", bader_analysis=density.bader_analysis())
 
     assert len(result) == 2
     assert all(isinstance(value, dict) for value in result.values())
@@ -557,14 +566,17 @@ def test_bader_honors_getitem_source(raw_data, Assert):
     source = DictSource({"density": pseudo, ("density", "all_electron"): all_electron})
     density = Density(source)
 
-    from_getitem = density["all_electron"].bader_charge()
-    from_selection = density.bader_charge("all_electron")
+    # a fixed set of basins so only the integrand source varies between the calls
+    basins = density.bader_analysis()
+
+    from_getitem = density["all_electron"].bader_charge(bader_analysis=basins)
+    from_selection = density.bader_charge("all_electron", bader_analysis=basins)
 
     assert from_getitem.keys() == from_selection.keys()
     for key in from_getitem:
         Assert.allclose(from_getitem[key], from_selection[key])
     # and the get-item form must not silently fall back to the pseudo source
-    pseudo_charges = density.bader_charge()
+    pseudo_charges = density.bader_charge(bader_analysis=basins)
     assert from_getitem != pseudo_charges
 
 
@@ -589,7 +601,7 @@ def test_all_electron_core_only_defines_basins(raw_data, Assert):
     core = np.array(raw_density.core)
 
     # the charges integrate the valence density (no core), summing to its electrons
-    charges = density.bader_charge()
+    charges = density.bader_charge(bader_analysis=density.bader_analysis())
     valence_scalar = charge[0].T
     Assert.allclose(sum(charges.values()), valence_scalar.sum() / valence_scalar.size)
 
@@ -602,7 +614,9 @@ def test_all_electron_core_only_defines_basins(raw_data, Assert):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.density("Fe3O4 collinear")
     parameters = {"to_contour": {"a": 0.3}}
-    check_factory_methods(Density, data, parameters)
+    # bader_charge needs an externally supplied bader_analysis; its data access is
+    # covered by the dedicated bader tests
+    check_factory_methods(Density, data, parameters, skip_methods=["bader_charge"])
 
 
 def test_is_available_to_quiver(raw_data):

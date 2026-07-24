@@ -3,10 +3,14 @@
 """Expose the Bader charge analysis on quantities defined on a real-space grid.
 
 The heavy lifting lives in :mod:`py4vasp._util.bader`; this module only wires it
-into the dispatch architecture. A quantity opts in by adding :class:`BaderMixin`
-to its public class and a ``_bader_grid`` method to its handler. The two
-module-level functions act as the dispatched "handler methods" (their first
-parameter is named ``self`` so the dispatcher forwards the selection correctly).
+into the dispatch architecture. Bader basins are defined by the topology of the
+*charge density*, so only the charge density can construct them: it opts in with
+:class:`BaderAnalysisMixin`. Every other grid quantity opts in with the lighter
+:class:`BaderMixin`, which only integrates a quantity within basins that were
+supplied from the density. A quantity contributes a ``_bader_grid`` method to its
+handler. The two module-level functions act as the dispatched "handler methods"
+(their first parameter is named ``self`` so the dispatcher forwards the selection
+correctly).
 """
 from py4vasp._calculation.dispatch import merge_default
 from py4vasp._util import bader as _bader
@@ -22,19 +26,12 @@ def _bader_analysis(self, selection=None, *, snap_to_atoms=True):
     )
 
 
-def _bader_charge(self, selection=None, *, bader_analysis=None, snap_to_atoms=True):
-    return _bader.charges_from_selection(
-        self._structure(),
-        self._bader_grid,
-        selection,
-        snap_to_atoms,
-        bader_analysis,
-        reference_for_selection=getattr(self, "_bader_reference", None),
-    )
+def _bader_charge(self, selection=None, *, bader_analysis=None):
+    return _bader.charges_from_selection(self._bader_grid, selection, bader_analysis)
 
 
 class BaderMixin:
-    """Add a Bader charge analysis to a quantity defined on a real-space grid."""
+    """Integrate a grid quantity within Bader basins supplied by the density."""
 
     def _bader_selection(self, selection):
         # Honor a source chosen via item access (e.g. density["all_electron"]) the
@@ -46,6 +43,57 @@ class BaderMixin:
             return source
         return f"{source}({selection})"
 
+    def bader_charge(self, selection=None, *, bader_analysis=None):
+        """Integrate the selected quantity within Bader basins.
+
+        Bader basins are defined by the topology of the charge density, so they
+        cannot be constructed from this quantity itself (a potential, for instance,
+        is minimal rather than maximal at the nuclei). You therefore always supply
+        the basins through ``bader_analysis``, obtained from
+        :meth:`Density.bader_analysis`.
+
+        Parameters
+        ----------
+        selection : str
+            Select which grid(s) of this quantity to integrate. Defaults to the
+            quantity's default grid.
+        bader_analysis : BaderAnalysis
+            The basins to integrate in, obtained from a :meth:`Density.bader_analysis`
+            call, e.g.
+            ``potential.bader_charge(bader_analysis=density.bader_analysis())``.
+
+        Returns
+        -------
+        dict
+            ``{atom: charge}`` for a single selection, or
+            ``{selection: {atom: charge}}`` for several.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> basins = calculation.density.bader_analysis()
+        >>> calculation.potential.bader_charge(bader_analysis=basins)
+        {...}
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            self._bader_selection(selection),
+            self._handler_factory,
+            _bader_charge,
+            bader_analysis=bader_analysis,
+        )
+
+
+class BaderAnalysisMixin(BaderMixin):
+    """Add the full Bader charge analysis to the charge density.
+
+    Only the charge density can *define* Bader basins, so it alone exposes
+    :meth:`bader_analysis` in addition to the :meth:`bader_charge` integration
+    inherited from :class:`BaderMixin`.
+    """
+
     def bader_analysis(self, selection=None, *, snap_to_atoms=True):
         """Partition the selected density into atomic Bader basins.
 
@@ -53,7 +101,7 @@ class BaderMixin:
         ----------
         selection : str
             Select a single density component to partition. Defaults to the
-            quantity's default density.
+            default charge density.
         snap_to_atoms : bool
             Snap every density maximum to its nearest atom (default). Disable to
             label basins by the raw maxima instead.
@@ -61,8 +109,9 @@ class BaderMixin:
         Returns
         -------
         BaderAnalysis
-            An analysis object whose basins can be visualized with ``plot`` or
-            reused to integrate another density via ``bader_charge``.
+            An analysis object whose basins can be visualized with ``plot``, whose
+            Bader charges are available via ``charges``, or which can be passed to
+            any quantity's ``bader_charge`` to integrate it in these basins.
 
         Examples
         --------
@@ -78,58 +127,5 @@ class BaderMixin:
             self._bader_selection(selection),
             self._handler_factory,
             _bader_analysis,
-            snap_to_atoms=snap_to_atoms,
-        )
-
-    def bader_charge(self, selection=None, *, bader_analysis=None, snap_to_atoms=True):
-        """Integrate the selected density within Bader basins.
-
-        Parameters
-        ----------
-        selection : str
-            Select the density to integrate. You may define the basins from a
-            different density of the same quantity with the ``basins=`` syntax,
-            e.g. ``"m(basins=scalar)"`` integrates the magnetization within basins
-            built from the scalar charge.
-        bader_analysis : BaderAnalysis
-            Reuse basins from a previous :meth:`bader_analysis` call, possibly of a
-            different quantity, e.g.
-            ``potential.bader_charge(bader_analysis=density.bader_analysis())``.
-        snap_to_atoms : bool
-            Snap every density maximum to its nearest atom (default).
-
-        Returns
-        -------
-        dict
-            ``{atom: charge}`` for a single selection, or
-            ``{selection: {atom: charge}}`` for several.
-
-        Notes
-        -----
-        The returned charge is the integral of the *selected* density within the
-        basins. ``bader_charge("all_electron")`` therefore integrates the
-        all-electron valence density in all-electron basins. To reproduce the
-        Henkelman workflow instead -- basins from the all-electron density but the
-        integral of the pseudo (valence) density -- combine both explicitly::
-
-            calc.density.bader_charge(bader_analysis=calc.density.bader_analysis("all_electron"))
-
-        The two differ by how the valence charge is distributed near the nuclei
-        (typically a few hundredths of an electron), not by the basins.
-
-        Examples
-        --------
-        >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-        >>> calculation.density.bader_charge()
-        {...}
-        """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._bader_selection(selection),
-            self._handler_factory,
-            _bader_charge,
-            bader_analysis=bader_analysis,
             snap_to_atoms=snap_to_atoms,
         )

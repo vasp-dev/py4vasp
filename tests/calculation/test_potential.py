@@ -414,13 +414,20 @@ def test_to_database(reference_potential):
 def test_bader_charge_conserves_total(raw_data, Assert):
     raw_potential = raw_data.potential("Sr2TiO4 total")
     potential = Potential.from_data(raw_potential)
+    density = Density.from_data(raw_data.density("Sr2TiO4"))
     structure = StructureHandler.from_data(raw_potential.structure)
 
-    charges = potential.bader_charge()
+    charges = potential.bader_charge(bader_analysis=density.bader_analysis())
 
     assert list(charges) == structure.to_dict()["names"]
     grid = potential.read()["total"]
     Assert.allclose(sum(charges.values()), grid.sum() / grid.size)
+
+
+def test_bader_charge_requires_analysis(raw_data):
+    potential = Potential.from_data(raw_data.potential("Sr2TiO4 total"))
+    with pytest.raises(exception.IncorrectUsage):
+        potential.bader_charge()
 
 
 def test_bader_charge_uses_external_analysis(raw_data, Assert):
@@ -442,7 +449,7 @@ def test_bader_charge_uses_external_analysis(raw_data, Assert):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.potential("Fe3O4 collinear total")
-    check_factory_methods(Potential, data)
+    check_factory_methods(Potential, data, skip_methods=["bader_charge"])
 
 
 def test_is_available_total_only(raw_data):
