@@ -99,16 +99,7 @@ class DensityHandler:
         return {"component": components}
 
     def to_numpy(self):
-        return np.moveaxis(self._charge(), 0, -1).T
-
-    def _charge(self):
-        "Return the charge grid, adding the core density to the scalar component."
-        charge = self._raw_density.charge
-        if self._raw_density.core.is_none():
-            return charge
-        charge = np.array(charge)
-        charge[0] = charge[0] + np.asarray(self._raw_density.core)[0]
-        return charge
+        return np.moveaxis(self._raw_density.charge, 0, -1).T
 
     def to_view(
         self,
@@ -118,7 +109,7 @@ class DensityHandler:
     ) -> view.View:
         _raise_error_if_no_data(self._raw_density.charge)
         map_ = self._create_map()
-        selector = index.Selector({0: map_}, self._charge())
+        selector = index.Selector({0: map_}, self._raw_density.charge)
         component = component or _INTERNAL
         tree = select.Tree.from_selection(component)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
@@ -148,7 +139,7 @@ class DensityHandler:
         supercell: Optional[Union[int, np.ndarray]] = None,
     ) -> graph.Graph:
         map_ = self._create_map()
-        selector = index.Selector({0: map_}, self._charge())
+        selector = index.Selector({0: map_}, self._raw_density.charge)
         component = component or _INTERNAL
         tree = select.Tree.from_selection(component)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
@@ -171,7 +162,7 @@ class DensityHandler:
         supercell: Optional[Union[int, np.ndarray]] = None,
     ) -> graph.Graph:
         if self.is_collinear():
-            data = self._charge()[1].T
+            data = self._raw_density.charge[1].T
         else:
             data = self.to_numpy()[1:]
         visualizer = Visualizer(self._structure())
@@ -202,12 +193,20 @@ class DensityHandler:
 
     def _bader_grid(self, selection):
         map_ = self._create_map()
-        selector = index.Selector({0: map_}, self._charge())
+        selector = index.Selector({0: map_}, self._raw_density.charge)
         tree = select.Tree.from_selection(selection or _INTERNAL)
         selections = self._filter_noncollinear_magnetization_from_selections(tree)
         return {
             self._label(selector.label(sel)): selector[sel].T for sel in selections
         }
+
+    def _bader_reference(self, selection):
+        "Peaked scalar density (valence + core) used only to define the basins."
+        if self._raw_density.core.is_none():
+            return None
+        charge = np.asarray(self._raw_density.charge)
+        core = np.asarray(self._raw_density.core)[0]
+        return (charge[0] + core).T
 
     def _read_density(self):
         density = self.to_numpy()

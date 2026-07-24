@@ -40,11 +40,20 @@ class BaderAnalysis(view.Mixin):
         maximum is snapped to its nearest atom and the basins are labeled by atom
         index. If False, the basins are labeled by an arbitrary index enumerating
         the distinct maxima.
+    reference : np.ndarray or None
+        Optional density used *only* to construct the basins. If given, the basins
+        follow this (typically better-peaked) density while ``charges`` and
+        ``to_view`` still act on ``density``. This is used for the all-electron
+        density, where the core is accurate enough to place the basins but too
+        coarsely sampled to integrate.
     """
 
-    def __init__(self, structure, density, snap_to_atoms=True):
+    def __init__(self, structure, density, snap_to_atoms=True, reference=None):
         self._density = np.asarray(density)
         _raise_error_if_density_not_3d(self._density)
+        basin_density = self._density if reference is None else np.asarray(reference)
+        _raise_error_if_density_not_3d(basin_density)
+        _raise_error_if_shape_differs(basin_density, self._density)
         # Materialize everything derived from the structure now, while the raw data
         # is still available. The analysis is typically returned to the user after
         # the file context has closed, so it must not read lazily loaded data later.
@@ -52,14 +61,14 @@ class BaderAnalysis(view.Mixin):
         positions = np.asarray(structure.positions())
         self._names = list(structure.to_dict()["names"])
         self._view = structure.to_view()
-        maxima = _resolve_to_maxima(_ascent_pointers(self._density, lattice_vectors))
+        maxima = _resolve_to_maxima(_ascent_pointers(basin_density, lattice_vectors))
         if snap_to_atoms:
             labels = _label_by_nearest_atom(
-                maxima, self._density.shape, lattice_vectors, positions
+                maxima, basin_density.shape, lattice_vectors, positions
             )
         else:
             labels = _label_consecutively(maxima)
-        self._basins = labels.reshape(self._density.shape)
+        self._basins = labels.reshape(basin_density.shape)
 
     def __str__(self):
         charges = self.charges()
@@ -149,28 +158,45 @@ class BaderAnalysis(view.Mixin):
         return viewer
 
 
-def analysis_from_selection(structure, grid_for_selection, selection, snap_to_atoms=True):
+def analysis_from_selection(
+    structure,
+    grid_for_selection,
+    selection,
+    snap_to_atoms=True,
+    reference_for_selection=None,
+):
     """Build a :class:`BaderAnalysis` from a single selected density.
 
     ``grid_for_selection`` is a callable mapping a selection string to a dictionary
     of labeled grid arrays. Injecting it keeps this helper free of any coupling to
-    a specific quantity (composition instead of inheritance).
+    a specific quantity (composition instead of inheritance). ``reference_for_selection``
+    optionally provides a different density (e.g. with the core) to construct the
+    basins from.
     """
     grids = grid_for_selection(selection)
     _raise_error_if_not_single_density(grids)
     (density,) = grids.values()
-    return BaderAnalysis(structure, density, snap_to_atoms=snap_to_atoms)
+    reference = _reference(reference_for_selection, selection)
+    return BaderAnalysis(
+        structure, density, snap_to_atoms=snap_to_atoms, reference=reference
+    )
 
 
 def charges_from_selection(
-    structure, grid_for_selection, selection, snap_to_atoms=True, analysis=None
+    structure,
+    grid_for_selection,
+    selection,
+    snap_to_atoms=True,
+    analysis=None,
+    reference_for_selection=None,
 ):
     """Integrate the selected density within Bader basins.
 
     The basins are taken from ``analysis`` if given, otherwise from an inner
     ``basins=Y`` selection (partitioning the density selected by ``Y``), otherwise
-    from the integrated density itself. Returns ``{atom: charge}`` for a single
-    selection or ``{selection: {atom: charge}}`` for several.
+    from the integrated density itself (or its ``reference_for_selection`` when one
+    is provided). Returns ``{atom: charge}`` for a single selection or
+    ``{selection: {atom: charge}}`` for several.
     """
     results = {}
     for parsed in select.Tree.from_selection(selection).selections():
@@ -180,12 +206,18 @@ def charges_from_selection(
         for label, density in grid_for_selection(integrand_selection).items():
             basis = _basis_analysis(
                 structure, grid_for_selection, basin_source, analysis, density,
-                snap_to_atoms,
+                snap_to_atoms, reference_for_selection, integrand_selection,
             )
             results[label] = basis.charges(density)
     if len(results) == 1:
         return next(iter(results.values()))
     return results
+
+
+def _reference(reference_for_selection, selection):
+    if reference_for_selection is None:
+        return None
+    return reference_for_selection(selection)
 
 
 def _basin_source(parsed):
@@ -205,14 +237,24 @@ def _is_basins_assignment(part):
 
 
 def _basis_analysis(
-    structure, grid_for_selection, basin_source, analysis, density, snap_to_atoms
+    structure,
+    grid_for_selection,
+    basin_source,
+    analysis,
+    density,
+    snap_to_atoms,
+    reference_for_selection,
+    integrand_selection,
 ):
     if analysis is not None:
         return analysis
     if basin_source is not None:
         (basin_density,) = grid_for_selection(basin_source).values()
         return BaderAnalysis(structure, basin_density, snap_to_atoms=snap_to_atoms)
-    return BaderAnalysis(structure, density, snap_to_atoms=snap_to_atoms)
+    reference = _reference(reference_for_selection, integrand_selection)
+    return BaderAnalysis(
+        structure, density, snap_to_atoms=snap_to_atoms, reference=reference
+    )
 
 
 def _label_by_nearest_atom(maxima, shape, lattice_vectors, positions):

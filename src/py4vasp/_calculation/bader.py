@@ -14,13 +14,22 @@ from py4vasp._util import bader as _bader
 
 def _bader_analysis(self, selection=None, *, snap_to_atoms=True):
     return _bader.analysis_from_selection(
-        self._structure(), self._bader_grid, selection, snap_to_atoms
+        self._structure(),
+        self._bader_grid,
+        selection,
+        snap_to_atoms,
+        reference_for_selection=getattr(self, "_bader_reference", None),
     )
 
 
 def _bader_charge(self, selection=None, *, bader_analysis=None, snap_to_atoms=True):
     return _bader.charges_from_selection(
-        self._structure(), self._bader_grid, selection, snap_to_atoms, bader_analysis
+        self._structure(),
+        self._bader_grid,
+        selection,
+        snap_to_atoms,
+        bader_analysis,
+        reference_for_selection=getattr(self, "_bader_reference", None),
     )
 
 

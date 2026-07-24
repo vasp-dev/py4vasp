@@ -549,25 +549,35 @@ def test_all_electron_is_selectable(nonpolarized_density):
     assert "all_electron" in nonpolarized_density.selections()["density"]
 
 
-def test_all_electron_adds_core_to_scalar(raw_data, Assert):
+def test_all_electron_read_excludes_core(raw_data, Assert):
+    # the core density is too coarsely sampled to be quantitative, so read and
+    # to_numpy report only the valence density (the core is not added)
     raw_density = raw_data.density("all_electron")
     density = Density.from_data(raw_density)
 
     actual = density.read()
 
     charge = np.array(raw_density.charge)
-    core = np.array(raw_density.core)
-    Assert.allclose(actual["charge"], (charge[0] + core[0]).T)
+    Assert.allclose(actual["charge"], charge[0].T)
     Assert.allclose(actual["magnetization"], charge[1].T)
 
 
-def test_all_electron_bader_charge_includes_core(raw_data, Assert):
-    density = Density.from_data(raw_data.density("all_electron"))
+def test_all_electron_core_only_defines_basins(raw_data, Assert):
+    raw_density = raw_data.density("all_electron")
+    density = Density.from_data(raw_density)
+    structure = StructureHandler.from_data(raw_density.structure)
+    charge = np.array(raw_density.charge)
+    core = np.array(raw_density.core)
 
+    # the charges integrate the valence density (no core), summing to its electrons
     charges = density.bader_charge()
+    valence_scalar = charge[0].T
+    Assert.allclose(sum(charges.values()), valence_scalar.sum() / valence_scalar.size)
 
-    scalar = density.to_numpy()[0]
-    Assert.allclose(sum(charges.values()), scalar.sum() / scalar.size)
+    # but the basins follow the core-augmented (peaked) density
+    peaked = (charge[0] + core[0]).T
+    expected_basins = BaderAnalysis(structure, peaked).basins()
+    Assert.allclose(density.bader_analysis().basins(), expected_basins)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

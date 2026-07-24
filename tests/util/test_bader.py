@@ -294,6 +294,24 @@ def test_str_single_atom_exact():
     assert str(analysis) == "Bader charges:\n    H_1   1.0000"
 
 
+def test_reference_defines_basins_but_not_charges(Assert):
+    shape = (24, 12, 12)
+    lattice_vectors = np.diag((8.0, 4.0, 4.0))
+    atoms = [(0.25, 0.5, 0.5), (0.75, 0.5, 0.5)]
+    # the integrand density peaks in the middle, the reference peaks on the atoms
+    integrand = gaussian_density(shape, lattice_vectors, [(0.5, 0.5, 0.5)])
+    reference = gaussian_density(shape, lattice_vectors, atoms)
+    structure = make_structure(lattice_vectors, atoms, ["Na", "Cl"])
+
+    analysis = bader.BaderAnalysis(structure, integrand, reference=reference)
+
+    # the basins follow the reference density, not the integrand
+    expected = bader.BaderAnalysis(structure, reference).basins()
+    Assert.allclose(analysis.basins(), expected)
+    # charges integrate the integrand density
+    Assert.allclose(sum(analysis.charges().values()), integrand.sum() / integrand.size)
+
+
 def test_charges_shape_mismatch_raises(two_atom_bader):
     with pytest.raises(exception.IncorrectUsage):
         two_atom_bader.bader.charges(np.ones((2, 2, 2)))
