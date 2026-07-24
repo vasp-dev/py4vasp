@@ -74,6 +74,7 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, _demo.structure.Sr2TiO4())
     write(h5f, _demo.symmetry.CoO())
     write(h5f, _demo.system.Sr2TiO4())
+    write(h5f, _demo.phonon.band.Sr2TiO4())
     write(h5f, _demo.dielectric_function.electron())
     write(h5f, _demo.velocity.Sr2TiO4())
     write(h5f, _demo.band.line_mode("no_labels"), selection="kpoints_opt")

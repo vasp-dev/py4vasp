@@ -426,3 +426,13 @@ def test_factory_methods_read_dielectric_function(raw_data):
                 call(optics)
                 mock_access.assert_called_once()
                 assert mock_access.call_args.args[0] == "dielectric_function"
+
+
+def test_is_available(raw_data):
+    tensor = Optics.from_data(raw_data.dielectric_function("electron"))
+    scalar = Optics.from_data(raw_data.dielectric_function("q_point"))
+    assert tensor.is_available("default") is True
+    # the optical spectra need the full tensor; a scalar dielectric function fails
+    assert scalar.is_available("default") is False
+    # selections works regardless of the tensor/scalar form
+    assert scalar.is_available("default", method="selections") is True

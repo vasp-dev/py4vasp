@@ -12,6 +12,7 @@ from py4vasp import exception
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -214,6 +215,30 @@ class Kpoint:
 
     def _handler_factory(self, raw):
         return KpointHandler.from_data(raw)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # for a band-structure path (line mode), the number of points per line is an
+        # optional field that VASP does not always write; without it the methods that
+        # split the path cannot work. Grid modes are unaffected.
+        line_mode_methods = (
+            "read",
+            "to_dict",
+            "distances",
+            "number_lines",
+            "line_length",
+            "labels",
+        )
+        needs_number = (
+            method in line_mode_methods
+            and self._handler_factory(raw_data).mode() == "line"
+        )
+        enforce_optional = ("number",) if needs_number else ()
+        return is_available_raw(
+            self._quantity_name,
+            raw_data,
+            selection=selection,
+            enforce_optional=enforce_optional,
+        )
 
     def __str__(self, selection=None):
         return merge_strings(

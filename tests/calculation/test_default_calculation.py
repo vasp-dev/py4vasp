@@ -1,15 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import contextlib
 import inspect
 import pathlib
+from unittest.mock import patch
 
 import pytest
 
 from py4vasp import Calculation, calculation, demo
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
-from py4vasp._raw.schema import DEFAULT_SELECTION
-from py4vasp._util import loadable
 
 
 def test_access_of_attributes():
@@ -57,14 +55,15 @@ def test_selections_on_demo_calculation(tmp_path):
     assert list(actual) == sorted(actual)
 
 
-def test_selections_loadable_excludes_selections_that_do_not_load(tmp_path):
-    # Use only_available=True to get only loadable quantities
+def test_selections_only_available_reports_present_data(tmp_path):
+    # only_available=True reports the sources whose data is present in the output
     calc = demo.calculation(tmp_path / "demo_calculation")
     actual = calc.selections(only_available=True)
-    # current_density cannot be read without specifying a cut plane -> excluded
-    assert "current_density" not in actual
-    # a non-default source of a not-yet-migrated quantity cannot be addressed
-    assert actual["structure"] == ["default"]
+    # structure data is present under its default source
+    assert "structure" in actual
+    assert "default" in actual["structure"]
+    # a quantity with no data in the demo is omitted entirely
+    assert "born_effective_charge" not in actual
 
 
 def test_selections_evaluable(tmp_path):
@@ -118,13 +117,12 @@ def test_selections_with_method_on_empty_path(tmp_path):
 
 def test_selections_with_only_available_true(tmp_path):
     calc = demo.calculation(tmp_path / "demo_calculation")
-    loadable = calc.selections(only_available=True)
+    available = calc.selections(only_available=True)
     full = calc.selections(only_available=False)
-    # loadable quantities should be a subset of all quantities
-    assert set(loadable) <= set(full)
-    # quantities without loadable data should not appear in loadable result
-    # (the demo does generate a dielectric_function, so it is loadable and excluded here)
-    absent_in_loadable = {
+    # available quantities should be a subset of all quantities
+    assert set(available) <= set(full)
+    # quantities without any data should not appear in the available result
+    absent_when_unavailable = {
         "bandgap",
         "born_effective_charge",
         "dielectric_tensor",
@@ -133,8 +131,8 @@ def test_selections_with_only_available_true(tmp_path):
         "piezoelectric_tensor",
         "polarization",
     }
-    for quantity in absent_in_loadable:
-        assert quantity not in loadable
+    for quantity in absent_when_unavailable:
+        assert quantity not in available
         assert quantity in full
         assert "default" in full[quantity]
         assert full[quantity]
@@ -170,123 +168,51 @@ def test_selections_with_method_filters_by_implementation(tmp_path):
 
 
 def test_all_quantities_implement_read(tmp_path):
-    """Verify all quantities implement the read() method."""
+    """Every quantity implements read(), so selections(method="read") lists them all."""
     calc = demo.calculation(tmp_path / "demo_calculation")
-    all_quantities = calc.selections(only_available=False)
-    for quantity_name in all_quantities:
-        assert loadable.implements_method(
-            calc, quantity_name, "read"
-        ), f"{quantity_name} does not implement read()"
+    assert set(calc.selections(method="read")) == set(calc.selections())
 
 
-def test_selections_only_available_false_does_not_load_data(tmp_path, monkeypatch):
-    # only_available=False must never attempt to load data
+def test_selections_only_available_false_does_not_load_data(tmp_path):
+    # only_available=False only inspects the schema; it must never access the files
     calc = demo.calculation(tmp_path / "demo_calculation")
-
-    def _fail(*_, **__):
-        raise AssertionError("loadable_sources should not be called")
-
-    monkeypatch.setattr(loadable, "loadable_sources", _fail)
-
-    # neither the default nor the method-filtered call should load any data
-    assert calc.selections()
-    assert calc.selections(method="to_view")
+    with patch("py4vasp.raw.access") as mock_access:
+        assert calc.selections()
+        assert calc.selections(method="to_view")
+    mock_access.assert_not_called()
 
 
-def test_selections_collects_out_of_memory_errors(tmp_path, monkeypatch, capsys):
-    # A quantity whose data is available but too large to load raises MemoryError.
-    # selections() should not crash, should omit that quantity, and report the error.
+def test_is_available_returns_nested_dict(tmp_path):
     calc = demo.calculation(tmp_path / "demo_calculation")
-
-    monkeypatch.setattr(loadable, "_schema_satisfied", lambda *_, **__: None)
-    real_invoke = loadable._invoke
-
-    def _invoke_with_oom(
-        calculation,
-        call_name,
-        method_name,
-        source_name,
-        legacy_quantities,
-        convention=None,
-    ):
-        if call_name == "density":
-            raise MemoryError("Unable to allocate 5.00 GiB for array")
-        return real_invoke(
-            calculation,
-            call_name,
-            method_name,
-            source_name,
-            legacy_quantities,
-            convention,
-        )
-
-    monkeypatch.setattr(loadable, "_invoke", _invoke_with_oom)
-
-    result = calc.selections(only_available=True)
-
-    # the oversized quantity is excluded from the loadable result
-    assert "density" not in result
-    # other quantities are still inspected and the call returns normally
+    result = calc.is_available()
     assert isinstance(result, dict)
-    # the out-of-memory error is reported once at the end without crashing
-    captured = capsys.readouterr()
-    assert "density" in captured.out
-    assert "out of memory" in captured.out.lower()
-    assert "5.00 GiB" in captured.out
+    # nested {quantity: {source: bool}}, mirroring the database layout
+    assert result["structure"]["default"] is True
+    assert result["structure"]["final"] is False
+    for sources in result.values():
+        assert isinstance(sources, dict)
+        assert all(isinstance(available, bool) for available in sources.values())
 
 
-def test_selections_default_does_not_report_out_of_memory(
-    tmp_path, monkeypatch, capsys
-):
-    # only_available=False never loads data, so it cannot trigger an OOM report
+def test_is_available_with_method_filters_by_implementation(tmp_path):
     calc = demo.calculation(tmp_path / "demo_calculation")
-
-    def _fail(*_, **__):
-        raise AssertionError("loadable_sources should not be called")
-
-    monkeypatch.setattr(loadable, "loadable_sources", _fail)
-
-    calc.selections()
-    captured = capsys.readouterr()
-    assert "out of memory" not in captured.out.lower()
+    result = calc.is_available(method="to_view")
+    # only quantities implementing to_view are reported
+    assert "density" in result
+    assert "band" not in result
 
 
-def test_confirm_read_uses_public_call_name_for_fallback(tmp_path, monkeypatch):
+def test_is_available_and_selections_agree(tmp_path):
+    # selections(only_available=True) lists exactly the sources is_available marks True
     calc = demo.calculation(tmp_path / "demo_calculation")
-    captured = {}
-
-    monkeypatch.setattr(loadable, "_schema_satisfied", lambda *_, **__: None)
-
-    def _record_invoke(
-        calculation,
-        call_name,
-        method_name,
-        source_name,
-        legacy_quantities,
-        convention=None,
-    ):
-        captured["call_name"] = call_name
-        captured["method_name"] = method_name
-        captured["source_name"] = source_name
-        return True
-
-    monkeypatch.setattr(loadable, "_invoke", _record_invoke)
-
-    with contextlib.ExitStack() as stack:
-        assert loadable._confirm_read(
-            calc,
-            "exciton.density",
-            "exciton_density",
-            DEFAULT_SELECTION,
-            open_files={},
-            stack=stack,
-            cache={},
-            legacy_quantities=set(),
-        )
-
-    assert captured["call_name"] == "exciton.density"
-    assert captured["method_name"] == "read"
-    assert captured["source_name"] == DEFAULT_SELECTION
+    availability = calc.is_available()
+    selections = calc.selections(only_available=True)
+    for quantity, sources in availability.items():
+        available_sources = [source for source, ok in sources.items() if ok]
+        if available_sources:
+            assert selections[quantity] == available_sources
+        else:
+            assert quantity not in selections
 
 
 # ---------------------------------------------------------------------------

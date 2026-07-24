@@ -4,22 +4,25 @@ import pathlib
 
 import numpy as np
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation import phonon
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    is_available_raw,
     merge_default,
     merge_graphs,
     merge_strings,
     merge_to_database,
     quantity,
 )
+from py4vasp._calculation.kpoint import Kpoint
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import PhononBandModel
-from py4vasp._third_party import graph
-from py4vasp._util import convert, documentation, index, select
+from py4vasp._third_party import graph, view
+from py4vasp._util import check, convert, documentation, index, select
 
 
 class PhononBandHandler:
@@ -66,6 +69,45 @@ class PhononBandHandler:
             "atom": sorted(atoms, key=self._sort_key),
             "direction": ["x", "y", "z"],
         }
+
+    def to_view(self, supercell=None) -> view.View:
+        viewer = self._primitive_structure().to_view(supercell)
+        viewer.phonon = self._phonon_dispersion()
+        return viewer
+
+    def _primitive_structure(self) -> StructureHandler:
+        if check.is_none(self._raw_phonon_band.primitive_positions):
+            raise exception.NoData(
+                "The primitive-cell positions required to visualize the phonon modes "
+                "are not available. Please rerun VASP with a version that writes "
+                "results/phonons/primitive/position_ions to the output file."
+            )
+        raw_structure = raw.Structure(
+            stoichiometry=self._raw_phonon_band.stoichiometry,
+            cell=self._raw_phonon_band.dispersion.kpoints.cell,
+            positions=self._raw_phonon_band.primitive_positions,
+        )
+        return StructureHandler.from_data(raw_structure)
+
+    def _phonon_dispersion(self) -> view.PhononDispersion:
+        eigenvectors = self._modes()
+        number_atoms = eigenvectors.shape[2]
+        kpoints = self._raw_phonon_band.dispersion.kpoints
+        return view.PhononDispersion(
+            eigenvectors=eigenvectors,
+            frequencies=self._raw_phonon_band.dispersion.eigenvalues[:],
+            qpoints=kpoints.coordinates[:],
+            supercell_matrix=np.eye(3),
+            primitive_index=np.arange(number_atoms),
+            path_labels=self._path_labels(),
+        )
+
+    def _path_labels(self):
+        labels = Kpoint.from_data(self._raw_phonon_band.dispersion.kpoints).labels()
+        if labels is None:
+            return None
+        path_labels = [[index, label] for index, label in enumerate(labels) if label]
+        return path_labels or None
 
     def _dispersion(self) -> DispersionHandler:
         return DispersionHandler.from_data(self._raw_phonon_band.dispersion)
@@ -199,6 +241,50 @@ class PhononBand(graph.Mixin):
             selection,
             self._handler_factory,
             PhononBandHandler.selections,
+        )
+
+    def to_view(self, supercell=None) -> view.View:
+        """Visualize the phonon dispersion as animated modes in the primitive cell.
+
+        The resulting :class:`~py4vasp.view.View` shows the primitive cell together
+        with the full phonon dispersion.
+
+        Parameters
+        ----------
+        supercell : int | np.ndarray | None = None
+            If present the primitive cell is replicated the specified number of times
+            along each direction, which is useful to visualize the phonon wave.
+
+        Returns
+        -------
+        View
+            Visualize the primitive structure with the attached phonon dispersion.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.phonon.band.to_view()
+        View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), ...)
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononBandHandler.to_view,
+            supercell=supercell,
+        )
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # to_view places the atoms using the primitive-cell positions, which VASP
+        # only writes for newer versions and are otherwise never needed.
+        enforce_optional = ("primitive_positions",) if method == "to_view" else ()
+        return is_available_raw(
+            self._quantity_name,
+            raw_data,
+            selection=selection,
+            enforce_optional=enforce_optional,
         )
 
     def _to_database(self) -> dict:

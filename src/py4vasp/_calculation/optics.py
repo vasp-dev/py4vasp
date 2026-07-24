@@ -9,6 +9,7 @@ from py4vasp import exception, raw
 from py4vasp._calculation import _optics_color
 from py4vasp._calculation.dispatch import (
     DataSource,
+    is_available_raw,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -315,6 +316,9 @@ class Optics(graph.Mixin):
         'directions': ['isotropic', 'xx', 'yy', 'zz', 'xy', 'xz', 'yz']}
     """
 
+    # is_available checks the dielectric function, where the data actually lives.
+    _availability_quantity = _DATA_QUANTITY
+
     def __init__(self, source, quantity_name: str = "optics"):
         self._source = source
         self._quantity_name = quantity_name
@@ -331,6 +335,15 @@ class Optics(graph.Mixin):
 
     def _handler_factory(self, raw_data):
         return OpticsHandler.from_data(raw_data)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # optics derives from the dielectric function; the optical spectra require the
+        # full 3x3 tensor (ndim == 4). selections works for a scalar one too.
+        if not is_available_raw(_DATA_QUANTITY, raw_data, selection=selection):
+            return False
+        if method == "selections":
+            return True
+        return raw_data.dielectric_function.ndim == 4
 
     def read(self, selection: str | None = None) -> dict:
         """Read transmission, absorption, and reflectivity into a dictionary.

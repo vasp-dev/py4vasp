@@ -1,15 +1,20 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import contextlib
 import importlib
 import pathlib
 from typing import Any, List, Optional, Tuple, Union
 
 from py4vasp import exception
-from py4vasp._calculation.dispatch import _REGISTRY, FileSource, Group
+from py4vasp._calculation.dispatch import (
+    _REGISTRY,
+    FileSource,
+    Group,
+    _availability_quantity_of,
+)
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
+from py4vasp._raw.definition import unique_selections as _schema_unique_selections
 from py4vasp._raw.models import schema_version
-from py4vasp._util import convert, import_, loadable
+from py4vasp._util import convert, import_
 
 
 def _append_database_error(
@@ -216,47 +221,32 @@ instead of the constructor Calculation()."""
     def selections(
         self, method: Optional[str] = None, only_available: bool = False
     ) -> dict[str, list[str]]:
-        """Determine which quantities and selections can be loaded for this calculation.
+        """Determine which quantities and selections this calculation exposes.
 
-        This inspects the VASP output files of the calculation and compares them against
-        the schema defined in :mod:`py4vasp._raw.definition`. For every quantity that
-        py4vasp can access (e.g. ``"structure"``, ``"band"``, or grouped quantities like
-        ``"exciton.density"``) it collects all selections (sources) whose data is
-        present and loadable.
-
-        By default (``only_available=False``), the result reports all schema-defined
-        selections for each quantity. If *method* is provided, quantities are still
-        restricted to those implementing that method, but the returned selections are
-        not filtered by runtime availability.
-
-        When ``only_available=True``, candidate selections are first filtered cheaply
-        against the schema (only the existence of the relevant datasets is checked).
-        Every remaining candidate is then confirmed by genuinely invoking the requested
-        method, so the result only lists selections that truly load. Selections whose
-        data is present but too large to load raise an out-of-memory error; these are
-        not reported as loadable. Instead their messages are collected and printed once
-        at the end, so a single oversized quantity never aborts the inspection.
+        For every quantity that py4vasp can access (e.g. ``"structure"``, ``"band"``,
+        or grouped quantities like ``"exciton.density"``) this collects the selections
+        (sources) defined in the schema. Only the schema and the existence of the
+        relevant datasets are inspected; the data itself is never loaded. There are
+        some exceptions for quantities & methods that require knowledge of specific data
+        to determine whether they might fail, but even then only the relevant subset
+        of the data is loaded.
 
         Parameters
         ----------
         method : str, optional
-            The method to restrict to. Pass e.g. ``"to_view"`` to only include
-            quantities that implement visualization. Defaults to ``"read"`` which is
-            implemented by all quantities. When combined with ``only_available=True``,
-            the method is also used to confirm runtime loadability.
+            Restrict the result to quantities that implement this method, e.g.
+            ``"to_view"``. Defaults to ``None``, which includes all quantities.
         only_available : bool, optional
-            If False (default), return all public quantities with their schema-defined
-            selections. If True, only return quantities for which at least one selection
-            can be loaded; when *method* is provided, only quantities implementing
-            that method are included.
+            If False (default), report all schema-defined selections for each
+            quantity. If True, report only the selections whose data is actually
+            present in the output (via :meth:`is_available`), omitting quantities
+            without an available selection.
 
         Returns
         -------
         dict[str, list[str]]
-            Maps each quantity call name to a list of selection names (the default
-            source is reported as ``"default"``). When ``only_available=True``, only
-            actually loadable selections are included, and quantities with no loadable
-            selections are omitted.
+            Maps each quantity call name to a list of selection names (the primary
+            source is reported as ``"default"``).
 
         Examples
         --------
@@ -267,56 +257,70 @@ instead of the constructor Calculation()."""
         Get all public quantities and their schema-defined selections (default):
 
         >>> calculation.selections()
-        {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
-         'bandgap': ['default', 'kpoint'],
-         ...}
+        {'band': ['default', 'kpoints_opt', 'kpoints_wan'], ...}
 
         Restrict to quantities implementing a specific method:
 
         >>> calculation.selections(method="to_view")
-        {'density': ['default', 'tau'], 'exciton.density': ['default'], ...}
+        {...}
 
-        Get only loadable quantities and their loadable selections:
+        Report only the quantities and selections whose data is present:
 
         >>> calculation.selections(only_available=True)
-        {'band': ['default', 'kpoints_opt'], 'density': ['default'], ...}
-
-        Combine both options to restrict to loadable quantities implementing a method:
-
-        >>> calculation.selections(method="to_view", only_available=True)
-        {'density': ['default'], 'exciton.density': ['default'], ...}
+        {...}
         """
         _ensure_all_quantities_imported()
         result = {}
-        errors = []
-        all_quantities = list(_public_quantities())
-        with contextlib.ExitStack() as stack:
-            open_files = {}
-            cache = {}
-            for call_name, schema_name in all_quantities:
-                if only_available:
-                    sources = loadable.loadable_sources(
-                        self,
-                        call_name,
-                        schema_name,
-                        method,
-                        open_files,
-                        stack,
-                        cache,
-                        QUANTITIES,
-                        errors,
-                    )
-                    if sources:
-                        result[call_name] = sources
-                elif method is None or loadable.implements_method(
-                    self, call_name, method
-                ):
-                    # only_available=False never loads data; it only checks whether
-                    # the quantity implements the requested method.
-                    result[call_name] = loadable.possible_sources(schema_name)
-        if errors:
-            header = "Some quantities are available but could not be loaded:"
-            print("\n".join([header, *errors]))
+        for call_name, schema_name in _public_quantities():
+            quantity = _quantity_object(self, call_name)
+            if method is not None and not _implements(quantity, method):
+                continue
+            sources = _sources_for(quantity, schema_name)
+            if only_available:
+                availability = quantity.is_available(sources, method=method)
+                sources = [source for source in sources if availability.get(source)]
+                if not sources:
+                    continue
+            result[call_name] = sources
+        return dict(sorted(result.items()))
+
+    def is_available(self, method: Optional[str] = None) -> dict[str, dict[str, bool]]:
+        """Report which quantities and selections are available for this calculation.
+
+        For every quantity (and every one of its sources), this checks whether the
+        data needed is present in the VASP output, comparing against the schema
+        without loading the (potentially large) arrays. The result is a nested
+        dictionary that mirrors the database layout, so it can be stored and
+        filtered later.
+
+        Parameters
+        ----------
+        method : str, optional
+            Restrict the report to quantities implementing this method (e.g.
+            ``"to_view"``) and evaluate availability for that method. Defaults to
+            ``None``, which reports every quantity for its ``read`` method.
+
+        Returns
+        -------
+        dict[str, dict[str, bool]]
+            Maps each quantity call name to a dictionary of ``{source: available}``,
+            e.g. ``{"structure": {"default": True, "final": False}, ...}``.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.is_available()
+        {'band': {...}, ...}
+        """
+        _ensure_all_quantities_imported()
+        result = {}
+        for call_name, schema_name in _public_quantities():
+            quantity = _quantity_object(self, call_name)
+            if method is not None and not _implements(quantity, method):
+                continue
+            sources = _sources_for(quantity, schema_name)
+            result[call_name] = quantity.is_available(sources, method=method)
         return dict(sorted(result.items()))
 
     def __getattr__(self, name):
@@ -416,6 +420,35 @@ def _public_quantities():
             continue
         pairs.append((quantity, quantity))
     return pairs
+
+
+def _quantity_object(calculation, call_name):
+    """Resolve a (possibly grouped) call name to its quantity dispatcher."""
+    if "." in call_name:
+        group_name, member = call_name.split(".", 1)
+        return getattr(getattr(calculation, group_name), member)
+    return getattr(calculation, call_name)
+
+
+def _implements(quantity, method):
+    """Return whether the quantity provides the requested method."""
+    return callable(getattr(quantity, method, None))
+
+
+def _sources_for(quantity, schema_name):
+    """Return the schema sources of the quantity that actually holds the data.
+
+    Derived quantities (e.g. ``optics``) read another quantity's data, so their
+    sources come from that quantity rather than their own (empty) schema entry.
+    """
+    try:
+        availability_quantity = _availability_quantity_of(quantity)
+    except AttributeError:
+        availability_quantity = schema_name
+    try:
+        return list(_schema_unique_selections(availability_quantity))
+    except exception.FileAccessError:
+        return []
 
 
 def _ensure_all_quantities_imported():

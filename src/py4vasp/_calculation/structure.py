@@ -18,6 +18,7 @@ from py4vasp._calculation.dispatch import (
     DataSource,
     SuppressErrorsSourceWrapper,
     _result_has_data,
+    is_available_raw,
     merge_default,
     merge_strings,
     quantity,
@@ -160,6 +161,31 @@ class StructureHandler:
             lattice_vectors=make_3d(self.lattice_vectors()),
             positions=positions,
             supercell=self._parse_supercell(supercell),
+            crystal_symmetry=self._crystal_symmetry(),
+        )
+
+    def _crystal_symmetry(self):
+        """Assemble the crystal and atom symmetry for the viewer (best effort).
+
+        Returns ``None`` when the symmetry cannot be determined, e.g. VASP did not
+        write the symmetry (pre-6.6) or the optional ``spglib`` dependency that the
+        space group and Wyckoff analysis rely on is not installed.
+        """
+        try:
+            space_group = SymmetryHandler.from_data(self._raw_symmetry()).space_group()
+            wyckoff = self.wyckoff_positions()
+            equivalent_atoms = self.equivalent_atoms()
+        except (exception.NoData, exception.ModuleNotInstalled, exception.DataMismatch):
+            return None
+        return view.CrystalSymmetry(
+            space_group=space_group.number,
+            international_symbol=space_group.international_symbol,
+            point_group=space_group.point_group,
+            crystal_system=space_group.crystal_system,
+            is_symmorphic=space_group.is_symmorphic,
+            equivalent_atoms=np.asarray(equivalent_atoms).tolist(),
+            wyckoff_letters=list(wyckoff.letters),
+            wyckoff_site_symmetries=list(wyckoff.site_symmetries),
         )
 
     def to_ase(self, supercell=None, ion_types=None):
@@ -692,6 +718,24 @@ class Structure(view.Mixin):
 
     def _handler_factory(self, raw):
         return StructureHandler.from_data(raw, steps=self._steps)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # the symmetry-derived methods need the optional symmetry link that VASP
+        # only writes for newer versions; all other methods need only the required
+        # structural data.
+        symmetry_methods = (
+            "equivalent_atoms",
+            "wyckoff_positions",
+            "standardized_cell",
+            "prototype",
+        )
+        enforce_optional = ("symmetry",) if method in symmetry_methods else ()
+        return is_available_raw(
+            self._quantity_name,
+            raw_data,
+            selection=selection,
+            enforce_optional=enforce_optional,
+        )
 
     def __getitem__(self, steps) -> "Structure":
         with self._source.access(self._quantity_name) as raw_structure:

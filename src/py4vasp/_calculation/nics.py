@@ -10,6 +10,7 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -264,6 +265,19 @@ class Nics(view.Mixin):
 
     def _handler_factory(self, raw):
         return NicsHandler.from_data(raw)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # Only structure is required by the schema, but NICS is meaningless without
+        # its (schema-optional) payload, stored either on a grid (nics_grid) or at
+        # explicit points (nics_points with positions). to_view/to_contour need grid.
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
+            return False  # the required structure is missing
+        on_grid = check.is_none(raw_data.positions)
+        has_grid = not check.is_none(raw_data.nics_grid)
+        has_points = not check.is_none(raw_data.nics_points)
+        if method in ("to_view", "to_contour"):
+            return on_grid and has_grid
+        return has_grid if on_grid else has_points
 
     def __str__(self, selection=None):
         return merge_strings(

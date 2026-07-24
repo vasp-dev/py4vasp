@@ -17,6 +17,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     local_moment,
     neighbor_list,
     optics,
+    phonon_band,
     projector,
     structure,
     symmetry,
@@ -56,6 +57,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.local_moment)
         + find_examples(_calculation.neighbor_list)
         + find_examples(_calculation.optics)
+        + find_examples(_calculation.phonon_band)
         + find_examples(_calculation.projector)
         + find_examples(_calculation.structure)
         + find_examples(_calculation.symmetry)

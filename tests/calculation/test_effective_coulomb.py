@@ -548,3 +548,15 @@ screened Hubbard J =\s+[-\d.]+\s+[-\d.]+"""
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.effective_coulomb("crpa")
     check_factory_methods(EffectiveCoulomb, data)
+
+
+def test_is_available(raw_data):
+    single_frequency = EffectiveCoulomb.from_data(raw_data.effective_coulomb("crpa"))
+    multiple_frequencies = EffectiveCoulomb.from_data(
+        raw_data.effective_coulomb("crpar")
+    )
+    # the default frequency plot needs more than one frequency
+    assert single_frequency.is_available("default", method="to_graph") is False
+    assert multiple_frequencies.is_available("default", method="to_graph") is True
+    # reading the data works regardless of the number of frequencies
+    assert single_frequency.is_available("default") is True

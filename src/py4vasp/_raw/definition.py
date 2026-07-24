@@ -581,6 +581,7 @@ schema.add(
     dispersion=Link("dispersion", "phonon"),
     stoichiometry=Link("stoichiometry", "phonon"),
     eigenvectors=f"{group}/eigenvectors",
+    primitive_positions=f"{group}/primitive/position_ions",
 )
 schema.add(
     raw.PhononDos,

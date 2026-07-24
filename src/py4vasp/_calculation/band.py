@@ -12,6 +12,7 @@ from py4vasp._calculation import projector
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
+    is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -354,6 +355,18 @@ class Band(graph.Mixin):
 
     def _handler_factory(self, raw):
         return BandHandler.from_data(raw)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # to_quiver plots the spin texture, which needs the optional projections and
+        # a noncollinear calculation (projections has a leading dimension of 4).
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
+            return False
+        if method == "to_quiver":
+            return (
+                not check.is_none(raw_data.projections)
+                and len(raw_data.projections) == 4
+            )
+        return True
 
     def __str__(self, selection=None):
         return merge_strings(

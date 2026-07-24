@@ -11,6 +11,7 @@ from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    is_available_raw,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -412,6 +413,16 @@ class EffectiveCoulomb(graph.Mixin):
 
     def _handler_factory(self, raw_data):
         return EffectiveCoulombHandler.from_data(raw_data)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # the default to_graph plots the interaction against frequency and needs more
+        # than one frequency; a single-frequency calculation cannot be plotted that
+        # way. Reading the data works regardless.
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
+            return False
+        if method == "to_graph":
+            return len(raw_data.frequencies) > 1
+        return True
 
     def read(self) -> dict[str, np.ndarray]:
         """Convert the effective Coulomb object to a dictionary representation.

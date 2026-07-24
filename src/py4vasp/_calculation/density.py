@@ -11,6 +11,7 @@ from py4vasp import raw as raw_module
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
+    is_available_raw,
     merge_default,
     merge_strings,
     quantity,
@@ -18,7 +19,7 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import graph, view
-from py4vasp._util import documentation, import_, index, select, slicing
+from py4vasp._util import check, documentation, import_, index, select, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
@@ -350,6 +351,15 @@ class Density(view.Mixin):
 
     def _handler_factory(self, raw):
         return DensityHandler.from_data(raw, selection_name=self._selection_name)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # to_quiver visualizes the magnetization, which only exists for collinear or
+        # noncollinear calculations (the leading dimension of charge is 2 or 4).
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
+            return False
+        if method == "to_quiver":
+            return len(raw_data.charge) in (2, 4)
+        return True
 
     def __str__(self, selection=None):
         return merge_strings(
