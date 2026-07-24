@@ -176,6 +176,51 @@ class PhononDispersion:
     ``[q_index, label]`` pairs."""
 
 
+@dataclass
+class CrystalSymmetry:
+    """Dataclass storing the symmetry of a crystal for the viewer.
+
+    Combines the crystal symmetry (space group and related classification) with the
+    per-atom symmetry information (equivalent atoms and Wyckoff positions), so the
+    viewer can display symmetry information about the structure.
+
+    Examples
+    --------
+    >>> from py4vasp.view import CrystalSymmetry
+    >>> CrystalSymmetry(
+    ...     space_group=225,
+    ...     international_symbol="Fm-3m",
+    ...     point_group="m-3m",
+    ...     crystal_system="cubic",
+    ...     is_symmorphic=True,
+    ...     equivalent_atoms=[0, 0, 0, 0],
+    ...     wyckoff_letters=["a", "a", "a", "a"],
+    ...     wyckoff_site_symmetries=["m-3m", "m-3m", "m-3m", "m-3m"],
+    ... )
+    CrystalSymmetry(space_group=225, ...)
+    """
+
+    space_group: int
+    """The international space-group number (1-230)."""
+    international_symbol: str
+    """The Hermann-Mauguin (international short) symbol, e.g. 'Fm-3m'."""
+    point_group: str
+    """The point group in international notation, e.g. 'm-3m'."""
+    crystal_system: str
+    """The crystal system, e.g. 'cubic' or 'orthorhombic'."""
+    is_symmorphic: bool
+    """Whether the space group is symmorphic."""
+    equivalent_atoms: Sequence
+    """Orbit index of every atom under the symmetry operations. Expected shape is
+    (number of atoms,)."""
+    wyckoff_letters: Sequence
+    """The Wyckoff letter of every atom, e.g. ['a', 'b', 'c']. Expected shape is
+    (number of atoms,)."""
+    wyckoff_site_symmetries: Sequence
+    """The site-symmetry symbol of every atom, e.g. 'm-3m'. Expected shape is
+    (number of atoms,)."""
+
+
 _x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color="#000000")
 _y_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 3, 0)), color="#000000")
 _z_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((0, 0, 3)), color="#000000")
@@ -301,6 +346,8 @@ class View:
     """This sequence stores arrows at the atom-centers. Expected shape is (number of quantities,)."""
     phonon: Optional[PhononDispersion] = None
     """Optional phonon dispersion to visualize as animated modes (only available for VASP Viewer)."""
+    crystal_symmetry: Optional[CrystalSymmetry] = None
+    """Optional crystal and atom symmetry information (only available for VASP Viewer)."""
     supercell: npt.ArrayLike = (1, 1, 1)
     """Defines how many multiples of the cell are drawn along each coordinate axes, in integer values. Valid shapes are (1,), or (3,), and valid dtype=int."""
     show_cell: bool = True
@@ -464,11 +511,33 @@ class View:
         if self.phonon is not None:
             structure.update(self._phonon_config(self.phonon))
 
+        # === Symmetry options ===
+        if self.crystal_symmetry is not None:
+            structure.update(self._symmetry_config(self.crystal_symmetry))
+
         # === Meta options ===
         if self.structure_title:
             structure["selections_descriptor"] = self.structure_title
 
         return structure
+
+    def _symmetry_config(self, symmetry):
+        return {
+            "crystal_symmetry": {
+                "space_group": int(symmetry.space_group),
+                "international_symbol": str(symmetry.international_symbol),
+                "point_group": str(symmetry.point_group),
+                "crystal_system": str(symmetry.crystal_system),
+                "is_symmorphic": bool(symmetry.is_symmorphic),
+            },
+            "atom_symmetries": {
+                "equivalent_atoms": [int(atom) for atom in symmetry.equivalent_atoms],
+                "wyckoff_letters": [str(letter) for letter in symmetry.wyckoff_letters],
+                "wyckoff_site_symmetries": [
+                    str(site) for site in symmetry.wyckoff_site_symmetries
+                ],
+            },
+        }
 
     def _phonon_config(self, phonon):
         eigenvectors = np.asarray(phonon.eigenvectors)

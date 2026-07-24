@@ -13,6 +13,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._third_party.view import View
 from py4vasp._third_party.view.view import (
+    CrystalSymmetry,
     GridQuantity,
     IonArrow,
     Isosurface,
@@ -395,3 +396,49 @@ def test_incorrect_shape_raises_error(view):
     incorrect_unit_cell = np.zeros((len(view.lattice_vectors), 2, 4))
     with pytest.raises(exception.IncorrectUsage):
         View(view.elements, incorrect_unit_cell, view.positions)
+
+
+def _crystal_symmetry():
+    return CrystalSymmetry(
+        space_group=225,
+        international_symbol="Fm-3m",
+        point_group="m-3m",
+        crystal_system="cubic",
+        is_symmorphic=True,
+        equivalent_atoms=np.array([0, 1, 2, 2, 2]),
+        wyckoff_letters=["a", "b", "c", "c", "c"],
+        wyckoff_site_symmetries=["m-3m", "m-3m", "4/mm.m", "4/mm.m", "4/mm.m"],
+    )
+
+
+def _symmetry_view(crystal_symmetry):
+    return View(
+        elements=[["Sr", "Ti", "O", "O", "O"]],
+        lattice_vectors=[4 * np.eye(3)],
+        positions=[
+            [[0, 0, 0], [0.5, 0.5, 0.5], [0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0]]
+        ],
+        crystal_symmetry=crystal_symmetry,
+    )
+
+
+def test_crystal_symmetry_serialized_to_config():
+    config = _symmetry_view(_crystal_symmetry()).to_vasp_viewer_config()
+    assert config["crystal_symmetry"] == {
+        "space_group": 225,
+        "international_symbol": "Fm-3m",
+        "point_group": "m-3m",
+        "crystal_system": "cubic",
+        "is_symmorphic": True,
+    }
+    assert config["atom_symmetries"] == {
+        "equivalent_atoms": [0, 1, 2, 2, 2],
+        "wyckoff_letters": ["a", "b", "c", "c", "c"],
+        "wyckoff_site_symmetries": ["m-3m", "m-3m", "4/mm.m", "4/mm.m", "4/mm.m"],
+    }
+
+
+def test_symmetry_fields_absent_without_symmetry():
+    config = _symmetry_view(None).to_vasp_viewer_config()
+    assert "crystal_symmetry" not in config
+    assert "atom_symmetries" not in config

@@ -708,6 +708,23 @@ def test_equivalent_atoms_without_symmetry(Sr2TiO4):
         Sr2TiO4.equivalent_atoms()
 
 
+def test_to_view_includes_crystal_symmetry(perovskite):
+    pytest.importorskip("spglib")
+    symmetry = perovskite.to_view().crystal_symmetry
+    assert symmetry is not None
+    assert symmetry.space_group == 221  # cubic Pm-3m
+    assert symmetry.crystal_system == "cubic"
+    np.testing.assert_array_equal(symmetry.equivalent_atoms, [0, 1, 2, 2, 2])
+    assert symmetry.wyckoff_letters == ["a", "b", "c", "c", "c"]
+    assert len(symmetry.wyckoff_site_symmetries) == 5
+
+
+def test_to_view_without_symmetry_has_no_crystal_symmetry(raw_data):
+    # a structure lacking the symmetry link (pre-VASP-6.6) degrades gracefully
+    structure = make_structure(raw_data.structure("Sr2TiO4"))
+    assert structure.to_view().crystal_symmetry is None
+
+
 _SYMMETRY_METHODS = (
     "equivalent_atoms",
     "wyckoff_positions",
