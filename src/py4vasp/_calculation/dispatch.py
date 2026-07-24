@@ -533,10 +533,10 @@ def is_available(self, selection=None, method=None):
 
     Parameters
     ----------
-    selection : str | None
+    selection : str | list[str] | None
         A particular source of the quantity, using the same ``selection`` string
-        accepted by :meth:`read`. If ``None`` (default), every source of the
-        quantity is checked and the result is returned as a dictionary.
+        accepted by :meth:`read`. ``None`` (default) checks the primary source, as
+        elsewhere in py4vasp. Pass a list of sources to check several at once.
     method : str | None
         The method you intend to call, e.g. ``"to_view"``. Most quantities report
         the same availability for every method, but some require additional data
@@ -545,18 +545,17 @@ def is_available(self, selection=None, method=None):
     Returns
     -------
     bool | dict[str, bool]
-        If *selection* is given, ``True`` when the data required for *method* with
-        that selection is available. If *selection* is ``None``, a dictionary
-        mapping every source of the quantity to its availability, e.g.
-        ``{"default": True, "final": False}``.
+        A single boolean when *selection* is ``None`` or a string. When *selection*
+        is a list, a dictionary mapping each requested source to its availability,
+        e.g. ``{"default": True, "final": False}``.
     """
     quantity = _availability_quantity_of(self)
-    if selection is not None:
-        return _availability_of_source(self, quantity, selection, method)
-    return {
-        source: _availability_of_source(self, quantity, source, method)
-        for source in schema_unique_selections(quantity)
-    }
+    if isinstance(selection, (list, tuple)):
+        return {
+            source: _availability_of_source(self, quantity, source, method)
+            for source in selection
+        }
+    return _availability_of_source(self, quantity, selection, method)
 
 
 def _availability_of_source(instance, quantity, selection, method):

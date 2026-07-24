@@ -1125,20 +1125,21 @@ class TestIsAvailableInjected:
         _, kwargs = mock_available.call_args
         assert kwargs.get("enforce_optional", ()) == ()
 
-    def test_selection_none_returns_dict_over_sources(self, tmp_path):
+    def test_selection_none_uses_primary_source(self, tmp_path):
         calc = self._calc(tmp_path)
-        result = calc.structure.is_available()
-        assert isinstance(result, dict)
-        # structure exposes several sources; the primary one is available
-        assert result["default"] is True
-        assert all(isinstance(value, bool) for value in result.values())
+        # None picks the primary source and returns a plain bool, as elsewhere
+        assert calc.structure.is_available() is True
 
-    def test_selection_none_uses_method_per_source(self, tmp_path):
+    def test_selection_list_returns_dict(self, tmp_path):
+        calc = self._calc(tmp_path)
+        result = calc.structure.is_available(["default", "final"])
+        assert result == {"default": True, "final": False}
+
+    def test_selection_list_applies_method_per_source(self, tmp_path):
         calc = self._calc(tmp_path)
         # density has no magnetization in the default demo, so to_quiver is unavailable
-        result = calc.density.is_available(method="to_quiver")
-        assert isinstance(result, dict)
-        assert result["default"] is False
+        result = calc.density.is_available(["default"], method="to_quiver")
+        assert result == {"default": False}
 
     def test_public_is_available_hides_enforce_optional(self):
         import inspect
@@ -1160,4 +1161,6 @@ class TestIsAvailableSourceResolution:
         # must resolve it rather than fail on the missing "default" source.
         calc = self._calc(tmp_path)
         assert calc.current_density.is_available("nmr") is True
-        assert calc.current_density.is_available() == {"nmr": True}
+        # None resolves the sole "nmr" source rather than the missing "default"
+        assert calc.current_density.is_available() is True
+        assert calc.current_density.is_available(["nmr"]) == {"nmr": True}
