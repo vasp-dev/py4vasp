@@ -256,6 +256,9 @@ class NeighborList:
     The relevant data (cell, atom types, positions) is taken from the structure.
     """
 
+    # is_available checks the structure, which is where the data actually lives.
+    _availability_quantity = _DATA_QUANTITY
+
     def __init__(self, source, quantity_name: str = "neighbor_list", steps=None):
         self._source = source
         self._quantity_name = quantity_name

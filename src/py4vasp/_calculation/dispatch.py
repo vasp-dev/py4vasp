@@ -525,8 +525,10 @@ def check_availability(check):
 
     @functools.wraps(check)
     def wrapper(self, enforce_optional=False, method=None):
+        quantity = _availability_quantity_of(self)
+        selection = _effective_source(quantity, None)
         try:
-            with self._source.access(self._quantity_name) as raw_data:
+            with self._source.access(quantity, selection=selection) as raw_data:
                 return check(self, raw_data, enforce_optional, method)
         except (
             exception.FileAccessError,
@@ -538,11 +540,22 @@ def check_availability(check):
     return wrapper
 
 
+def _availability_quantity_of(instance):
+    """The schema quantity an availability check should target.
+
+    Defaults to the instance's own ``_quantity_name``. Derived quantities that
+    read another quantity's data (e.g. ``optics`` -> ``dielectric_function``,
+    ``neighbor_list`` -> ``structure``) set ``_availability_quantity`` to redirect
+    the check to the quantity that actually holds the data.
+    """
+    return getattr(instance, "_availability_quantity", None) or instance._quantity_name
+
+
 @check_availability
 def _default_is_available(self, raw_data, enforce_optional, method):
     """Default ``is_available``: check the schema against the accessed data."""
     return available_in_raw(
-        self._quantity_name, raw_data, enforce_optional=enforce_optional
+        _availability_quantity_of(self), raw_data, enforce_optional=enforce_optional
     )
 
 
@@ -638,12 +651,31 @@ def data_available(
         return False
 
 
-def _schema_specification(quantity_name, selection):
-    try:
-        sources = _schema.sources[quantity_name.lstrip("_")]
-    except KeyError:
+def _effective_source(quantity_name, selection):
+    """Resolve the schema source name to use for an availability check.
+
+    Quantities are normally stored under the ``"default"`` source, but some define
+    a single differently-named source (e.g. ``current_density`` -> ``"nmr"``). When
+    no explicit selection is given and there is no ``"default"`` source, fall back
+    to that sole source so the check targets the real data. Returns ``None`` when
+    the default source should be used (or when the choice is ambiguous).
+    """
+    if selection is not None:
+        return selection
+    sources = _schema.sources.get(quantity_name.lstrip("_"))
+    if not sources or DEFAULT_SELECTION in sources:
         return None
-    source = sources.get(selection or DEFAULT_SELECTION)
+    unique = [name for name, source in sources.items() if source.alias_for is None]
+    return unique[0] if len(unique) == 1 else None
+
+
+def _schema_specification(quantity_name, selection):
+    sources = _schema.sources.get(quantity_name.lstrip("_"))
+    if not sources:
+        return None
+    source = sources.get(
+        _effective_source(quantity_name, selection) or DEFAULT_SELECTION
+    )
     return source.data if source is not None else None
 
 

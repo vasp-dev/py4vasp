@@ -413,3 +413,25 @@ def test_to_database(reference_potential):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.potential("Fe3O4 collinear total")
     check_factory_methods(Potential, data)
+
+
+def test_is_available_total_only(raw_data):
+    potential = Potential.from_data(raw_data.potential("Sr2TiO4 total"))
+    assert potential.is_available() is True
+    assert potential.is_available(method="to_view") is True
+    assert potential.is_available(method="to_contour") is True
+    # nonpolarized total potential has no magnetization -> to_quiver unavailable
+    assert potential.is_available(method="to_quiver") is False
+
+
+def test_is_available_to_quiver_needs_magnetic(raw_data):
+    potential = Potential.from_data(raw_data.potential("Fe3O4 collinear total"))
+    assert potential.is_available(method="to_quiver") is True
+
+
+def test_is_available_without_potential(raw_data):
+    raw_potential = raw_data.potential("Sr2TiO4 total")
+    raw_potential.total_potential = raw.VaspData(None)
+    potential = Potential.from_data(raw_potential)
+    assert potential.is_available() is False
+    assert potential.is_available(method="to_view") is False

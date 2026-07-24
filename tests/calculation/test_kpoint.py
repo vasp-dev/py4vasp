@@ -327,3 +327,20 @@ def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.kpoint("automatic")
     parameters = {"path_indices": {"start": (0, 0, 0), "finish": (1, 1, 1)}}
     check_factory_methods(Kpoint, data, parameters, skip_methods=["selections"])
+
+
+def test_is_available(raw_data):
+    from py4vasp import raw
+
+    line = Kpoint.from_data(raw_data.kpoint("line with_labels"))
+    grid = Kpoint.from_data(raw_data.kpoint("explicit with_labels"))
+    assert line.is_available(method="distances") is True
+    assert grid.is_available(method="distances") is True
+    # line mode without the number of points per line cannot split the path
+    raw_without_number = raw_data.kpoint("line with_labels")
+    raw_without_number.number = raw.VaspData(None)
+    without_number = Kpoint.from_data(raw_without_number)
+    for method in ("read", "distances", "number_lines", "line_length"):
+        assert without_number.is_available(method=method) is False
+    # grid modes are unaffected by the missing number
+    assert Kpoint.from_data(raw_without_number).is_available(method="mode") is True

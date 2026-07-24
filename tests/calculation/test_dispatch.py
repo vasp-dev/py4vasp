@@ -1112,9 +1112,24 @@ class TestIsAvailableInjected:
 
     def test_default_enforce_optional_is_false(self, tmp_path):
         calc = self._calc(tmp_path)
+        # energy uses the default is_available, which lives in dispatch and so can be
+        # observed through the patched available_in_raw (density now has a custom one).
         with patch(
             "py4vasp._calculation.dispatch.available_in_raw", return_value=True
         ) as mock_available:
-            calc.density.is_available()
+            calc.energy.is_available()
         _, kwargs = mock_available.call_args
         assert kwargs.get("enforce_optional") is False
+
+
+class TestIsAvailableSourceResolution:
+    def _calc(self, tmp_path):
+        from py4vasp import demo
+
+        return demo.calculation(tmp_path / "example")
+
+    def test_single_nondefault_source_resolves(self, tmp_path):
+        # current_density's only schema source is "nmr" (no "default"); is_available
+        # must resolve it rather than fail on the missing "default" source.
+        calc = self._calc(tmp_path)
+        assert calc.current_density.is_available() is True

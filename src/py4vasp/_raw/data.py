@@ -727,14 +727,14 @@ class Potential:
 
     structure: VaspData
     """Atomic structure used to generate the potential"""
-    hartree_potential: VaspData
-    """Hartree potential, a contribution to the total potential"""
-    ionic_potential: VaspData
-    """Ionic potential, a contribution to the total potential"""
-    xc_potential: VaspData
-    """Exchange-correlation potential, a contribution to the total potential"""
-    total_potential: VaspData
-    """The total potential = ionic + hartree + xc potentials"""
+    hartree_potential: VaspData = NONE()
+    """Hartree potential, a contribution to the total potential (optional)"""
+    ionic_potential: VaspData = NONE()
+    """Ionic potential, a contribution to the total potential (optional)"""
+    xc_potential: VaspData = NONE()
+    """Exchange-correlation potential, a contribution to the total potential (optional)"""
+    total_potential: VaspData = NONE()
+    """The total potential = ionic + hartree + xc potentials (optional)"""
 
 
 @dataclasses.dataclass

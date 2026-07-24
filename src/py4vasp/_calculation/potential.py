@@ -11,6 +11,8 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    available_in_raw,
+    check_availability,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -303,6 +305,48 @@ class Potential(view.Mixin):
 
     def _handler_factory(self, raw):
         return PotentialHandler.from_data(raw)
+
+    @check_availability
+    def is_available(self, raw_data, enforce_optional, method):
+        """Check whether the potential data required for a method is available.
+
+        VASP writes only the potentials selected in the INCAR, so all four kinds
+        (total/hartree/ionic/xc) are optional. Reading needs the structure plus at
+        least one potential; ``to_view``/``to_contour`` visualize the default
+        ``total`` potential; ``to_quiver`` needs a magnetic (collinear or
+        noncollinear) total or xc potential.
+
+        Parameters
+        ----------
+        enforce_optional : bool
+            Unused for potential; the per-method requirements below apply instead.
+        method : str | None
+            ``"to_view"``/``"to_contour"`` require the total potential;
+            ``"to_quiver"`` requires a magnetic total/xc potential; otherwise at
+            least one potential is required.
+
+        Returns
+        -------
+        bool
+            True if the data required for *method* is available.
+        """
+        if not available_in_raw(self._quantity_name, raw_data):
+            return False  # the required structure is missing
+        present = {
+            kind: not check.is_none(getattr(raw_data, f"{kind}_potential"))
+            for kind in VALID_KINDS
+        }
+        if method in ("to_view", "to_contour"):
+            return present["total"]
+        if method == "to_quiver":
+            if present["total"]:
+                potential = raw_data.total_potential
+            elif present["xc"]:
+                potential = raw_data.xc_potential
+            else:
+                return False
+            return _is_collinear(potential) or _is_noncollinear(potential)
+        return any(present.values())
 
     def __str__(self, selection=None):
         return merge_strings(

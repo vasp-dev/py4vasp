@@ -10,6 +10,8 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    available_in_raw,
+    check_availability,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -264,6 +266,39 @@ class Nics(view.Mixin):
 
     def _handler_factory(self, raw):
         return NicsHandler.from_data(raw)
+
+    @check_availability
+    def is_available(self, raw_data, enforce_optional, method):
+        """Check whether the NICS data required for a method is available.
+
+        Only ``structure`` is required by the schema, but NICS is meaningless
+        without its (schema-optional) payload. The data is stored either on a grid
+        (``nics_grid``) or at explicit points (``nics_points`` with ``positions``);
+        which one is present determines the mode. ``to_view`` and ``to_contour``
+        work only for grid data.
+
+        Parameters
+        ----------
+        enforce_optional : bool
+            Unused for NICS; the payload requirement below is enforced regardless.
+        method : str | None
+            If ``"to_view"`` or ``"to_contour"``, require grid data specifically.
+            Otherwise (``read``/``to_numpy``) require whichever payload matches the
+            mode.
+
+        Returns
+        -------
+        bool
+            True if the structure and the payload required for *method* are present.
+        """
+        if not available_in_raw(self._quantity_name, raw_data):
+            return False  # the required structure is missing
+        on_grid = check.is_none(raw_data.positions)
+        has_grid = not check.is_none(raw_data.nics_grid)
+        has_points = not check.is_none(raw_data.nics_points)
+        if method in ("to_view", "to_contour"):
+            return on_grid and has_grid
+        return has_grid if on_grid else has_points
 
     def __str__(self, selection=None):
         return merge_strings(

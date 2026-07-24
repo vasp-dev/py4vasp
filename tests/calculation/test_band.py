@@ -764,3 +764,15 @@ def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.band("multiple")
     parameters = {"to_quiver": {"selection": "x~y(band=1)"}}
     check_factory_methods(Band, data, parameters)
+
+
+def test_is_available_to_quiver(raw_data):
+    noncollinear = Band.from_data(raw_data.band("noncollinear with_projectors"))
+    collinear = Band.from_data(raw_data.band("spin_polarized with_projectors"))
+    without_projections = Band.from_data(raw_data.band("noncollinear"))
+    # to_quiver needs the optional projections and a noncollinear calculation
+    assert noncollinear.is_available(method="to_quiver") is True
+    assert collinear.is_available(method="to_quiver") is False
+    assert without_projections.is_available(method="to_quiver") is False
+    # read stays available in every case
+    assert noncollinear.is_available() is True
