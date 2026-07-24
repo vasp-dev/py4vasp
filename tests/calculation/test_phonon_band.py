@@ -192,7 +192,6 @@ def test_is_available_to_view_requires_primitive_positions(raw_data):
     assert quantity.is_available(method="to_view") is False
     # the default check only requires the non-optional data
     assert quantity.is_available() is True
-    assert quantity.is_available(enforce_optional=True) is False
 
 
 def test_is_available_accesses_data_once(raw_data):
@@ -209,9 +208,8 @@ def test_is_available_unspecialized_method_uses_default(raw_data):
     band = raw_data.phonon_band("default")
     band.primitive_positions = raw.VaspData(None)
     quantity = PhononBand.from_data(band)
-    # a method the override does not specialize falls back to the global check
+    # a method the override does not specialize falls back to the mandatory-only check
     assert quantity.is_available(method="to_dict") is True
-    assert quantity.is_available(method="to_dict", enforce_optional=True) is False
 
 
 def test_to_view_without_primitive_positions_raises(raw_data):

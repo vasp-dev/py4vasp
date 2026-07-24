@@ -11,8 +11,7 @@ from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
-    available_in_raw,
-    check_availability,
+    is_available_raw,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -415,29 +414,11 @@ class EffectiveCoulomb(graph.Mixin):
     def _handler_factory(self, raw_data):
         return EffectiveCoulombHandler.from_data(raw_data)
 
-    @check_availability
-    def is_available(self, raw_data, enforce_optional, method):
-        """Check whether the effective-Coulomb data required for a method is available.
-
-        The default ``to_graph`` plots the interaction against frequency and needs
-        more than one frequency; a single-frequency calculation cannot be plotted
-        that way. Reading the data works regardless.
-
-        Parameters
-        ----------
-        enforce_optional : bool
-            Forwarded to the schema check for the required Coulomb data.
-        method : str | None
-            ``"to_graph"`` additionally requires more than one frequency.
-
-        Returns
-        -------
-        bool
-            True if the data required for *method* is available.
-        """
-        if not available_in_raw(
-            self._quantity_name, raw_data, enforce_optional=enforce_optional
-        ):
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # the default to_graph plots the interaction against frequency and needs more
+        # than one frequency; a single-frequency calculation cannot be plotted that
+        # way. Reading the data works regardless.
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
             return False
         if method == "to_graph":
             return len(raw_data.frequencies) > 1

@@ -18,8 +18,7 @@ from py4vasp._calculation.dispatch import (
     DataSource,
     SuppressErrorsSourceWrapper,
     _result_has_data,
-    available_in_raw,
-    check_availability,
+    is_available_raw,
     merge_default,
     merge_strings,
     quantity,
@@ -695,39 +694,22 @@ class Structure(view.Mixin):
     def _handler_factory(self, raw):
         return StructureHandler.from_data(raw, steps=self._steps)
 
-    @check_availability
-    def is_available(self, raw_data, enforce_optional, method):
-        """Check whether the structural data required for a method is available.
-
-        The symmetry-derived methods (``equivalent_atoms``, ``wyckoff_positions``,
-        ``standardized_cell``, ``prototype``) need the optional ``symmetry`` link
-        that VASP only writes for newer versions; all other methods need only the
-        required structural data.
-
-        Parameters
-        ----------
-        enforce_optional : bool
-            If True, the optional structural fields (``idipol``/``ldipol``/
-            ``symmetry``) must also be present. Defaults to False.
-        method : str | None
-            One of the symmetry-derived method names to additionally require the
-            ``symmetry`` link, or None for the default check.
-
-        Returns
-        -------
-        bool
-            True if the data required for *method* is available.
-        """
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # the symmetry-derived methods need the optional symmetry link that VASP
+        # only writes for newer versions; all other methods need only the required
+        # structural data.
         symmetry_methods = (
             "equivalent_atoms",
             "wyckoff_positions",
             "standardized_cell",
             "prototype",
         )
-        if method in symmetry_methods and check.is_none(raw_data.symmetry):
-            return False
-        return available_in_raw(
-            self._quantity_name, raw_data, enforce_optional=enforce_optional
+        enforce_optional = ("symmetry",) if method in symmetry_methods else ()
+        return is_available_raw(
+            self._quantity_name,
+            raw_data,
+            selection=selection,
+            enforce_optional=enforce_optional,
         )
 
     def __getitem__(self, steps) -> "Structure":

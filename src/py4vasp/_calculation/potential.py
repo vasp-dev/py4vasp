@@ -11,8 +11,7 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
-    available_in_raw,
-    check_availability,
+    is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -306,31 +305,12 @@ class Potential(view.Mixin):
     def _handler_factory(self, raw):
         return PotentialHandler.from_data(raw)
 
-    @check_availability
-    def is_available(self, raw_data, enforce_optional, method):
-        """Check whether the potential data required for a method is available.
-
-        VASP writes only the potentials selected in the INCAR, so all four kinds
-        (total/hartree/ionic/xc) are optional. Reading needs the structure plus at
-        least one potential; ``to_view``/``to_contour`` visualize the default
-        ``total`` potential; ``to_quiver`` needs a magnetic (collinear or
-        noncollinear) total or xc potential.
-
-        Parameters
-        ----------
-        enforce_optional : bool
-            Unused for potential; the per-method requirements below apply instead.
-        method : str | None
-            ``"to_view"``/``"to_contour"`` require the total potential;
-            ``"to_quiver"`` requires a magnetic total/xc potential; otherwise at
-            least one potential is required.
-
-        Returns
-        -------
-        bool
-            True if the data required for *method* is available.
-        """
-        if not available_in_raw(self._quantity_name, raw_data):
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # VASP writes only the potentials selected in the INCAR, so all four kinds
+        # (total/hartree/ionic/xc) are optional. Reading needs the structure plus at
+        # least one potential; to_view/to_contour visualize the default total
+        # potential; to_quiver needs a magnetic (collinear/noncollinear) total or xc.
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
             return False  # the required structure is missing
         present = {
             kind: not check.is_none(getattr(raw_data, f"{kind}_potential"))

@@ -12,8 +12,7 @@ from py4vasp import exception
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
-    available_in_raw,
-    check_availability,
+    is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -217,33 +216,10 @@ class Kpoint:
     def _handler_factory(self, raw):
         return KpointHandler.from_data(raw)
 
-    @check_availability
-    def is_available(self, raw_data, enforce_optional, method):
-        """Check whether the k-point data required for a method is available.
-
-        For a band-structure path (line mode), the number of points per line is an
-        optional field that VASP does not always write; without it the methods that
-        split the path (``distances``, ``number_lines``, ``line_length``, and the
-        ``read``/``labels`` that rely on them) cannot work. Grid modes are
-        unaffected.
-
-        Parameters
-        ----------
-        enforce_optional : bool
-            Forwarded to the schema check for the required k-point data.
-        method : str | None
-            One of the path-splitting methods to additionally require the optional
-            ``number`` field in line mode.
-
-        Returns
-        -------
-        bool
-            True if the data required for *method* is available.
-        """
-        if not available_in_raw(
-            self._quantity_name, raw_data, enforce_optional=enforce_optional
-        ):
-            return False
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # for a band-structure path (line mode), the number of points per line is an
+        # optional field that VASP does not always write; without it the methods that
+        # split the path cannot work. Grid modes are unaffected.
         line_mode_methods = (
             "read",
             "to_dict",
@@ -252,12 +228,17 @@ class Kpoint:
             "line_length",
             "labels",
         )
-        if (
+        needs_number = (
             method in line_mode_methods
             and self._handler_factory(raw_data).mode() == "line"
-        ):
-            return not check.is_none(raw_data.number)
-        return True
+        )
+        enforce_optional = ("number",) if needs_number else ()
+        return is_available_raw(
+            self._quantity_name,
+            raw_data,
+            selection=selection,
+            enforce_optional=enforce_optional,
+        )
 
     def __str__(self, selection=None):
         return merge_strings(

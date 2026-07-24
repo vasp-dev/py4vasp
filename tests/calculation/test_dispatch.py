@@ -1049,7 +1049,6 @@ class TestDataAvailable:
         source = DataSource(raw_data.density("Sr2TiO4"))
         # density has only required fields (structure link + charge)
         assert data_available(source, "density")
-        assert data_available(source, "density", enforce_optional=True)
 
     def test_missing_required_field(self, raw_data):
         density = raw_data.density("Sr2TiO4")
@@ -1057,23 +1056,28 @@ class TestDataAvailable:
         source = DataSource(density)
         assert not data_available(source, "density")
 
-    def test_optional_field_gated_by_enforce_optional(self, raw_data):
+    def test_optional_field_enforced_by_name(self, raw_data):
         band = raw_data.phonon_band("default")
         band.primitive_positions = raw.VaspData(None)
         source = DataSource(band)
+        # an optional field is ignored unless its name is explicitly enforced
         assert data_available(source, "phonon_band")
-        assert not data_available(source, "phonon_band", enforce_optional=True)
+        assert not data_available(
+            source, "phonon_band", enforce_optional=["primitive_positions"]
+        )
 
-    def test_optional_present_available_when_enforced(self, raw_data):
+    def test_optional_present_when_enforced_by_name(self, raw_data):
         source = DataSource(raw_data.phonon_band("default"))
-        assert data_available(source, "phonon_band", enforce_optional=True)
+        assert data_available(
+            source, "phonon_band", enforce_optional=["primitive_positions"]
+        )
 
-    def test_linked_optional_gated_by_enforce_optional_linked(self, raw_data):
+    def test_linked_optional_enforced_by_name(self, raw_data):
         # density links to structure, whose optional symmetry is absent in the demo
         source = DataSource(raw_data.density("Sr2TiO4"))
-        assert data_available(source, "density", enforce_optional=True)
+        assert data_available(source, "density")
         assert not data_available(
-            source, "density", enforce_optional=True, enforce_optional_linked=True
+            source, "density", enforce_optional_linked=["symmetry"]
         )
 
     def test_missing_linked_required_data(self, raw_data):
@@ -1110,16 +1114,24 @@ class TestIsAvailableInjected:
             calc.density.is_available(method="to_view") == calc.density.is_available()
         )
 
-    def test_default_enforce_optional_is_false(self, tmp_path):
+    def test_default_does_not_enforce_optional(self, tmp_path):
         calc = self._calc(tmp_path)
-        # energy uses the default is_available, which lives in dispatch and so can be
-        # observed through the patched available_in_raw (density now has a custom one).
+        # energy uses the default _is_available, which lives in dispatch and so can be
+        # observed through the patched is_available_raw (density has a custom one).
         with patch(
-            "py4vasp._calculation.dispatch.available_in_raw", return_value=True
+            "py4vasp._calculation.dispatch.is_available_raw", return_value=True
         ) as mock_available:
             calc.energy.is_available()
         _, kwargs = mock_available.call_args
-        assert kwargs.get("enforce_optional") is False
+        assert kwargs.get("enforce_optional", ()) == ()
+
+    def test_public_is_available_hides_enforce_optional(self):
+        import inspect
+
+        from py4vasp._calculation.dispatch import is_available
+
+        parameters = set(inspect.signature(is_available).parameters)
+        assert parameters == {"self", "selection", "method"}
 
 
 class TestIsAvailableSourceResolution:

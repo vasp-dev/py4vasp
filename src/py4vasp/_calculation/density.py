@@ -11,8 +11,7 @@ from py4vasp import raw as raw_module
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
-    available_in_raw,
-    check_availability,
+    is_available_raw,
     merge_default,
     merge_strings,
     quantity,
@@ -353,32 +352,12 @@ class Density(view.Mixin):
     def _handler_factory(self, raw):
         return DensityHandler.from_data(raw, selection_name=self._selection_name)
 
-    @check_availability
-    def is_available(self, raw_data, enforce_optional, method):
-        """Check whether the density data required for a method is available.
-
-        ``to_quiver`` visualizes the magnetization, which only exists for collinear
-        or noncollinear calculations (the leading dimension of ``charge`` is 2 or
-        4). All other methods work for any magnetic configuration.
-
-        Parameters
-        ----------
-        enforce_optional : bool
-            Forwarded to the schema check for the required density data.
-        method : str | None
-            ``"to_quiver"`` additionally requires a collinear/noncollinear density.
-
-        Returns
-        -------
-        bool
-            True if the data required for *method* is available.
-        """
-        if not available_in_raw(
-            self._quantity_name, raw_data, enforce_optional=enforce_optional
-        ):
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # to_quiver visualizes the magnetization, which only exists for collinear or
+        # noncollinear calculations (the leading dimension of charge is 2 or 4).
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
             return False
         if method == "to_quiver":
-            # magnetization needs a collinear (2) or noncollinear (4) charge density
             return len(raw_data.charge) in (2, 4)
         return True
 

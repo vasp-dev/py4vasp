@@ -9,8 +9,7 @@ from py4vasp import exception, raw
 from py4vasp._calculation import _optics_color
 from py4vasp._calculation.dispatch import (
     DataSource,
-    available_in_raw,
-    check_availability,
+    is_available_raw,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -337,32 +336,10 @@ class Optics(graph.Mixin):
     def _handler_factory(self, raw_data):
         return OpticsHandler.from_data(raw_data)
 
-    @check_availability
-    def is_available(self, raw_data, enforce_optional, method):
-        """Check whether the optical data required for a method is available.
-
-        Optics derives from the dielectric function. The optical spectra
-        (``read``, ``to_graph``, ``transmission``, ``absorption``,
-        ``reflectivity``, ``color``) require the full 3x3 tensor dielectric
-        function (``ndim == 4``); scalar dielectric functions are not supported.
-        ``selections`` works regardless.
-
-        Parameters
-        ----------
-        enforce_optional : bool
-            Forwarded to the schema check for the dielectric function data.
-        method : str | None
-            ``"selections"`` needs only the dielectric function; every other
-            method additionally requires the tensor form.
-
-        Returns
-        -------
-        bool
-            True if the data required for *method* is available.
-        """
-        if not available_in_raw(
-            _DATA_QUANTITY, raw_data, enforce_optional=enforce_optional
-        ):
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # optics derives from the dielectric function; the optical spectra require the
+        # full 3x3 tensor (ndim == 4). selections works for a scalar one too.
+        if not is_available_raw(_DATA_QUANTITY, raw_data, selection=selection):
             return False
         if method == "selections":
             return True

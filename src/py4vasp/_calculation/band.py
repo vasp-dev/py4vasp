@@ -12,8 +12,7 @@ from py4vasp._calculation import projector
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
-    available_in_raw,
-    check_availability,
+    is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -357,34 +356,16 @@ class Band(graph.Mixin):
     def _handler_factory(self, raw):
         return BandHandler.from_data(raw)
 
-    @check_availability
-    def is_available(self, raw_data, enforce_optional, method):
-        """Check whether the band-structure data required for a method is available.
-
-        ``to_quiver`` plots the spin texture, which needs the optional
-        ``projections`` and a noncollinear calculation (``projections`` has a
-        leading dimension of 4). All other methods work without projections.
-
-        Parameters
-        ----------
-        enforce_optional : bool
-            Forwarded to the schema check for the required band data.
-        method : str | None
-            ``"to_quiver"`` additionally requires noncollinear projections.
-
-        Returns
-        -------
-        bool
-            True if the data required for *method* is available.
-        """
-        if not available_in_raw(
-            self._quantity_name, raw_data, enforce_optional=enforce_optional
-        ):
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # to_quiver plots the spin texture, which needs the optional projections and
+        # a noncollinear calculation (projections has a leading dimension of 4).
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
             return False
         if method == "to_quiver":
-            if check.is_none(raw_data.projections):
-                return False
-            return len(raw_data.projections) == 4
+            return (
+                not check.is_none(raw_data.projections)
+                and len(raw_data.projections) == 4
+            )
         return True
 
     def __str__(self, selection=None):
