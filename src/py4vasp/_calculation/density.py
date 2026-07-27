@@ -121,6 +121,7 @@ class DensityHandler:
                 isosurfaces=self._grid_quantity_properties(
                     selector, sel, map_, user_options
                 ),
+                sign_mode=self._sign_mode(selector, sel, map_),
             )
             for sel in selections
         ]
@@ -235,6 +236,14 @@ class DensityHandler:
         component = map_.get(component_label, -1)
         return self._isosurfaces(component, **user_options)
 
+    def _sign_mode(self, selector, selection, map_):
+        # Magnetization components use the symmetric ±isolevel (blue/red) lobes, so
+        # the viewer should treat positive/negative as opposite phenomena ("mixed").
+        # The charge density is a continuous, sign-agnostic field.
+        component_label = selector.label(selection)
+        component = map_.get(component_label, -1)
+        return "mixed" if self._use_symmetric_isosurface(component) else "continuous"
+
     def _label(self, component_label):
         if component_label == _INTERNAL:
             return self._selection or "charge"
@@ -295,7 +304,7 @@ class Density(view.Mixin):
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.density.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)])], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)], sign_mode='continuous')], ...)
 
     For your own postprocessing, you can read the band data into a Python dictionary:
 

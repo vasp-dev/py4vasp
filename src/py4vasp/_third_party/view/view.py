@@ -92,7 +92,7 @@ class GridQuantity:
     >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
     >>> isosurface = Isosurface(isolevel=0.1, color='red', opacity=0.5)
     >>> GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
-    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)])
+    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)], sign_mode='continuous')
     """
 
     quantity: npt.ArrayLike
@@ -101,6 +101,13 @@ class GridQuantity:
     """Name of the quantity"""
     isosurfaces: Sequence[Isosurface] = None
     """Sequence of isosurfaces to be plotted for this quantity."""
+    sign_mode: str = "continuous"
+    """How the viewer should interpret negative values of this field. ``"continuous"``
+    (the default) treats the field as a single continuous spectrum where negative
+    isovalues carry no special meaning. ``"mixed"`` marks a signed field whose positive
+    and negative lobes represent opposite phenomena (e.g. spin up/down magnetization or
+    NICS shielding/deshielding); the viewer then constrains each isosurface to the lobe
+    matching its isovalue sign."""
 
 
 @dataclass
@@ -287,7 +294,7 @@ class View:
     View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=None, ...)
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...), ...])], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...), ...], sign_mode='mixed')], ...)
 
     But you can also create :class:`~py4vasp.view.View` objects directly. For example:
 
@@ -331,7 +338,7 @@ class View:
     >>> grid_quantity = GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
     >>> view.grid_scalars = [grid_quantity]
     >>> view
-    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)])], ...)
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)], sign_mode='continuous')], ...)
     """
 
     elements: npt.ArrayLike
@@ -614,33 +621,27 @@ class View:
 
     def _volume_dataset(self, grid_quantity):
         # The field is sent ONCE; each isosurface becomes a separate volume on the
-        # viewer side sharing this data. When a quantity carries both positive and
-        # negative isolevels (e.g. NICS +v / -v), each is tagged with a sign mode so
-        # the viewer renders the matching lobe instead of duplicating the positive
-        # one. A same-sign set keeps the default (sign-agnostic) rendering.
+        # viewer side sharing this data. The dataset-level sign_mode tells the viewer
+        # how to interpret negative values: "continuous" renders the raw field, while
+        # "mixed" marks a signed field (e.g. NICS +v / -v or spin up/down) so the
+        # viewer constrains each isosurface to the lobe matching its isovalue sign.
         data, grid = self._volume_data_and_grid(grid_quantity)
-        entry = {"label": grid_quantity.label, "data": data, "grid": grid}
+        entry = {
+            "label": grid_quantity.label,
+            "data": data,
+            "grid": grid,
+            "sign_mode": grid_quantity.sign_mode,
+        }
         isosurfaces = grid_quantity.isosurfaces or []
         if len(isosurfaces) > 0:
-            levels = [isosurface.isolevel for isosurface in isosurfaces]
-            mixed_sign = any(level > 0 for level in levels) and any(
-                level < 0 for level in levels
-            )
             entry["isosurfaces"] = [
                 {
                     "iso_value": isosurface.isolevel,
                     "color_surface": isosurface.color,
-                    "sign_mode": self._sign_mode(isosurface.isolevel, mixed_sign),
                 }
                 for isosurface in isosurfaces
             ]
         return entry
-
-    @staticmethod
-    def _sign_mode(isolevel, mixed_sign):
-        if not mixed_sign:
-            return "default"
-        return "negative" if isolevel < 0 else "positive"
 
     def _volume_data_and_grid(self, grid_quantity):
         # The VASP Viewer uploads the flat data buffer into a 3D texture whose

@@ -199,7 +199,7 @@ def test_phonon_fields_absent_without_phonon_data():
     assert phonon_keys == []
 
 
-def _single_grid_view(isosurfaces):
+def _single_grid_view(isosurfaces, sign_mode="continuous"):
     volume = np.arange(2 * 2 * 2, dtype=float).reshape(2, 2, 2)
     return View(
         elements=[["Si"]],
@@ -207,32 +207,46 @@ def _single_grid_view(isosurfaces):
         positions=[[[0.0, 0.0, 0.0]]],
         grid_scalars=[
             GridQuantity(
-                quantity=volume[np.newaxis], label="q", isosurfaces=isosurfaces
+                quantity=volume[np.newaxis],
+                label="q",
+                isosurfaces=isosurfaces,
+                sign_mode=sign_mode,
             )
         ],
     )
 
 
-def test_opposite_sign_isolevels_sent_once_with_sign_modes():
-    # NICS-style ±v on one field: the data is emitted once, and each isolevel is
-    # tagged with a sign mode so the viewer renders the matching lobe.
+def test_isosurfaces_sent_once_without_per_surface_sign_mode():
+    # The field is emitted once; each isolevel is a lightweight isosurface entry
+    # carrying only its value and colour. Sign handling lives on the dataset.
     view = _single_grid_view(
         [Isosurface(1.0, "#0000ff", 0.6), Isosurface(-1.0, "#ff0000", 0.6)]
     )
     datasets = view.to_vasp_viewer_config()["volume_datasets"]
     assert len(datasets) == 1  # one field, not one dataset per isolevel
     assert datasets[0]["isosurfaces"] == [
-        {"iso_value": 1.0, "color_surface": "#0000ff", "sign_mode": "positive"},
-        {"iso_value": -1.0, "color_surface": "#ff0000", "sign_mode": "negative"},
+        {"iso_value": 1.0, "color_surface": "#0000ff"},
+        {"iso_value": -1.0, "color_surface": "#ff0000"},
     ]
 
 
-def test_same_sign_isolevels_keep_default_sign_mode():
-    view = _single_grid_view(
-        [Isosurface(0.2, "#0000ff", 0.6), Isosurface(0.8, "#00ff00", 0.6)]
+def test_default_sign_mode_is_continuous():
+    view = _single_grid_view([Isosurface(0.2, "#0000ff", 0.6)])
+    assert (
+        view.to_vasp_viewer_config()["volume_datasets"][0]["sign_mode"] == "continuous"
     )
-    isosurfaces = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
-    assert [iso["sign_mode"] for iso in isosurfaces] == ["default", "default"]
+
+
+def test_mixed_sign_mode_emitted_at_dataset_level():
+    # NICS-style ±v signed field: the dataset is flagged "mixed" so the viewer
+    # constrains each isosurface to the lobe matching its isovalue sign.
+    view = _single_grid_view(
+        [Isosurface(1.0, "#0000ff", 0.6), Isosurface(-1.0, "#ff0000", 0.6)],
+        sign_mode="mixed",
+    )
+    dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
+    assert dataset["sign_mode"] == "mixed"
+    assert all("sign_mode" not in iso for iso in dataset["isosurfaces"])
 
 
 @hasVaspView
