@@ -5,8 +5,8 @@ from typing import Optional, Union
 import numpy as np
 
 from py4vasp import _config, exception, raw
+from py4vasp._calculation import bader
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
-from py4vasp._calculation.bader import BaderMixin
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
@@ -95,7 +95,7 @@ class ExcitonDensityHandler:
 
 
 @quantity("density", group="exciton")
-class ExcitonDensity(view.Mixin, BaderMixin):
+class ExcitonDensity(view.Mixin):
     """This class accesses exciton charge densities of VASP.
 
     The exciton charge densities can be calculated via the BSE/TDHF algorithm in
@@ -249,6 +249,36 @@ class ExcitonDensity(view.Mixin, BaderMixin):
             center=center,
             **user_options,
         )
+
+    def bader_charge(self, selection=None, *, bader_analysis=None):
+        """Integrate the selected exciton density within Bader basins.
+
+        Bader basins follow the topology of the charge density, so supply them
+        through ``bader_analysis`` obtained from :meth:`Density.bader_analysis`.
+
+        Parameters
+        ----------
+        selection : str
+            Select which exciton density to integrate, i.e., "1" or "1+2".
+        bader_analysis : BaderAnalysis
+            The basins to integrate in, obtained from a
+            :meth:`Density.bader_analysis` call.
+
+        Returns
+        -------
+        dict
+            ``{atom: charge}`` for a single selection, or
+            ``{selection: {atom: charge}}`` for several.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> basins = calculation.density.bader_analysis()
+        >>> calculation.exciton.density.bader_charge(bader_analysis=basins)
+        {...}
+        """
+        return bader.charge(self, selection, bader_analysis=bader_analysis)
 
 
 def _raise_error_if_no_data(data):

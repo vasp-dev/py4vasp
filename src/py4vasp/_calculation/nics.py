@@ -6,8 +6,7 @@ from typing import Optional, Union
 import numpy as np
 
 from py4vasp import _config, exception
-from py4vasp._calculation import _stoichiometry
-from py4vasp._calculation.bader import BaderMixin
+from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
@@ -217,7 +216,7 @@ nucleus-independent chemical shift:
 
 
 @quantity("nics")
-class Nics(view.Mixin, BaderMixin):
+class Nics(view.Mixin):
     """This class accesses information on the nucleus-independent chemical shift (NICS).
 
     Because the NICS is a shielding field rather than a density, its Bader basins
@@ -474,6 +473,39 @@ class Nics(view.Mixin, BaderMixin):
             normal=normal,
             supercell=supercell,
         )
+
+    def bader_charge(self, selection=None, *, bader_analysis=None):
+        """Integrate the selected chemical shift within Bader basins.
+
+        The NICS is a shielding field rather than a density, so its own Bader
+        basins are not physically meaningful. Supply the basins through
+        ``bader_analysis`` obtained from :meth:`Density.bader_analysis` to
+        integrate the NICS within charge-density basins.
+
+        Parameters
+        ----------
+        selection : str
+            Select which tensor element to integrate, e.g. "isotropic" or "xx".
+            Defaults to the isotropic shift.
+        bader_analysis : BaderAnalysis
+            The basins to integrate in, obtained from a
+            :meth:`Density.bader_analysis` call.
+
+        Returns
+        -------
+        dict
+            ``{atom: charge}`` for a single selection, or
+            ``{selection: {atom: charge}}`` for several.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> basins = calculation.density.bader_analysis()
+        >>> calculation.nics.bader_charge(bader_analysis=basins)
+        {...}
+        """
+        return bader.charge(self, selection, bader_analysis=bader_analysis)
 
     def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
