@@ -12,6 +12,7 @@ handler. The two module-level functions act as the dispatched "handler methods"
 (their first parameter is named ``self`` so the dispatcher forwards the selection
 correctly).
 """
+
 from py4vasp._calculation.dispatch import merge_default
 from py4vasp._util import bader as _bader
 

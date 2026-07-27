@@ -9,6 +9,7 @@ import numpy as np
 from py4vasp import _config, exception
 from py4vasp import raw as raw_module
 from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation.bader import BaderAnalysisMixin
 from py4vasp._calculation.dispatch import (
     DataSource,
     is_available_raw,
@@ -16,7 +17,6 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
-from py4vasp._calculation.bader import BaderAnalysisMixin
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import graph, view
@@ -196,9 +196,7 @@ class DensityHandler:
         selector = index.Selector({0: map_}, self._raw_density.charge)
         tree = select.Tree.from_selection(selection or _INTERNAL)
         selections = self._filter_noncollinear_magnetization_from_selections(tree)
-        return {
-            self._label(selector.label(sel)): selector[sel].T for sel in selections
-        }
+        return {self._label(selector.label(sel)): selector[sel].T for sel in selections}
 
     def _bader_reference(self, selection):
         "Peaked scalar density (valence + core) used only to define the basins."

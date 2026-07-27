@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Grid-based Bader partitioning of a charge density into atomic basins."""
+
 import copy
 import itertools
 

@@ -12,8 +12,8 @@ from py4vasp import _config, exception, raw
 from py4vasp._calculation.nics import Nics, NicsHandler
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.models import NicsModel
-from py4vasp._util.bader import BaderAnalysis
 from py4vasp._third_party import view
+from py4vasp._util.bader import BaderAnalysis
 
 
 @pytest.fixture(params=("on-a-grid", "at-points"))

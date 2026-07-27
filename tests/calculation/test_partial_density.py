@@ -429,7 +429,9 @@ def test_bader_charge_conserves_total(raw_data, Assert):
 
 
 def test_bader_charge_requires_analysis(raw_data):
-    partial_density = PartialDensity.from_data(raw_data.partial_density("spin_polarized"))
+    partial_density = PartialDensity.from_data(
+        raw_data.partial_density("spin_polarized")
+    )
     with pytest.raises(IncorrectUsage):
         partial_density.bader_charge()
 
