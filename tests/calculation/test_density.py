@@ -575,6 +575,27 @@ def test_bader_honors_getitem_source(raw_data, Assert):
     assert from_getitem.keys() == from_selection.keys()
     for key in from_getitem:
         Assert.allclose(from_getitem[key], from_selection[key])
+
+
+def test_bader_combines_getitem_source_with_selection(raw_data, Assert):
+    # a component selection on a get-item source must combine the two, so that
+    # density["all_electron"].bader_charge("m") integrates the all_electron
+    # magnetization rather than falling back to the default source or component
+    pseudo = raw_data.density("Fe3O4 collinear")
+    all_electron = raw_data.density("all_electron")
+    source = DictSource({"density": pseudo, ("density", "all_electron"): all_electron})
+    density = Density(source)
+    basins = density.bader_analysis()
+
+    from_getitem = density["all_electron"].bader_charge("m", bader_analysis=basins)
+    from_selection = density.bader_charge("all_electron(m)", bader_analysis=basins)
+
+    assert from_getitem.keys() == from_selection.keys()
+    for key in from_getitem:
+        Assert.allclose(from_getitem[key], from_selection[key])
+    # and it must differ from integrating the scalar of the same source
+    scalar = density["all_electron"].bader_charge(bader_analysis=basins)
+    assert from_getitem != scalar
     # and the get-item form must not silently fall back to the pseudo source
     pseudo_charges = density.bader_charge(bader_analysis=basins)
     assert from_getitem != pseudo_charges
