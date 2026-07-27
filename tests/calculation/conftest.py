@@ -58,6 +58,11 @@ def should_test_method(name, parameters, skip_methods):
         return False
     if name == "to_vasp_viewer":
         return False  # requires vasp_viewer package
+    if name == "is_available":
+        # is_available inspects every source of the quantity (and may target a
+        # different quantity for derived ones), so it does not follow the single
+        # access-per-method contract this helper verifies. It is tested separately.
+        return False
     if name.endswith("_to_database"):
         return False
     if name in skip_methods:

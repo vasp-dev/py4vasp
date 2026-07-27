@@ -427,3 +427,12 @@ def test_selections_partition_all_pairs(raw_data):
         for selection in neighbor_list.selections()
     )
     assert per_selection == total
+
+
+def test_is_available(tmp_path):
+    from py4vasp import demo
+
+    # neighbor_list derives its data from the structure quantity; is_available must
+    # resolve that rather than the (non-existent) "neighbor_list" schema entry.
+    calc = demo.calculation(tmp_path / "example")
+    assert calc.neighbor_list.is_available("default") is True

@@ -11,6 +11,7 @@ from py4vasp import raw as raw_module
 from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
+    is_available_raw,
     merge_default,
     merge_strings,
     quantity,
@@ -18,7 +19,7 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import graph, view
-from py4vasp._util import documentation, import_, index, select, slicing
+from py4vasp._util import check, documentation, import_, index, select, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 pretty = import_.optional("IPython.lib.pretty")
@@ -120,6 +121,7 @@ class DensityHandler:
                 isosurfaces=self._grid_quantity_properties(
                     selector, sel, map_, user_options
                 ),
+                sign_mode=self._sign_mode(selector, sel, map_),
             )
             for sel in selections
         ]
@@ -234,6 +236,14 @@ class DensityHandler:
         component = map_.get(component_label, -1)
         return self._isosurfaces(component, **user_options)
 
+    def _sign_mode(self, selector, selection, map_):
+        # Magnetization components use the symmetric ±isolevel (blue/red) lobes, so
+        # the viewer should treat positive/negative as opposite phenomena ("mixed").
+        # The charge density is a continuous, sign-agnostic field.
+        component_label = selector.label(selection)
+        component = map_.get(component_label, -1)
+        return "mixed" if self._use_symmetric_isosurface(component) else "continuous"
+
     def _label(self, component_label):
         if component_label == _INTERNAL:
             return self._selection or "charge"
@@ -294,7 +304,7 @@ class Density(view.Mixin):
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.density.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)])], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)], sign_mode='continuous')], ...)
 
     For your own postprocessing, you can read the band data into a Python dictionary:
 
@@ -350,6 +360,15 @@ class Density(view.Mixin):
 
     def _handler_factory(self, raw):
         return DensityHandler.from_data(raw, selection_name=self._selection_name)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # to_quiver visualizes the magnetization, which only exists for collinear or
+        # noncollinear calculations (the leading dimension of charge is 2 or 4).
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
+            return False
+        if method == "to_quiver":
+            return len(raw_data.charge) in (2, 4)
+        return True
 
     def __str__(self, selection=None):
         return merge_strings(

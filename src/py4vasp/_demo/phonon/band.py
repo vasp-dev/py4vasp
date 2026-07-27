@@ -13,8 +13,12 @@ def Sr2TiO4():
         _demo.AXES,
         _demo.COMPLEX,
     )
+    positions_shape = (_demo.NUMBER_ATOMS, _demo.AXES)
     return raw.PhononBand(
         dispersion=dispersion,
         stoichiometry=_demo.stoichiometry.Sr2TiO4(),
         eigenvectors=np.linspace(0, 1, np.prod(shape)).reshape(shape),
+        primitive_positions=np.linspace(0, 1, np.prod(positions_shape)).reshape(
+            positions_shape
+        ),
     )

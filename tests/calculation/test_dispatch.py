@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     _REGISTRY,
     DataSource,
@@ -19,6 +20,7 @@ from py4vasp._calculation.dispatch import (
     _parse_selections,
     _result_has_data,
     _substitute_remaining_selection,
+    data_available,
     merge_default,
     merge_graphs,
     merge_strings,
@@ -1040,3 +1042,125 @@ class TestSourcePathProperty:
     def test_dict_source_path_is_none(self):
         source = DictSource({})
         assert source.path is None
+
+
+class TestDataAvailable:
+    def test_required_data_available(self, raw_data):
+        source = DataSource(raw_data.density("Sr2TiO4"))
+        # density has only required fields (structure link + charge)
+        assert data_available(source, "density")
+
+    def test_missing_required_field(self, raw_data):
+        density = raw_data.density("Sr2TiO4")
+        density.charge = raw.VaspData(None)
+        source = DataSource(density)
+        assert not data_available(source, "density")
+
+    def test_optional_field_enforced_by_name(self, raw_data):
+        band = raw_data.phonon_band("default")
+        band.primitive_positions = raw.VaspData(None)
+        source = DataSource(band)
+        # an optional field is ignored unless its name is explicitly enforced
+        assert data_available(source, "phonon_band")
+        assert not data_available(
+            source, "phonon_band", enforce_optional=["primitive_positions"]
+        )
+
+    def test_optional_present_when_enforced_by_name(self, raw_data):
+        source = DataSource(raw_data.phonon_band("default"))
+        assert data_available(
+            source, "phonon_band", enforce_optional=["primitive_positions"]
+        )
+
+    def test_linked_optional_enforced_by_name(self, raw_data):
+        # density links to structure, whose optional symmetry is absent in the demo
+        source = DataSource(raw_data.density("Sr2TiO4"))
+        assert data_available(source, "density")
+        assert not data_available(
+            source, "density", enforce_optional_linked=["symmetry"]
+        )
+
+    def test_missing_linked_required_data(self, raw_data):
+        density = raw_data.density("Sr2TiO4")
+        density.structure.positions = raw.VaspData(None)
+        source = DataSource(density)
+        assert not data_available(source, "density")
+
+    def test_missing_file_returns_false(self, tmp_path):
+        source = FileSource(tmp_path)
+        assert not data_available(source, "density")
+
+
+class TestIsAvailableInjected:
+    def _calc(self, tmp_path):
+        from py4vasp import demo
+
+        return demo.calculation(tmp_path / "example")
+
+    def test_injected_on_all_quantities(self, tmp_path):
+        calc = self._calc(tmp_path)
+        assert calc.density.is_available("default") is True
+        assert calc.structure.is_available("default") is True
+        assert calc.energy.is_available("default") is True
+
+    def test_returns_false_when_quantity_absent(self, tmp_path):
+        calc = self._calc(tmp_path)
+        # born_effective_charge is not part of the default demo data
+        assert calc.born_effective_charge.is_available("default") is False
+
+    def test_method_argument_is_ignored_by_default(self, tmp_path):
+        calc = self._calc(tmp_path)
+        assert calc.density.is_available(
+            "default", method="to_view"
+        ) == calc.density.is_available("default")
+
+    def test_default_does_not_enforce_optional(self, tmp_path):
+        calc = self._calc(tmp_path)
+        # energy uses the default _is_available, which lives in dispatch and so can be
+        # observed through the patched is_available_raw (density has a custom one).
+        with patch(
+            "py4vasp._calculation.dispatch.is_available_raw", return_value=True
+        ) as mock_available:
+            calc.energy.is_available("default")
+        _, kwargs = mock_available.call_args
+        assert kwargs.get("enforce_optional", ()) == ()
+
+    def test_selection_none_uses_primary_source(self, tmp_path):
+        calc = self._calc(tmp_path)
+        # None picks the primary source and returns a plain bool, as elsewhere
+        assert calc.structure.is_available() is True
+
+    def test_selection_list_returns_dict(self, tmp_path):
+        calc = self._calc(tmp_path)
+        result = calc.structure.is_available(["default", "final"])
+        assert result == {"default": True, "final": False}
+
+    def test_selection_list_applies_method_per_source(self, tmp_path):
+        calc = self._calc(tmp_path)
+        # density has no magnetization in the default demo, so to_quiver is unavailable
+        result = calc.density.is_available(["default"], method="to_quiver")
+        assert result == {"default": False}
+
+    def test_public_is_available_hides_enforce_optional(self):
+        import inspect
+
+        from py4vasp._calculation.dispatch import is_available
+
+        parameters = set(inspect.signature(is_available).parameters)
+        assert parameters == {"self", "selection", "method"}
+
+
+class TestIsAvailableSourceResolution:
+    def _calc(self, tmp_path):
+        from py4vasp import demo
+
+        return demo.calculation(tmp_path / "example")
+
+    def test_single_nondefault_source_resolves(self, tmp_path):
+        # current_density's only schema source is "nmr" (no "default"); is_available
+        # must resolve it rather than fail on the missing "default" source.
+        calc = self._calc(tmp_path)
+        assert calc.current_density.is_available("nmr") is True
+        # None resolves the sole "nmr" source rather than the missing "default"
+        assert calc.current_density.is_available() is True
+        assert calc.current_density.is_available(["nmr"]) == {"nmr": True}

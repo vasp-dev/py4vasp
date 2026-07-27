@@ -9,6 +9,7 @@ from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -336,6 +337,17 @@ class LocalMoment(view.Mixin):
 
     def _handler_factory(self, raw):
         return LocalMomentHandler.from_data(raw, steps=self._steps)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # magnetic/projected_magnetic (and the moment arrows drawn by to_view) require
+        # a spin-polarized calculation; a nonpolarized run (spin dimension 1) has no
+        # magnetic moments. charge/projected_charge work for any configuration.
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
+            return False
+        magnetic_methods = ("magnetic", "projected_magnetic", "to_view")
+        if method in magnetic_methods:
+            return raw_data.spin_moments.shape[1] != 1
+        return True
 
     def __str__(self, selection=None) -> str:
         return merge_strings(

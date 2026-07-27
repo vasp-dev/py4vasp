@@ -507,3 +507,16 @@ def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.density("Fe3O4 collinear")
     parameters = {"to_contour": {"a": 0.3}}
     check_factory_methods(Density, data, parameters)
+
+
+def test_is_available_to_quiver(raw_data):
+    nonpolarized = Density.from_data(raw_data.density("Sr2TiO4"))
+    collinear = Density.from_data(raw_data.density("Fe3O4 collinear"))
+    noncollinear = Density.from_data(raw_data.density("Fe3O4 noncollinear"))
+    # to_quiver visualizes magnetization -> needs collinear or noncollinear
+    assert nonpolarized.is_available("default", method="to_quiver") is False
+    assert collinear.is_available("default", method="to_quiver") is True
+    assert noncollinear.is_available("default", method="to_quiver") is True
+    # read / to_view work regardless of the magnetic configuration
+    assert nonpolarized.is_available("default") is True
+    assert nonpolarized.is_available("default", method="to_view") is True

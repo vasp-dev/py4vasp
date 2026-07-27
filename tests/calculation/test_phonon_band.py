@@ -6,10 +6,12 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from py4vasp import exception, raw
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.phonon_band import PhononBand, PhononBandHandler
+from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import PhononBandModel
 from py4vasp._util import convert
 
@@ -144,6 +146,85 @@ def test_to_database(phonon_band):
     ).to_database()
     assert db_data.eigenvalue_min == dispersion.eigenvalue_min
     assert db_data.eigenvalue_max == dispersion.eigenvalue_max
+
+
+def test_to_view(phonon_band, Assert):
+    view = phonon_band.to_view()
+    raw_band = phonon_band.ref.raw_data
+    # displayed geometry is the primitive cell
+    expected = StructureHandler.from_data(
+        raw.Structure(
+            stoichiometry=raw_band.stoichiometry,
+            cell=raw_band.dispersion.kpoints.cell,
+            positions=raw_band.primitive_positions,
+        )
+    ).to_view()
+    Assert.allclose(view.positions, expected.positions)
+    Assert.allclose(view.lattice_vectors, expected.lattice_vectors)
+    assert view.elements.tolist() == expected.elements.tolist()
+    # phonon dispersion attached
+    phonon = view.phonon
+    number_atoms = phonon_band.ref.modes.shape[2]
+    Assert.allclose(phonon.eigenvectors, phonon_band.ref.modes)
+    Assert.allclose(phonon.frequencies, phonon_band.ref.bands)
+    Assert.allclose(phonon.qpoints, np.array(raw_band.dispersion.kpoints.coordinates))
+    Assert.allclose(phonon.supercell_matrix, np.eye(3))
+    Assert.allclose(phonon.primitive_index, np.arange(number_atoms))
+    labels = phonon_band.ref.qpoints.labels()
+    expected_labels = [[i, label] for i, label in enumerate(labels) if label] or None
+    assert phonon.path_labels == expected_labels
+
+
+def test_to_view_supercell(phonon_band, Assert):
+    view = phonon_band.to_view(supercell=2)
+    Assert.allclose(view.supercell, (2, 2, 2))
+
+
+def test_is_available_to_view_with_primitive_positions(phonon_band):
+    assert phonon_band.is_available("default", method="to_view") is True
+
+
+def test_is_available_to_view_requires_primitive_positions(raw_data):
+    band = raw_data.phonon_band("default")
+    band.primitive_positions = raw.VaspData(None)
+    quantity = PhononBand.from_data(band)
+    # to_view needs the optional primitive positions specifically
+    assert quantity.is_available("default", method="to_view") is False
+    # the default check only requires the non-optional data
+    assert quantity.is_available("default") is True
+
+
+def test_is_available_accesses_data_once(raw_data):
+    band = raw_data.phonon_band("default")
+    band.primitive_positions = raw.VaspData(None)
+    quantity = PhononBand.from_path()
+    with patch("py4vasp.raw.access") as mock_access:
+        mock_access.return_value.__enter__.return_value = band
+        assert quantity.is_available("default", method="to_view") is False
+    mock_access.assert_called_once()
+
+
+def test_is_available_unspecialized_method_uses_default(raw_data):
+    band = raw_data.phonon_band("default")
+    band.primitive_positions = raw.VaspData(None)
+    quantity = PhononBand.from_data(band)
+    # a method the override does not specialize falls back to the mandatory-only check
+    assert quantity.is_available("default", method="to_dict") is True
+
+
+def test_to_view_without_primitive_positions_raises(raw_data):
+    raw_band = raw_data.phonon_band("default")
+    raw_band.primitive_positions = raw.VaspData(None)
+    band = PhononBand.from_data(raw_band)
+    with pytest.raises(exception.NoData):
+        band.to_view()
+
+
+def test_raw_data_exposes_primitive_positions(raw_data, Assert):
+    raw_band = raw_data.phonon_band("default")
+    positions = np.array(raw_band.primitive_positions)
+    number_atoms = np.sum(np.array(raw_band.stoichiometry.number_ion_types))
+    assert positions.shape == (number_atoms, 3)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

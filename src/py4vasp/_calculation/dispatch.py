@@ -16,10 +16,12 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp import raw as _raw_module
+from py4vasp._raw.definition import schema as _schema
 from py4vasp._raw.definition import selections as schema_selections
 from py4vasp._raw.definition import unique_selections as schema_unique_selections
+from py4vasp._raw.schema import DEFAULT_SELECTION, Link
 from py4vasp._third_party.graph import Graph
-from py4vasp._util import select
+from py4vasp._util import check, select
 
 _REGISTRY = {}
 
@@ -73,6 +75,13 @@ def quantity(name, group=None):
 
         if not isinstance(getattr(cls, "_path", None), property):
             cls._path = property(lambda self: self._source.path or pathlib.Path.cwd())
+
+        # Every quantity shares the public is_available (documented once); the
+        # per-quantity logic lives in _is_available, which defaults to the mandatory
+        # schema check and is overridden by the few quantities needing custom logic.
+        cls.is_available = is_available
+        if "_is_available" not in cls.__dict__:
+            cls._is_available = _default_is_available
 
         if group is None:
             _REGISTRY[name] = cls
@@ -500,6 +509,234 @@ def merge_strings(
     if len(results) == 1:
         return next(iter(results.values()))
     return "\n".join(results.values())
+
+
+def _availability_quantity_of(instance):
+    """The schema quantity an availability check should target.
+
+    Defaults to the instance's own ``_quantity_name``. Derived quantities that
+    read another quantity's data (e.g. ``optics`` -> ``dielectric_function``,
+    ``neighbor_list`` -> ``structure``) set ``_availability_quantity`` to redirect
+    the check to the quantity that actually holds the data.
+    """
+    return getattr(instance, "_availability_quantity", None) or instance._quantity_name
+
+
+def is_available(self, selection=None, method=None):
+    """Check whether the data required to use this quantity is available.
+
+    py4vasp inspects the VASP output of the calculation and compares it against the
+    schema to report whether the data a given method needs is present. Only the
+    existence of the relevant datasets is checked; the (potentially large) arrays
+    are not loaded. This lets you decide up front whether a call such as
+    :meth:`read` or :meth:`plot` will succeed.
+
+    Parameters
+    ----------
+    selection : str | list[str] | None
+        A particular source of the quantity, using the same ``selection`` string
+        accepted by :meth:`read`. ``None`` (default) checks the primary source, as
+        elsewhere in py4vasp. Pass a list of sources to check several at once.
+    method : str | None
+        The method you intend to call, e.g. ``"to_view"``. Most quantities report
+        the same availability for every method, but some require additional data
+        for specific methods and take *method* into account.
+
+    Returns
+    -------
+    bool | dict[str, bool]
+        A single boolean when *selection* is ``None`` or a string. When *selection*
+        is a list, a dictionary mapping each requested source to its availability,
+        e.g. ``{"default": True, "final": False}``.
+    """
+    quantity = _availability_quantity_of(self)
+    if isinstance(selection, (list, tuple)):
+        return {
+            source: _availability_of_source(self, quantity, source, method)
+            for source in selection
+        }
+    return _availability_of_source(self, quantity, selection, method)
+
+
+def _availability_of_source(instance, quantity, selection, method):
+    """Open a single access for one source and evaluate its availability."""
+    source = _effective_source(quantity, selection)
+    try:
+        with instance._source.access(quantity, selection=source) as raw_data:
+            return instance._is_available(raw_data, selection, method)
+    except (
+        exception.FileAccessError,
+        exception.OutdatedVaspVersion,
+        exception.NoData,
+        FileNotFoundError,
+    ):
+        return False
+
+
+def _default_is_available(self, raw_data, selection=None, method=None):
+    """Default availability check: verify the mandatory schema data is present.
+
+    This is the fallback :meth:`_is_available` used by every quantity that does
+    not need special handling. Quantities whose methods depend on optional data
+    (or on the data configuration) override ``_is_available`` -- never the public
+    :func:`is_available` -- so the public method keeps a single, uniform signature
+    and documentation.
+    """
+    return is_available_raw(
+        _availability_quantity_of(self), raw_data, selection=selection
+    )
+
+
+def is_available_raw(
+    quantity_name,
+    raw_data,
+    *,
+    selection=None,
+    enforce_optional=(),
+    enforce_optional_linked=(),
+):
+    """Check availability of a quantity's data in an already-accessed raw object.
+
+    Performs no file access; it inspects *raw_data* (obtained from a single prior
+    access) against the schema. Mandatory fields -- and the mandatory fields of
+    linked quantities -- must be present. Optional fields are ignored unless their
+    name is listed explicitly. This is the shared helper that :meth:`_is_available`
+    implementations call.
+
+    Parameters
+    ----------
+    quantity_name : str
+        Name used to look up the quantity in the schema.
+    raw_data
+        The raw data object returned by accessing the quantity.
+    selection : str | None
+        Which source of the quantity to check. Defaults to the primary source.
+    enforce_optional : Sequence[str]
+        Names of otherwise-optional fields of *quantity_name* that must also be
+        present. Listing the required names explicitly (instead of "all optional
+        fields") keeps the check stable as new optional fields are added to the
+        schema.
+    enforce_optional_linked : Sequence[str]
+        Names of otherwise-optional fields of linked quantities that must also be
+        present.
+
+    Returns
+    -------
+    bool
+        True if every mandatory field plus every explicitly enforced optional
+        field is present.
+    """
+    spec = _schema_specification(quantity_name, selection)
+    return _data_available(spec, raw_data, enforce_optional, enforce_optional_linked)
+
+
+def data_available(
+    source,
+    quantity_name,
+    *,
+    selection=None,
+    enforce_optional=(),
+    enforce_optional_linked=(),
+):
+    """Open a single access to *source* and check availability via is_available_raw.
+
+    Convenience wrapper used mainly for testing and by callers that hold a source
+    rather than a dispatcher. Errors accessing the data are treated as "not
+    available". See :func:`is_available_raw` for the meaning of the parameters.
+    """
+    try:
+        with source.access(
+            quantity_name, selection=_effective_source(quantity_name, selection)
+        ) as raw_data:
+            return is_available_raw(
+                quantity_name,
+                raw_data,
+                selection=selection,
+                enforce_optional=enforce_optional,
+                enforce_optional_linked=enforce_optional_linked,
+            )
+    except (
+        exception.FileAccessError,
+        exception.OutdatedVaspVersion,
+        exception.NoData,
+    ):
+        return False
+
+
+def _effective_source(quantity_name, selection):
+    """Resolve the schema source name to use for an availability check.
+
+    Quantities are normally stored under the ``"default"`` source, but some define
+    a single differently-named source (e.g. ``current_density`` -> ``"nmr"``). When
+    no explicit selection is given and there is no ``"default"`` source, fall back
+    to that sole source so the check targets the real data. Returns ``None`` when
+    the default source should be used (or when the choice is ambiguous).
+    """
+    if selection is not None:
+        return selection
+    sources = _schema.sources.get(quantity_name.lstrip("_"))
+    if not sources or DEFAULT_SELECTION in sources:
+        return None
+    unique = [name for name, source in sources.items() if source.alias_for is None]
+    return unique[0] if len(unique) == 1 else None
+
+
+def _schema_specification(quantity_name, selection):
+    sources = _schema.sources.get(quantity_name.lstrip("_"))
+    if not sources:
+        return None
+    source = sources.get(
+        _effective_source(quantity_name, selection) or DEFAULT_SELECTION
+    )
+    return source.data if source is not None else None
+
+
+def _data_available(
+    spec, raw_data, enforce_optional, enforce_optional_linked, seen=None
+):
+    seen = seen or set()
+    if spec is None:
+        # Sources built by a data_factory have no introspectable schema; treat
+        # the resolved data as available whenever it is present.
+        return raw_data is not None and not check.is_none(raw_data)
+    for field in dataclasses.fields(spec):
+        specification = getattr(spec, field.name)
+        if check.is_none(specification):
+            continue  # the schema does not list this field
+        if _field_is_optional(field) and field.name not in enforce_optional:
+            continue
+        value = getattr(raw_data, field.name)
+        if isinstance(specification, Link):
+            if not _linked_data_available(
+                specification, value, enforce_optional_linked, seen
+            ):
+                return False
+        elif check.is_none(value):
+            return False
+    return True
+
+
+def _linked_data_available(link, value, enforce_optional_linked, seen):
+    if check.is_none(value):
+        return False
+    key = (link.quantity, link.source)
+    if key in seen:
+        return True
+    nested_spec = _schema_specification(link.quantity, link.source)
+    return _data_available(
+        nested_spec,
+        value,
+        enforce_optional_linked,
+        enforce_optional_linked,
+        seen | {key},
+    )
+
+
+def _field_is_optional(field):
+    return (
+        field.default is not dataclasses.MISSING
+        or field.default_factory is not dataclasses.MISSING
+    )
 
 
 def slice_steps(data, steps, default_ndim):

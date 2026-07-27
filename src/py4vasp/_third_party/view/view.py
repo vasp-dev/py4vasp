@@ -92,7 +92,7 @@ class GridQuantity:
     >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
     >>> isosurface = Isosurface(isolevel=0.1, color='red', opacity=0.5)
     >>> GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
-    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)])
+    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)], sign_mode='continuous')
     """
 
     quantity: npt.ArrayLike
@@ -101,6 +101,13 @@ class GridQuantity:
     """Name of the quantity"""
     isosurfaces: Sequence[Isosurface] = None
     """Sequence of isosurfaces to be plotted for this quantity."""
+    sign_mode: str = "continuous"
+    """How the viewer should interpret negative values of this field. ``"continuous"``
+    (the default) treats the field as a single continuous spectrum where negative
+    isovalues carry no special meaning. ``"mixed"`` marks a signed field whose positive
+    and negative lobes represent opposite phenomena (e.g. spin up/down magnetization or
+    NICS shielding/deshielding); the viewer then constrains each isosurface to the lobe
+    matching its isovalue sign."""
 
 
 @dataclass
@@ -130,6 +137,95 @@ class IonArrow:
     """Color with which the arrows should be drawn. For example, '#2FB5AB' or 'red'."""
     radius: float
     """Radius of the arrows"""
+
+
+@dataclass
+class PhononDispersion:
+    """Dataclass storing a phonon dispersion for interactive visualization.
+
+    The eigenvectors are defined on the primitive cell for each **q** point along
+    a path through the Brillouin zone. Together with the ``supercell_matrix`` and
+    ``primitive_index`` mapping, the viewer reconstructs the atomic displacements
+    in the displayed cell and animates the selected mode, while the frequencies
+    drive the interactive dispersion plot.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from py4vasp.view import PhononDispersion
+    >>> eigenvectors = np.zeros((1, 6, 2, 3), dtype=complex)
+    >>> PhononDispersion(
+    ...     eigenvectors=eigenvectors,
+    ...     frequencies=np.zeros((1, 6)),
+    ...     qpoints=np.zeros((1, 3)),
+    ...     supercell_matrix=np.eye(3),
+    ...     primitive_index=[0, 1],
+    ... )
+    PhononDispersion(eigenvectors=array([[[[...]]]]...), ...)
+    """
+
+    eigenvectors: npt.ArrayLike
+    """Complex eigenvectors of the primitive cell. Expected shape is
+    (number of q-points, number of bands, number of primitive atoms, 3)."""
+    frequencies: npt.ArrayLike
+    """Phonon frequencies. Expected shape is (number of q-points, number of bands)."""
+    qpoints: npt.ArrayLike
+    """**q** points along the path in fractional coordinates of the primitive
+    reciprocal lattice. Expected shape is (number of q-points, 3)."""
+    supercell_matrix: npt.ArrayLike
+    """Matrix M relating primitive and displayed cell such that f_prim = M · f_super.
+    Expected shape is (3, 3)."""
+    primitive_index: npt.ArrayLike
+    """For each atom in the displayed cell, the index of the corresponding
+    primitive-cell atom. Expected shape is (number of displayed atoms,)."""
+    path_labels: Optional[Sequence] = None
+    """Optional high-symmetry labels for the dispersion plot as a sequence of
+    ``[q_index, label]`` pairs."""
+
+
+@dataclass
+class CrystalSymmetry:
+    """Dataclass storing the symmetry of a crystal for the viewer.
+
+    Combines the crystal symmetry (space group and related classification) with the
+    per-atom symmetry information (equivalent atoms and Wyckoff positions), so the
+    viewer can display symmetry information about the structure.
+
+    Examples
+    --------
+    >>> from py4vasp.view import CrystalSymmetry
+    >>> CrystalSymmetry(
+    ...     space_group=225,
+    ...     international_symbol="Fm-3m",
+    ...     point_group="m-3m",
+    ...     crystal_system="cubic",
+    ...     is_symmorphic=True,
+    ...     equivalent_atoms=[0, 0, 0, 0],
+    ...     wyckoff_letters=["a", "a", "a", "a"],
+    ...     wyckoff_site_symmetries=["m-3m", "m-3m", "m-3m", "m-3m"],
+    ... )
+    CrystalSymmetry(space_group=225, ...)
+    """
+
+    space_group: int
+    """The international space-group number (1-230)."""
+    international_symbol: str
+    """The Hermann-Mauguin (international short) symbol, e.g. 'Fm-3m'."""
+    point_group: str
+    """The point group in international notation, e.g. 'm-3m'."""
+    crystal_system: str
+    """The crystal system, e.g. 'cubic' or 'orthorhombic'."""
+    is_symmorphic: bool
+    """Whether the space group is symmorphic."""
+    equivalent_atoms: Sequence
+    """Orbit index of every atom under the symmetry operations. Expected shape is
+    (number of atoms,)."""
+    wyckoff_letters: Sequence
+    """The Wyckoff letter of every atom, e.g. ['a', 'b', 'c']. Expected shape is
+    (number of atoms,)."""
+    wyckoff_site_symmetries: Sequence
+    """The site-symmetry symbol of every atom, e.g. 'm-3m'. Expected shape is
+    (number of atoms,)."""
 
 
 _x_axis = _Arrow3d(tail=np.zeros(3), tip=np.array((3, 0, 0)), color="#000000")
@@ -198,7 +294,7 @@ class View:
     View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=None, ...)
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...), ...])], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...), ...], sign_mode='mixed')], ...)
 
     But you can also create :class:`~py4vasp.view.View` objects directly. For example:
 
@@ -242,7 +338,7 @@ class View:
     >>> grid_quantity = GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
     >>> view.grid_scalars = [grid_quantity]
     >>> view
-    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)])], ...)
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)], sign_mode='continuous')], ...)
     """
 
     elements: npt.ArrayLike
@@ -255,6 +351,10 @@ class View:
     """This sequence stores quantities that are generated on a grid. Expected shape is (number of quantities,)."""
     ion_arrows: Optional[Sequence[IonArrow]] = None
     """This sequence stores arrows at the atom-centers. Expected shape is (number of quantities,)."""
+    phonon: Optional[PhononDispersion] = None
+    """Optional phonon dispersion to visualize as animated modes (only available for VASP Viewer)."""
+    crystal_symmetry: Optional[CrystalSymmetry] = None
+    """Optional crystal and atom symmetry information (only available for VASP Viewer)."""
     supercell: npt.ArrayLike = (1, 1, 1)
     """Defines how many multiples of the cell are drawn along each coordinate axes, in integer values. Valid shapes are (1,), or (3,), and valid dtype=int."""
     show_cell: bool = True
@@ -379,28 +479,10 @@ class View:
             ]
         if self.grid_scalars is not None:
             # TODO allow time-dependent isosurfaces (viewer-side requirement)
-            # TODO allow multiple isolevels for the same volume dataset (viewer-side requirement)
-            structure["volume_datasets"] = []
-            for grid_quantity in self.grid_scalars:
-                if len(grid_quantity.isosurfaces) > 0:
-                    structure["volume_datasets"].extend(
-                        {
-                            "label": grid_quantity.label + f" ({idi})",
-                            "data": self._convert_to_list(grid_quantity.quantity[0]),
-                            "grid": grid_quantity.quantity.shape[1:],
-                            "initial_iso_value": isosurface.isolevel,
-                            "color_surface": isosurface.color,
-                        }
-                        for idi, isosurface in enumerate(grid_quantity.isosurfaces)
-                    )
-                else:
-                    structure["volume_datasets"].append(
-                        {
-                            "label": grid_quantity.label,
-                            "data": self._convert_to_list(grid_quantity.quantity[0]),
-                            "grid": grid_quantity.quantity.shape[1:],
-                        }
-                    )
+            structure["volume_datasets"] = [
+                self._volume_dataset(grid_quantity)
+                for grid_quantity in self.grid_scalars
+            ]
 
         # === Lattice options ===
         if self.shift is not None:
@@ -432,17 +514,70 @@ class View:
                 self.show_axes_at
             )
 
+        # === Phonon options ===
+        if self.phonon is not None:
+            structure.update(self._phonon_config(self.phonon))
+
+        # === Symmetry options ===
+        if self.crystal_symmetry is not None:
+            structure.update(self._symmetry_config(self.crystal_symmetry))
+
         # === Meta options ===
         if self.structure_title:
             structure["selections_descriptor"] = self.structure_title
 
         return structure
 
+    def _symmetry_config(self, symmetry):
+        return {
+            "crystal_symmetry": {
+                "space_group": int(symmetry.space_group),
+                "international_symbol": str(symmetry.international_symbol),
+                "point_group": str(symmetry.point_group),
+                "crystal_system": str(symmetry.crystal_system),
+                "is_symmorphic": bool(symmetry.is_symmorphic),
+            },
+            "atom_symmetries": {
+                "equivalent_atoms": [int(atom) for atom in symmetry.equivalent_atoms],
+                "wyckoff_letters": [str(letter) for letter in symmetry.wyckoff_letters],
+                "wyckoff_site_symmetries": [
+                    str(site) for site in symmetry.wyckoff_site_symmetries
+                ],
+            },
+        }
+
+    def _phonon_config(self, phonon):
+        eigenvectors = np.asarray(phonon.eigenvectors)
+        config = {
+            "phonon_eigenvectors_re": self._convert_to_list(eigenvectors.real),
+            "phonon_eigenvectors_im": self._convert_to_list(eigenvectors.imag),
+            "phonon_frequencies": self._convert_to_list(np.asarray(phonon.frequencies)),
+            "phonon_qpoints": self._convert_to_list(np.asarray(phonon.qpoints)),
+            "phonon_supercell_matrix": self._convert_to_list(
+                np.asarray(phonon.supercell_matrix)
+            ),
+            "phonon_primitive_index": [
+                int(index) for index in np.asarray(phonon.primitive_index)
+            ],
+        }
+        if phonon.path_labels is not None:
+            config["phonon_path_labels"] = [
+                [int(index), str(label)] for index, label in phonon.path_labels
+            ]
+        return config
+
     def _verify(self, mode=None):
         self._raise_error_if_present_on_multiple_steps(self.grid_scalars, mode)
         self._raise_error_if_present_on_multiple_steps(self.ion_arrows, mode)
+        self._raise_error_if_phonon_not_supported(mode)
         self._raise_error_if_number_steps_inconsistent()
         self._raise_error_if_any_shape_is_incorrect()
+
+    def _raise_error_if_phonon_not_supported(self, mode=None):
+        if mode == "ngl" and self.phonon is not None:
+            raise exception.NotImplemented(
+                "Visualizing phonon modes is not available for NGLView. "
+            )
 
     def _raise_error_if_present_on_multiple_steps(self, attributes, mode=None):
         if not attributes:
@@ -483,6 +618,42 @@ class View:
             raise exception.IncorrectUsage(
                 f"Lattice vectors must be a 3x3 unit cell but have the shape {cell_shape}."
             )
+
+    def _volume_dataset(self, grid_quantity):
+        # The field is sent ONCE; each isosurface becomes a separate volume on the
+        # viewer side sharing this data. The dataset-level sign_mode tells the viewer
+        # how to interpret negative values: "continuous" renders the raw field, while
+        # "mixed" marks a signed field (e.g. NICS +v / -v or spin up/down) so the
+        # viewer constrains each isosurface to the lobe matching its isovalue sign.
+        data, grid = self._volume_data_and_grid(grid_quantity)
+        entry = {
+            "label": grid_quantity.label,
+            "data": data,
+            "grid": grid,
+            "sign_mode": grid_quantity.sign_mode,
+        }
+        isosurfaces = grid_quantity.isosurfaces or []
+        if len(isosurfaces) > 0:
+            entry["isosurfaces"] = [
+                {
+                    "iso_value": isosurface.isolevel,
+                    "color_surface": isosurface.color,
+                }
+                for isosurface in isosurfaces
+            ]
+        return entry
+
+    def _volume_data_and_grid(self, grid_quantity):
+        # The VASP Viewer uploads the flat data buffer into a 3D texture whose
+        # first grid axis (grid[0]) varies fastest in memory, and maps that axis
+        # onto the first lattice vector. py4vasp stores grid quantities as
+        # (steps, na, nb, nc) with the last axis varying fastest (C order), so we
+        # reverse the spatial axes to make the na axis the fastest-varying one.
+        # The grid itself stays (na, nb, nc); only the memory layout changes.
+        quantity = np.asarray(grid_quantity.quantity)
+        grid = quantity.shape[1:]
+        data = self._convert_to_list(quantity[0].T)
+        return data, grid
 
     def _convert_to_list(self, attribute):
         if isinstance(attribute, list):
