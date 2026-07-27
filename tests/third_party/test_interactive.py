@@ -1,6 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import re
+import subprocess
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -19,6 +21,14 @@ def ipython():
     shell = IPython.terminal.interactiveshell.TerminalInteractiveShell()
     with patch("IPython.get_ipython", return_value=shell):
         yield shell
+
+
+def test_importing_py4vasp_does_not_import_ipython():
+    # Detecting whether we run inside an IPython shell must not itself import
+    # IPython; `import py4vasp` should leave it out of sys.modules.
+    code = "import sys, py4vasp; assert 'IPython' not in sys.modules"
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
 
 
 def test_no_error_handling_outside_ipython():
