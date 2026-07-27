@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 import re
+import subprocess
+import sys
 from unittest.mock import patch
 
 import numpy as np
@@ -1228,3 +1230,20 @@ def split_data(data, data_size, Assert):
 
 def test_no_common_names():
     assert set(Graph._fields).intersection(Series._fields) == set()
+
+
+def test_importing_graph_does_not_import_plotly():
+    # Importing the graph module must not pull in plotly; that cost is deferred
+    # until a figure is actually produced.
+    code = "import sys, py4vasp._third_party.graph; assert 'plotly' not in sys.modules"
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+def test_vasp_template_registered_when_plotting(parabola):
+    pytest.importorskip("plotly")
+    import plotly.io as pio
+
+    Graph(parabola).to_plotly()
+    assert "vasp" in pio.templates
+    assert "vasp" in pio.templates.default
