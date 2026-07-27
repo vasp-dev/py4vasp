@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import subprocess
 import sys
 
 import pytest
@@ -38,3 +39,27 @@ def test_is_imported_resolves_lazy_module():
     module = import_.optional("colorsys")
     # is_imported must answer "is it available?" even though nothing imported yet.
     assert import_.is_imported(module)
+
+
+def test_import_py4vasp_defers_heavy_dependencies():
+    # These libraries are only needed for specific features (plotting, viewing,
+    # symmetry, ...); `import py4vasp` must not pull any of them in eagerly.
+    deferred = (
+        "plotly",
+        "nglview",
+        "ase",
+        "scipy",
+        "mdtraj",
+        "spglib",
+        "pandas",
+        "IPython",
+    )
+    code = (
+        "import sys, py4vasp;"
+        f"loaded = sorted(m for m in {deferred} if m in sys.modules);"
+        "assert not loaded, loaded"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr

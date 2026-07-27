@@ -1236,7 +1236,9 @@ def test_importing_graph_does_not_import_plotly():
     # Importing the graph module must not pull in plotly; that cost is deferred
     # until a figure is actually produced.
     code = "import sys, py4vasp._third_party.graph; assert 'plotly' not in sys.modules"
-    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True
+    )
     assert result.returncode == 0, result.stderr
 
 
