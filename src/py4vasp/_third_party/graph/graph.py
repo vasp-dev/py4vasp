@@ -1,7 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
+import importlib.abc
+import importlib.util
 import itertools
+import sys
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
@@ -48,6 +51,79 @@ def _register_vasp_template():
     pio.templates["ggplot2"].layout.shapedefaults = {}
     pio.templates.default = "ggplot2+vasp"
     _vasp_template_registered = True
+
+
+class _PlotlyTemplateHook(importlib.abc.MetaPathFinder):
+    """Make the VASP template plotly's default as soon as plotly is imported.
+
+    Before the imports were made lazy, importing py4vasp imported plotly and set
+    "ggplot2+vasp" as the global default template, so every plotly figure in the
+    session was VASP-styled. To keep `import py4vasp` fast (the command-line tools
+    never touch plotly) while preserving that behavior, this finder is installed
+    at import time. It loads nothing itself; it wraps the real loader so that once
+    plotly finishes importing -- in whatever order relative to py4vasp -- the
+    template is registered, then removes itself.
+    """
+
+    def find_spec(self, fullname, path, target=None):
+        if fullname != "plotly" and not fullname.startswith("plotly."):
+            return None
+        # Resolve the real spec without recursing into this finder.
+        sys.meta_path.remove(self)
+        try:
+            spec = importlib.util.find_spec(fullname)
+        except Exception:
+            spec = None
+        finally:
+            if self not in sys.meta_path:
+                sys.meta_path.insert(0, self)
+        if spec is None or spec.loader is None:
+            return None
+        if not hasattr(spec.loader, "exec_module"):
+            return None
+        original_exec_module = spec.loader.exec_module
+
+        def exec_module(module):
+            original_exec_module(module)
+            _register_after_plotly_import()
+
+        spec.loader.exec_module = exec_module
+        return spec
+
+
+def _register_after_plotly_import():
+    try:
+        _register_vasp_template()
+    except Exception:
+        # plotly may still be mid-import (a submodule not ready yet); stay armed
+        # and retry on the next plotly import until registration succeeds.
+        return
+    _remove_plotly_template_hook()
+
+
+def _remove_plotly_template_hook():
+    sys.meta_path[:] = [
+        finder
+        for finder in sys.meta_path
+        if not isinstance(finder, _PlotlyTemplateHook)
+    ]
+
+
+def _install_plotly_template_hook():
+    if _vasp_template_registered:
+        return
+    if "plotly" in sys.modules:
+        # plotly was imported before py4vasp; register now (not re-entrant here).
+        try:
+            _register_vasp_template()
+            return
+        except Exception:
+            pass
+    if not any(isinstance(finder, _PlotlyTemplateHook) for finder in sys.meta_path):
+        sys.meta_path.insert(0, _PlotlyTemplateHook())
+
+
+_install_plotly_template_hook()
 
 
 @dataclass

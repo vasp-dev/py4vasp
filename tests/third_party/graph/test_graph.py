@@ -1249,3 +1249,26 @@ def test_vasp_template_registered_when_plotting(parabola):
     Graph(parabola).to_plotly()
     assert "vasp" in pio.templates
     assert "vasp" in pio.templates.default
+
+
+@pytest.mark.parametrize(
+    "imports",
+    [
+        "import py4vasp; import plotly.io as pio",
+        "import plotly.io as pio; import py4vasp",
+        "import py4vasp; import plotly.express as px; import plotly.io as pio",
+    ],
+)
+def test_importing_plotly_sets_vasp_default_template(imports):
+    # Regardless of whether a py4vasp figure was ever produced, once plotly is
+    # imported the VASP template becomes the global default -- so plain plotly
+    # figures look the same whether or not a py4vasp plot came first.
+    pytest.importorskip("plotly")
+    code = (
+        imports
+        + "; assert pio.templates.default == 'ggplot2+vasp', pio.templates.default"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
