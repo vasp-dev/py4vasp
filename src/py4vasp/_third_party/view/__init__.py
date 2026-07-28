@@ -3,6 +3,7 @@
 from .mixin import Mixin
 from .view import (
     CrystalSymmetry,
+    GridDomain,
     GridQuantity,
     IonArrow,
     Isosurface,

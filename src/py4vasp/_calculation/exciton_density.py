@@ -5,6 +5,7 @@ from typing import Optional, Union
 import numpy as np
 
 from py4vasp import _config, exception, raw
+from py4vasp._calculation import bader
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
@@ -77,6 +78,12 @@ class ExcitonDensityHandler:
 
     def _structure(self) -> StructureHandler:
         return StructureHandler.from_data(self._raw_exciton_density.structure)
+
+    def _bader_grid(self, selection):
+        map_ = self._create_map()
+        selector = index.Selector({0: map_}, self._raw_exciton_density.exciton_charge)
+        tree = select.Tree.from_selection(selection or _DEFAULT_SELECTION)
+        return {selector.label(sel): selector[sel].T for sel in tree.selections()}
 
     def _create_map(self) -> dict:
         num_excitons = self._raw_exciton_density.exciton_charge.shape[0]
@@ -242,6 +249,36 @@ class ExcitonDensity(view.Mixin):
             center=center,
             **user_options,
         )
+
+    def bader_charge(self, selection=None, *, bader_analysis=None):
+        """Integrate the selected exciton density within Bader basins.
+
+        Bader basins follow the topology of the charge density, so supply them
+        through ``bader_analysis`` obtained from :meth:`Density.bader_analysis`.
+
+        Parameters
+        ----------
+        selection : str
+            Select which exciton density to integrate, i.e., "1" or "1+2".
+        bader_analysis : BaderAnalysis
+            The basins to integrate in, obtained from a
+            :meth:`Density.bader_analysis` call.
+
+        Returns
+        -------
+        dict
+            ``{atom: charge}`` for a single selection, or
+            ``{selection: {atom: charge}}`` for several.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> basins = calculation.density.bader_analysis()
+        >>> calculation.exciton.density.bader_charge(bader_analysis=basins)
+        {...}
+        """
+        return bader.charge(self, selection, bader_analysis=bader_analysis)
 
 
 def _raise_error_if_no_data(data):

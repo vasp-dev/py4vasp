@@ -8,7 +8,7 @@ import numpy as np
 
 from py4vasp import _config, exception
 from py4vasp import raw as raw_module
-from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
     is_available_raw,
@@ -189,6 +189,21 @@ class DensityHandler:
 
     def _structure(self):
         return StructureHandler.from_data(self._raw_density.structure)
+
+    def _bader_grid(self, selection):
+        map_ = self._create_map()
+        selector = index.Selector({0: map_}, self._raw_density.charge)
+        tree = select.Tree.from_selection(selection or _INTERNAL)
+        selections = self._filter_noncollinear_magnetization_from_selections(tree)
+        return {self._label(selector.label(sel)): selector[sel].T for sel in selections}
+
+    def _bader_reference(self, selection):
+        "Peaked scalar density (valence + core) used only to define the basins."
+        if self._raw_density.core.is_none():
+            return None
+        charge = np.asarray(self._raw_density.charge)
+        core = np.asarray(self._raw_density.core)[0]
+        return (charge[0] + core).T
 
     def _read_density(self):
         density = self.to_numpy()
@@ -709,6 +724,67 @@ class Density(view.Mixin):
             self._handler_factory,
             DensityHandler.is_noncollinear,
         )
+
+    def bader_analysis(self, selection=None, *, snap_to_atoms=True):
+        """Partition the selected density into atomic Bader basins.
+
+        Bader basins follow the topology of the charge density, which is why only
+        the density exposes this method. The resulting analysis can be reused to
+        integrate any other grid quantity via its ``bader_charge`` method.
+
+        Parameters
+        ----------
+        selection : str
+            Select a single density component to partition. Defaults to the
+            default charge density.
+        snap_to_atoms : bool
+            Snap every density maximum to its nearest atom (default). Disable to
+            label basins by the raw maxima instead.
+
+        Returns
+        -------
+        BaderAnalysis
+            An analysis object whose basins can be visualized with ``plot`` and
+            whose Bader charges are available via ``charges``.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> analysis = calculation.density.bader_analysis()
+        >>> analysis.charges()
+        {...}
+        """
+        return bader.analysis(self, selection, snap_to_atoms=snap_to_atoms)
+
+    def bader_charge(self, selection=None, *, bader_analysis=None):
+        """Integrate the selected density within Bader basins.
+
+        Parameters
+        ----------
+        selection : str
+            Select which density component to integrate. Defaults to the default
+            charge density.
+        bader_analysis : BaderAnalysis
+            The basins to integrate in, obtained from :meth:`bader_analysis`. This
+            argument is required because the basins are defined by the density
+            topology rather than reconstructed on the fly.
+
+        Returns
+        -------
+        dict
+            ``{atom: charge}`` for a single selection, or
+            ``{selection: {atom: charge}}`` for several.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> basins = calculation.density.bader_analysis()
+        >>> calculation.density.bader_charge(bader_analysis=basins)
+        {...}
+        """
+        return bader.charge(self, selection, bader_analysis=bader_analysis)
 
 
 def _raise_error_if_color_is_specified(color):

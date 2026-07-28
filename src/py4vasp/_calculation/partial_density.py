@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 
 from py4vasp import _config, exception
-from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
@@ -175,6 +175,10 @@ class PartialDensityHandler:
 
     def _structure(self):
         return StructureHandler.from_data(self._raw_partial_density.structure)
+
+    def _bader_grid(self, selection):
+        selection = selection or "total"
+        return {selection: self.to_numpy(selection)}
 
     def _spin_polarized(self):
         return self._raw_partial_density.partial_charge.shape[2] == 2
@@ -632,6 +636,37 @@ class PartialDensity(view.Mixin):
             supercell=supercell,
             stm_settings=stm_settings,
         )
+
+    def bader_charge(self, selection=None, *, bader_analysis=None):
+        """Integrate the selected partial density within Bader basins.
+
+        Bader basins follow the topology of the charge density, so supply them
+        through ``bader_analysis`` obtained from :meth:`Density.bader_analysis`.
+
+        Parameters
+        ----------
+        selection : str
+            Select which partial density to integrate. Defaults to the total
+            partial charge density.
+        bader_analysis : BaderAnalysis
+            The basins to integrate in, obtained from a
+            :meth:`Density.bader_analysis` call.
+
+        Returns
+        -------
+        dict
+            ``{atom: charge}`` for a single selection, or
+            ``{selection: {atom: charge}}`` for several.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> basins = calculation.density.bader_analysis()
+        >>> calculation.partial_density.bader_charge(bader_analysis=basins)
+        {...}
+        """
+        return bader.charge(self, selection, bader_analysis=bader_analysis)
 
     def _stoichiometry(self):
         return merge_default(

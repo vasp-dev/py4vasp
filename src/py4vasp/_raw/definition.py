@@ -148,6 +148,13 @@ schema.add(
     structure=Link("structure", DEFAULT_SOURCE),
     charge="kinetic_energy_density/values",
 )
+schema.add(
+    raw.Density,
+    name="all_electron",
+    structure=Link("structure", DEFAULT_SOURCE),
+    charge="results/charge/all_electron",
+    core="results/charge/core",
+)
 #
 group = "results/linear_response"
 energies = "energies_dielectric_function"

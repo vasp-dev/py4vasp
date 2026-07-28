@@ -7,7 +7,8 @@ import pytest
 
 from py4vasp import _config, exception, raw
 from py4vasp._calculation.exciton_density import ExcitonDensity
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.structure import Structure, StructureHandler
+from py4vasp._util.bader import BaderAnalysis
 
 
 @pytest.fixture
@@ -110,6 +111,26 @@ exciton charge density:
     assert actual == {"text/plain": expected_text}
 
 
+def test_bader_charge_conserves_total(raw_data, Assert):
+    raw_density = raw_data.exciton_density()
+    density = ExcitonDensity.from_data(raw_density)
+    structure = StructureHandler.from_data(raw_density.structure)
+    grid = np.array(raw_density.exciton_charge[0]).T
+    # only the charge density defines basins, so supply them externally
+    analysis = BaderAnalysis(structure, grid)
+
+    charges = density.bader_charge(bader_analysis=analysis)
+
+    assert list(charges) == structure.to_dict()["names"]
+    Assert.allclose(sum(charges.values()), grid.sum() / grid.size)
+
+
+def test_bader_charge_requires_analysis(raw_data):
+    density = ExcitonDensity.from_data(raw_data.exciton_density())
+    with pytest.raises(exception.IncorrectUsage):
+        density.bader_charge()
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.exciton_density()
-    check_factory_methods(ExcitonDensity, data)
+    check_factory_methods(ExcitonDensity, data, skip_methods=["bader_charge"])

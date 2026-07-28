@@ -10,9 +10,10 @@ import pytest
 
 from py4vasp import _config, exception, raw
 from py4vasp._calculation.nics import Nics, NicsHandler
-from py4vasp._calculation.structure import Structure
+from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.models import NicsModel
 from py4vasp._third_party import view
+from py4vasp._util.bader import BaderAnalysis
 
 
 @pytest.fixture(params=("on-a-grid", "at-points"))
@@ -529,9 +530,39 @@ def test_to_database(nics):
     assert db_data.method == nics.ref.output["method"]
 
 
+def test_bader_charge_conserves_total(raw_data, Assert):
+    raw_nics = raw_data.nics("on-a-grid")
+    nics = Nics.from_data(raw_nics)
+    structure = StructureHandler.from_data(raw_nics.structure)
+    grid = nics.to_view().grid_scalars[0].quantity[0]
+    # the NICS is a shielding field, not a density, so basins come from elsewhere
+    analysis = BaderAnalysis(structure, grid)
+
+    charges = nics.bader_charge(bader_analysis=analysis)
+
+    assert list(charges) == structure.to_dict()["names"]
+    Assert.allclose(sum(charges.values()), grid.sum() / grid.size)
+
+
+def test_bader_charge_requires_analysis(raw_data):
+    nics = Nics.from_data(raw_data.nics("on-a-grid"))
+    with pytest.raises(exception.IncorrectUsage):
+        nics.bader_charge()
+
+
+def test_bader_charge_in_points_mode_raises(raw_data):
+    raw_grid = raw_data.nics("on-a-grid")
+    structure = StructureHandler.from_data(raw_grid.structure)
+    grid = Nics.from_data(raw_grid).to_view().grid_scalars[0].quantity[0]
+    analysis = BaderAnalysis(structure, grid)
+    nics = Nics.from_data(raw_data.nics("at-points"))
+    with pytest.raises(exception.IncorrectUsage):
+        nics.bader_charge(bader_analysis=analysis)
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.nics("on-a-grid")
-    check_factory_methods(Nics, data)
+    check_factory_methods(Nics, data, skip_methods=["bader_charge"])
 
 
 def test_is_available_on_a_grid(nics_on_a_grid):

@@ -163,7 +163,7 @@ def test_selections_with_method_filters_by_implementation(tmp_path):
 
     assert "band" not in full_view
     assert "dos" not in full_view
-    assert full_view["density"] == ["default", "tau"]
+    assert full_view["density"] == ["default", "tau", "all_electron"]
     assert "default" in full_view["structure"]
 
 

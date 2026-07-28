@@ -166,6 +166,8 @@ class RawDataFactory:
             return _demo.density.Sr2TiO4()
         elif parts[0] == "Fe3O4":
             return _demo.density.Fe3O4(parts[1])
+        elif parts[0] == "all_electron":
+            return _demo.density.all_electron()
         else:
             raise exception.NotImplemented()
 

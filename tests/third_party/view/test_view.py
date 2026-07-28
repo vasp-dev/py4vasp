@@ -12,6 +12,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._third_party.view import View
+from py4vasp._third_party.view import view as view_module
 from py4vasp._third_party.view.view import (
     GridQuantity,
     IonArrow,
@@ -160,6 +161,49 @@ def view_arrow(request):
     view.ref = SimpleNamespace()
     view.ref.ion_arrows = ion_arrows
     return view
+
+
+def test_grid_domain_stores_fields():
+    quantity = np.zeros((1, 3, 4, 5), dtype=int)
+    labels = ["Sr_1", "Sr_2", "Ti_1"]
+    grid_domain = view_module.GridDomain(
+        quantity=quantity, label="basins", labels=labels
+    )
+    assert grid_domain.quantity is quantity
+    assert grid_domain.label == "basins"
+    assert grid_domain.labels == labels
+
+
+def test_grid_domains_default_to_none():
+    view = View(**base_input_view(is_structure=True))
+    assert view.grid_domains is None
+
+
+def test_view_stores_grid_domains():
+    inputs = base_input_view(is_structure=True)
+    grid_domain = view_module.GridDomain(
+        np.zeros((1, 3, 4, 5), dtype=int), "basins", ["A"]
+    )
+    view = View(grid_domains=[grid_domain], **inputs)
+    assert view.grid_domains == [grid_domain]
+
+
+def test_grid_domains_rendering_not_implemented():
+    inputs = base_input_view(is_structure=True)
+    grid_domain = view_module.GridDomain(
+        np.zeros((1, 3, 3, 3), dtype=int), "basins", ["A"]
+    )
+    view = View(grid_domains=[grid_domain], **inputs)
+    with pytest.raises(exception.NotImplemented):
+        view.to_ngl()
+    with pytest.raises(exception.NotImplemented):
+        view.to_vasp_viewer_config()
+
+
+def test_view_without_grid_domains_renders_config():
+    view = View(**base_input_view(is_structure=True))
+    config = view.to_vasp_viewer_config()
+    assert "atoms_trajectory" in config
 
 
 def test_structure_to_view(view, Assert):

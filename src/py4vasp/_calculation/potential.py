@@ -7,7 +7,7 @@ from typing import Optional, Union
 import numpy as np
 
 from py4vasp import _config, exception
-from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
@@ -163,6 +163,9 @@ class PotentialHandler:
 
     def _structure(self):
         return StructureHandler.from_data(self._raw_potential.structure)
+
+    def _bader_grid(self, selection):
+        return dict(self._get_potentials(selection or "total"))
 
     def _get_potentials(self, selection, is_magnetic=False):
         tree = select.Tree.from_selection(selection)
@@ -512,6 +515,37 @@ class Potential(view.Mixin):
             normal=normal,
             supercell=supercell,
         )
+
+    def bader_charge(self, selection=None, *, bader_analysis=None):
+        """Integrate the selected potential within Bader basins.
+
+        The local potential is minimal rather than maximal at the nuclei, so it
+        cannot define its own basins. You therefore supply the basins through
+        ``bader_analysis``, obtained from :meth:`Density.bader_analysis`.
+
+        Parameters
+        ----------
+        selection : str
+            Select which potential to integrate. Defaults to the total potential.
+        bader_analysis : BaderAnalysis
+            The basins to integrate in, obtained from a
+            :meth:`Density.bader_analysis` call.
+
+        Returns
+        -------
+        dict
+            ``{atom: charge}`` for a single selection, or
+            ``{selection: {atom: charge}}`` for several.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> basins = calculation.density.bader_analysis()
+        >>> calculation.potential.bader_charge(bader_analysis=basins)
+        {...}
+        """
+        return bader.charge(self, selection, bader_analysis=bader_analysis)
 
     def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
