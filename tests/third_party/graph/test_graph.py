@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 import re
+import subprocess
+import sys
 from unittest.mock import patch
 
 import numpy as np
@@ -1228,3 +1230,45 @@ def split_data(data, data_size, Assert):
 
 def test_no_common_names():
     assert set(Graph._fields).intersection(Series._fields) == set()
+
+
+def test_importing_graph_does_not_import_plotly():
+    # Importing the graph module must not pull in plotly; that cost is deferred
+    # until a figure is actually produced.
+    code = "import sys, py4vasp._third_party.graph; assert 'plotly' not in sys.modules"
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_vasp_template_registered_when_plotting(parabola):
+    pytest.importorskip("plotly")
+    import plotly.io as pio
+
+    Graph(parabola).to_plotly()
+    assert "vasp" in pio.templates
+    assert "vasp" in pio.templates.default
+
+
+@pytest.mark.parametrize(
+    "imports",
+    [
+        "import py4vasp; import plotly.io as pio",
+        "import plotly.io as pio; import py4vasp",
+        "import py4vasp; import plotly.express as px; import plotly.io as pio",
+    ],
+)
+def test_importing_plotly_sets_vasp_default_template(imports):
+    # Regardless of whether a py4vasp figure was ever produced, once plotly is
+    # imported the VASP template becomes the global default -- so plain plotly
+    # figures look the same whether or not a py4vasp plot came first.
+    pytest.importorskip("plotly")
+    code = (
+        imports
+        + "; assert pio.templates.default == 'ggplot2+vasp', pio.templates.default"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr

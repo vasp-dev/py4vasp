@@ -117,8 +117,7 @@ def test_space_group_without_spglib(symmetry, monkeypatch):
     from py4vasp._calculation import symmetry as symmetry_module
     from py4vasp._util import import_
 
-    placeholder = import_._ModulePlaceholder("spglib")
-    monkeypatch.setattr(symmetry_module, "spglib", placeholder)
+    monkeypatch.setattr(symmetry_module, "spglib", import_.optional("_spglib_missing_"))
     with pytest.raises(exception.ModuleNotInstalled):
         symmetry.space_group()
 
@@ -158,7 +157,7 @@ def test_print_without_spglib(symmetry, format_, monkeypatch):
     from py4vasp._calculation import symmetry as symmetry_module
     from py4vasp._util import import_
 
-    monkeypatch.setattr(symmetry_module, "spglib", import_._ModulePlaceholder("spglib"))
+    monkeypatch.setattr(symmetry_module, "spglib", import_.optional("_spglib_missing_"))
     name = symmetry.ref.name
     reference = f"""\
 symmetry group with {NUMBER_OPERATIONS[name]} operations:
@@ -197,7 +196,7 @@ def test_to_database_without_spglib(symmetry, raw_data, monkeypatch):
     from py4vasp._calculation.symmetry import SymmetryHandler
     from py4vasp._util import import_
 
-    monkeypatch.setattr(symmetry_module, "spglib", import_._ModulePlaceholder("spglib"))
+    monkeypatch.setattr(symmetry_module, "spglib", import_.optional("_spglib_missing_"))
     name = symmetry.ref.name
     actual = SymmetryHandler.from_data(raw_data.symmetry(name)).to_database()
     assert actual.space_group is None

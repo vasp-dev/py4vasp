@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pathlib
+import sys
 import traceback
 
 import py4vasp
@@ -41,7 +42,9 @@ def error_handling():
 
 
 def _get_ipython():
-    if import_.is_imported(IPython):
+    # Only an already-imported IPython can host an active shell, so checking
+    # sys.modules avoids importing IPython just to find out we are not in one.
+    if "IPython" in sys.modules:
         return IPython.get_ipython()
     else:
         return None
