@@ -8,6 +8,13 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test-default:
     runs-on: ${{ matrix.os }}
@@ -23,6 +30,9 @@ jobs:
       with:
         auto-update-conda: true
         python-version: "3.11"
+        channels: conda-forge
+        channel-priority: strict
+        conda-remove-defaults: "true"
     - name: Install py4vasp and testing tools
       shell: bash -el {0}
       run: |
@@ -30,12 +40,6 @@ jobs:
         pip install --progress-bar=off .
         pip install --progress-bar=off pytest hypothesis
         pip install --progress-bar=off ipykernel
-    - name: Configure conda channel priority
-      shell: bash -el {0}
-      run: |
-        conda config --set channel_priority strict
-        conda config --remove channels defaults
-        conda config --add channels conda-forge
     - name: Install mdtraj with conda
       shell: bash -el {0}
       run: |
