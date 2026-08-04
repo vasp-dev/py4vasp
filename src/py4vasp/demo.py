@@ -54,7 +54,12 @@ def _create_path_for_data(path, selection):
 def _generate_calculation_data(h5f, selection, waveh5f=None):
     generator = _DATA_GENERATORS.get(selection)
     if generator is not None:
-        write(h5f, raw.Version(major=99, minor=99, patch=99))
+        version = raw.Version(major=99, minor=99, patch=99)
+        write(h5f, version)
+        if waveh5f is not None:
+            # the wavefile carries its own version because py4vasp checks the version
+            # requirement of a source against the file that source is read from
+            write(waveh5f, version)
         generator(h5f, waveh5f=waveh5f)
     else:
         available = ", ".join(filter(None, key) for key in _DATA_GENERATORS.keys())
