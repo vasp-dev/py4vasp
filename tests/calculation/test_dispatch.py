@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation.dispatch import (
     _REGISTRY,
     DataSource,
@@ -356,8 +356,9 @@ class TestDispatch:
         assert received["selection"] == "atom"
 
     def test_selection_not_forwarded_when_handler_has_no_selection_param(self):
-        """If the handler method has no `selection` parameter, dispatch must not
-        forward it — only source routing happens."""
+        """If the handler method has no `selection` parameter, a selection that
+        matches a source routes to it; a leftover selection raises instead of
+        silently falling back to the default source."""
         raw = {"value": 42}
         source = DataSource(raw)
         with patch(
@@ -366,11 +367,19 @@ class TestDispatch:
             result = _dispatch(
                 source,
                 "quantity",
-                "something",
+                "src",
                 _FakeHandler.from_data,
                 _FakeHandler.read,
             )
-        assert result == {"default": {"value": 42}}
+            assert result == {"src": {"value": 42}}
+            with pytest.raises(exception.IncorrectUsage):
+                _dispatch(
+                    source,
+                    "quantity",
+                    "something",
+                    _FakeHandler.from_data,
+                    _FakeHandler.read,
+                )
 
     def test_handler_with_selection_receives_remaining_selection(self):
         """If the handler method accepts `selection`, dispatch auto-forwards

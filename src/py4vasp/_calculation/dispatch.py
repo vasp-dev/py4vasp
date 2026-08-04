@@ -264,6 +264,16 @@ def _dispatch(
     handler_wants_selection, selection_has_default = _method_accepts_selection(method)
     results = {}
     for ctx in contexts:
+        if ctx.remaining_selection is not None and not handler_wants_selection:
+            # without this check, a mistyped source would silently fall back to
+            # the default source and return data the user did not ask for
+            message = (
+                f"The selection '{ctx.remaining_selection}' is not a source of the "
+                f"quantity '{quantity_name.lstrip('_')}' and the method takes no "
+                "further selections. Use `selections` or `is_available` to see "
+                "which sources exist."
+            )
+            raise exception.IncorrectUsage(message)
         with source.access(quantity_name, selection=ctx.selection_name) as raw:
             handler = handler_factory(raw)
             if handler_wants_selection:
