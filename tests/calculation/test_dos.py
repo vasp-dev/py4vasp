@@ -421,8 +421,15 @@ def test_is_available_without_projectors(raw_data):
     assert without_projectors.is_available("default") is True
     for method in ("read", "to_graph", "to_frame"):
         assert without_projectors.is_available("default", method=method) is True
-        assert getattr(without_projectors, method)() is not None
+    assert without_projectors.read() is not None
+    assert without_projectors.to_graph() is not None
     # projecting is the only thing that does not work, and it says so
     with pytest.raises(exception.IncorrectUsage):
         without_projectors.read("Sr")
     assert without_projectors.selections() == {"dos": ["default", "kpoints_opt"]}
+
+
+def test_to_frame_without_projectors(raw_data):
+    pytest.importorskip("pandas")
+    without_projectors = Dos.from_data(raw_data.dos("Sr2TiO4"))
+    assert without_projectors.to_frame() is not None
