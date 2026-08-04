@@ -1167,9 +1167,12 @@ class TestIsAvailableSourceResolution:
 
     def test_single_nondefault_source_resolves(self, tmp_path):
         # current_density's only schema source is "nmr" (no "default"); is_available
-        # must resolve it rather than fail on the missing "default" source.
-        calc = self._calc(tmp_path)
-        assert calc.current_density.is_available("nmr") is True
+        # must resolve it rather than fail on the missing "default" source. Only the
+        # methods taking a selection reach that source, so the check uses one of them.
+        current_density = self._calc(tmp_path).current_density
+        assert current_density.is_available("nmr", method="to_contour") is True
         # None resolves the sole "nmr" source rather than the missing "default"
-        assert calc.current_density.is_available() is True
-        assert calc.current_density.is_available(["nmr"]) == {"nmr": True}
+        assert current_density.is_available(method="to_contour") is True
+        assert current_density.is_available(["nmr"], method="to_contour") == {
+            "nmr": True
+        }
