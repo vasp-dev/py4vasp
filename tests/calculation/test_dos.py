@@ -410,3 +410,19 @@ def test_to_database_Fe3O4(Fe3O4):
 def test_to_database_Ba2PbO4(Ba2PbO4):
     _check_to_database(Ba2PbO4)
     _check_to_database(Ba2PbO4, fermi_energy=Ba2PbO4.ref.fermi_energy + 0.5)
+
+
+def test_is_available_without_projectors(raw_data):
+    """VASP writes the projectors only when LORBIT is set. The DOS without them is
+    still usable by every method that does not project onto atoms or orbitals."""
+    # this is the shape a file without the projectors group produces: the linked
+    # Projector exists but its fields are unset
+    without_projectors = Dos.from_data(raw_data.dos("Sr2TiO4"))
+    assert without_projectors.is_available("default") is True
+    for method in ("read", "to_graph", "to_frame"):
+        assert without_projectors.is_available("default", method=method) is True
+        assert getattr(without_projectors, method)() is not None
+    # projecting is the only thing that does not work, and it says so
+    with pytest.raises(exception.IncorrectUsage):
+        without_projectors.read("Sr")
+    assert without_projectors.selections() == {"dos": ["default", "kpoints_opt"]}

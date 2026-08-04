@@ -776,3 +776,37 @@ def test_is_available_to_quiver(raw_data):
     assert without_projections.is_available("default", method="to_quiver") is False
     # read stays available in every case
     assert noncollinear.is_available("default") is True
+
+
+def test_is_available_to_quiver_requires_projector_data(raw_data):
+    from py4vasp import raw
+
+    # to_quiver selects the spin components through the projector information, so
+    # the projections array alone is not enough
+    raw_band = raw_data.band("noncollinear with_projectors")
+    raw_band.projectors.orbital_types = raw.VaspData(None)
+    without_projector_data = Band.from_data(raw_band)
+    assert without_projector_data.is_available("default", method="to_quiver") is False
+    with pytest.raises(Exception):
+        without_projector_data.to_quiver("x~y")
+
+
+def test_is_available_without_projectors(raw_data):
+    """VASP writes the projectors only when LORBIT is set. Band data without them
+    (e.g. from a phonon calculation) is still usable by every method that does not
+    project onto atoms or orbitals."""
+    # this is the shape a file without the projectors group produces: the linked
+    # Projector exists but its fields are unset
+    without_projectors = Band.from_data(raw_data.band("multiple"))
+    assert without_projectors.is_available("default") is True
+    for method in ("read", "to_graph", "to_frame"):
+        assert without_projectors.is_available("default", method=method) is True
+        assert getattr(without_projectors, method)() is not None
+    # projecting is the only thing that does not work, and it says so
+    assert without_projectors.is_available("default", method="to_quiver") is False
+    with pytest.raises(exception.IncorrectUsage):
+        without_projectors.read("Sr")
+    # the available projections are reported as empty instead of raising
+    assert without_projectors.selections() == {
+        "band": ["default", "kpoints_opt", "kpoints_wan"]
+    }
