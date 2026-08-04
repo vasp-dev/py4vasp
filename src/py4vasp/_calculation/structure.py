@@ -26,6 +26,7 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._calculation.symmetry import _SYMPREC, SymmetryHandler
 from py4vasp._raw.definition import unique_selections as _schema_unique_selections
 from py4vasp._raw.models import StoichiometryModel, StructureModel
+from py4vasp._raw.schema import DEFAULT_SELECTION
 from py4vasp._third_party import view
 from py4vasp._util import check, import_, parse
 
@@ -720,6 +721,12 @@ class Structure(view.Mixin):
         return StructureHandler.from_data(raw, steps=self._steps)
 
     def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # None of the methods takes a source selection, so the additional schema
+        # sources ("final", "exciton", "poscar") cannot be reached through the public
+        # API. They only serve other quantities that link to them, so report them as
+        # unavailable even when the underlying data exists.
+        if selection not in (None, DEFAULT_SELECTION):
+            return False
         # the symmetry-derived methods need the optional symmetry link that VASP
         # only writes for newer versions; all other methods need only the required
         # structural data.

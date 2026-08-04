@@ -43,8 +43,8 @@ class Band:
     "Fermi energy obtained by VASP."
     occupations: VaspData
     "The occupations of the different bands."
-    projectors: Projector
-    "Projector information (element, angular momentum, spin)."
+    projectors: Projector = NONE()
+    "If present, projector information (element, angular momentum, spin)."
     projections: VaspData = NONE()
     "If present, orbital projections of the bands."
 
@@ -269,8 +269,8 @@ class Dos:
     "Dos at the energies D(E)."
     fermi_energy: float
     "Fermi energy obtained by VASP."
-    projectors: Projector
-    "Projector information (element, angular momentum, spin)."
+    projectors: Projector = NONE()
+    "If present, projector information (element, angular momentum, spin)."
     projections: VaspData = NONE()
     "If present, orbital projections of the Dos."
 

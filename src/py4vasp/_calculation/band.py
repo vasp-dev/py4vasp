@@ -358,13 +358,17 @@ class Band(graph.Mixin):
 
     def _is_available(self, raw_data, selection=None, method=None) -> bool:
         # to_quiver plots the spin texture, which needs the optional projections and
-        # a noncollinear calculation (projections has a leading dimension of 4).
+        # a noncollinear calculation (projections has a leading dimension of 4). It
+        # selects the components via the projector information, so that has to be
+        # present too. The other methods work without any projector data; they only
+        # require it when the user asks for a projection with their selection.
         if not is_available_raw(self._quantity_name, raw_data, selection=selection):
             return False
         if method == "to_quiver":
             return (
                 not check.is_none(raw_data.projections)
                 and len(raw_data.projections) == 4
+                and projector.has_projector_data(raw_data.projectors)
             )
         return True
 
