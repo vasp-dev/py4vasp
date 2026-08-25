@@ -47,6 +47,29 @@ selection : str
 """
 
 
+def has_projector_data(raw_projectors) -> bool:
+    """Check whether VASP wrote the projector information needed for projections.
+
+    VASP only writes the projectors when :tag:`LORBIT` is set. Quantities that link
+    to the projectors then receive a :class:`~py4vasp.raw.Projector` whose fields are
+    all unset (or no projector at all), which is what this detects. Use it to decide
+    whether a projection on atoms and orbitals is possible.
+
+    Parameters
+    ----------
+    raw_projectors
+        The projector data of a quantity, e.g. ``raw_band.projectors``.
+
+    Returns
+    -------
+    bool
+        True if the projector information is present.
+    """
+    if check.is_none(raw_projectors):
+        return False
+    return not check.is_none(raw_projectors.orbital_types)
+
+
 class ProjectorHandler:
     """Handler for projector data."""
 

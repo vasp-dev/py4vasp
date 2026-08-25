@@ -9,6 +9,7 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -197,6 +198,15 @@ class CurrentDensity:
 
     def _handler_factory(self, raw):
         return CurrentDensityHandler.from_data(raw)
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # "nmr" is the only source and the quantity defines no default one, so the
+        # methods taking a selection are the only ones that can reach the data;
+        # read and __str__ request the (nonexistent) default source and fail. Drop
+        # this restriction once current_density implements a default selection.
+        if method not in ("to_contour", "to_quiver"):
+            return False
+        return is_available_raw(self._quantity_name, raw_data, selection=selection)
 
     def __str__(self, selection=None):
         return merge_strings(

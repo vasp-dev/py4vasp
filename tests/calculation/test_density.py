@@ -651,3 +651,14 @@ def test_is_available_to_quiver(raw_data):
     # read / to_view work regardless of the magnetic configuration
     assert nonpolarized.is_available("default") is True
     assert nonpolarized.is_available("default", method="to_view") is True
+
+
+def test_is_available_reports_sources_selected_by_item(tmp_path):
+    """Density selects its source with the [] operator instead of a method argument
+    (``calculation.density["tau"].read()``), so those sources are reachable and must
+    be reported as available."""
+    from py4vasp import demo
+
+    density = demo.calculation(tmp_path / "example").density
+    assert density.is_available(["default", "tau"]) == {"default": True, "tau": True}
+    assert density["tau"].read() is not None

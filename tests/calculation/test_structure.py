@@ -749,6 +749,32 @@ def test_is_available_default_and_other_methods(perovskite, raw_data):
     assert without_symmetry.is_available("default", method="to_view") is True
 
 
+def test_is_available_only_reports_selectable_sources(tmp_path):
+    """The extra structure sources exist for other quantities that link to them, but
+    no Structure method takes a source selection. Even with the data present they are
+    therefore reported as unavailable instead of promising access that is not there."""
+    import h5py
+
+    import py4vasp
+    from py4vasp._demo import CONTCAR as contcar_demo
+
+    with h5py.File(tmp_path / "vaspout.h5", "w") as h5f:
+        py4vasp._raw.write.write(h5f, raw.Version(99, 99, 99))
+        py4vasp._raw.write.write(h5f, contcar_demo.Sr2TiO4())
+    (tmp_path / "POSCAR").write_text(REF_POSCAR)
+    structure = py4vasp.Calculation.from_path(tmp_path).structure
+    sources = ["default", "final", "exciton", "poscar"]
+    assert structure.is_available(sources) == {
+        "default": False,  # no intermediate/ion_dynamics data in this file
+        "final": False,
+        "exciton": False,
+        "poscar": False,
+    }
+    # the data of the unselectable sources is present -- the database collection that
+    # accesses the sources internally still picks it up
+    assert set(structure._to_database()["structure"]) == {"final"}
+
+
 def test_wyckoff_positions(perovskite):
     pytest.importorskip("spglib")
     from py4vasp._calculation.structure import Wyckoff

@@ -220,7 +220,16 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def test_is_available(tmp_path):
+    """Only the methods taking a selection can reach the "nmr" source; read and
+    __str__ ask for the default source that current_density does not define."""
     from py4vasp import demo
 
     calc = demo.calculation(tmp_path / "example")
-    assert calc.current_density.is_available("nmr") is True
+    current_density = calc.current_density
+    for method in ("to_contour", "to_quiver"):
+        assert current_density.is_available("nmr", method=method) is True
+        assert getattr(current_density, method)("nmr", a=0) is not None
+    assert current_density.is_available("nmr") is False
+    assert current_density.is_available("nmr", method="read") is False
+    with pytest.raises(exception.Py4VaspError):
+        current_density.read()
