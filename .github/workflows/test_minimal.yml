@@ -25,6 +25,12 @@ jobs:
   test-minimal:
     runs-on: ubuntu-latest
 
+    # Set for the whole job, not just `uv lock`: `uv sync` and `uv run` re-resolve
+    # the lockfile as well, so a resolution passed only to `uv lock` gets discarded
+    # again before the tests ever run.
+    env:
+      UV_RESOLUTION: lowest-direct
+
     steps:
     - uses: actions/checkout@v5
     - name: Install uv and set the Python version
@@ -35,7 +41,7 @@ jobs:
       run: |
         uv --version
         python --version
-        uv lock --resolution lowest-direct
+        uv lock
         uv sync --no-group doc
         uv version
     - name: Test with pytest

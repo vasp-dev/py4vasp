@@ -2350,15 +2350,15 @@ doc = [
 requires-dist = [
     { name = "ase", specifier = ">=3.23" },
     { name = "click", specifier = ">=8.1.8" },
-    { name = "h5py", specifier = ">=3.9.0" },
+    { name = "h5py", specifier = ">=3.11.0" },
     { name = "ipython", specifier = ">=8.26" },
     { name = "kaleido", specifier = ">=1.0" },
     { name = "nglview", specifier = ">=3.0.5" },
     { name = "numpy", specifier = ">=2.0" },
-    { name = "pandas", specifier = ">=2.0" },
+    { name = "pandas", specifier = ">=2.2.2" },
     { name = "plotly", specifier = ">=5.23" },
-    { name = "scipy", specifier = ">=1.12.0" },
-    { name = "spglib", specifier = ">=2.1" },
+    { name = "scipy", specifier = ">=1.15.0" },
+    { name = "spglib", specifier = ">=2.5" },
 ]
 
 [package.metadata.requires-dev]
