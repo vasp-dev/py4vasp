@@ -9,6 +9,9 @@ from py4vasp import exception
 from py4vasp._util import import_
 
 IPython = import_.optional("IPython")
+# IPython does not import its submodules eagerly, so request them explicitly
+# instead of relying on them being present as attributes of the package.
+ultratb = import_.optional("IPython.core.ultratb")
 _ERROR_VERBOSITY = "not set"
 _ALLOWED_VERBOSITIES = ["Inherit", "Plain", "Minimal"]
 
@@ -59,9 +62,7 @@ def handle_exception(exception):
 def _handle_exception(shell, etype, evalue, tb, tb_offset=0):
     if shell is not None:
         tb_offset = tb_offset or shell.InteractiveTB.tb_offset
-    traceback_formatter = IPython.core.ultratb.FormattedTB(
-        _ERROR_VERBOSITY, tb_offset=tb_offset
-    )
+    traceback_formatter = ultratb.FormattedTB(_ERROR_VERBOSITY, tb_offset=tb_offset)
     frames = traceback.extract_tb(tb, limit=None)
     frames_outside_py4vasp = list(_keep_frames_outside_py4vasp(frames))
     traceback_formatter(etype, evalue, frames_outside_py4vasp)
