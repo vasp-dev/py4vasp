@@ -944,7 +944,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "h5py", specifier = ">=3.9.0" },
+    { name = "h5py", specifier = ">=3.11.0" },
     { name = "numpy", specifier = ">=2.0" },
 ]
 
