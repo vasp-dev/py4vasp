@@ -16,9 +16,11 @@ from py4vasp._calculation.dos import Dos
 def ipython():
     """Mock IPython for testing purposes."""
     pytest.importorskip("IPython")
-    import IPython
+    # IPython does not import its submodules eagerly, so import this one explicitly
+    # instead of reaching for it as an attribute of the package.
+    from IPython.terminal.interactiveshell import TerminalInteractiveShell
 
-    shell = IPython.terminal.interactiveshell.TerminalInteractiveShell()
+    shell = TerminalInteractiveShell()
     with patch("IPython.get_ipython", return_value=shell):
         yield shell
 
