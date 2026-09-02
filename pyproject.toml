@@ -22,16 +22,16 @@ readme = "README.md"
 license = "Apache-2.0"
 dependencies = [
     "numpy>=2.0",
-    "h5py>=3.9.0",
-    "pandas>=2.0",
+    "h5py>=3.11.0",
+    "pandas>=2.2.2",
     "nglview>=3.0.5",
     "ase>=3.23",
     "plotly>=5.23",
     "kaleido>=1.0",
     "ipython>=8.26",
-    "scipy>=1.12.0",
+    "scipy>=1.15.0",
     "click>=8.1.8",
-    "spglib>=2.1",
+    "spglib>=2.5",
 ]
 
 [project.urls]
