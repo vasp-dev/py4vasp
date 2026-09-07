@@ -4,6 +4,7 @@ import io
 import pathlib
 import tarfile
 import zipfile
+from unittest.mock import patch
 
 import pytest
 
@@ -234,3 +235,33 @@ def test_path_not_in_archive_raises_error(tmp_path):
     message = str(error.value)
     assert "does_not_exist" in message
     assert "relax" in message
+
+
+def test_backslash_in_name_is_ignored(tmp_path):
+    # an archive may use a separator that is not the one of the current platform
+    files = {**EXAMPLE_FILES, "run\\evil.txt": "evil"}
+    filename = make_archive(tmp_path, "tar", files=files)
+    with archive.open_archive(filename) as opened:
+        actual = {str(member) for member in opened.members()}
+    assert actual == set(EXAMPLE_FILES)
+
+
+def test_wrong_path_in_archive_without_calculation(tmp_path):
+    files = {"documentation/README": "not a calculation"}
+    filename = make_archive(tmp_path, "zip", files=files)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        select_directory(filename, "does_not_exist")
+    message = str(error.value)
+    assert "does_not_exist" in message
+    assert "documentation" in message
+
+
+def test_corrupted_archive(tmp_path):
+    filename = make_archive(tmp_path, "zip")
+    error_of_stdlib = zipfile.BadZipFile("File is not a zip file")
+    with patch("zipfile.ZipFile", side_effect=error_of_stdlib):
+        with pytest.raises(exception.FileAccessError) as error:
+            with archive.open_archive(filename):
+                pass
+    assert "valid archive" in str(error.value)
+    assert error.value.__cause__ is error_of_stdlib
