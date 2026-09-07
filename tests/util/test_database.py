@@ -1,8 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from typing import List, Optional, Tuple
+
 import pytest
 
 from py4vasp._calculation import GROUPS, QUANTITIES
+from py4vasp._raw import models
 from py4vasp._raw.definition import DEFAULT_SOURCE
 from py4vasp._util import database
 
@@ -147,6 +150,38 @@ def test_get_formula_and_compound(ion_types, ion_numbers, expectations):
     assert simple_types == expected_simple_types
     assert simple_nums == expected_simple_nums
     assert primitive_nums == expected_primitive_nums
+
+
+def test_field_types_match_the_schema_fingerprint():
+    """Both describe the same models, so their type strings have to agree.
+
+    A plain str() of an annotation is not stable across interpreters -- Python 3.14
+    renders Optional[float] as 'float | None' -- so the field types reported alongside
+    the database keys must go through models._format_type like the fingerprint does.
+    """
+    all_keys, _ = database.get_all_possible_keys(to_print=False, debug=False)
+    fingerprint = models.schema_fingerprint()["models"]
+    compared = 0
+    for dataclass_name, fields in all_keys.items():
+        if dataclass_name not in fingerprint:
+            continue
+        assert dict(fields) == dict(fingerprint[dataclass_name]), dataclass_name
+        compared += 1
+    assert compared > 0
+
+
+@pytest.mark.parametrize(
+    "annotation, expected",
+    (
+        (Optional[float], "Optional[float]"),
+        (Optional[Tuple[float, float, float]], "Optional[tuple[float, float, float]]"),
+        (Optional[List[str]], "Optional[list[str]]"),
+        (float, "float"),
+        ("already a string", "already a string"),
+    ),
+)
+def test_format_type_name_is_interpreter_independent(annotation, expected):
+    assert database._format_type_name(annotation) == expected
 
 
 def test_get_all_possible_keys():
