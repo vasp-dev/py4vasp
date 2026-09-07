@@ -30,8 +30,16 @@ You can then install *py4vasp* from PyPI_ using the pip package installer
 
 This will automatically download *py4vasp* and its required dependencies.
 
+This installs two distributions: *py4vasp-core*, which contains the code, and
+*py4vasp*, which contains nothing but the list of dependencies that makes the
+installation complete. To remove *py4vasp* again, uninstall both
+
+.. code-block:: bash
+
+  pip uninstall py4vasp py4vasp-core
+
 For a minimalistic setup where you use py4vasp as a library, you can install the
-core package
+core package on its own
 
 .. code-block:: bash
 
@@ -42,6 +50,50 @@ impact the usage. However, it does not install any of the dependencies of *py4va
 except for *numpy* and *h5py*. Hence, this core package is most suitable for
 script developers that do not need all the visualization features of *py4vasp*.
 
+You are not limited to those two options. *py4vasp* activates a feature as soon as
+the package it relies on can be imported, so you can install the core package and
+add just the dependencies you need afterwards -- either by hand or by asking for the
+matching extra
+
+.. code-block:: bash
+
+  pip install py4vasp-core[plot]
+
+.. list-table:: Extras of *py4vasp-core*
+   :header-rows: 1
+
+   * - extra
+     - installs
+     - enables
+   * - ``plot``
+     - pandas, plotly, kaleido
+     - ``plot``, ``to_plotly``, ``to_image``, ``to_frame``, ``to_csv``
+   * - ``structure``
+     - ase, spglib
+     - ``to_ase``, ``to_POSCAR``, symmetry and space-group analysis
+   * - ``view``
+     - nglview, ase
+     - visualizing structures, densities, and arrows in a notebook
+   * - ``interactive``
+     - ipython
+     - condensed error messages and rich output in a notebook
+   * - ``numeric``
+     - scipy
+     - neighbor lists, interpolation, and the optics color pipeline
+   * - ``cli``
+     - click
+     - the ``python -m py4vasp`` command line interface
+   * - ``mdtraj``
+     - mdtraj
+     - ``to_mdtraj``
+   * - ``all``
+     - everything above except ``mdtraj``
+     - the same features as *py4vasp* itself
+
+Note that a plain ``pip install py4vasp-core`` does not provide the ``py4vasp``
+command; use ``python -m py4vasp`` after installing the ``cli`` extra, or install
+the full *py4vasp* distribution.
+
 Alternatively, you can obtain the code from GitHub and install it. This will give you
 the most recent version with all bugfixes. However, some features may only work once
 the next VASP version is released.
@@ -50,7 +102,12 @@ the next VASP version is released.
 
   git clone https://github.com/vasp-dev/py4vasp.git
   cd py4vasp
-  pip install .
+  pip install .[all]
+
+The repository root holds *py4vasp-core*, so ``pip install .`` on its own gives you the
+minimal installation; the ``[all]`` extra adds the remaining dependencies and is
+equivalent to installing *py4vasp*. The ``py4vasp`` command is declared by the *py4vasp*
+distribution, which is not what you build here, so use ``python -m py4vasp`` instead.
 
 If these commands succeed, you should be able to use *py4vasp*. You can make a quick
 test of your installation running the following command
@@ -138,7 +195,12 @@ how you can apply *py4vasp* in your research.
 
 You can install mdtraj if you want to analyze molecular dynamics trajectories
 beyond the pair correlation function. We recommend using conda for the installation
-which we found to be more robust than pip.
+which we found to be more robust than pip. It is the one dependency that a complete
+``pip install py4vasp`` does not pull in.
+
+If *py4vasp* tells you that a feature relies on a package you do not have, installing
+that package is all that is needed -- there is nothing to reconfigure and no need to
+reinstall *py4vasp*.
 
 .. toctree::
    :hidden:

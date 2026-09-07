@@ -8,6 +8,26 @@
 > the version of py4vasp provided on Github. If you just want to install py4vasp to
 > use it, please follow the [official documentation](https://vasp.at/py4vasp/latest).
 
+## Repository layout
+
+The repository is a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/)
+that publishes three distributions from a single lockfile
+
+| path | distribution | what it is |
+|---|---|---|
+| `.` | `py4vasp-core` | all the code (`src/py4vasp`), requiring only numpy and h5py |
+| `packages/py4vasp` | `py4vasp` | a metadata-only wrapper pulling `py4vasp-core[all]` |
+| `packages/backend` | `vasp-backend` | `vasp.backend`, the internal interface for our own tools |
+
+pip extras can only *add* dependencies, never remove them. Since `pip install py4vasp`
+has to give the largest dependency set and `pip install py4vasp-core` the smallest, the
+code has to live in the distribution with the smallest set and `py4vasp` has to be a
+superset of it. That is why the `py4vasp` distribution ships no modules of its own.
+
+py4vasp reaches every dependency beyond numpy and h5py through the lazy proxies in
+`py4vasp._util.import_`, so a `py4vasp-core` installation gains a feature the moment the
+corresponding package becomes importable -- no reinstall, no code path of its own.
+
 ## Installation
 
 We use the [uv package manager](https://docs.astral.sh/uv/) which takes care of
@@ -24,7 +44,7 @@ conda install conda-forge::uv
 git clone git@github.com:vasp-dev/py4vasp.git
 cd py4vasp
 export VIRTUAL_ENV=$CONDA_PREFIX
-uv sync --active
+uv sync --active --all-packages --all-extras --no-extra mdtraj
 conda install conda-forge::mdtraj
 uv run --active pytest
 ~~~
@@ -32,37 +52,55 @@ Note that this will install py4vasp into the conda environment. This isolates th
 from all packages you have installed in other conda environments. Using uv makes
 sure that when you modify the code all the relevant dependencies are tracked.
 
+`--all-packages` installs all three distributions in editable mode, `--all-extras` adds
+every optional dependency, and `--no-extra mdtraj` leaves mdtraj to conda because
+installing it with pip is unreliable.
+
 ## py4vasp core
 
 If you want to use py4vasp to develop your own scripts, you may want to limit the amount
-of external dependencies. To this end, we provide alternative configuration files that
-only install numpy, h5py, and the development dependencies. To install this core package
-replace the configurations files in the root folder with the ones in the `core` folder
+of external dependencies. Select the `py4vasp-core` distribution and none of its extras
+to get an environment with nothing but numpy, h5py and the test tools
 ~~~shell
-cp core/* .
+uv sync --package py4vasp-core --no-default-groups --group test
+uv run --no-sync pytest
 ~~~
-Then you can install py4vasp with the same steps as above. Alternatively, since
-py4vasp-core does not use mdtraj, you can also install everything in a virtual environment
-mangaged by uv
+`uv sync` is exact, so this removes the optional dependencies again if they were
+installed before; `make test-core` runs the same thing and syncs the full environment
+back afterwards. Note that many tests will be skipped because they require the external
+packages to run, and that the tests under `packages/` skip themselves entirely because
+the distributions they cover are not installed.
+
+To work on a single feature, ask for the extra that provides it instead, e.g.
 ~~~shell
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv sync
-uv run pytest
+uv sync --package py4vasp-core --extra plot
 ~~~
-Note that some tests will be skipped because they require the external packages to run.
-If you want to exclude even the development dependencies, you can run
-~~~shell
-uv sync --no-dev
-~~~
-for the minimal installation.
+The available extras are `plot`, `structure`, `view`, `interactive`, `numeric`, `cli`,
+`sphinx`, `mdtraj`, and `all` for everything except `sphinx` and `mdtraj`.
+
+## Releasing
+
+The version lives in `src/py4vasp/__init__.py`. The two wrapper distributions repeat it
+because a metadata-only package has no module to read it from, and they pin
+`py4vasp-core` exactly. `make release VERSION=0.12.0` (which runs
+`scripts/set_version.py`) updates all of them at once and `tests/test_version.py` fails
+if they ever drift apart.
+
+Two things to keep in mind when cutting a release:
+
+* A new minor series has to reset `__DB_SCHEMA__` in `src/py4vasp/_raw/models.py` to 0
+  and record the schema snapshot again; see `tests/raw/test_schema_version.py`.
+* Never republish a `py4vasp-core` version that is already on PyPI. `py4vasp` pins
+  `py4vasp-core` exactly, so pip skips reinstalling core if the pin is already
+  satisfied -- while still deleting the files an older, non-wrapper `py4vasp` recorded.
 
 ## Code style
 
 Code style is enforced, but is not something the developer should spend time on, so we
 decided on using black and isort. Please run
 ~~~shell
-black src tests
-isort src tests
+black src tests packages scripts
+isort src tests packages scripts
 ~~~
 before committing the code. This will autoformat your code and sort the import
 statements in a consistent order. If you would like this code formatting to be done

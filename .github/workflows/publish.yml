@@ -1,0 +1,129 @@
+name: publish
+
+# One tag releases the whole workspace. py4vasp is a metadata-only wrapper around
+# py4vasp-core, so the order of the uploads matters: until py4vasp-core is on the index,
+# a published py4vasp points at a version that does not exist.
+
+on:
+  push:
+    tags:
+      # Publish on any tag starting with a `v`, e.g., v0.1.0
+      - v*
+
+jobs:
+  test-full:
+    uses: ./.github/workflows/test_full.yml
+
+  test-core:
+    uses: ./.github/workflows/test_core.yml
+
+  build:
+    needs: [test-full, test-core]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Install Python 3.13
+        run: uv python install 3.13
+      - name: Build every distribution in the workspace
+        run: uv build --all-packages
+      # The version comes from the source tree, not from the tag, so a tag pushed
+      # without running `make release` would publish the previous version. Both
+      # publish steps pass --check-url and would then skip the upload and exit 0,
+      # turning that mistake into a green run that released nothing.
+      - name: Verify that the tag matches the built version
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/py4vasp/__init__.py)
+          expected=${GITHUB_REF_NAME#v}
+          echo "tag $GITHUB_REF_NAME -> $expected, built $version"
+          test "$version" = "$expected"
+          test -f "dist/py4vasp-$version-py3-none-any.whl"
+          test -f "dist/py4vasp_core-$version-py3-none-any.whl"
+          test -f "dist/vasp_backend-$version-py3-none-any.whl"
+      # The wrapper must never ship modules of its own; if it did, it would fight with
+      # py4vasp-core over site-packages/py4vasp.
+      - name: Verify that py4vasp is metadata only
+        run: |
+          modules=$(unzip -Z1 dist/py4vasp-*.whl | grep -v '\.dist-info/' || true)
+          if [ -n "$modules" ]; then
+            echo "py4vasp wheel unexpectedly contains files:"
+            echo "$modules"
+            exit 1
+          fi
+      - name: Smoke test the built distributions
+        run: |
+          uv venv smoke
+          VIRTUAL_ENV=smoke uv pip install --find-links dist py4vasp
+          VIRTUAL_ENV=smoke uv run --no-project python -c "import py4vasp; print(py4vasp.__version__)"
+          VIRTUAL_ENV=smoke uv run --no-project py4vasp --help
+      - name: Upload the distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-core:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Publish py4vasp-core
+        run: uv publish --check-url https://pypi.org/simple dist/py4vasp_core-*
+
+  publish-metapackage:
+    # Strictly after py4vasp-core: the wrapper pins it exactly.
+    needs: publish-core
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Publish py4vasp
+        run: uv publish --check-url https://pypi.org/simple dist/py4vasp-*
+
+  publish-backend:
+    # vasp-backend exposes py4vasp internals to the tools we deliver; it is not for
+    # public consumption and goes to the internal index only. Skipped rather than failed
+    # while the internal index is not configured, so it cannot redden a public release.
+    needs: publish-core
+    if: vars.INTERNAL_INDEX_PUBLISH_URL != ''
+    runs-on: ubuntu-latest
+    environment:
+      name: internal
+    permissions:
+      contents: read
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Publish vasp-backend
+        env:
+          UV_PUBLISH_URL: ${{ vars.INTERNAL_INDEX_PUBLISH_URL }}
+          UV_PUBLISH_TOKEN: ${{ secrets.INTERNAL_INDEX_TOKEN }}
+        run: |
+          test -n "$UV_PUBLISH_URL"
+          test -n "$UV_PUBLISH_TOKEN"
+          uv publish dist/vasp_backend-*
