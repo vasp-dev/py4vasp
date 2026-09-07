@@ -2,7 +2,7 @@ Calculation
 ===========
 
 .. autoclass:: py4vasp.Calculation
-   :members: from_path, from_file, path
+   :members: from_path, from_file, from_archive, path
 
 Available quantities
 --------------------

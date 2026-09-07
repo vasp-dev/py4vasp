@@ -1,12 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import os
+import shutil
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import pytest
 
-from py4vasp import Calculation, _calculation, control, exception
+from py4vasp import Calculation, _calculation, control, demo, exception
 
 
 @patch("py4vasp.raw.access", autospec=True)
@@ -40,6 +41,53 @@ def test_creation_from_file(mock_access):
     mock_access.assert_not_called()
     calc.band  # access the band object — no data loaded yet
     mock_access.assert_not_called()
+
+
+@patch("py4vasp.raw.access", autospec=True)
+def test_creation_from_archive(mock_access):
+    # note: in pytest __file__ defaults to absolute path
+    absolute_path = Path(__file__).parent
+    absolute_archive = absolute_path / "example.zip"
+    calc = Calculation.from_archive(absolute_archive)
+    assert calc.path() == absolute_path
+    relative_archive = os.path.relpath(absolute_archive, Path.cwd())
+    calc = Calculation.from_archive(relative_archive)
+    assert calc.path() == absolute_path
+    calc = Calculation.from_archive("~/example.zip")
+    assert calc.path() == Path.home()
+    mock_access.assert_not_called()
+    calc.band  # access the band object — no data loaded yet
+    mock_access.assert_not_called()
+
+
+@patch("py4vasp.raw.access", autospec=True)
+def test_creation_from_nonexisting_archive(mock_access):
+    # like from_path, the constructor does not read anything so it must not raise
+    calc = Calculation.from_archive("does_not_exist.zip")
+    assert calc.path() == Path.cwd()
+    mock_access.assert_not_called()
+
+
+def test_read_data_from_archive(tmp_path, Assert):
+    directory = tmp_path / "calculation" / "run"
+    demo.calculation(directory)
+    archive = shutil.make_archive(str(tmp_path / "archive"), "zip", directory.parent)
+    calc = Calculation.from_archive(archive)
+    reference = Calculation.from_path(directory)
+    Assert.same_structure(calc.structure.read(), reference.structure.read())
+
+
+@patch("py4vasp.raw.access", autospec=True)
+def test_archive_forwards_file(mock_access, tmp_path):
+    directory = tmp_path / "calculation"
+    demo.calculation(directory)
+    (directory / "vaspout.h5").rename(directory / "backup.h5")
+    archive = shutil.make_archive(str(tmp_path / "archive"), "zip", directory)
+    calc = Calculation.from_archive(archive, file="backup.h5")
+    calc.structure.read()
+    arguments = mock_access.call_args
+    assert arguments.kwargs["file"] == "backup.h5"
+    assert (arguments.kwargs["path"] / "backup.h5").is_file()
 
 
 @patch("py4vasp.raw.access", autospec=True)

@@ -8,6 +8,7 @@ from py4vasp import exception
 from py4vasp._calculation.dispatch import (
     _REGISTRY,
     INPUT_FILES,
+    ArchiveSource,
     FileSource,
     Group,
     _availability_quantity_of,
@@ -190,6 +191,73 @@ instead of the constructor Calculation()."""
         calc._path = pathlib.Path(file_name).expanduser().resolve().parent
         calc._file = file_name
         calc._source = FileSource(calc._path, file=file_name)
+        return calc
+
+    @classmethod
+    def from_archive(cls, archive_name, path=None, file=None):
+        """Set up a Calculation from a VASP calculation stored in an archive.
+
+        If you archive a finished VASP calculation as a zip or tar file, you can
+        analyze it without unpacking it first. The archive may contain the files of the
+        calculation directly (INCAR, vaspout.h5, ...) or inside a directory
+        (folder/INCAR, folder/vaspout.h5, ...). py4vasp finds the calculation in either
+        case. If the archive contains more than one calculation, use the path argument
+        to select one of them; py4vasp reports the available choices otherwise.
+
+        The files that py4vasp reads are extracted to a temporary directory when you
+        access the data for the first time. Large files that py4vasp does not read, e.g.
+        the WAVECAR, remain in the archive. The temporary directory is removed when the
+        Calculation is deleted, so if you want to work with the files directly you
+        should unpack the archive yourself and use :meth:`from_path`.
+
+        Note that :meth:`path` reports the directory in which the archive is stored and
+        not the temporary directory. This way any output that py4vasp generates, e.g.
+        an image of a plot, is written next to the archive.
+
+        Parameters
+        ----------
+        archive_name : str or pathlib.Path
+            Name of the archive containing the VASP calculation. py4vasp reads zip and
+            tar archives including the compressed variants tar.gz (tgz), tar.bz2, and
+            tar.xz. The format is determined from the content of the file so that a
+            renamed archive is read correctly, too.
+        path : str or pathlib.Path, optional
+            Directory inside the archive in which the calculation is stored. You only
+            need this if the archive contains more than one calculation.
+        file : str or pathlib.Path, optional
+            Name of the file inside the archive from which the data is read. Use this
+            if you renamed the vaspout.h5 file before archiving the calculation.
+
+        Returns
+        -------
+        Calculation
+            A calculation accessing the data inside the archive.
+
+        Examples
+        --------
+
+        Let's create an example calculation in a temporary directory and archive it.
+        Please define `path` as the path to a directory that does not exist yet.
+
+        >>> import shutil
+        >>> _ = py4vasp.demo.calculation(path / "data" / "calculation")
+        >>> archive = shutil.make_archive(str(path / "archive"), "zip", path / "data")
+
+        You can now analyze the data in the archive without unpacking it.
+
+        >>> calculation = Calculation.from_archive(archive)
+        >>> calculation.dos.plot()
+        Graph(series=[Series(x=array(...), y=array(...), label='total', ...)],
+            xlabel='Energy (eV)', ..., ylabel='DOS (1/eV)', ...)
+
+        If the archive contains more than one calculation, select one with the path.
+
+        >>> calculation = Calculation.from_archive(archive, path="calculation")
+        """
+        calc = cls(_internal=True)
+        calc._source = ArchiveSource(archive_name, path=path, file=file)
+        calc._path = calc._source.path
+        calc._file = file
         return calc
 
     def _to_database(self):
