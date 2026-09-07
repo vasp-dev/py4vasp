@@ -161,3 +161,76 @@ def test_extract_nothing(example_archive, tmp_path):
     with archive.open_archive(example_archive) as opened:
         opened.extract([], destination)
     assert list(destination.iterdir()) == []
+
+
+MARKERS = ("vaspout.h5", "vaspwave.h5")
+FLAT_FILES = {"INCAR": "ISMEAR = 0", "vaspout.h5": "not really HDF5"}
+NESTED_FILES = {"outer/run/INCAR": "ISMEAR = 0", "outer/run/vaspout.h5": "no HDF5"}
+MULTIPLE_FILES = {
+    "relax/vaspout.h5": "no HDF5",
+    "static/vaspout.h5": "no HDF5",
+    "bands/vaspwave.h5": "no HDF5",
+    "documentation/README": "not a calculation",
+}
+
+
+def select_directory(filename, path=None):
+    with archive.open_archive(filename) as opened:
+        return archive.select_directory(opened, MARKERS, path=path)
+
+
+@pytest.mark.parametrize(
+    "files, expected",
+    (
+        (FLAT_FILES, "."),
+        (EXAMPLE_FILES, "run"),
+        (NESTED_FILES, "outer/run"),
+    ),
+)
+def test_select_only_directory(tmp_path, files, expected):
+    filename = make_archive(tmp_path, "zip", files=files)
+    assert select_directory(filename) == pathlib.PurePosixPath(expected)
+
+
+@pytest.mark.parametrize("path", ("relax", "./relax", "relax/", pathlib.Path("relax")))
+def test_select_directory_by_path(tmp_path, path):
+    filename = make_archive(tmp_path, "zip", files=MULTIPLE_FILES)
+    assert select_directory(filename, path) == pathlib.PurePosixPath("relax")
+
+
+def test_select_root_by_path(tmp_path):
+    filename = make_archive(tmp_path, "zip", files=FLAT_FILES)
+    assert select_directory(filename, ".") == pathlib.PurePosixPath(".")
+
+
+def test_select_directory_without_marker(tmp_path):
+    # a directory may be selected even if it does not contain VASP output
+    filename = make_archive(tmp_path, "zip", files=MULTIPLE_FILES)
+    expected = pathlib.PurePosixPath("documentation")
+    assert select_directory(filename, "documentation") == expected
+
+
+def test_multiple_directories_raise_error(tmp_path):
+    filename = make_archive(tmp_path, "zip", files=MULTIPLE_FILES)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        select_directory(filename)
+    message = str(error.value)
+    assert all(directory in message for directory in ("relax", "static", "bands"))
+    assert "documentation" not in message
+
+
+def test_archive_without_calculation_raises_error(tmp_path):
+    files = {"documentation/README": "not a calculation"}
+    filename = make_archive(tmp_path, "zip", files=files)
+    with pytest.raises(exception.FileAccessError) as error:
+        select_directory(filename)
+    assert "documentation" in str(error.value)
+
+
+def test_path_not_in_archive_raises_error(tmp_path):
+    filename = make_archive(tmp_path, "zip", files=MULTIPLE_FILES)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        select_directory(filename, "does_not_exist")
+    message = str(error.value)
+    assert "does_not_exist" in message
+    assert "relax" in message

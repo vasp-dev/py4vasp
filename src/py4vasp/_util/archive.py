@@ -13,6 +13,7 @@ package, which depends on numpy and h5py alone.
 
 import contextlib
 import pathlib
+import posixpath
 import shutil
 import tarfile
 import zipfile
@@ -89,6 +90,7 @@ def _create_archive(filename, stack):
         )
         raise exception.FileAccessError(message) from error
     message = f"""\
+\
 {filename} is not an archive that py4vasp can read. The supported formats are
 {_FORMATS}. py4vasp determines the format from the content of the file, so renaming
 the file does not change which archives it can read."""
@@ -191,3 +193,89 @@ def _safe_member(name):
     if filename in _JUNK_FILENAMES or filename.startswith(_JUNK_PREFIX):
         return None
     return member
+
+
+def select_directory(archive, markers, path=None):
+    """Determine which directory inside the archive contains the VASP calculation.
+
+    The archive may contain the files of the calculation directly, a single directory
+    with the files, or several directories one of which is selected with the path.
+
+    Parameters
+    ----------
+    archive : _Archive
+        Archive opened with :func:`open_archive`.
+    markers : Iterable[str]
+        Filenames that identify a directory as a VASP calculation.
+    path : str or pathlib.Path or None
+        Directory inside the archive that should be used. If not given, py4vasp
+        determines the directory from the content of the archive.
+
+    Returns
+    -------
+    pathlib.PurePosixPath
+        The directory inside the archive in which the calculation is stored.
+    """
+    markers = set(markers)
+    candidates = _directories_with_calculation(archive, markers)
+    if path is not None:
+        return _selected_directory(archive, path, candidates)
+    if len(candidates) == 1:
+        return candidates[0]
+    if not candidates:
+        raise exception.FileAccessError(_no_calculation_message(archive, markers))
+    raise exception.IncorrectUsage(_ambiguous_message(archive, candidates))
+
+
+def _directories_with_calculation(archive, markers):
+    members = archive.members()
+    return sorted({member.parent for member in members if member.name in markers})
+
+
+def _selected_directory(archive, path, candidates):
+    directory = _normalize(path)
+    if any(member.parent == directory for member in archive.members()):
+        return directory
+    raise exception.IncorrectUsage(_wrong_path_message(archive, path, candidates))
+
+
+def _normalize(path):
+    # an archive always uses posix paths, but the user may pass a path of the platform
+    return pathlib.PurePosixPath(posixpath.normpath(str(path).replace("\\", "/")))
+
+
+def _no_calculation_message(archive, markers):
+    return f"""\
+py4vasp could not find a VASP calculation in the archive {archive.filename.name}. It
+looked for the files {", ".join(sorted(markers))} but the archive contains only
+{_format_entries(_top_level_entries(archive))}"""
+
+
+def _ambiguous_message(archive, candidates):
+    return f"""\
+The archive {archive.filename.name} contains more than one VASP calculation:
+{_format_entries(candidates)}
+Please select one of them with the path argument, e.g. by using
+Calculation.from_archive("{archive.filename.name}", path="{candidates[0]}")."""
+
+
+def _wrong_path_message(archive, path, candidates):
+    if candidates:
+        available = f"""\
+The following directories of the archive contain a VASP calculation:
+{_format_entries(candidates)}"""
+    else:
+        available = f"""\
+The archive contains only
+{_format_entries(_top_level_entries(archive))}"""
+    return f"""\
+The archive {archive.filename.name} does not contain a directory "{path}".
+{available}"""
+
+
+def _top_level_entries(archive):
+    return sorted({member.parts[0] for member in archive.members()})
+
+
+def _format_entries(entries):
+    return "\n".join(f"    {entry}" for entry in entries)
