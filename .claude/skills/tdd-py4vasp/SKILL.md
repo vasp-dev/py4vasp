@@ -1,12 +1,16 @@
 ---
 name: tdd-py4vasp
 description: >-
-  Test-driven development workflow for py4vasp. Use when adding or changing a
-  feature, quantity, class, or method in py4vasp and you want tests written
-  first. Triggers: "TDD", "test-driven", "write the tests first", "add a method
-  with tests", "implement <quantity>", "red-green-refactor". Splits work into
-  one-method chunks, watches each test fail, implements to green, refactors,
-  and commits one chunk at a time.
+  The default development workflow for any code change in py4vasp — adding or
+  changing a feature, quantity, class, method, or fixing a bug. Use it by
+  default, not only when tests or "TDD" are mentioned: unless the user says
+  otherwise, py4vasp changes are developed test-first. Load it BEFORE designing
+  or writing an implementation plan as well — the ordered, one-method-per-chunk
+  breakdown it prescribes *is* the plan, so a plan drafted without it comes out
+  in the wrong shape. Explicit triggers: "TDD", "test-driven", "write the tests
+  first", "red-green-refactor", "implement <quantity>", "add a method", "plan
+  the implementation of <feature>". Each chunk runs RED (watch the test fail) →
+  GREEN → refactor → one local commit.
 ---
 
 # Test-driven development for py4vasp
@@ -26,6 +30,9 @@ below are relative to the repo/worktree root.
 Break the request into an ordered list of chunks, each ≈ one method/behavior.
 Record it in the todo list, present it to the user, and **wait for their
 sign-off before writing any code.** Do not start chunk 1 until they approve.
+If **plan mode** is active, this chunk list *is* the plan: the plan you hand to
+`ExitPlanMode` must be the ordered chunks with the test(s) named for each one,
+not an implement-then-test outline. Approving the plan is the sign-off.
 Keep chunks small — one method/behavior each, so every commit stays reviewable.
 
 Then, for **each** chunk in turn:
