@@ -90,7 +90,6 @@ def _create_archive(filename, stack):
         )
         raise exception.FileAccessError(message) from error
     message = f"""\
-\
 {filename} is not an archive that py4vasp can read. The supported formats are
 {_FORMATS}. py4vasp determines the format from the content of the file, so renaming
 the file does not change which archives it can read."""
