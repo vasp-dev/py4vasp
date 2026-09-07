@@ -122,7 +122,7 @@ def symmetrize(file, primitive, symprec, in_place, output):
         raise click.UsageError(message)
     destination = file if in_place else output
     try:
-        _raise_if_hdf5_output(destination)
+        _raise_if_output_not_supported(destination)
         structure = _read_structure(file)
         result = structure.symmetrize(to_primitive=primitive, symprec=symprec)
         poscar = result.to_POSCAR()
@@ -142,9 +142,19 @@ def _read_structure(file):
     return Structure.from_POSCAR(file.read_text())
 
 
-def _raise_if_hdf5_output(destination):
-    if destination is not None and destination.suffix in _HDF5_SUFFIXES:
+def _raise_if_output_not_supported(destination):
+    "The symmetrized structure is written as POSCAR, so it must not overwrite input."
+    if destination is None:
+        return
+    if destination.suffix in _HDF5_SUFFIXES:
         message = (
             "Writing the symmetrized structure to an HDF5 file is not implemented."
+        )
+        raise exception.NotImplemented(message)
+    if archive.is_archive(destination):
+        message = (
+            "Writing the symmetrized structure to an archive is not implemented. Note "
+            "that using --in-place on an archive would replace the whole archive by a "
+            "single POSCAR file."
         )
         raise exception.NotImplemented(message)

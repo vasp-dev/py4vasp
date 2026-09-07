@@ -12,11 +12,13 @@ package, which depends on numpy and h5py alone.
 """
 
 import contextlib
+import lzma
 import pathlib
 import posixpath
 import shutil
 import tarfile
 import zipfile
+import zlib
 
 from py4vasp import exception
 
@@ -28,6 +30,18 @@ _JUNK_FILENAMES = (".DS_Store", "Thumbs.db")
 _JUNK_PREFIX = "._"
 
 _FORMATS = "zip, tar, tar.gz (tgz), tar.bz2, and tar.xz"
+
+# Errors the standard library raises for an archive that is damaged. Truncating an
+# archive, e.g. by interrupting a transfer, does not necessarily produce an OSError:
+# gzip and lzma report the missing end of the stream as EOFError.
+_DAMAGED_ARCHIVE = (
+    OSError,
+    EOFError,
+    zipfile.BadZipFile,
+    tarfile.TarError,
+    lzma.LZMAError,
+    zlib.error,
+)
 
 
 def is_archive(filename):
@@ -48,7 +62,7 @@ def is_archive(filename):
     """
     try:
         return zipfile.is_zipfile(filename) or tarfile.is_tarfile(filename)
-    except (OSError, ValueError):
+    except (*_DAMAGED_ARCHIVE, ValueError):
         return False
 
 
@@ -83,10 +97,11 @@ def _create_archive(filename, stack):
             return _ZipArchive(filename, stack.enter_context(zipfile.ZipFile(filename)))
         if tarfile.is_tarfile(filename):
             return _TarArchive(filename, stack.enter_context(tarfile.open(filename)))
-    except (OSError, zipfile.BadZipFile, tarfile.TarError) as error:
+    except _DAMAGED_ARCHIVE as error:
         message = (
             f"Error when reading the archive {filename}. Please check whether the file "
-            "is a valid archive and that you have the permissions to read it."
+            "is complete, a valid archive, and that you have the permissions to read "
+            "it."
         )
         raise exception.FileAccessError(message) from error
     message = f"""\
@@ -131,9 +146,19 @@ class _Archive:
         """
         destination = pathlib.Path(destination)
         for member in members:
+            self._extract_member(member, destination / member.name)
+
+    def _extract_member(self, member, target):
+        try:
             with self._open_member(self._members[member]) as source_file:
-                with open(destination / member.name, "wb") as target_file:
+                with open(target, "wb") as target_file:
                     shutil.copyfileobj(source_file, target_file)
+        except _DAMAGED_ARCHIVE as error:
+            message = (
+                f"Error when extracting {member} from the archive {self.filename}. "
+                "Please check whether the archive is complete and not damaged."
+            )
+            raise exception.FileAccessError(message) from error
 
     def _raw_entries(self):
         raise NotImplementedError

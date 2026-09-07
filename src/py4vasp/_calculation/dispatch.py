@@ -204,7 +204,9 @@ class ArchiveSource:
     def __init__(self, archive_name, path=None, file=None):
         self._archive = pathlib.Path(archive_name).expanduser().resolve()
         self._path_in_archive = path
-        self._file = file
+        # the files are extracted next to each other, so a directory in the name of the
+        # file would not be reproduced in the directory py4vasp reads from
+        self._file = None if file is None else pathlib.PurePath(file).name
         self._directory = None
 
     @property
@@ -248,8 +250,17 @@ class ArchiveSource:
                 for member in opened.members()
                 if member.parent == selected and member.name in relevant_files
             ]
+            if not members:
+                raise exception.FileAccessError(
+                    self._no_readable_file_message(selected, relevant_files)
+                )
             opened.extract(members, directory.name)
         return directory
+
+    def _no_readable_file_message(self, selected, relevant_files):
+        return f"""The directory "{selected}" of the archive {self._archive.name} does not contain any
+file that py4vasp can read. py4vasp looked for the files
+{", ".join(sorted(relevant_files))} in this directory."""
 
     def _markers(self):
         "Files that identify a directory of the archive as a VASP calculation."
@@ -268,7 +279,7 @@ class ArchiveSource:
     def _explicit_file(self):
         if self._file is None:
             return set()
-        return {pathlib.PurePath(self._file).name}
+        return {self._file}
 
 
 class DataSource:

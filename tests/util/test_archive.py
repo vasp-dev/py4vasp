@@ -265,3 +265,51 @@ def test_corrupted_archive(tmp_path):
                 pass
     assert "valid archive" in str(error.value)
     assert error.value.__cause__ is error_of_stdlib
+
+
+def make_corrupted_archive(tmp_path):
+    """Create a zip archive in which the content of a member does not match its CRC."""
+    filename = tmp_path / "corrupted.zip"
+    with zipfile.ZipFile(filename, "w", zipfile.ZIP_STORED) as zip_file:
+        zip_file.writestr("run/vaspout.h5", "A" * 5000)
+    data = bytearray(filename.read_bytes())
+    data[data.find(b"A" * 100) + 50] = ord("B")
+    filename.write_bytes(bytes(data))
+    return filename
+
+
+def make_truncated_archive(tmp_path, format_):
+    """Create an archive that was cut off, e.g. because a transfer was interrupted."""
+    complete = make_archive(tmp_path, format_, name="complete")
+    truncated = tmp_path / f"truncated.{format_}"
+    content = complete.read_bytes()
+    truncated.write_bytes(content[: 3 * len(content) // 5])
+    return truncated
+
+
+def test_extract_corrupted_member(tmp_path):
+    filename = make_corrupted_archive(tmp_path)
+    destination = tmp_path / "destination"
+    destination.mkdir()
+    with pytest.raises(exception.FileAccessError) as error:
+        with archive.open_archive(filename) as opened:
+            opened.extract(opened.members(), destination)
+    assert "vaspout.h5" in str(error.value)
+
+
+@pytest.mark.parametrize("format_", ("tar.gz", "tar.xz", "tar.bz2"))
+def test_truncated_archive(tmp_path, format_):
+    filename = make_truncated_archive(tmp_path, format_)
+    destination = tmp_path / "destination"
+    destination.mkdir()
+    with pytest.raises(exception.FileAccessError):
+        with archive.open_archive(filename) as opened:
+            opened.extract(opened.members(), destination)
+
+
+@pytest.mark.parametrize("format_", ("tar.gz", "tar.xz", "tar.bz2"))
+def test_is_archive_does_not_raise_for_truncated_archive(tmp_path, format_):
+    # whether a truncated archive is recognized depends on where it was cut off, but
+    # the check must never raise an error of the standard library
+    filename = make_truncated_archive(tmp_path, format_)
+    assert archive.is_archive(filename) in (True, False)

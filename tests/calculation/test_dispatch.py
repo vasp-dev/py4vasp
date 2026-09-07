@@ -1285,6 +1285,30 @@ class TestArchiveSource:
         source = ArchiveSource(archive)
         assert self.extraction_directory(source) == self.extraction_directory(source)
 
+    def test_renamed_output_file_with_directory(self, tmp_path, Assert):
+        # the archive stores the file inside a directory, but py4vasp extracts the
+        # files of the calculation next to each other
+        archive = self.make_archive(tmp_path, filename="backup.h5")
+        source = ArchiveSource(archive, file="run/backup.h5")
+        reference = FileSource(tmp_path / "calculation" / "run", file="backup.h5")
+        with source.access("structure") as actual:
+            with reference.access("structure") as expected:
+                Assert.same_raw_structure(actual, expected)
+
+    def test_directory_without_files_read_by_py4vasp(self, tmp_path):
+        directory = tmp_path / "calculations"
+        demo.calculation(directory / "run")
+        (directory / "documentation").mkdir()
+        (directory / "documentation" / "README").write_text("not a calculation")
+        archive = shutil.make_archive(str(tmp_path / "archive"), "zip", directory)
+        source = ArchiveSource(archive, path="documentation")
+        with pytest.raises(exception.FileAccessError) as error:
+            with source.access("structure"):
+                pass
+        message = str(error.value)
+        assert "documentation" in message
+        assert "archive.zip" in message
+
     def test_temporary_directory_is_removed(self, tmp_path):
         archive = self.make_archive(tmp_path)
         source = ArchiveSource(archive)

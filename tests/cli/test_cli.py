@@ -289,3 +289,27 @@ def test_symmetrize_archive(mock_calculation, example_archive):
     structure.symmetrize.assert_called_once_with(to_primitive=False, symprec=_SYMPREC)
     symmetrized = structure.symmetrize.return_value
     assert result.output == f"{symmetrized.to_POSCAR.return_value}\n"
+
+
+@pytest.mark.parametrize("flag", ("-i", "--in-place"))
+def test_symmetrize_in_place_archive_not_implemented(
+    mock_calculation, example_archive, flag
+):
+    original = example_archive.read_bytes()
+    runner = CliRunner()
+    result = runner.invoke(cli, ["symmetrize", str(example_archive), flag])
+    assert result.exit_code != 0
+    assert "archive" in result.output
+    assert example_archive.read_bytes() == original
+    mock_calculation.from_archive.assert_not_called()
+
+
+def test_symmetrize_output_to_archive_not_implemented(
+    mock_calculation, example_archive, tmp_path
+):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    options = ["--output", str(example_archive)]
+    result = runner.invoke(cli, ["symmetrize", str(poscar), *options])
+    assert result.exit_code != 0
+    assert "archive" in result.output
