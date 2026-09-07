@@ -4,6 +4,7 @@ import importlib
 import pathlib
 import subprocess
 import sys
+import zipfile
 from unittest.mock import patch
 
 import pytest
@@ -242,6 +243,11 @@ def test_symmetrize_in_place_hdf5_not_implemented(mock_calculation, tmp_path):
     assert "not implemented" in result.output.lower()
 
 
+# ---------------------------------------------------------------------------
+# module execution
+# ---------------------------------------------------------------------------
+
+
 def test_module_is_executable():
     """`python -m py4vasp` is what py4vasp-core[cli] users get; the console script
     itself is declared by the py4vasp distribution."""
@@ -256,3 +262,82 @@ def test_importing_the_module_does_not_run_the_command():
     """Without the __main__ guard, a package walk would exit the interpreter."""
     module = importlib.import_module("py4vasp.__main__")
     assert module.cli is cli
+
+
+# ---------------------------------------------------------------------------
+# archives
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def example_archive(tmp_path):
+    filename = tmp_path / "calculation.zip"
+    with zipfile.ZipFile(filename, "w") as zip_file:
+        zip_file.writestr("relax/vaspout.h5", "not really HDF5")
+    return filename
+
+
+@pytest.mark.parametrize("argument", ("-f", "--from"))
+def test_convert_archive(mock_calculation, example_archive, argument):
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["convert", "structure", "lammps", argument, str(example_archive)]
+    )
+    assert result.exit_code == 0
+    mock_calculation.from_archive.assert_called_once_with(example_archive, path=None)
+    structure = mock_calculation.from_archive.return_value.structure
+    structure.to_lammps.assert_called_once_with()
+
+
+@pytest.mark.parametrize("argument", ("-a", "--archive-path"))
+def test_convert_archive_path(mock_calculation, example_archive, argument):
+    runner = CliRunner()
+    options = ["--from", str(example_archive), argument, "relax"]
+    result = runner.invoke(cli, ["convert", "structure", "lammps", *options])
+    assert result.exit_code == 0
+    mock_calculation.from_archive.assert_called_once_with(example_archive, path="relax")
+
+
+def test_convert_archive_path_without_archive(mock_calculation, tmp_path):
+    runner = CliRunner()
+    options = ["--from", str(tmp_path), "--archive-path", "relax"]
+    result = runner.invoke(cli, ["convert", "structure", "lammps", *options])
+    assert result.exit_code != 0
+    assert "is not an\narchive that py4vasp can read" in result.output
+    mock_calculation.from_path.assert_not_called()
+    mock_calculation.from_archive.assert_not_called()
+
+
+def test_symmetrize_archive(mock_calculation, example_archive):
+    runner = CliRunner()
+    result = runner.invoke(cli, ["symmetrize", str(example_archive)])
+    assert result.exit_code == 0
+    mock_calculation.from_archive.assert_called_once_with(example_archive)
+    structure = mock_calculation.from_archive.return_value.structure
+    structure.symmetrize.assert_called_once_with(to_primitive=False, symprec=_SYMPREC)
+    symmetrized = structure.symmetrize.return_value
+    assert result.output == f"{symmetrized.to_POSCAR.return_value}\n"
+
+
+@pytest.mark.parametrize("flag", ("-i", "--in-place"))
+def test_symmetrize_in_place_archive_not_implemented(
+    mock_calculation, example_archive, flag
+):
+    original = example_archive.read_bytes()
+    runner = CliRunner()
+    result = runner.invoke(cli, ["symmetrize", str(example_archive), flag])
+    assert result.exit_code != 0
+    assert "archive" in result.output
+    assert example_archive.read_bytes() == original
+    mock_calculation.from_archive.assert_not_called()
+
+
+def test_symmetrize_output_to_archive_not_implemented(
+    mock_calculation, example_archive, tmp_path
+):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    options = ["--output", str(example_archive)]
+    result = runner.invoke(cli, ["symmetrize", str(poscar), *options])
+    assert result.exit_code != 0
+    assert "archive" in result.output
