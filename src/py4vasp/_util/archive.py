@@ -13,6 +13,7 @@ package, which depends on numpy and h5py alone.
 
 import contextlib
 import pathlib
+import shutil
 import tarfile
 import zipfile
 
@@ -112,6 +113,26 @@ class _Archive:
     def members(self):
         """Return the files in the archive as a tuple of pathlib.PurePosixPath."""
         return tuple(self._members)
+
+    def extract(self, members, destination):
+        """Copy the given members of the archive into the destination directory.
+
+        The directory structure inside the archive is *not* reproduced. Every member is
+        written directly into the destination directory, because py4vasp expects all
+        files of a calculation next to each other.
+
+        Parameters
+        ----------
+        members : Iterable[pathlib.PurePosixPath]
+            Files to extract as returned by :meth:`members`.
+        destination : str or pathlib.Path
+            Existing directory into which the files are written.
+        """
+        destination = pathlib.Path(destination)
+        for member in members:
+            with self._open_member(self._members[member]) as source_file:
+                with open(destination / member.name, "wb") as target_file:
+                    shutil.copyfileobj(source_file, target_file)
 
     def _raw_entries(self):
         raise NotImplementedError

@@ -136,3 +136,28 @@ def test_is_not_an_archive(not_an_archive, tmp_path):
     assert not archive.is_archive(not_an_archive)
     assert not archive.is_archive(tmp_path / "does_not_exist.zip")
     assert not archive.is_archive(tmp_path)
+
+
+def test_extract_files(example_archive, tmp_path):
+    destination = tmp_path / "destination"
+    destination.mkdir()
+    with archive.open_archive(example_archive) as opened:
+        members = [member for member in opened.members() if member.name != "INCAR"]
+        opened.extract(members, destination)
+    # the directory structure of the archive is not reproduced
+    assert sorted(path.name for path in destination.iterdir()) == [
+        "POSCAR",
+        "vaspout.h5",
+    ]
+    assert (destination / "vaspout.h5").read_text() == EXAMPLE_FILES["run/vaspout.h5"]
+    assert (destination / "POSCAR").read_text() == EXAMPLE_FILES[
+        "run/subdirectory/POSCAR"
+    ]
+
+
+def test_extract_nothing(example_archive, tmp_path):
+    destination = tmp_path / "destination"
+    destination.mkdir()
+    with archive.open_archive(example_archive) as opened:
+        opened.extract([], destination)
+    assert list(destination.iterdir()) == []
