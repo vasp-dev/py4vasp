@@ -2,15 +2,18 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import contextlib
 import dataclasses
+import gc
 import pathlib
+import shutil
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
-from py4vasp import exception, raw
+from py4vasp import demo, exception, raw
 from py4vasp._calculation.dispatch import (
     _REGISTRY,
+    ArchiveSource,
     DataSource,
     DictSource,
     FileSource,
@@ -28,6 +31,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
     slice_steps,
 )
+from py4vasp._raw.definition import DEFAULT_FILE
 
 
 @contextlib.contextmanager
@@ -1176,3 +1180,116 @@ class TestIsAvailableSourceResolution:
         assert current_density.is_available(["nmr"], method="to_contour") == {
             "nmr": True
         }
+
+
+class TestArchiveSource:
+    @staticmethod
+    def make_archive(tmp_path, layout="directory", filename=None):
+        """Create an archive containing an example calculation.
+
+        With the layout "directory" the calculation is inside a folder of the archive,
+        with the layout "flat" the files are at the root of the archive.
+        """
+        directory = tmp_path / "calculation" / "run"
+        demo.calculation(directory)
+        if filename is not None:
+            (directory / DEFAULT_FILE).rename(directory / filename)
+        (directory / "INCAR").write_text("ISMEAR = 0")
+        (directory / "POSCAR").write_text("not really a POSCAR")
+        (directory / "WAVECAR").write_text("py4vasp does not read this file")
+        (directory / "vasprun.xml").write_text("py4vasp does not read this file")
+        root = directory if layout == "flat" else directory.parent
+        return pathlib.Path(shutil.make_archive(str(tmp_path / "archive"), "zip", root))
+
+    @staticmethod
+    def extraction_directory(source):
+        """Determine the directory into which the archive is extracted."""
+        with patch(
+            "py4vasp._calculation.dispatch._raw_module.access"
+        ) as mock_raw_access:
+            mock_raw_access.return_value = MagicMock()
+            with source.access("structure"):
+                pass
+        return mock_raw_access.call_args.kwargs["path"]
+
+    def test_path_is_directory_of_archive(self, tmp_path):
+        archive = self.make_archive(tmp_path)
+        source = ArchiveSource(archive)
+        # the extracted files are in a temporary directory, but the user should find
+        # generated output next to the archive
+        assert source.path == tmp_path.resolve()
+        assert isinstance(source.path, pathlib.Path)
+
+    @pytest.mark.parametrize("layout", ("flat", "directory"))
+    def test_access_reads_data_from_archive(self, tmp_path, layout, Assert):
+        archive = self.make_archive(tmp_path, layout)
+        source = ArchiveSource(archive)
+        reference = FileSource(tmp_path / "calculation" / "run")
+        with source.access("structure") as actual:
+            with reference.access("structure") as expected:
+                Assert.same_raw_structure(actual, expected)
+
+    def test_access_delegates_to_raw_access(self, tmp_path):
+        archive = self.make_archive(tmp_path)
+        source = ArchiveSource(archive)
+        with patch(
+            "py4vasp._calculation.dispatch._raw_module.access"
+        ) as mock_raw_access:
+            mock_raw_access.return_value = MagicMock()
+            with source.access("band", selection="kpoints_opt"):
+                pass
+        arguments = mock_raw_access.call_args
+        assert arguments.args == ("band",)
+        assert arguments.kwargs["selection"] == "kpoints_opt"
+        assert arguments.kwargs["file"] is None
+        assert (arguments.kwargs["path"] / DEFAULT_FILE).is_file()
+
+    def test_select_calculation_with_path(self, tmp_path, Assert):
+        directory = tmp_path / "calculations"
+        demo.calculation(directory / "first")
+        demo.calculation(directory / "second")
+        archive = shutil.make_archive(str(tmp_path / "archive"), "zip", directory)
+        source = ArchiveSource(archive, path="second")
+        reference = FileSource(directory / "second")
+        with source.access("structure") as actual:
+            with reference.access("structure") as expected:
+                Assert.same_raw_structure(actual, expected)
+
+    def test_archive_with_multiple_calculations_raises_error(self, tmp_path):
+        directory = tmp_path / "calculations"
+        demo.calculation(directory / "first")
+        demo.calculation(directory / "second")
+        archive = shutil.make_archive(str(tmp_path / "archive"), "zip", directory)
+        source = ArchiveSource(archive)
+        with pytest.raises(exception.IncorrectUsage):
+            with source.access("structure"):
+                pass
+
+    def test_renamed_output_file(self, tmp_path, Assert):
+        archive = self.make_archive(tmp_path, filename="backup.h5")
+        source = ArchiveSource(archive, file="backup.h5")
+        reference = FileSource(tmp_path / "calculation" / "run", file="backup.h5")
+        with source.access("structure") as actual:
+            with reference.access("structure") as expected:
+                Assert.same_raw_structure(actual, expected)
+
+    def test_only_files_read_by_py4vasp_are_extracted(self, tmp_path):
+        archive = self.make_archive(tmp_path)
+        source = ArchiveSource(archive)
+        directory = self.extraction_directory(source)
+        actual = sorted(path.name for path in directory.iterdir())
+        assert actual == ["INCAR", "POSCAR", "vaspout.h5", "vaspwave.h5"]
+
+    def test_archive_is_extracted_only_once(self, tmp_path):
+        archive = self.make_archive(tmp_path)
+        source = ArchiveSource(archive)
+        assert self.extraction_directory(source) == self.extraction_directory(source)
+
+    def test_temporary_directory_is_removed(self, tmp_path):
+        archive = self.make_archive(tmp_path)
+        source = ArchiveSource(archive)
+        directory = self.extraction_directory(source)
+        assert directory.is_dir()
+        del source
+        gc.collect()
+        assert not directory.exists()

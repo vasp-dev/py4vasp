@@ -7,6 +7,7 @@ from typing import Any, List, Optional, Tuple, Union
 from py4vasp import exception
 from py4vasp._calculation.dispatch import (
     _REGISTRY,
+    INPUT_FILES,
     FileSource,
     Group,
     _availability_quantity_of,
@@ -39,8 +40,6 @@ _SUPPRESSED_DB_EXCEPTIONS = (
     ValueError,
 )
 
-
-INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 
 # QUANTITIES, GROUPS, GROUP_TYPE_ALIAS, AUTOSUMMARY_QUANTITIES, AUTOSUMMARY_GROUPS,
 # AUTOSUMMARIES, and __all__ are derived from the dispatcher _REGISTRY by

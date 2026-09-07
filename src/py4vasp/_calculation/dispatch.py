@@ -10,20 +10,24 @@ import contextlib
 import dataclasses
 import inspect
 import pathlib
+import tempfile
 import typing
 
 import numpy as np
 
 from py4vasp import exception
 from py4vasp import raw as _raw_module
+from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_WAVEFILE
 from py4vasp._raw.definition import schema as _schema
 from py4vasp._raw.definition import selections as schema_selections
 from py4vasp._raw.definition import unique_selections as schema_unique_selections
 from py4vasp._raw.schema import DEFAULT_SELECTION, Link
 from py4vasp._third_party.graph import Graph
-from py4vasp._util import check, select
+from py4vasp._util import archive, check, select
 
 _REGISTRY = {}
+
+INPUT_FILES = ("INCAR", "KPOINTS", "POSCAR")
 
 
 def quantity(name, group=None):
@@ -176,6 +180,95 @@ class FileSource:
             quantity, selection=selection, path=self._path, file=self._file
         ) as raw:
             yield raw
+
+
+class ArchiveSource:
+    """Production source: reads raw data from an archived VASP calculation.
+
+    The archive may contain the files of the calculation directly or inside a
+    directory. Only the files that py4vasp reads are extracted and only when the data
+    is accessed for the first time. They are stored in a temporary directory that is
+    removed when this source is deleted.
+
+    Parameters
+    ----------
+    archive_name : str or pathlib.Path
+        Name of the zip or tar archive containing the VASP calculation.
+    path : str or pathlib.Path or None
+        Directory inside the archive in which the calculation is stored. If None,
+        py4vasp determines the directory from the content of the archive.
+    file : str or pathlib.Path or None
+        Specific HDF5 file to read from. If None, the schema default is used.
+    """
+
+    def __init__(self, archive_name, path=None, file=None):
+        self._archive = pathlib.Path(archive_name).expanduser().resolve()
+        self._path_in_archive = path
+        self._file = file
+        self._directory = None
+
+    @property
+    def path(self):
+        """The directory in which the archive is stored.
+
+        Note that this is deliberately not the directory from which the data is read.
+        The files of the archive are extracted to a temporary directory, so reporting
+        that one would make py4vasp write generated output, e.g. an image of a plot,
+        to a directory that is removed shortly afterwards.
+        """
+        return self._archive.parent
+
+    @contextlib.contextmanager
+    def access(self, quantity, selection=None):
+        with _raw_module.access(
+            quantity, selection=selection, path=self._extract(), file=self._file
+        ) as raw:
+            yield raw
+
+    def _extract(self):
+        if self._directory is None:
+            self._directory = self._extract_calculation()
+        return pathlib.Path(self._directory.name)
+
+    def _extract_calculation(self):
+        # TemporaryDirectory removes the directory when this source is garbage collected
+        # and at the latest when the interpreter shuts down. On Windows the removal may
+        # fail if another process still accesses one of the files; ignoring the error
+        # leaves the files behind instead of raising in an unrelated part of the code.
+        directory = tempfile.TemporaryDirectory(
+            prefix="py4vasp-", ignore_cleanup_errors=True
+        )
+        with archive.open_archive(self._archive) as opened:
+            selected = archive.select_directory(
+                opened, self._markers(), self._path_in_archive
+            )
+            relevant_files = self._relevant_files()
+            members = [
+                member
+                for member in opened.members()
+                if member.parent == selected and member.name in relevant_files
+            ]
+            opened.extract(members, directory.name)
+        return directory
+
+    def _markers(self):
+        "Files that identify a directory of the archive as a VASP calculation."
+        markers = {DEFAULT_FILE, DEFAULT_WAVEFILE}
+        return markers | self._explicit_file()
+
+    def _relevant_files(self):
+        "All files that py4vasp may want to read from the calculation."
+        files = {DEFAULT_FILE, *INPUT_FILES}
+        for sources in _schema.sources.values():
+            for source in sources.values():
+                if source.file:
+                    files.add(source.file)
+        return files | self._explicit_file()
+
+    def _explicit_file(self):
+        if self._file is None:
+            return set()
+        return {pathlib.PurePath(self._file).name}
 
 
 class DataSource:
