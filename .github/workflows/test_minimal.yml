@@ -46,7 +46,9 @@ jobs:
         python --version
         uv lock
         uv sync --package py4vasp-core --all-extras --no-extra mdtraj --no-default-groups --group test
-        uv version
+        # `uv version` cannot read a dynamic version, and py4vasp-core takes its
+        # version from the module so that the wrappers have a single source to follow.
+        uv run --no-sync python -c "import py4vasp; print(py4vasp.__version__)"
     - name: Test with pytest
       run: |
         uv run --no-sync pytest --version
