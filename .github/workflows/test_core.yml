@@ -1,16 +1,22 @@
 name: test-core
 
+# Test the py4vasp-core installation: numpy and h5py only. Everything py4vasp reaches
+# through py4vasp._util.import_ must degrade gracefully here, and the tests that need an
+# optional package skip themselves via pytest.importorskip.
+
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
+  # Reused by publish.yml so a release runs exactly the same checks.
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: test-core-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -27,14 +33,27 @@ jobs:
       uses: astral-sh/setup-uv@v7
       with:
         python-version: ${{ matrix.python-version }}
+    # `uv sync` is exact, so selecting only py4vasp-core removes every optional
+    # dependency again. The `test` group deliberately excludes black and ipykernel,
+    # which would drag click and IPython back in.
     - name: Install py4vasp-core
       run: |
-        cp core/* .
         uv --version
         python --version
-        uv sync --locked --all-extras --dev
-        uv version
+        uv sync --locked --package py4vasp-core --no-default-groups --group test
+    - name: Verify that the installation is minimal
+      run: |
+        uv run --no-sync python -c "import py4vasp; print(py4vasp.__version__)"
+        uv run --no-sync python -c "
+        import importlib.util, sys
+        unexpected = [
+            name
+            for name in ('pandas', 'plotly', 'ase', 'nglview', 'scipy', 'spglib', 'click')
+            if importlib.util.find_spec(name) is not None
+        ]
+        sys.exit(f'unexpected packages in a core installation: {unexpected}' if unexpected else 0)
+        "
     - name: Test with pytest
       run: |
-        uv run pytest --version
-        uv run pytest
+        uv run --no-sync pytest --version
+        uv run --no-sync pytest

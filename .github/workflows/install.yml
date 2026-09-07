@@ -1,5 +1,12 @@
 name: install
 
+# Install the freshly built artifacts the way a user would, i.e. with pip and without uv,
+# to catch packaging mistakes that a workspace `uv sync` would paper over.
+#
+# The wheels are installed by path on purpose. `--find-links dist` only *adds* a source,
+# so with the same version already on PyPI pip is free to prefer the released artifacts
+# and this job would silently test the previous release instead of the change at hand.
+
 on:
   schedule:
     - cron: "0 2 * * 6"
@@ -12,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: install-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -33,20 +40,89 @@ jobs:
         channels: conda-forge
         channel-priority: strict
         conda-remove-defaults: "true"
+    - name: Install uv
+      shell: bash -el {0}
+      run: conda install -q conda-forge::uv
+    - name: Build every distribution in the workspace
+      shell: bash -el {0}
+      run: uv build --all-packages
+    # Installing the wrapper by path but letting pip resolve py4vasp-core from the index
+    # would pull the released core, so name both wheels explicitly.
     - name: Install py4vasp and testing tools
       shell: bash -el {0}
       run: |
         python -m pip install --progress-bar=off --upgrade pip
-        pip install --progress-bar=off .
+        pip install --progress-bar=off dist/py4vasp-*.whl dist/py4vasp_core-*.whl
         pip install --progress-bar=off pytest hypothesis
         pip install --progress-bar=off ipykernel
     - name: Install mdtraj with conda
       shell: bash -el {0}
       run: |
         conda info
-        conda install -q -c conda-forge mdtraj
+        conda install -q conda-forge::mdtraj
+    - name: Check that both distributions are installed and the wrapper ships no code
+      shell: bash -el {0}
+      run: |
+        pip show py4vasp
+        pip show py4vasp-core
+        python -c "
+        import importlib.metadata as md
+        import py4vasp
+        for name in ('py4vasp', 'py4vasp-core'):
+            assert md.version(name) == py4vasp.__version__, name
+        modules = [f for f in md.files('py4vasp') if f.suffix == '.py']
+        assert modules == [], modules
+        print('py4vasp', py4vasp.__version__, 'wraps py4vasp-core')
+        "
+        py4vasp --help
     - name: Test with pytest
       shell: bash -el {0}
       run: |
         pytest --version
-        pytest
+        pytest tests
+
+  test-core:
+    # The other half of the promise: py4vasp-core installs without any of the optional
+    # dependencies and adding one afterwards is enough to enable the feature.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.11"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+    - name: Build every distribution in the workspace
+      run: uv build --all-packages
+    - name: Install py4vasp-core with pip
+      run: |
+        python -m pip install --progress-bar=off --upgrade pip
+        pip install --progress-bar=off dist/py4vasp_core-*.whl
+        pip list
+    - name: The optional dependencies really are absent
+      run: |
+        python -c "
+        import importlib.util, sys
+        unexpected = [
+            name
+            for name in ('pandas', 'plotly', 'ase', 'nglview', 'scipy', 'spglib', 'click')
+            if importlib.util.find_spec(name) is not None
+        ]
+        sys.exit(f'unexpected packages in a core installation: {unexpected}' if unexpected else 0)
+        "
+    - name: Plotting fails with a helpful message
+      run: |
+        python -c "
+        import py4vasp
+        from py4vasp import exception
+        try:
+            py4vasp.plot([1, 2], [3, 4]).to_plotly()
+        except exception.ModuleNotInstalled as error:
+            print('expected:', error)
+        else:
+            raise SystemExit('plotting unexpectedly succeeded without plotly')
+        "
+    - name: Adding plotly is enough to enable plotting
+      run: |
+        pip install --progress-bar=off plotly
+        python -c "import py4vasp; py4vasp.plot([1, 2], [3, 4]).to_plotly()"

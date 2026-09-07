@@ -1,10 +1,17 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import importlib
 import pathlib
+import subprocess
+import sys
 from unittest.mock import patch
 
 import pytest
-from click.testing import CliRunner
+
+# The command line interface is shipped by the py4vasp distribution, not by
+# py4vasp-core, so click is absent from a core-only installation.
+click_testing = pytest.importorskip("click.testing")
+CliRunner = click_testing.CliRunner
 
 from py4vasp import exception
 from py4vasp._calculation.symmetry import _SYMPREC
@@ -233,3 +240,19 @@ def test_symmetrize_in_place_hdf5_not_implemented(mock_calculation, tmp_path):
     result = runner.invoke(cli, ["symmetrize", str(hdf5), "-i"])
     assert result.exit_code != 0
     assert "not implemented" in result.output.lower()
+
+
+def test_module_is_executable():
+    """`python -m py4vasp` is what py4vasp-core[cli] users get; the console script
+    itself is declared by the py4vasp distribution."""
+    process = subprocess.run(
+        [sys.executable, "-m", "py4vasp", "--help"], capture_output=True, text=True
+    )
+    assert process.returncode == 0, process.stderr
+    assert "Usage" in process.stdout
+
+
+def test_importing_the_module_does_not_run_the_command():
+    """Without the __main__ guard, a package walk would exit the interpreter."""
+    module = importlib.import_module("py4vasp.__main__")
+    assert module.cli is cli

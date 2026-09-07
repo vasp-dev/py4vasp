@@ -5,12 +5,14 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Reused by publish.yml so a release runs exactly the same checks.
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: test-full-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -36,12 +38,14 @@ jobs:
       run: |
         conda install -q conda-forge::uv
         uv --version
-    - name: Install py4vasp
+    # The whole workspace: py4vasp-core with every extra, plus the py4vasp wrapper and
+    # vasp-backend. mdtraj is excluded here and installed by conda below, because
+    # installing it with pip is unreliable.
+    - name: Install the workspace
       shell: bash -el {0}
       run: |
         export VIRTUAL_ENV=$CONDA_PREFIX
-        uv sync --active
-        uv version
+        uv sync --active --all-packages --all-extras --no-extra mdtraj
     - name: Install mdtraj with conda
       shell: bash -el {0}
       run: |
@@ -52,15 +56,12 @@ jobs:
       run: |
         export VIRTUAL_ENV=$CONDA_PREFIX
         uv run --active pytest --version
-        uv run --active pytest --cov=py4vasp --cov-report term
+        uv run --active pytest --cov=py4vasp --cov=vasp --cov-report term
     - name: Check code style
       shell: bash -el {0}
       run: |
         export VIRTUAL_ENV=$CONDA_PREFIX
         uv run --active isort --version
-        uv run --active isort --check src
-        uv run --active isort --check tests
+        uv run --active isort --check src tests packages scripts
         uv run --active black --version
-        uv run --active black --check src
-        uv run --active black --check tests
-
+        uv run --active black --check src tests packages scripts
