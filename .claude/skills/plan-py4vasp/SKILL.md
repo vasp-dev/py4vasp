@@ -3,10 +3,13 @@ name: plan-py4vasp
 description: >-
   Plan a py4vasp change as an ordered list of test-first chunks — that chunk
   list *is* the plan. Use it BEFORE writing any implementation plan for
-  py4vasp: a new feature, quantity, class or method, a refactor, or a bug fix —
-  and equally when the user only asks design questions ("are there other things
-  to consider?", "how would you implement X?", "what would it take to add X?"),
-  because the answer still has to land as a plan. Correct to use in plan mode:
+  py4vasp: a new feature, quantity, class or method, a refactor, or a bug fix.
+  Load it as soon as a py4vasp code change is under discussion — before
+  answering, not after — including when the user only asks design questions
+  ("are there other things to consider?", "how would you implement X?", "what
+  would it take to add X?"). Answering those IS the first half of planning, and
+  the answer has to close with the chunk list or with what must be settled
+  before the work can be chunked. Correct to use in plan mode:
   it only reads code and writes the plan, it never edits source and never
   commits. Each chunk is one method or behavior with its tests named up front;
   carrying out a chunk is then handed to the tdd-py4vasp skill, one chunk at a
@@ -42,6 +45,23 @@ Never plan from the request alone. Establish four things first:
 - **What the request leaves open.** Collect the genuine design questions and
   put your recommended default next to each, so the user can answer with
   "defaults, except 3".
+
+## Questions are half of planning
+
+A request phrased as a question — "are there other things to consider?", "what
+would it take?", "query me on the open questions" — is still a planning turn.
+Answer the questions, with your recommended default beside each, and then
+**close with the chunking anyway**:
+
+- If the open questions do not change the shape of the work, give the chunk
+  list outright and mark which chunks the answers would affect.
+- If they *do* change the shape (they decide whether a helper module exists at
+  all, say), give the chunk list for the part that is already settled and name
+  the specific answers you need before the rest can be chunked.
+
+What you must not do is answer the questions and stop there. That is how a
+change ends up planned implementation-first later, in a turn where nobody
+remembers to chunk it.
 
 ## 2. Cut the work into chunks
 

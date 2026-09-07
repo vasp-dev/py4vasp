@@ -42,6 +42,13 @@ That last branch is the fallback that matters: a chunk you cannot describe in
 one sentence is a plan you have not written yet. Reaching for it is cheap;
 discovering it four files into an implementation is not.
 
+Take it **even when you could plausibly implement the whole thing in one
+pass** — the value of the chunk list is that the user sees the shape of the
+work while changing it is still free. If you genuinely cannot pause for
+sign-off (a non-interactive or delegated run), you still produce the chunk list
+first and state it up front, then work it one chunk at a time with a commit
+each — never a single sweeping commit.
+
 Then, for the chunk you settled on:
 
 ## 1. RED — write the test(s) and watch them fail
