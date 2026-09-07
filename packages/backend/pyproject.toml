@@ -1,0 +1,38 @@
+# `vasp-backend` exposes the parts of py4vasp that VASP's own tools need but that are not
+# part of py4vasp's user-facing API. It is released in lockstep with py4vasp and is
+# published to the internal index only; see src/vasp/backend/__init__.py for the rationale.
+[project]
+name = "vasp-backend"
+dynamic = ["version"]
+description = "Internal py4vasp interface for the tools delivered by VASP."
+authors = [
+    { name = "VASP Software GmbH", email = "py4vasp@vasp.at" },
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = "Apache-2.0"
+# Exact pin: this package wraps py4vasp internals, which may change in any release.
+dependencies = [
+    "py4vasp-core==0.11.3",
+]
+
+[project.urls]
+Repository = "https://github.com/vasp-dev/py4vasp"
+
+[tool.uv.sources]
+py4vasp-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/vasp/backend/__init__.py"
+
+# `vasp` is an implicit namespace package (PEP 420) shared with vasp-viewer, so it must
+# not contain an __init__.py of its own.
+[tool.hatch.build.targets.wheel]
+packages = ["src/vasp"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src/vasp", "/tests"]

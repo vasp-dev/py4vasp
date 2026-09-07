@@ -5,6 +5,9 @@ name: test-minimal
 # direct dependency to its lowest declared version (transitive deps resolve normally)
 # on the oldest supported Python. If this job fails, a declared lower bound is too low
 # and should be raised (see https://scientific-python.org/specs/spec-0000/ for guidance).
+#
+# Resolution targets py4vasp-core with all its extras: those are where the third-party
+# bounds live. The py4vasp wrapper only pins py4vasp-core, so it has no bounds to check.
 
 on:
   push:
@@ -42,9 +45,11 @@ jobs:
         uv --version
         python --version
         uv lock
-        uv sync --no-group doc
-        uv version
+        uv sync --package py4vasp-core --all-extras --no-extra mdtraj --no-default-groups --group test
+        # `uv version` cannot read a dynamic version, and py4vasp-core takes its
+        # version from the module so that the wrappers have a single source to follow.
+        uv run --no-sync python -c "import py4vasp; print(py4vasp.__version__)"
     - name: Test with pytest
       run: |
-        uv run pytest --version
-        uv run pytest
+        uv run --no-sync pytest --version
+        uv run --no-sync pytest

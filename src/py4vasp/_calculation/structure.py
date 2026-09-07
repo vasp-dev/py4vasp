@@ -31,7 +31,6 @@ from py4vasp._third_party import view
 from py4vasp._util import check, import_, parse
 
 ase = import_.optional("ase")
-ase_io = import_.optional("ase.io")
 mdtraj = import_.optional("mdtraj")
 spglib = import_.optional("spglib")
 

@@ -1,0 +1,74 @@
+# The `py4vasp` distribution deliberately contains no Python modules. pip extras can only
+# add dependencies, never remove them, so the code has to live in the distribution with the
+# smallest dependency set (py4vasp-core) and the full-featured name has to be a superset of
+# it. This file is that superset: `pip install py4vasp` pulls py4vasp-core[all], which is
+# exactly the dependency list the `py4vasp` distribution had before the split.
+[project]
+name = "py4vasp"
+version = "0.11.3"
+description = "Tool for assisting with the analysis and setup of VASP calculations."
+authors = [
+    { name = "VASP Software GmbH", email = "py4vasp@vasp.at" },
+    { name = "Martin Schlipf", email = "martin.schlipf@gmail.com" },
+    { name = "Henrique Miranda", email = "miranda.henrique@gmail.com" },
+    { name = "Orest Dubay", email = "orest-d@users.noreply.github.com" },
+    { name = "Jonathan Lahnsteiner", email = "jonathan.lahnsteiner@gmx.at" },
+    { name = "Eisuke Kawashima", email = "e-kwsm@users.noreply.github.com" },
+    { name = "Sudarshan Vijay", email = "sudarshan.vijay@protonmail.com" },
+    { name = "Marie-Therese Huebsch", email = "marie-therese.huebsch@vasp.at" },
+    { name = "Michael Wolloch", email = "michael.wolloch@vasp.at" },
+    { name = "Andreas Singraber", email = "andreas.singraber@vasp.at" },
+    { name = "Alexey Tal", email = "alexey.tal@vasp.at" },
+    { name = "Tomáš Bučko", email = "tomas.bucko@uniba.sk" },
+    { name = "Max Liebetreu", email = "max.liebetreu@vasp.at" },
+]
+# Must never be stricter than py4vasp-core's requires-python.
+requires-python = ">=3.11"
+readme = "README.md"
+license = "Apache-2.0"
+dependencies = [
+    "py4vasp-core[all]==0.11.3",
+]
+
+[project.optional-dependencies]
+sphinx = ["py4vasp-core[sphinx]==0.11.3"]
+mdtraj = ["py4vasp-core[mdtraj]==0.11.3"]
+# Once vasp-viewer is published to an index this workspace can reach, add
+#     viewer = ["vasp-viewer"]
+# here. Declaring it *here* rather than as an extra of py4vasp-core is what keeps the
+# dependency graph a DAG: vasp-viewer depends on vasp-backend, which depends on
+# py4vasp-core, so an extra of py4vasp-core would close the cycle again.
+
+# Entry points are metadata; the modules they name are provided by py4vasp-core. They live
+# here rather than in py4vasp-core so that a distribution only advertises commands whose
+# dependencies it installs: py4vasp.cli imports click unguarded, and py4vasp._sphinx
+# needs sphinx. py4vasp-core[cli] users reach the same interface via `python -m py4vasp`.
+# The sphinx.builders group is only ever read by sphinx itself, so declaring it without
+# installing sphinx is harmless; `pip install py4vasp[sphinx]` adds the dependencies.
+[project.scripts]
+py4vasp = "py4vasp.cli:cli"
+error-analysis = "py4vasp.scripts.error_analysis:main"
+
+[project.entry-points."sphinx.builders"]
+hugo = "py4vasp._sphinx:setup"
+
+[project.urls]
+Homepage = "https://vasp.at/py4vasp/latest"
+Repository = "https://github.com/vasp-dev/py4vasp"
+"Support Forum" = "https://vasp.at/forum/"
+
+# uv sources are not written into Requires-Dist, so the `==` specifier above is what ends
+# up in the published metadata. This line only redirects the local workspace build.
+[tool.uv.sources]
+py4vasp-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# There is nothing to ship but the metadata; suppress hatchling's "no files selected" error.
+bypass-selection = true
+
+[tool.hatch.build.targets.sdist]
+include = ["/tests"]

@@ -13,7 +13,7 @@ from h5py import File
 from py4vasp import exception
 from py4vasp._raw.data import Version
 from py4vasp._raw.definition import DEFAULT_SOURCE, Schema, unique_selections
-from py4vasp._raw.models import parse_schema_version
+from py4vasp._raw.models import _format_type, parse_schema_version
 from py4vasp._raw.schema import Length, Link
 from py4vasp._util import convert
 
@@ -522,14 +522,14 @@ def _get_dataclass_field_tuples(dataclass_name: str) -> List[Tuple[str, str]]:
 
 
 def _format_type_name(field_type: Any) -> str:
-    if isinstance(field_type, str):
-        return field_type
-    field_type_str = str(field_type)
-    if field_type_str.startswith("typing."):
-        return field_type_str[len("typing.") :]
-    if field_type_str.startswith("<class '") and field_type_str.endswith("'>"):
-        return field_type_str[len("<class '") : -len("'>")]
-    return field_type_str
+    """Render a field type the same way the schema fingerprint does.
+
+    Reuses :func:`py4vasp._raw.models._format_type` on purpose: a plain ``str()`` of an
+    annotation is not stable across interpreters (Python 3.14 renders
+    ``Optional[float]`` as ``float | None``), and the keys reported here describe the
+    same models as the schema fingerprint, so both have to agree.
+    """
+    return _format_type(field_type)
 
 
 def _quantity_label_to_db_key(label: str) -> str:
