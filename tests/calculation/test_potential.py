@@ -447,9 +447,18 @@ def test_bader_charge_uses_external_analysis(raw_data, Assert):
         Assert.allclose(charges[key], manual[key])
 
 
+def test_print_writes_to_stdout(reference_potential, capsys):
+    assert reference_potential.print() is None
+    assert capsys.readouterr().out == str(reference_potential) + "\n"
+
+
+def test_selections(reference_potential):
+    assert reference_potential.selections() == {"potential": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.potential("Fe3O4 collinear total")
-    check_factory_methods(Potential, data, skip_methods=["bader_charge"])
+    check_factory_methods(Potential, data, skip_methods=["selections", "bader_charge"])
 
 
 def test_is_available_total_only(raw_data):
