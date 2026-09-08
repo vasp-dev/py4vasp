@@ -323,6 +323,11 @@ def test_to_database_qpoints(qpoints):
     _check_to_database(qpoints)
 
 
+def test_print_writes_to_stdout(explicit_kpoints, capsys):
+    assert explicit_kpoints.print() is None
+    assert capsys.readouterr().out == str(explicit_kpoints) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.kpoint("automatic")
     parameters = {"path_indices": {"start": (0, 0, 0), "finish": (1, 1, 1)}}
