@@ -143,6 +143,24 @@ def test_to_database_no_first_peak():
     assert db_data.first_peak_height is None
 
 
+def test_print(pair_correlation, format_):
+    actual, _ = format_(pair_correlation)
+    reference = """\
+pair-correlation function:
+    distances: [0.00, 49.00] 50 points
+    pairs: total, Sr~Sr, Sr~Ti, Sr~O, Ti~Ti, Ti~O, O~O"""
+    assert actual == {"text/plain": reference}
+
+
+def test_print_writes_to_stdout(pair_correlation, capsys):
+    assert pair_correlation.print() is None
+    assert capsys.readouterr().out == str(pair_correlation) + "\n"
+
+
+def test_selections(pair_correlation):
+    assert pair_correlation.selections() == {"pair_correlation": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.pair_correlation("Sr2TiO4")
-    check_factory_methods(PairCorrelation, data)
+    check_factory_methods(PairCorrelation, data, skip_methods=["selections"])

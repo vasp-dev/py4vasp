@@ -52,6 +52,14 @@ class PairCorrelationHandler:
     ) -> "PairCorrelationHandler":
         return cls(raw_pair_correlation, steps)
 
+    def __str__(self) -> str:
+        distances = self._raw_data.distances
+        pairs = ", ".join(self.labels())
+        return f"""\
+pair-correlation function:
+    distances: [{distances[0]:0.2f}, {distances[-1]:0.2f}] {len(distances)} points
+    pairs: {pairs}"""
+
     def to_dict(self, selection=None) -> dict:
         """Read the pair-correlation function and store it in a dictionary."""
         selection = self._default_selection_if_none(selection)
@@ -247,6 +255,22 @@ class PairCorrelation(graph.Mixin):
             self._handler_factory,
             PairCorrelationHandler.labels,
         )
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
+    def selections(self):
+        from py4vasp._raw import definition as raw_module
+
+        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
     def __str__(self, selection=None) -> str:
         return merge_strings(
