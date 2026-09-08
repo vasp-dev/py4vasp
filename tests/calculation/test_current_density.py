@@ -214,9 +214,18 @@ def test_to_database(raw_data, Assert):
     assert db_data.grid_shape == (nx, ny, nz)
 
 
+def test_print_writes_to_stdout(current_density, capsys):
+    assert current_density.print() is None
+    assert capsys.readouterr().out == str(current_density) + "\n"
+
+
+def test_selections(current_density):
+    assert current_density.selections() == {"current_density": ["nmr"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.current_density("x")
-    check_factory_methods(CurrentDensity, data)
+    check_factory_methods(CurrentDensity, data, skip_methods=["selections"])
 
 
 def test_is_available(tmp_path):
