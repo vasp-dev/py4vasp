@@ -177,13 +177,25 @@ class ElectronPhononBandgapHandler(abc.Sequence):
 
     def __getitem__(self, key):
         if 0 <= key < len(self):
-            mask = np.equal(self._raw_data.scattering_approximation, "SERTA")
+            mask = self._serta_mask()
             index_ = np.arange(len(mask))[mask][key]
             return BandgapInstance(self, index_)
         raise IndexError("Index out of range for electron phonon bandgap instance.")
 
     def __len__(self):
-        return sum(np.equal(self._raw_data.scattering_approximation, "SERTA"))
+        return int(np.count_nonzero(self._serta_mask()))
+
+    def _serta_mask(self):
+        """Mask selecting the instances computed in the SERTA approximation.
+
+        The approximations may be stored as bytes and an empty dataset has no dtype
+        that numpy can compare against a string, so convert to strings explicitly.
+        """
+        approximations = [
+            convert.text_to_string(approximation)
+            for approximation in self._raw_data.scattering_approximation
+        ]
+        return np.array(approximations, dtype=str) == "SERTA"
 
 
 @quantity("bandgap", group="electron_phonon")
@@ -214,6 +226,17 @@ class ElectronPhononBandgap(abc.Sequence):
 
     def _handler_factory(self, raw):
         return ElectronPhononBandgapHandler.from_data(raw)
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
 
     def __str__(self, selection=None):
         return merge_strings(
