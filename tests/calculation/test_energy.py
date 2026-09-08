@@ -291,6 +291,11 @@ def test_detect_energy_format_unknown_raises():
         _detect_energy_format({"not_a_real_energy_key"})
 
 
+def test_print_writes_to_stdout(MD_energy, capsys):
+    assert MD_energy.print() is None
+    assert capsys.readouterr().out == str(MD_energy) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.energy("MD")
     check_factory_methods(Energy, data)
