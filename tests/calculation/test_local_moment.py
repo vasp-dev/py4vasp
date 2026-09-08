@@ -339,6 +339,11 @@ def test_to_database(example_moments):
     )
 
 
+def test_print_writes_to_stdout(collinear_moments, capsys):
+    assert collinear_moments.print() is None
+    assert capsys.readouterr().out == str(collinear_moments) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.local_moment("collinear")
     check_factory_methods(LocalMoment, data)
