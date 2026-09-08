@@ -115,6 +115,11 @@ def test_to_database(phonon_dos):
     assert db_data.energy_max == float(phonon_dos.ref.energies[-1])
 
 
+def test_print_writes_to_stdout(phonon_dos, capsys):
+    assert phonon_dos.print() is None
+    assert capsys.readouterr().out == str(phonon_dos) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_dos("default")
     check_factory_methods(PhononDos, data)
