@@ -120,11 +120,6 @@ class Workfunction(graph.Mixin):
         """Create a Workfunction dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_workfunction))
 
-    @property
-    def path(self):
-        """Returns the path from which the output is obtained."""
-        return self._path
-
     def _handler_factory(self, raw_data):
         return WorkfunctionHandler.from_data(raw_data)
 

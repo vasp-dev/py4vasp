@@ -166,11 +166,6 @@ class PairCorrelation(graph.Mixin):
         """Create a PairCorrelation dispatcher from raw data."""
         return cls(source=DataSource(raw_pair_correlation))
 
-    @property
-    def path(self):
-        """Path used for file-export methods."""
-        return self._path
-
     def __getitem__(self, steps) -> "PairCorrelation":
         new = copy.copy(self)
         new._steps = steps

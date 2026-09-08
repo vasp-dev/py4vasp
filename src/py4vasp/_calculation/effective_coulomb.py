@@ -406,11 +406,6 @@ class EffectiveCoulomb(graph.Mixin):
         """Create an EffectiveCoulomb dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_coulomb))
 
-    @property
-    def path(self):
-        """Returns the path from which the output is obtained."""
-        return self._path
-
     def _handler_factory(self, raw_data):
         return EffectiveCoulombHandler.from_data(raw_data)
 
