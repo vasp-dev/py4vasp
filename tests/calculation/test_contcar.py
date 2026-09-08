@@ -118,9 +118,18 @@ def test_print(CONTCAR, format_):
     assert actual == {"text/plain": CONTCAR.ref.string}
 
 
+def test_print_writes_to_stdout(CONTCAR, capsys):
+    assert CONTCAR.print() is None
+    assert capsys.readouterr().out == str(CONTCAR) + "\n"
+
+
+def test_selections(CONTCAR):
+    assert CONTCAR.selections() == {"CONTCAR": ["default", "CONTCAR"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     raw_contcar = raw_data.CONTCAR("Sr2TiO4")
-    check_factory_methods(_CONTCAR, raw_contcar)
+    check_factory_methods(_CONTCAR, raw_contcar, skip_methods=["selections"])
 
 
 def test_to_database(CONTCAR):
