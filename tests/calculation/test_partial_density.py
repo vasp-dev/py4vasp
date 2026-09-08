@@ -436,6 +436,27 @@ def test_bader_charge_requires_analysis(raw_data):
         partial_density.bader_charge()
 
 
+def test_print(NonSplitPartialDensity, format_):
+    actual, _ = format_(NonSplitPartialDensity)
+    reference = """\
+partial charge density of C10:
+        on fine FFT grid: [ 24  24 216]
+        summed over all contributing bands
+        summed over all contributing k-points"""
+    assert actual == {"text/plain": reference}
+
+
+def test_print_writes_to_stdout(AnyPartialDensity, capsys):
+    assert AnyPartialDensity.print() is None
+    assert capsys.readouterr().out == str(AnyPartialDensity) + "\n"
+
+
+def test_selections(AnyPartialDensity):
+    assert AnyPartialDensity.selections() == {"partial_density": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.partial_density("spin_polarized")
-    check_factory_methods(PartialDensity, data, skip_methods=["bader_charge"])
+    check_factory_methods(
+        PartialDensity, data, skip_methods=["selections", "bader_charge"]
+    )
