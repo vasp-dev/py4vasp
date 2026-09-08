@@ -385,6 +385,17 @@ class Density(view.Mixin):
             return len(raw_data.charge) in (2, 4)
         return True
 
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
     def __str__(self, selection=None):
         return merge_strings(
             self._source,
