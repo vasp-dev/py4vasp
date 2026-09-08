@@ -26,6 +26,11 @@ def Sr2TiO4(raw_data):
     return handler
 
 
+@pytest.fixture
+def dispatcher(raw_data):
+    return BornEffectiveCharge.from_data(raw_data.born_effective_charge("Sr2TiO4"))
+
+
 def test_Sr2TiO4_read(Sr2TiO4, Assert):
     actual = Sr2TiO4.read()
     reference_structure = Sr2TiO4.ref.structure.to_dict()
@@ -37,9 +42,7 @@ def test_Sr2TiO4_read(Sr2TiO4, Assert):
     Assert.allclose(actual["charge_tensors"], Sr2TiO4.ref.charge_tensors)
 
 
-def test_Sr2TiO4_print(Sr2TiO4, format_):
-    actual, _ = format_(Sr2TiO4)
-    reference = """
+REFERENCE_OUTPUT = """
 BORN EFFECTIVE CHARGES (including local field effects) (in |e|, cumulative output)
 ---------------------------------------------------------------------------------
 ion    1   Sr
@@ -71,12 +74,30 @@ ion    7   O
     2    57.00000    58.00000    59.00000
     3    60.00000    61.00000    62.00000
 """.strip()
-    assert actual == {"text/plain": reference}
+
+
+def test_Sr2TiO4_print(Sr2TiO4, format_):
+    actual, _ = format_(Sr2TiO4)
+    assert actual == {"text/plain": REFERENCE_OUTPUT}
+
+
+def test_print_dispatcher(dispatcher, format_):
+    actual, _ = format_(dispatcher)
+    assert actual == {"text/plain": REFERENCE_OUTPUT}
+
+
+def test_print_writes_to_stdout(dispatcher, capsys):
+    assert dispatcher.print() is None
+    assert capsys.readouterr().out == str(dispatcher) + "\n"
+
+
+def test_selections(dispatcher):
+    assert dispatcher.selections() == {"born_effective_charge": ["default"]}
 
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.born_effective_charge("Sr2TiO4")
-    check_factory_methods(BornEffectiveCharge, data)
+    check_factory_methods(BornEffectiveCharge, data, skip_methods=["selections"])
 
 
 def test_to_database(Sr2TiO4):
