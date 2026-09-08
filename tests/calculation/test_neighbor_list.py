@@ -312,6 +312,12 @@ def test_print(raw_data, format_):
     assert actual == {"text/plain": expected}
 
 
+def test_print_writes_to_stdout(raw_data, capsys):
+    neighbor_list = NeighborList.from_data(raw_data.structure("SrTiO3"))
+    assert neighbor_list.print() is None
+    assert capsys.readouterr().out == str(neighbor_list) + "\n"
+
+
 def test_str_uses_default_cutoff(raw_data):
     structure = raw_data.structure("SrTiO3")
     neighbor_list = NeighborList.from_data(structure)
