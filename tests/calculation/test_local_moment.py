@@ -272,6 +272,7 @@ def expected_color(selection):
 def test_selections(example_moments):
     actual = example_moments.selections()
     assert actual == {
+        "local_moment": ["default"],
         "orbital_projection": example_moments.ref.projections,
         "component": example_moments.ref.components,
     }

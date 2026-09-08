@@ -745,13 +745,17 @@ class LocalMoment(view.Mixin):
         )
 
     def selections(self) -> dict:
-        return merge_default(
+        from py4vasp._raw import definition as raw_module
+
+        handler_selections = merge_default(
             self._source,
             self._quantity_name,
             None,
             self._handler_factory,
             LocalMomentHandler.selections,
         )
+        sources = list(raw_module.selections(self._quantity_name))
+        return {self._quantity_name: sources, **handler_selections}
 
     def number_steps(self) -> int:
         """Return the number of local moments in the trajectory."""

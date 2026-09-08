@@ -129,7 +129,7 @@ def check_to_image(MD_energy, filename_argument, expected_filename):
 
 def test_selections(MD_energy, raw_data):
     md_selections = MD_energy.selections()
-    md_selections.pop("energy")
+    assert md_selections.pop("energy") == ["default", "afqmc"]
     components = [
         "ion_electron",
         "TOTEN",
@@ -149,7 +149,7 @@ def test_selections(MD_energy, raw_data):
     assert md_selections == {"component": components}
     #
     relax_selections = Energy.from_data(raw_data.energy("relax")).selections()
-    relax_selections.pop("energy")
+    assert relax_selections.pop("energy") == ["default", "afqmc"]
     components = [
         "free_energy",
         "TOTEN",
@@ -161,7 +161,7 @@ def test_selections(MD_energy, raw_data):
     assert relax_selections == {"component": components}
     #
     afqmc_selections = Energy.from_data(raw_data.energy("afqmc")).selections()
-    afqmc_selections.pop("energy")
+    assert afqmc_selections.pop("energy") == ["default", "afqmc"]
     components = [
         "step",
         "STEP",
