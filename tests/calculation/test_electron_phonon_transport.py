@@ -483,6 +483,11 @@ def test_print_instance(transport, format_):
     assert actual == {"text/plain": str(instance)}
 
 
+def test_print_writes_to_stdout(transport, capsys):
+    assert transport.print() is None
+    assert capsys.readouterr().out == str(transport) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_transport("default")
     parameters = {
