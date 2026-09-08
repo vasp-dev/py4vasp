@@ -174,6 +174,17 @@ class PhononBand(graph.Mixin):
     def _handler_factory(self, raw):
         return PhononBandHandler.from_data(raw)
 
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
     def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,

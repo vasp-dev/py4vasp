@@ -227,6 +227,11 @@ def test_raw_data_exposes_primitive_positions(raw_data, Assert):
     assert positions.shape == (number_atoms, 3)
 
 
+def test_print_writes_to_stdout(phonon_band, capsys):
+    assert phonon_band.print() is None
+    assert capsys.readouterr().out == str(phonon_band) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_band("default")
     check_factory_methods(PhononBand, data)
