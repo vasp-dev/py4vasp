@@ -338,8 +338,75 @@ Parses multi-selection         (done by ``_parse_selections``)
 Opens data (context manager)   (done by ``_dispatch``)
 Constructs Handler from raw    (done by ``_dispatch``)
 Transform logic                                              ✓
+Formats the text output                                      ✓ (``__str__``)
+Exposes the text output        ✓ (``__str__``, ``print``,
+                               ``_repr_pretty_``)
+Reports its sources            ✓ (``selections``)
 Testable without I/O                                         ✓ (via ``from_data``)
 =============================  ============================  ==========================
+
+
+The mandatory public surface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The old ``base.Refinery`` gave every quantity ``print``, ``selections``,
+``_repr_pretty_`` and a ``path`` property by inheritance. With composition there
+is no base class, so **each dispatcher has to declare them itself** — only
+``from_path``, ``from_file``, ``__repr__``, ``path``, ``_path`` and
+``is_available`` are injected by the ``@quantity`` decorator.
+
+A dispatcher must therefore define all of the following, and
+``tests/calculation/test_print.py`` fails for a quantity that forgets one:
+
+.. code-block:: python
+
+   @quantity("band")
+   class Band:
+       def read(self, selection=None) -> dict: ...
+       def to_dict(self, selection=None) -> dict: ...
+
+       def __str__(self, selection=None) -> str:
+           # the handler formats the text, the dispatcher merges it across sources
+           return merge_strings(
+               self._source, self._quantity_name, selection,
+               self._handler_factory, BandHandler.__str__,
+           )
+
+       def print(self, selection: str | None = None) -> None:
+           """Print a string representation of this quantity.
+
+           Parameters
+           ----------
+           selection : str | None
+               Select which source of the quantity is printed. If you select
+               multiple sources, py4vasp prints one block per source.
+           """
+           print(self.__str__(selection))
+
+       def _repr_pretty_(self, p, cycle):
+           p.text(str(self) if not cycle else "...")
+
+       def selections(self):
+           from py4vasp._raw import definition as raw_module
+
+           return {
+               self._quantity_name: list(raw_module.selections(self._quantity_name))
+           }
+
+Two things are easy to get wrong here:
+
+* ``__str__`` takes an optional ``selection`` even though dunders normally do
+  not, because ``print`` forwards its own selection to it.
+* ``_repr_pretty_`` belongs on the **dispatcher**, not only on the handler. A
+  test that builds the handler with ``BandHandler.from_data`` and checks
+  ``format_(handler)`` passes while the public class has no Jupyter
+  representation at all. Assert on the dispatcher.
+
+Because ``selections`` only reads the schema and never opens the data file, it
+does not satisfy the one-access-per-method contract that
+``check_factory_methods`` verifies; pass ``skip_methods=["selections"]`` in the
+quantity's ``test_factory_methods`` unless the quantity's ``selections``
+genuinely reads data (as ``Dos`` and ``Band`` do).
 
 
 Step Indexing
