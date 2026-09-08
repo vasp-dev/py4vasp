@@ -286,7 +286,19 @@ class ElasticModulus:
         """
         print(self.__str__(selection))
 
-    def selections(self):
+    def selections(self) -> dict:
+        """Returns possible alternatives for this particular quantity VASP can produce.
+
+        The returned dictionary contains a single item with the name of the quantity
+        mapping to all possible selections. Each of these selections may be passed to
+        the other methods of this quantity to choose which output of VASP is used.
+
+        Returns
+        -------
+        dict
+            The key indicates this quantity and the value lists the possible choices
+            for the selection argument of its other methods.
+        """
         from py4vasp._raw import definition as raw_module
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}

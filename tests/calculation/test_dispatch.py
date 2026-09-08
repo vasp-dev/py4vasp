@@ -1352,4 +1352,5 @@ class TestPathInjected:
 
     def test_path_is_documented(self):
         structure = dict(REGISTERED_CLASSES)["structure"]
-        assert "path" in structure.path.__doc__
+        expected = "Returns the path from which the output is obtained."
+        assert structure.path.__doc__ == expected

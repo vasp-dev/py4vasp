@@ -39,7 +39,8 @@ def test_every_quantity_defines(cls, method):
 @pytest.mark.parametrize("cls", CLASSES, ids=IDS)
 def test_str_takes_an_optional_selection(cls):
     # print forwards its selection to __str__, so every quantity must accept one
-    parameter = inspect.signature(cls.__str__).parameters["selection"]
+    parameter = inspect.signature(cls.__str__).parameters.get("selection")
+    assert parameter is not None, f"{cls.__name__}.__str__ takes no selection"
     assert parameter.default is None
 
 
@@ -70,3 +71,17 @@ def test_print_writes_the_string_representation(name, demo_calculation, capsys):
         pytest.skip(f"the demo calculation contains no data for {name}")
     assert quantity.print() is None
     assert capsys.readouterr().out == expected + "\n"
+
+
+@pytest.mark.parametrize("name", _public_quantities())
+def test_selections_reports_what_can_be_selected(name, demo_calculation):
+    quantity = _resolve(demo_calculation, name)
+    try:
+        selections = quantity.selections()
+    except (exception.NoData, exception.FileAccessError):
+        pytest.skip(f"the demo calculation contains no data for {name}")
+    # NeighborList deliberately reports a flat list of atom-type pairs; every other
+    # quantity maps its own name (and any further keys) to a list of choices
+    assert selections
+    if isinstance(selections, dict):
+        assert all(isinstance(choices, list) for choices in selections.values())

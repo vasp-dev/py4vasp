@@ -384,7 +384,7 @@ A dispatcher must therefore define all of the following, and
            print(self.__str__(selection))
 
        def _repr_pretty_(self, p, cycle):
-           p.text(str(self) if not cycle else "...")
+           p.text(str(self))
 
        def selections(self):
            from py4vasp._raw import definition as raw_module
@@ -402,11 +402,31 @@ Two things are easy to get wrong here:
   ``format_(handler)`` passes while the public class has no Jupyter
   representation at all. Assert on the dispatcher.
 
-Because ``selections`` only reads the schema and never opens the data file, it
-does not satisfy the one-access-per-method contract that
-``check_factory_methods`` verifies; pass ``skip_methods=["selections"]`` in the
-quantity's ``test_factory_methods`` unless the quantity's ``selections``
-genuinely reads data (as ``Dos`` and ``Band`` do).
+A quantity whose ``selections`` also offers choices of its own (atoms, orbitals,
+components, ...) lets its handler report those and merges the schema sources over
+them, as ``Band``, ``Dos``, ``Energy`` and ``LocalMoment`` do:
+
+.. code-block:: python
+
+   def selections(self, selection=None) -> dict:
+       from py4vasp._raw import definition as raw_module
+
+       handler_selections = merge_default(
+           self._source, self._quantity_name, selection,
+           self._handler_factory, BandHandler.selections,
+       )
+       sources = list(raw_module.selections(self._quantity_name))
+       return {self._quantity_name: sources, **handler_selections}
+
+Dropping that source entry is easy to miss, because the quantity keeps returning
+a plausible-looking dictionary of its other choices. ``NeighborList`` is the one
+deliberate exception to the ``{quantity: sources}`` shape: it reports a flat list
+of the atom-type pairs that partition its neighbor table.
+
+Because a schema-only ``selections`` never opens the data file, it does not
+satisfy the one-access-per-method contract that ``check_factory_methods``
+verifies; pass ``skip_methods=["selections"]`` in the quantity's
+``test_factory_methods`` unless its ``selections`` genuinely reads data.
 
 
 Step Indexing
