@@ -37,9 +37,23 @@ def test_Sr2TiO4_read(Sr2TiO4, Assert):
         Assert.allclose(actual["selective_dynamics"], Sr2TiO4.ref.selective_dynamics)
 
 
+@pytest.fixture(params=("all atoms", "selective dynamics"))
+def dispatcher(raw_data, request):
+    raw_force_constants = raw_data.force_constant(f"Sr2TiO4 {request.param}")
+    force_constants = ForceConstant.from_data(raw_force_constants)
+    force_constants.ref = types.SimpleNamespace()
+    force_constants.ref.format_output = get_format_output(request.param)
+    return force_constants
+
+
 def test_Sr2TiO4_print(Sr2TiO4):
     actual = str(Sr2TiO4)
     assert actual == Sr2TiO4.ref.format_output["text/plain"]
+
+
+def test_print_dispatcher(dispatcher, format_):
+    actual, _ = format_(dispatcher)
+    assert actual == {"text/plain": dispatcher.ref.format_output["text/plain"]}
 
 
 def get_format_output(selection):
@@ -431,6 +445,15 @@ vibration 10
 """
 
 
+def test_print_writes_to_stdout(dispatcher, capsys):
+    assert dispatcher.print() is None
+    assert capsys.readouterr().out == str(dispatcher) + "\n"
+
+
+def test_selections(dispatcher):
+    assert dispatcher.selections() == {"force_constant": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.force_constant("Sr2TiO4 all atoms")
-    check_factory_methods(ForceConstant, data)
+    check_factory_methods(ForceConstant, data, skip_methods=["selections"])
