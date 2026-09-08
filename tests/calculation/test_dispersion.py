@@ -112,9 +112,20 @@ def test_print(dispersion, format_):
     assert actual == {"text/plain": reference}
 
 
+def test_print_writes_to_stdout(dispersion, capsys):
+    assert dispersion.print() is None
+    assert capsys.readouterr().out == str(dispersion) + "\n"
+
+
+def test_selections(dispersion):
+    assert dispersion.selections() == {
+        "dispersion": ["default", "kpoints_opt", "kpoints_wan", "phonon"]
+    }
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dispersion("single_band")
-    check_factory_methods(Dispersion, data)
+    check_factory_methods(Dispersion, data, skip_methods=["selections"])
 
 
 def _check_to_database(dispersion_):
