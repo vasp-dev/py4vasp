@@ -456,6 +456,22 @@ class Bandgap(graph.Mixin):
             BandgapHandler.to_graph,
         )
 
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
+    def selections(self):
+        from py4vasp._raw import definition as raw_module
+
+        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+
     def __str__(self, selection: str | None = None):
         return merge_strings(
             self._source,

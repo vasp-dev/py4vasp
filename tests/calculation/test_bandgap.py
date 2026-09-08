@@ -355,9 +355,18 @@ direct gap:                  0.044108                     0.041885              
 Fermi energy:               11.401754"""
 
 
+def test_print_writes_to_stdout(bandgap, capsys):
+    assert bandgap.print() is None
+    assert capsys.readouterr().out == str(bandgap) + "\n"
+
+
+def test_selections(bandgap):
+    assert bandgap.selections() == {"bandgap": ["default", "kpoint"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     raw_gap = raw_data.bandgap("default")
-    check_factory_methods(Bandgap, raw_gap)
+    check_factory_methods(Bandgap, raw_gap, skip_methods=["selections"])
 
 
 def _check_to_database(_handler, Assert):
