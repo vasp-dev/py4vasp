@@ -305,6 +305,11 @@ def test_print_instance(self_energy, format_):
     assert actual == {"text/plain": str(instance)}
 
 
+def test_print_writes_to_stdout(self_energy, capsys):
+    assert self_energy.print() is None
+    assert capsys.readouterr().out == str(self_energy) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_self_energy("default")
     parameters = {"select": {"selection": "selfen_approx=SERTA"}}
