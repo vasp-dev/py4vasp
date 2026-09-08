@@ -126,6 +126,42 @@ def test_dispatcher_to_database(run_info):
     assert isinstance(result["run_info"]["default"], RunInfoModel)
 
 
+def test_print(run_info, format_):
+    actual, _ = format_(run_info)
+    reference = """\
+run info for Sr2TiO4:
+    VASP version: 99.99.99
+    ionic steps: 4
+    Fermi energy: 0.500
+    spin: nonpolarized
+    metallic: no
+    phonon dispersion: 20 q-points, 21 modes"""
+    assert actual == {"text/plain": reference}
+
+
+def test_print_omits_unknown_quantities(raw_data, format_):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.runtime = None
+    raw_run_info.phonon_dispersion = None
+    actual, _ = format_(RunInfo.from_data(raw_run_info))
+    reference = """\
+run info for Sr2TiO4:
+    ionic steps: 4
+    Fermi energy: 0.500
+    spin: nonpolarized
+    metallic: no"""
+    assert actual == {"text/plain": reference}
+
+
+def test_print_writes_to_stdout(run_info, capsys):
+    assert run_info.print() is None
+    assert capsys.readouterr().out == str(run_info) + "\n"
+
+
+def test_selections(run_info):
+    assert run_info.selections() == {"run_info": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.run_info("Sr2TiO4")
-    check_factory_methods(RunInfo, data)
+    check_factory_methods(RunInfo, data, skip_methods=["selections"])
