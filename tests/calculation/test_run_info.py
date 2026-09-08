@@ -167,6 +167,20 @@ def test_print_reports_the_spin_configuration(raw_data, len_dos, expected):
     assert expected in str(RunInfo.from_data(raw_run_info))
 
 
+@pytest.mark.parametrize(
+    "known_field", ("band_dispersion_eigenvalues", "band_projections")
+)
+def test_print_omits_half_known_spin_configuration(raw_data, known_field):
+    # without a DOS the two flags fall back to different fields, so one of them may be
+    # False while the other is simply unknown; that is not enough to claim nonpolarized
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.len_dos = None
+    for field in ("band_dispersion_eigenvalues", "band_projections"):
+        if field != known_field:
+            setattr(raw_run_info, field, None)
+    assert "spin:" not in str(RunInfo.from_data(raw_run_info))
+
+
 def test_print_omits_unknown_spin_configuration(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.len_dos = None

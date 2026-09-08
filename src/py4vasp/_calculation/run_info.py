@@ -80,7 +80,9 @@ class RunInfoHandler:
             return "collinear"
         if data["is_noncollinear"]:
             return "noncollinear"
-        if data["is_collinear"] is None and data["is_noncollinear"] is None:
+        # the two flags fall back to different fields, so one may be known while the
+        # other is not; a single False does not establish a nonpolarized calculation
+        if data["is_collinear"] is None or data["is_noncollinear"] is None:
             return None
         return "nonpolarized"
 
