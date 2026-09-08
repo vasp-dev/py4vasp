@@ -48,5 +48,15 @@ def check_system_print(raw_system, format_):
     assert actual["text/plain"] == text_to_string(raw_system.system)
 
 
+def test_print_writes_to_stdout(string_format, capsys):
+    system = System.from_data(string_format)
+    assert system.print() is None
+    assert capsys.readouterr().out == str(system) + "\n"
+
+
+def test_selections(string_format):
+    assert System.from_data(string_format).selections() == {"system": ["default"]}
+
+
 def test_factory_methods(string_format, check_factory_methods):
-    check_factory_methods(System, string_format)
+    check_factory_methods(System, string_format, skip_methods=["selections"])
