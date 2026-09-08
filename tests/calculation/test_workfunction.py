@@ -99,6 +99,15 @@ def test_to_database(raw_data):
     assert actual == expected
 
 
+def test_print_writes_to_stdout(workfunction, capsys):
+    assert workfunction.print() is None
+    assert capsys.readouterr().out == str(workfunction) + "\n"
+
+
+def test_selections(workfunction):
+    assert workfunction.selections() == {"workfunction": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     raw_workfunction = raw_data.workfunction("1")
-    check_factory_methods(Workfunction, raw_workfunction)
+    check_factory_methods(Workfunction, raw_workfunction, skip_methods=["selections"])
