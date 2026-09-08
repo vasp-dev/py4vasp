@@ -488,6 +488,17 @@ def test_print_writes_to_stdout(transport, capsys):
     assert capsys.readouterr().out == str(transport) + "\n"
 
 
+def test_selections_without_transport_data(raw_transport):
+    # a calculation without electron-phonon transport has no instances and no datasets,
+    # exactly as the default demo calculation; selections is metadata and must report
+    # that no spin selection exists instead of indexing the empty dataset
+    raw_transport.valid_indices = []
+    raw_transport.electronic_conductivity = []
+    transport = ElectronPhononTransport.from_data(raw_transport)
+    assert len(transport) == 0
+    assert "spin" not in transport.selections()
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_transport("default")
     parameters = {

@@ -422,6 +422,10 @@ class ElectronPhononTransportHandler(abc.Sequence):
 
     def _has_spin_data(self):
         """Check if any instance has spin-resolved data."""
+        if len(self) == 0:
+            # a calculation without transport data has no instance to inspect, and
+            # indexing the empty dataset would raise an IndexError
+            return False
         first_instance = TransportInstance(self, 0)
         return first_instance._has_spin()
 
