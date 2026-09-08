@@ -131,6 +131,17 @@ def test_bader_charge_requires_analysis(raw_data):
         density.bader_charge()
 
 
+def test_print_writes_to_stdout(exciton_density, capsys):
+    assert exciton_density.print() is None
+    assert capsys.readouterr().out == str(exciton_density) + "\n"
+
+
+def test_selections(exciton_density):
+    assert exciton_density.selections() == {"exciton_density": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.exciton_density()
-    check_factory_methods(ExcitonDensity, data, skip_methods=["bader_charge"])
+    check_factory_methods(
+        ExcitonDensity, data, skip_methods=["selections", "bader_charge"]
+    )
