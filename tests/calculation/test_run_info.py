@@ -153,6 +153,28 @@ run info for Sr2TiO4:
     assert actual == {"text/plain": reference}
 
 
+@pytest.mark.parametrize(
+    "len_dos, expected",
+    [
+        (2, "    spin: collinear"),
+        (4, "    spin: noncollinear"),
+        (1, "    spin: nonpolarized"),
+    ],
+)
+def test_print_reports_the_spin_configuration(raw_data, len_dos, expected):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.len_dos = len_dos
+    assert expected in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_omits_unknown_spin_configuration(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.len_dos = None
+    raw_run_info.band_dispersion_eigenvalues = None
+    raw_run_info.band_projections = None
+    assert "spin:" not in str(RunInfo.from_data(raw_run_info))
+
+
 def test_print_writes_to_stdout(run_info, capsys):
     assert run_info.print() is None
     assert capsys.readouterr().out == str(run_info) + "\n"
