@@ -70,7 +70,8 @@ matching extra
      - ``plot``, ``to_plotly``, ``to_image``, ``to_frame``, ``to_csv``
    * - ``structure``
      - ase, seekpath, spglib
-     - ``to_ase``, ``to_POSCAR``, ``generate_kpath``, symmetry and space-group analysis
+     - ``to_ase``, ``to_POSCAR``, ``generate_kpath``, ``generate_kmesh``, symmetry
+       and space-group analysis
    * - ``view``
      - nglview, ase
      - visualizing structures, densities, and arrows in a notebook

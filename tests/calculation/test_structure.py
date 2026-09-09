@@ -1100,3 +1100,71 @@ def test_generate_kpath_of_supercell():
     with pytest.raises(exception.IncorrectUsage) as error:
         structure.generate_kpath()
     assert "primitive cell" in str(error.value)
+
+
+_BCC_PRIMITIVE_POSCAR = """\
+Fe
+3.0
+-0.5  0.5  0.5
+ 0.5 -0.5  0.5
+ 0.5  0.5 -0.5
+Fe
+1
+Direct
+0.00 0.00 0.00"""
+
+
+def _mesh_vectors(text):
+    "The three basis vectors of the mesh follow the comment, the count, and the mode."
+    return [[float(x) for x in line.split()] for line in text.splitlines()[3:6]]
+
+
+def test_generate_kmesh_from_kspacing():
+    pytest.importorskip("spglib")
+    # the conventional cell has a = 3 Å, so |b| 2π = 2.094/Å rounds to four divisions
+    expected = """\
+k mesh of the conventional cell: divisions 4 4 4, kspacing 0.5
+0
+Reduced
+  0.25000000   0.00000000   0.00000000
+  0.00000000   0.25000000   0.00000000
+  0.00000000   0.00000000   0.25000000
+  0.00000000   0.00000000   0.00000000"""
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    assert structure.generate_kmesh(kspacing=0.5) == expected
+
+
+def test_generate_kmesh_of_primitive_cell(Assert):
+    pytest.importorskip("spglib")
+    # the same crystal in its primitive setting is sampled by the same mesh of the
+    # conventional cell, which is not a regular grid of the primitive cell
+    structure = Structure.from_POSCAR(_BCC_PRIMITIVE_POSCAR)
+    text = structure.generate_kmesh(kspacing=0.5)
+    assert "divisions 4 4 4" in text.splitlines()[0]
+    expected = 0.125 * np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]])
+    Assert.allclose(_mesh_vectors(text), expected)
+
+
+def test_generate_kmesh_with_explicit_divisions(Assert):
+    pytest.importorskip("spglib")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    text = structure.generate_kmesh(divisions=[2, 2, 2])
+    # without a kspacing the comment does not claim one
+    assert text.splitlines()[0] == "k mesh of the conventional cell: divisions 2 2 2"
+    Assert.allclose(_mesh_vectors(text), np.diag([0.5, 0.5, 0.5]))
+
+
+def test_generate_kmesh_with_shift(Assert):
+    pytest.importorskip("spglib")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    text = structure.generate_kmesh(divisions=[2, 2, 2], shift=[0.5, 0.5, 0.0])
+    shift = [float(x) for x in text.splitlines()[6].split()]
+    Assert.allclose(shift, [0.5, 0.5, 0.0])
+
+
+@pytest.mark.parametrize("arguments", [{}, {"kspacing": 0.5, "divisions": [2, 2, 2]}])
+def test_generate_kmesh_requires_kspacing_or_divisions(arguments):
+    pytest.importorskip("spglib")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage):
+        structure.generate_kmesh(**arguments)

@@ -417,6 +417,14 @@ Atoms # atomic
             self._spglib_cell(), number_points, time_reversal, symprec
         )
 
+    def generate_kmesh(
+        self, kspacing=None, divisions=None, shift=None, symprec=_SYMPREC
+    ) -> str:
+        """Write a mesh commensurate with the symmetry of the crystal as a KPOINTS file."""
+        return _kpoints_file.regular_mesh(
+            self._spglib_cell(), kspacing, divisions, shift, symprec
+        )
+
     def _spglib_cell(self):
         """Describe a single frame the way spglib and seekpath expect it."""
         positions = self.positions()
@@ -1658,6 +1666,79 @@ class Structure(view.Mixin):
             StructureHandler.generate_kpath,
             number_points,
             time_reversal,
+            symprec,
+        )
+
+    def generate_kmesh(
+        self, kspacing=None, divisions=None, shift=None, symprec=_SYMPREC
+    ):
+        """Generate a KPOINTS file with a mesh adapted to the symmetry of the crystal.
+
+        The mesh subdivides the reciprocal lattice vectors of the *conventional* cell,
+        so it retains the full symmetry of the lattice even when the calculation runs
+        in the primitive cell. A regular grid of the primitive cell would break that
+        symmetry, so VASP could not reduce the k points as far. py4vasp writes the
+        mesh as the three basis vectors VASP generates it from, expressed in the
+        reciprocal basis of the cell of this structure. The symmetry is derived from
+        the bare geometry, so this works for any single structure including one read
+        from a POSCAR file. This requires the spglib package.
+
+        Parameters
+        ----------
+        kspacing : float
+            The largest allowed distance between two k points in Å⁻¹, following the
+            convention of VASP's KSPACING tag. Specify either this or the *divisions*.
+        divisions : Sequence[int]
+            The number of k points along the three directions of the conventional
+            cell. Specify either this or the *kspacing*.
+        shift : array-like
+            Shift of the mesh as fractions of its basis vectors. By default the mesh
+            contains the Γ point.
+        symprec : float
+            Distance tolerance (in Å) spglib uses to detect the symmetry.
+
+        Returns
+        -------
+        str
+            The content of a KPOINTS file describing the mesh. py4vasp does not write
+            the file; store the string as KPOINTS yourself.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this
+        method. You can also use your own VASP calculation data if you have it
+        available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        The cubic perovskite has a lattice constant of 4 Å, so a spacing of 0.3 Å⁻¹
+        amounts to five divisions along every direction.
+
+        >>> print(calculation.structure.generate_kmesh(kspacing=0.3))
+        k mesh of the conventional cell: divisions 5 5 5, kspacing 0.3
+        0
+        Reduced
+          0.20000000   0.00000000   0.00000000
+          0.00000000   0.20000000   0.00000000
+          0.00000000   0.00000000   0.20000000
+          0.00000000   0.00000000   0.00000000
+
+        Alternatively, you set the number of divisions yourself
+
+        >>> kpoints = calculation.structure.generate_kmesh(divisions=[6, 6, 6])
+        >>> print(kpoints.splitlines()[0])
+        k mesh of the conventional cell: divisions 6 6 6
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.generate_kmesh,
+            kspacing,
+            divisions,
+            shift,
             symprec,
         )
 

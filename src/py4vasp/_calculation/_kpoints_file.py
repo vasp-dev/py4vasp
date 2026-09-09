@@ -287,3 +287,46 @@ def mesh_comment(divisions, kspacing: float | None = None) -> str:
     if kspacing is None:
         return comment
     return f"{comment}, kspacing {kspacing}"
+
+
+def regular_mesh(
+    cell, kspacing=None, divisions=None, shift=None, symprec=_SYMPREC
+) -> str:
+    """Write a mesh commensurate with the symmetry of the crystal as a KPOINTS file.
+
+    The mesh subdivides the conventional cell of the crystal, so it retains the full
+    symmetry of the lattice even when the calculation runs in the primitive cell. Give
+    either the *kspacing* determining the density of the mesh or the *divisions* of the
+    conventional cell explicitly.
+
+    Parameters
+    ----------
+    cell : tuple
+        Lattice vectors, direct coordinates, and atomic numbers as spglib expects them.
+    kspacing : float
+        The largest allowed distance between two k points in Å⁻¹.
+    divisions : Sequence[int]
+        The number of k points along the three directions of the conventional cell.
+    shift : array-like
+        Shift of the mesh as fractions of its basis vectors, defaults to no shift.
+    symprec : float
+        Distance tolerance (in Å) spglib uses to detect the symmetry.
+
+    Returns
+    -------
+    str
+        The content of a KPOINTS file describing the mesh.
+    """
+    if (kspacing is None) == (divisions is None):
+        message = (
+            "Please specify either the spacing of the k points or the number of "
+            "divisions of the mesh, but not both of them."
+        )
+        raise exception.IncorrectUsage(message)
+    transformation = transformation_matrix(cell, symprec)
+    if divisions is None:
+        reciprocal_lattice = conventional_reciprocal_lattice(cell[0], transformation)
+        divisions = divisions_from_kspacing(reciprocal_lattice, kspacing)
+    vectors = generating_lattice(transformation, divisions)
+    shift = (0, 0, 0) if shift is None else shift
+    return generating_lattice_mode(vectors, shift, mesh_comment(divisions, kspacing))
