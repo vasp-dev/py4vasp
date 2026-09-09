@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from py4vasp import Calculation, calculation, demo
+from py4vasp import Calculation, calculation, demo, exception
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
 
 
@@ -344,3 +344,16 @@ def test_to_database_on_demo_calculation(tmp_path, selection, minimum_counter):
     """Basic _to_database functionality across spin selections on a demo calculation."""
     demo_calc = demo.calculation(tmp_path / "demo_calculation", selection=selection)
     _basic_db_checks(demo_calc._to_database(), minimum_counter=minimum_counter)
+
+
+def test_unknown_selection_raises(tmp_path):
+    path = tmp_path / "demo_calculation"
+    with pytest.raises(exception.IncorrectUsage) as error:
+        demo.calculation(path, "typo")
+    message = str(error.value)
+    assert "typo" in message
+    for selection in ("default", "collinear", "noncollinear", "spin_texture"):
+        assert selection in message
+    # the selection is checked before anything is created, so an invalid one does not
+    # leave a directory with two empty HDF5 files behind
+    assert not path.exists()

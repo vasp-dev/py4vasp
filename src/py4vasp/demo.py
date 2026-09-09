@@ -31,13 +31,27 @@ def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
     -
         A calculation that accesses the generated data.
     """
+    generator = _find_generator(selection)
     path = _create_path_for_data(path, selection)
     filename = path / DEFAULT_FILE
     wavefilename = path / DEFAULT_WAVEFILE
     with h5py.File(filename, "w") as h5f:
         with h5py.File(wavefilename, "w") as wavef:
-            _generate_calculation_data(h5f, selection, waveh5f=wavef)
+            _write_calculation_data(generator, h5f, waveh5f=wavef)
     return Calculation.from_path(path)
+
+
+def _find_generator(selection):
+    # resolved before any directory is made, so an invalid selection leaves nothing behind
+    generator = _DATA_GENERATORS.get(selection)
+    if generator is None:
+        available = ", ".join(key for key in _DATA_GENERATORS if key)
+        raise exception.IncorrectUsage(
+            f"The selection '{selection}' is not recognized. "
+            f"Available selections are: {available}. "
+            "If no selection is given, some default data is generated."
+        )
+    return generator
 
 
 def _create_path_for_data(path, selection):
@@ -51,23 +65,14 @@ def _create_path_for_data(path, selection):
     return path
 
 
-def _generate_calculation_data(h5f, selection, waveh5f=None):
-    generator = _DATA_GENERATORS.get(selection)
-    if generator is not None:
-        version = raw.Version(major=99, minor=99, patch=99)
-        write(h5f, version)
-        if waveh5f is not None:
-            # the wavefile carries its own version because py4vasp checks the version
-            # requirement of a source against the file that source is read from
-            write(waveh5f, version)
-        generator(h5f, waveh5f=waveh5f)
-    else:
-        available = ", ".join(filter(None, key) for key in _DATA_GENERATORS.keys())
-        raise exception.IncorrectUsage(
-            f"The selection '{selection}' is not recognized. "
-            f"Available selections are: {available}. "
-            "If no selection is given, some default data is generated."
-        )
+def _write_calculation_data(generator, h5f, waveh5f=None):
+    version = raw.Version(major=99, minor=99, patch=99)
+    write(h5f, version)
+    if waveh5f is not None:
+        # the wavefile carries its own version because py4vasp checks the version
+        # requirement of a source against the file that source is read from
+        write(waveh5f, version)
+    generator(h5f, waveh5f=waveh5f)
 
 
 def _generate_default_data(h5f, waveh5f=None):
