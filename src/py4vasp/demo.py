@@ -81,7 +81,7 @@ def _generate_default_data(h5f, waveh5f=None):
     # single Fermi energy, and the first write to a path wins. The two therefore have to
     # agree on it; both take it from the same band model.
     write(h5f, showcase.dos.Sr2TiO4("with_projectors"))
-    write(h5f, _demo.band.multiple_bands("with_projectors"))
+    write(h5f, showcase.band.Sr2TiO4("with_projectors"))
     write(h5f, _demo.energy.relax(randomize=True))
     write(h5f, _demo.force.Sr2TiO4(randomize=True))
     write(h5f, _demo.stress.Sr2TiO4(randomize=True))
@@ -92,7 +92,11 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, _demo.dielectric_function.electron())
     write(h5f, _demo.velocity.Sr2TiO4())
     write(h5f, showcase.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
-    write(h5f, _demo.band.line_mode("no_labels"), selection="kpoints_opt")
+    write(
+        h5f,
+        showcase.band.Sr2TiO4("no_projectors", "no_labels"),
+        selection="kpoints_opt",
+    )
     write(h5f, _demo.current_density.current_density("all"), selection="nmr")
     write(h5f, _demo.exciton.density.Sr2TiO4())
     if waveh5f is not None:

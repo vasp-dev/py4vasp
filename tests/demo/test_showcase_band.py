@@ -3,8 +3,11 @@
 import numpy as np
 import pytest
 
+from py4vasp._calculation.band import Band
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._demo import showcase
+from py4vasp._demo.showcase import band as showcase_band
+from py4vasp._demo.showcase import dos as showcase_dos
 from py4vasp._demo.showcase import electronic_structure, kpoint
 
 
@@ -32,13 +35,21 @@ def test_path_is_labelled_at_the_high_symmetry_points(path):
     assert kpoints.mode() == "line"
     assert kpoints.line_length() == showcase.LINE_LENGTH
     assert kpoints.number_lines() == 4
-    labels = kpoints.labels()
-    labelled = {index: label for index, label in enumerate(labels) if label}
-    assert list(labelled.values()) == [r"$\Gamma$", "X", "P", "N", r"$\Gamma$"]
-    assert list(labelled) == [
-        0,
-        *(showcase.LINE_LENGTH * step - 1 for step in (1, 2, 3, 4)),
-    ]
+    labelled = {index: label for index, label in enumerate(kpoints.labels()) if label}
+    # every corner is named from both of the segments it belongs to, so a corner shared
+    # by two segments appears twice carrying the same name
+    gamma = "$" + chr(92) + "Gamma$"
+    assert list(labelled.values()) == [gamma, "X", "X", "P", "P", "N", "N", gamma]
+    assert list(labelled) == [0, 40, 41, 81, 82, 122, 123, 163]
+
+
+def test_path_ticks_do_not_mark_a_jump(raw_band):
+    # py4vasp joins the labels of two k points at the same distance with a "|" to mark a
+    # discontinuity in the path; a contiguous path must not produce one
+    pytest.importorskip("plotly")
+    gamma = "$" + chr(92) + "Gamma$"
+    xticks = Band.from_data(raw_band).to_graph().xticks
+    assert list(xticks.values()) == [gamma, "X", "P", "N", gamma]
 
 
 def test_mesh_covers_the_brillouin_zone_once():
@@ -96,3 +107,69 @@ def test_model_respects_the_tetragonal_symmetry(model, Assert):
     # first two fractional coordinates must leave the eigenvalues unchanged
     kpoints = np.random.default_rng(1).uniform(size=(100, 3))
     Assert.allclose(model.evaluate(kpoints), model.evaluate(kpoints[:, [1, 0, 2]]))
+
+
+@pytest.fixture
+def raw_band():
+    return showcase_band.Sr2TiO4("with_projectors")
+
+
+def test_band_samples_the_labelled_path(raw_band, model):
+    eigenvalues = np.array(raw_band.dispersion.eigenvalues)
+    assert eigenvalues.shape == (1, 4 * showcase.LINE_LENGTH, model.number_bands)
+    assert not raw_band.dispersion.kpoints.label_indices.is_none()
+
+
+def test_band_fills_the_valence_and_empties_the_conduction_states(raw_band, model):
+    eigenvalues = np.array(raw_band.dispersion.eigenvalues)[0]
+    occupations = np.array(raw_band.occupations)[0]
+    assert occupations.shape == eigenvalues.shape
+    valence, conduction = np.split(occupations, [model.number_valence_bands], axis=1)
+    assert np.all(valence == 1)
+    assert np.all(conduction == 0)
+    # equivalently, every state below the Fermi energy is the occupied one
+    assert np.all((eigenvalues < raw_band.fermi_energy) == (occupations == 1))
+
+
+def test_band_agrees_with_the_density_of_states_on_the_fermi_energy(raw_band):
+    # Band and Dos share results/electron_dos/efermi in the file, so a mismatch here
+    # would mean whichever is written first silently decides for both
+    assert raw_band.fermi_energy == showcase_dos.Sr2TiO4("no_projectors").fermi_energy
+
+
+def test_band_shows_the_gap_of_the_model(raw_band, model):
+    eigenvalues = np.array(raw_band.dispersion.eigenvalues)[0]
+    valence, conduction = np.split(eigenvalues, [model.number_valence_bands], axis=1)
+    # the path visits both extrema, so it reproduces the gap of the model exactly
+    assert np.max(valence) == pytest.approx(model.valence_band_maximum)
+    assert np.min(conduction) == pytest.approx(model.conduction_band_minimum)
+
+
+def test_band_projections_are_normalized_per_state(raw_band, model, Assert):
+    projections = np.array(raw_band.projections)
+    number_kpoints = 4 * showcase.LINE_LENGTH
+    assert projections.shape == (1, 7, 16, number_kpoints, model.number_bands)
+    # every state is fully accounted for by the atoms and orbitals it projects onto
+    Assert.allclose(
+        np.sum(projections, axis=(1, 2)),
+        np.ones((1, number_kpoints, model.number_bands)),
+    )
+
+
+def test_band_projections_carry_the_same_character_as_the_dos(raw_band, model):
+    projections = np.array(raw_band.projections)[0]
+    valence = slice(None, model.number_valence_bands)
+    conduction = slice(model.number_valence_bands, None)
+    oxygen_p = np.sum(projections[3:7, 1:4, :, valence])
+    titanium_t2g = np.sum(projections[2, [4, 5, 7]][:, :, conduction])
+    assert oxygen_p / np.sum(projections[:, :, :, valence]) > 0.7
+    assert titanium_t2g / np.sum(projections[:, :, :, conduction]) > 0.7
+
+
+def test_band_without_labels_falls_back_to_coordinates(model):
+    raw_band = showcase_band.Sr2TiO4("no_projectors", "no_labels")
+    assert raw_band.dispersion.kpoints.label_indices.is_none()
+    assert raw_band.projections.is_none()
+    # py4vasp then labels the band edges with the coordinates of the k point
+    labels = Kpoint.from_data(raw_band.dispersion.kpoints).labels()
+    assert labels[0] == "$[0 0 0]$"

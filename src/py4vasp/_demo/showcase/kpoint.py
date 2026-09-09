@@ -4,16 +4,23 @@ import itertools
 
 import numpy as np
 
-from py4vasp import raw
+from py4vasp import _demo, raw
 from py4vasp._demo import showcase
-from py4vasp._demo.showcase import cell
+
+# Lattice constants of the conventional I4/mmm cell of Sr2TiO4 in Angstrom. spglib
+# analyzes py4vasp._demo.structure.Sr2TiO4 to these; the literature reports a = 3.884
+# and c = 12.60 for the K2NiF4-type structure.
+SR2TIO4_A = 3.9277
+SR2TIO4_C = 12.6828
 
 # High-symmetry points of the body-centred tetragonal Brillouin zone with c > a, as
 # fraction of the primitive reciprocal lattice vectors. Taken from the standard setting
 # of Setyawan and Curtarolo, Comput. Mater. Sci. 49, 299 (2010); the two shape
-# parameters depend on the lattice constants.
-_ZETA = cell.SR2TIO4_A**2 / (2 * cell.SR2TIO4_C**2)
-_ETA = (1 + cell.SR2TIO4_A**2 / cell.SR2TIO4_C**2) / 4
+# parameters depend on the lattice constants. py4vasp._demo.cell.Sr2TiO4 uses a basis
+# that is this standard one turned in space -- the two have the same metric tensor, so
+# they share their fractional coordinates and these tabulated points apply unchanged.
+_ZETA = SR2TIO4_A**2 / (2 * SR2TIO4_C**2)
+_ETA = (1 + SR2TIO4_A**2 / SR2TIO4_C**2) / 4
 SPECIAL_POINTS = {
     "GM": (0.0, 0.0, 0.0),
     "N": (0.0, 0.5, 0.0),
@@ -26,11 +33,19 @@ SPECIAL_POINTS = {
 # A contiguous path visiting the valence band maximum at Gamma and the conduction band
 # minimum at P, so the band structure shows that the gap of Sr2TiO4 is indirect.
 PATH = ("GM", "X", "P", "N", "GM")
-_LABELS = {"GM": r"$\Gamma$"}
+_LABELS = {"GM": r"$\Gamma$", "X": "X", "P": "P", "N": "N", "Z": "Z"}
 
 
-def line_mode() -> raw.Kpoint:
-    """Labelled band-structure path through the Brillouin zone of Sr2TiO4."""
+def line_mode(labels="with_labels") -> raw.Kpoint:
+    """Band-structure path through the Brillouin zone of Sr2TiO4.
+
+    Parameters
+    ----------
+    labels
+        Pass ``"no_labels"`` to leave the high-symmetry points unnamed, as a KPOINTS
+        file without labels would. py4vasp then names the band edges by their
+        coordinates instead.
+    """
     corners = [SPECIAL_POINTS[label] for label in PATH]
     segments = [
         np.linspace(start, finish, showcase.LINE_LENGTH)
@@ -42,9 +57,8 @@ def line_mode() -> raw.Kpoint:
         number=showcase.LINE_LENGTH,
         coordinates=raw.VaspData(coordinates),
         weights=raw.VaspData(np.ones(len(coordinates))),
-        cell=cell.Sr2TiO4(),
-        labels=raw.VaspData(np.array([_label(name) for name in PATH], dtype="S")),
-        label_indices=raw.VaspData(np.array(_label_indices())),
+        cell=_demo.cell.Sr2TiO4(),
+        **_labels(labels),
     )
 
 
@@ -62,12 +76,17 @@ def mesh() -> np.ndarray:
     return np.array(list(itertools.product(*axes)))
 
 
-def _label(name):
-    return _LABELS.get(name, name)
-
-
-def _label_indices():
+def _labels(labels):
+    if labels != "with_labels":
+        return {}
     # VASP numbers the endpoints of the segments, so segment i starts at 2 * i - 1 and
-    # ends at 2 * i. Labelling the end of every segment plus the very first point names
-    # each corner of the path exactly once.
-    return [1, *(2 * segment for segment in range(1, len(PATH)))]
+    # ends at 2 * i. Naming both endpoints of every segment is what a KPOINTS file in
+    # line mode does, and it tells py4vasp the path is continuous: a corner shared by two
+    # segments carries the same name from both sides, so the tick reads "X" rather than
+    # "X|", which is how py4vasp marks a jump in the path.
+    number_endpoints = 2 * (len(PATH) - 1)
+    names = [_LABELS.get(PATH[(index + 1) // 2]) for index in range(number_endpoints)]
+    return {
+        "labels": raw.VaspData(np.array(names, dtype="S")),
+        "label_indices": raw.VaspData(np.arange(1, number_endpoints + 1)),
+    }

@@ -18,7 +18,7 @@ package -- the dependency runs one way only.
 import numpy as np
 
 from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attributes
-    cell,
+    band,
     dos,
     electronic_structure,
     kpoint,

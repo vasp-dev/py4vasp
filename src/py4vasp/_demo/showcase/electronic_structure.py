@@ -22,6 +22,9 @@ BAND_GAP = 2.6  # eV
 # Brillouin zone for free, whatever the lattice constants are.
 TRANSLATIONS = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
 
+# shape of the projections of Sr2TiO4: seven atoms and the lm-resolved orbitals
+_SR2TIO4_PROJECTIONS = (7, 16)
+
 # Centre of every band and the amplitude of its hopping in plane and along c. The
 # valence bands stand for the O-2p manifold, the conduction bands for the Ti-3d t2g
 # states. Sr2TiO4 is a layered material, so hopping along c is an order of magnitude
@@ -39,6 +42,30 @@ _SR2TIO4_BANDS = (
     (-0.6, 0.55, 0.05),
     (3.2, 0.60, 0.08),
     (4.1, 0.50, 0.05),
+)
+
+
+# Indices of the lm-resolved orbitals of py4vasp._demo.projector
+_P_ORBITALS = (1, 2, 3)  # py pz px
+_T2G_ORBITALS = (4, 5, 7)  # dxy dyz dxz
+
+# Where the states of a manifold sit, as (atom indices, orbital indices, weight per
+# atom). The atoms of Sr2TiO4 are two Sr, one Ti, two apical O and two equatorial O; the
+# apical and equatorial oxygens occupy different Wyckoff positions, so they contribute
+# differently. The valence manifold is the bonding O-2p band with a little Sr-4d and
+# Ti-3d admixture, the conduction manifold its Ti-3d t2g antibonding counterpart. Each
+# manifold sums to one, so the projections add up to the total density of states.
+_VALENCE_CHARACTER = (
+    ((0, 1), _T2G_ORBITALS, 0.025),  # Sr
+    ((2,), _T2G_ORBITALS, 0.05),  # Ti
+    ((3, 4), _P_ORBITALS, 0.25),  # O apical
+    ((5, 6), _P_ORBITALS, 0.20),  # O equatorial
+)
+_CONDUCTION_CHARACTER = (
+    ((0, 1), _T2G_ORBITALS, 0.05),  # Sr
+    ((2,), _T2G_ORBITALS, 0.72),  # Ti
+    ((3, 4), _P_ORBITALS, 0.045),  # O apical
+    ((5, 6), _P_ORBITALS, 0.045),  # O equatorial
 )
 
 
@@ -121,3 +148,29 @@ def _align_to_gap(centers, weights, number_valence_bands, band_gap):
     centers = centers - np.max((centers + spread)[valence])
     centers[conduction] += band_gap - np.min((centers - spread)[conduction])
     return centers
+
+
+def Sr2TiO4_character() -> np.ndarray:
+    """Weight of every atom and orbital in every band of Sr2TiO4.
+
+    Returns
+    -------
+    -
+        Array of shape ``(band, atom, orbital)`` that sums to one over atoms and
+        orbitals, so a quantity distributed with it is fully accounted for. The band
+        structure and the density of states share this character, which is why a fat
+        band and a projected density of states tell the same story.
+    """
+    number_atoms, number_orbitals = _SR2TIO4_PROJECTIONS
+    character = np.zeros(
+        (NUMBER_VALENCE_BANDS + NUMBER_CONDUCTION_BANDS, number_atoms, number_orbitals)
+    )
+    manifolds = (
+        (slice(None, NUMBER_VALENCE_BANDS), _VALENCE_CHARACTER),
+        (slice(NUMBER_VALENCE_BANDS, None), _CONDUCTION_CHARACTER),
+    )
+    for bands, manifold in manifolds:
+        for atoms, orbitals, weight in manifold:
+            for atom in atoms:
+                character[bands, atom, list(orbitals)] = weight / len(orbitals)
+    return character

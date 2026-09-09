@@ -9,29 +9,6 @@ from py4vasp._demo.showcase import electronic_structure, kpoint
 SPIN_DEGENERACY = 2  # electrons per band without spin polarization
 ENERGY_MARGIN = 1.5  # eV of empty axis beyond the outermost eigenvalue
 
-# Indices of the lm-resolved orbitals of py4vasp._demo.projector
-_P_ORBITALS = (1, 2, 3)  # py pz px
-_T2G_ORBITALS = (4, 5, 7)  # dxy dyz dxz
-
-# Where the states of a manifold sit, as (atom indices, orbital indices, weight per
-# atom). The atoms of Sr2TiO4 are two Sr, one Ti, two apical O and two equatorial O; the
-# apical and equatorial oxygens occupy different Wyckoff positions, so they contribute
-# differently. The valence manifold is the bonding O-2p band with a little Sr-4d and
-# Ti-3d admixture, the conduction manifold its Ti-3d t2g antibonding counterpart. Each
-# manifold sums to one, so the projections add up to the total density of states.
-_VALENCE_CHARACTER = (
-    ((0, 1), _T2G_ORBITALS, 0.025),  # Sr
-    ((2,), _T2G_ORBITALS, 0.05),  # Ti
-    ((3, 4), _P_ORBITALS, 0.25),  # O apical
-    ((5, 6), _P_ORBITALS, 0.20),  # O equatorial
-)
-_CONDUCTION_CHARACTER = (
-    ((0, 1), _T2G_ORBITALS, 0.05),  # Sr
-    ((2,), _T2G_ORBITALS, 0.72),  # Ti
-    ((3, 4), _P_ORBITALS, 0.045),  # O apical
-    ((5, 6), _P_ORBITALS, 0.045),  # O equatorial
-)
-
 
 def Sr2TiO4(projectors):
     """Density of states of Sr2TiO4 broadened from the band model.
@@ -79,22 +56,8 @@ def _broadened_bands(model):
 
 
 def _projections(model, per_band):
-    number_atoms, number_orbitals = _shape_of_projections()
-    projections = np.zeros((number_atoms, number_orbitals, showcase.NUMBER_POINTS))
-    manifolds = (
-        (slice(None, model.number_valence_bands), _VALENCE_CHARACTER),
-        (slice(model.number_valence_bands, None), _CONDUCTION_CHARACTER),
-    )
-    for bands, character in manifolds:
-        manifold_dos = np.sum(per_band[bands], axis=0)
-        for atoms, orbitals, weight in character:
-            share = weight * manifold_dos / len(orbitals)
-            for atom in atoms:
-                projections[atom, list(orbitals)] += share
+    # distribute the contribution of every band over the atoms and orbitals it projects
+    # onto; the character sums to one per band, so this adds up to the total again
+    character = electronic_structure.Sr2TiO4_character()
+    projections = np.einsum("bao,be->aoe", character, per_band)
     return projections[np.newaxis]  # a single spin component
-
-
-def _shape_of_projections():
-    projector = _demo.projector.Sr2TiO4(use_orbitals=True)
-    number_atoms = np.sum(projector.stoichiometry.number_ion_types)
-    return int(number_atoms), len(projector.orbital_types)

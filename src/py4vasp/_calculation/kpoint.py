@@ -93,7 +93,7 @@ reciprocal"""
 
     def line_length(self) -> int:
         if self.mode() == "line":
-            return self._raw_kpoint.number
+            return int(self._raw_kpoint.number)
         return self.number_kpoints()
 
     def number_lines(self) -> int:
@@ -288,12 +288,14 @@ class Kpoint:
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> calculation.kpoint.read()
-        {'mode': ..., 'line_length': ..., 'number_kpoints': ..., 'coordinates': array(...), 'weights': array(...)}
+        {'mode': 'line', 'line_length': 41, 'number_kpoints': 164,
+            'coordinates': array(...), 'weights': array(...), 'labels': [...]}
 
         Select the **k** points from the "kpoints_opt" mesh instead of the default one:
 
         >>> calculation.kpoint.read(selection="kpoints_opt")
-        {'mode': ..., 'line_length': ..., 'number_kpoints': ..., 'coordinates': array(...), 'weights': array(...), 'labels': ...}
+        {'mode': 'line', 'line_length': 41, 'number_kpoints': 164,
+            'coordinates': array(...), 'weights': array(...), 'labels': [...]}
         """
         return merge_default(
             self._source,
@@ -322,7 +324,7 @@ class Kpoint:
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> calculation.kpoint.line_length()
-        48
+        41
         """
         return merge_default(
             self._source,
@@ -373,7 +375,7 @@ class Kpoint:
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> calculation.kpoint.number_kpoints()
-        48
+        164
         """
         return merge_default(
             self._source,
@@ -462,16 +464,19 @@ class Kpoint:
 
         Examples
         --------
-        If no labels were given and line mode is not used, returns None:
+        If the KPOINTS file names the high-symmetry points, the method returns a list
+        with one entry per **k** point where all other points are empty strings. A
+        corner where two segments of the path meet is sampled by both of them, so it
+        appears twice:
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
-        >>> result = calculation.kpoint.labels()
-        >>> assert result is None
+        >>> [label for label in calculation.kpoint.labels() if label]
+        ['$\\\\Gamma$', 'X', 'X', 'P', 'P', 'N', 'N', '$\\\\Gamma$']
 
-        If line mode is used VASP automatically assigns labels to the band edges. In this case,
-        the method returns a list where band-edge points carry LaTeX-formatted coordinates and
-        interior points are empty strings. The example below uses the KPOINTS_OPT file:
+        If line mode is used but no labels were given, VASP automatically assigns labels
+        to the band edges. In this case, the band-edge points carry LaTeX-formatted
+        coordinates instead. The example below uses the KPOINTS_OPT file:
 
         >>> calculation.kpoint.labels(selection="kpoints_opt")
         ['$[0 0 0]$', ...]
@@ -519,8 +524,8 @@ class Kpoint:
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
-        >>> start = [0, 0, 0.125]
-        >>> finish = [1, 0, 0.125]
+        >>> start = [0, 0, 0]
+        >>> finish = [0, 0, 1]
         >>> calculation.kpoint.path_indices(start, finish)
         array([...])
         """
