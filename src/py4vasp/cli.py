@@ -224,3 +224,67 @@ def generate_kpath(file, number_points, time_reversal, symprec, output):
     except exception.Py4VaspError as error:
         raise click.ClickException(*error.args) from error
     _write_or_print(kpoints, output)
+
+
+@generate.command("kmesh")
+@click.argument(
+    "file", type=click.Path(exists=True, readable=True, path_type=pathlib.Path)
+)
+@click.option(
+    "--kspacing",
+    type=float,
+    help="""Largest allowed distance between two k points in Å⁻¹, following the
+    convention of VASP's KSPACING tag. Specify either this or the divisions.""",
+)
+@click.option(
+    "-d",
+    "--divisions",
+    type=int,
+    nargs=3,
+    help="""Number of k points along the three directions of the conventional cell.
+    Specify either this or the k-point spacing.""",
+)
+@click.option(
+    "--shift",
+    type=float,
+    nargs=3,
+    help="Shift of the mesh as fractions of its basis vectors.",
+)
+@click.option(
+    "--symprec",
+    type=float,
+    default=_SYMPREC,
+    show_default=True,
+    help="Symmetry tolerance in Å passed to spglib.",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(path_type=pathlib.Path),
+    help="Write the KPOINTS file to this path instead of stdout.",
+)
+def generate_kmesh(file, kspacing, divisions, shift, symprec, output):
+    """Generate a KPOINTS file with a mesh adapted to the structure in FILE.
+
+    FILE may be a POSCAR, CONTCAR, or HDF5 file containing a structure, or an archive
+    of a VASP calculation. The mesh subdivides the reciprocal lattice vectors of the
+    conventional cell, so it retains the full symmetry of the lattice even when the
+    calculation runs in the primitive cell. By default the file is written to stdout;
+    use -o/--output to store it as KPOINTS.
+    """
+    divisions = divisions or None
+    shift = shift or None
+    if (kspacing is None) == (divisions is None):
+        message = "Please specify either the --kspacing or the --divisions of the mesh."
+        raise click.UsageError(message)
+    try:
+        structure = _read_structure(file)
+        kpoints = structure.generate_kmesh(
+            kspacing=kspacing,
+            divisions=divisions,
+            shift=shift,
+            symprec=symprec,
+        )
+    except exception.Py4VaspError as error:
+        raise click.ClickException(*error.args) from error
+    _write_or_print(kpoints, output)

@@ -414,3 +414,85 @@ def test_generate_kpath_missing_file():
     runner = CliRunner()
     result = runner.invoke(cli, ["generate", "kpath", "does_not_exist"])
     assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# generate kmesh command
+# ---------------------------------------------------------------------------
+
+
+def test_generate_kmesh_writes_to_stdout(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), "--kspacing", "0.2"])
+    assert result.exit_code == 0
+    mock_structure.from_POSCAR.assert_called_once_with("contents")
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kmesh.assert_called_once_with(
+        kspacing=0.2, divisions=None, shift=None, symprec=_SYMPREC
+    )
+    assert result.output == f"{structure.generate_kmesh.return_value}\n"
+
+
+@pytest.mark.parametrize("flag", ("-o", "--output"))
+def test_generate_kmesh_output_file(mock_structure, tmp_path, flag):
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "KPOINTS"
+    mock_structure.from_POSCAR.return_value.generate_kmesh.return_value = "MESH"
+    runner = CliRunner()
+    options = ["--kspacing", "0.2", flag, str(output)]
+    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
+    assert result.exit_code == 0
+    assert output.read_text() == "MESH"
+    assert result.output == ""  # nothing written to stdout
+
+
+@pytest.mark.parametrize("flag", ("-d", "--divisions"))
+def test_generate_kmesh_forwards_divisions(mock_structure, tmp_path, flag):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    options = [flag, "8", "8", "6", "--symprec", "0.1"]
+    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
+    assert result.exit_code == 0
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kmesh.assert_called_once_with(
+        kspacing=None, divisions=(8, 8, 6), shift=None, symprec=0.1
+    )
+
+
+def test_generate_kmesh_forwards_shift(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    options = ["--kspacing", "0.2", "--shift", "0.5", "0.5", "0.0"]
+    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
+    assert result.exit_code == 0
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kmesh.assert_called_once_with(
+        kspacing=0.2, divisions=None, shift=(0.5, 0.5, 0.0), symprec=_SYMPREC
+    )
+
+
+@pytest.mark.parametrize(
+    "options", ([], ["--kspacing", "0.2", "--divisions", "8", "8", "8"])
+)
+def test_generate_kmesh_without_density_fails(mock_structure, tmp_path, options):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
+    assert result.exit_code != 0
+    assert "--kspacing" in result.output and "--divisions" in result.output
+    mock_structure.from_POSCAR.assert_not_called()
+
+
+def test_generate_kmesh_reports_py4vasp_error(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "KPOINTS"
+    error_message = "Cannot determine the mesh of a supercell."
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kmesh.side_effect = exception.Py4VaspError(error_message)
+    runner = CliRunner()
+    options = ["--kspacing", "0.2", "-o", str(output)]
+    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
+    assert result.exit_code != 0
+    assert error_message in result.output
+    assert not output.exists()
