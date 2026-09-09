@@ -22,7 +22,6 @@ from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_
 
 pd = import_.optional("pandas")
-pretty = import_.optional("IPython.lib.pretty")
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     exception.Py4VaspError,

@@ -22,8 +22,6 @@ from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
-pretty = import_.optional("IPython.lib.pretty")
-
 _COMMON_PARAMETERS = f"""selection : str | None = None
     Selects which of the possible available currents is used. Check the
     `selections` method for all available choices.
@@ -53,7 +51,7 @@ class CurrentDensityHandler:
         key = self._raw_current_density.valid_indices[-1]
         grid = self._raw_current_density[key].current_density.shape[1:]
         return f"""current density:
-    structure: {pretty.pretty(stoichiometry)}
+    structure: {stoichiometry}
     grid: {grid[2]}, {grid[1]}, {grid[0]}
     selections: {", ".join(str(index) for index in self._raw_current_density.valid_indices)}"""
 

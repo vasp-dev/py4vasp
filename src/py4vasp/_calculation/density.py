@@ -22,8 +22,6 @@ from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
-pretty = import_.optional("IPython.lib.pretty")
-
 _DEFAULT = 0
 _INTERNAL = "_density"
 _COMPONENTS = {
@@ -77,7 +75,7 @@ class DensityHandler:
         else:
             name = "Noncollinear"
         return f"""{name} density:
-    structure: {pretty.pretty(stoichiometry)}
+    structure: {stoichiometry}
     grid: {grid[2]}, {grid[1]}, {grid[0]}"""
 
     def to_dict(self) -> dict:

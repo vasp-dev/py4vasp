@@ -22,8 +22,6 @@ from py4vasp._raw.models import NicsModel
 from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
 
-pretty = import_.optional("IPython.lib.pretty")
-
 _DEFAULT_SELECTION: str = "isotropic"
 
 
@@ -46,7 +44,7 @@ class NicsHandler:
             data_string = self._points_to_string()
         return f"""\
 nucleus-independent chemical shift:
-    structure: {pretty.pretty(stoichiometry)}
+    structure: {stoichiometry}
 {data_string}"""
 
     def to_dict(self) -> dict:

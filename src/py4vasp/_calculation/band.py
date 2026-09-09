@@ -33,7 +33,6 @@ from py4vasp._util import (
 )
 
 pd = import_.optional("pandas")
-pretty = import_.optional("IPython.lib.pretty")
 
 _OCCUPATION_CUTOFF = 1e-2
 
