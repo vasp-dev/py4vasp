@@ -237,3 +237,34 @@ def test_divisions_from_kspacing_of_anisotropic_cell():
     reciprocal_lattice = np.diag([0.25, 0.25, 1 / 12])
     actual = _kpoints_file.divisions_from_kspacing(reciprocal_lattice, 0.5)
     assert actual == [3, 3, 1]
+
+
+def test_generating_lattice_of_conventional_cell(Assert):
+    pytest.importorskip("spglib")
+    # the conventional cell needs no transformation, so the mesh simply subdivides its
+    # own reciprocal lattice vectors
+    transformation = _kpoints_file.transformation_matrix(_SIMPLE_CUBIC)
+    actual = _kpoints_file.generating_lattice(transformation, [4, 4, 2])
+    Assert.allclose(actual, np.diag([0.25, 0.25, 0.5]))
+
+
+def test_generating_lattice_of_primitive_cell(Assert):
+    pytest.importorskip("spglib")
+    # for the primitive fcc cell every conventional reciprocal lattice vector is a half
+    # sum of two primitive ones, so the rows of the transformation matrix are divided by
+    # the number of divisions
+    transformation = _kpoints_file.transformation_matrix(_FCC_PRIMITIVE)
+    actual = _kpoints_file.generating_lattice(transformation, [4, 4, 4])
+    expected = [[0, 0.125, 0.125], [0.125, 0, 0.125], [0.125, 0.125, 0]]
+    Assert.allclose(actual, expected)
+
+
+@pytest.mark.parametrize("cell", [_FCC_PRIMITIVE, _FCC_CONVENTIONAL])
+def test_generating_lattice_is_the_same_mesh_in_every_setting(cell, Assert):
+    pytest.importorskip("spglib")
+    # this is the point of the generalized mesh: whichever setting of the cell the user
+    # provides, the k points end up on the same mesh of the conventional cell
+    transformation = _kpoints_file.transformation_matrix(cell)
+    generating_lattice = _kpoints_file.generating_lattice(transformation, [4, 4, 4])
+    cartesian = generating_lattice @ np.linalg.inv(cell[0]).T
+    Assert.allclose(cartesian, np.eye(3) / 4)

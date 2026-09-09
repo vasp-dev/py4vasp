@@ -228,3 +228,27 @@ def divisions_from_kspacing(reciprocal_lattice, kspacing: float) -> list[int]:
     # int(x + 0.5) reproduces the truncation VASP applies instead of numpy's rounding
     # of a half to the nearest even integer
     return [max(1, int(length / kspacing + 0.5)) for length in lengths]
+
+
+def generating_lattice(transformation, divisions) -> np.ndarray:
+    """Determine the basis vectors of the k-point mesh in the basis of the input cell.
+
+    The mesh subdivides the reciprocal lattice vectors of the conventional cell, i.e.
+    its basis vectors are b_i(conventional) / n_i. Expressing them in the reciprocal
+    basis of the input cell cancels the lattice vectors, so all that remains is dividing
+    the rows of the transformation matrix by the number of divisions.
+
+    Parameters
+    ----------
+    transformation : array-like
+        The transformation matrix P from :func:`transformation_matrix`.
+    divisions : Sequence[int]
+        The number of k points along the three directions of the conventional cell.
+
+    Returns
+    -------
+    np.ndarray
+        The three basis vectors of the mesh as fractions of the reciprocal lattice
+        vectors of the input cell.
+    """
+    return np.array(transformation) / np.reshape(divisions, (3, 1))
