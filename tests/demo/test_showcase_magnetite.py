@@ -5,7 +5,7 @@ import pytest
 
 from py4vasp._calculation.structure import Structure
 from py4vasp._demo import showcase
-from py4vasp._demo.showcase import cell, projector, structure
+from py4vasp._demo.showcase import band, cell, dos, local_moment, projector, structure
 
 TETRAHEDRAL = slice(0, 2)
 OCTAHEDRAL = slice(2, 6)
@@ -81,3 +81,63 @@ def test_projector_matches_the_structure(raw_structure):
         "d",
         "f",
     ]
+
+
+@pytest.fixture
+def raw_dos():
+    return dos.Fe3O4("with_projectors")
+
+
+@pytest.fixture
+def raw_band():
+    return band.Fe3O4("with_projectors")
+
+
+def test_dos_resolves_two_spin_channels(raw_dos):
+    dos_values = np.array(raw_dos.dos)
+    assert dos_values.shape == (2, showcase.NUMBER_POINTS)
+    # the two channels must differ everywhere, or an index bug swapping them would pass
+    assert not np.allclose(dos_values[0], dos_values[1])
+    assert np.all(dos_values >= 0)
+
+
+def test_magnetite_is_a_half_metal(raw_dos):
+    energies, dos_values = np.array(raw_dos.energies), np.array(raw_dos.dos)
+    at_fermi = np.argmin(np.abs(energies - raw_dos.fermi_energy))
+    majority, minority = dos_values
+    # one channel is gapped at the Fermi energy and the other carries states there
+    assert majority[at_fermi] < 1e-6 * majority.max()
+    assert minority[at_fermi] > 0.05 * minority.max()
+
+
+def test_band_has_a_partly_filled_minority_band(raw_band):
+    occupations = np.array(raw_band.occupations)
+    assert occupations.shape[0] == 2
+    majority, minority = occupations
+    # the majority channel is either full or empty per band, the minority band that
+    # crosses the Fermi energy is filled at some k points and empty at others
+    assert set(np.unique(majority.sum(axis=0) / len(majority))) <= {0.0, 1.0}
+    filling = minority.sum(axis=0) / len(minority)
+    assert np.any((filling > 0.01) & (filling < 0.99))
+
+
+def test_local_moments_are_ferrimagnetic(Assert):
+    raw_moment = local_moment.Fe3O4()
+    moments = np.array(raw_moment.spin_moments)
+    assert moments.shape == (showcase.NUMBER_STEPS, 2, 14, 3)
+    total_per_atom = np.sum(moments[-1, 1], axis=-1)
+    # the tetrahedral sublattice orders antiparallel to the octahedral one
+    assert np.all(total_per_atom[TETRAHEDRAL] < 0)
+    assert np.all(total_per_atom[OCTAHEDRAL] > 0)
+    # and the two do not cancel: magnetite carries 4 Bohr magnetons per formula unit,
+    # so eight for the two formula units of the primitive cell
+    Assert.allclose(np.sum(total_per_atom), 8.0)
+
+
+def test_charges_are_positive_and_larger_on_oxygen(Assert):
+    charges = np.array(local_moment.Fe3O4().spin_moments)[-1, 0]
+    assert np.all(charges >= 0)
+    # oxygen keeps its 2p shell nearly full, so its p charge dominates
+    assert np.all(charges[OXYGEN, 1] > charges[OXYGEN, 2])
+    # iron carries its charge in the d shell
+    assert np.all(charges[TETRAHEDRAL, 2] > charges[TETRAHEDRAL, 1])

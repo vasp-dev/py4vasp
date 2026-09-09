@@ -22,6 +22,10 @@ BAND_GAP = 2.6  # eV
 # Brillouin zone for free, whatever the lattice constants are.
 TRANSLATIONS = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
 
+# In a cubic crystal the three primitive translations are equivalent under the
+# threefold axis, so a band hops along them with one amplitude.
+CUBIC_TRANSLATIONS = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+
 # shape of the projections of Sr2TiO4: seven atoms and the lm-resolved orbitals
 _SR2TIO4_PROJECTIONS = (7, 16)
 
@@ -77,6 +81,8 @@ class Model:
     "Centre of every band, shape ``(band,)``."
     weights: np.ndarray
     "Hopping amplitude of every band, shape ``(band, translation)``."
+    translations: np.ndarray
+    "Lattice translations the model hops along, shape ``(translation, 3)``."
     number_valence_bands: int
     "Number of occupied bands; the remaining ones are empty."
     fermi_energy: float
@@ -109,7 +115,7 @@ class Model:
             Eigenvalues of shape ``(kpoint, band)``, ascending per k point as VASP
             writes them.
         """
-        phase = np.cos(2 * np.pi * np.asarray(kpoints) @ TRANSLATIONS.T)
+        phase = np.cos(2 * np.pi * np.asarray(kpoints) @ self.translations.T)
         return np.sort(self.centers + phase @ self.weights.T, axis=-1)
 
     @property
@@ -135,7 +141,7 @@ def Sr2TiO4() -> Model:
     # the fourfold axis exchanges the two in-plane translations, so they hop equally
     weights = np.stack((in_plane, in_plane, along_c), axis=-1)
     centers = _align_to_gap(centers, weights, NUMBER_VALENCE_BANDS, BAND_GAP)
-    return Model(centers, weights, NUMBER_VALENCE_BANDS, BAND_GAP / 2)
+    return Model(centers, weights, TRANSLATIONS, NUMBER_VALENCE_BANDS, BAND_GAP / 2)
 
 
 def _align_to_gap(centers, weights, number_valence_bands, band_gap):
@@ -173,4 +179,81 @@ def Sr2TiO4_character() -> np.ndarray:
         for atoms, orbitals, weight in manifold:
             for atom in atoms:
                 character[bands, atom, list(orbitals)] = weight / len(orbitals)
+    return character
+
+
+# Magnetite is a ferrimagnetic half metal: the two spin channels see different
+# potentials, so one of them opens a gap at the Fermi energy while the other keeps a
+# partly filled band there. Centre and hopping amplitude of every band in eV, relative to
+# the Fermi energy. The lower bands stand for the O-2p manifold, the upper ones for the
+# Fe-3d states the two sublattices contribute.
+# A band spans its centre plus or minus the sum of its amplitudes, so with three cubic
+# translations its width is six times the amplitude. The majority bands are placed to
+# leave a two-electronvolt gap around the Fermi energy, wide enough that the broadening
+# of the density of states does not fill it in.
+_FE3O4_MAJORITY_BANDS = (
+    (-6.5, 0.30),
+    (-5.0, 0.35),
+    (-3.5, 0.40),
+    (-2.0, 0.33),  # highest occupied, reaching up to -1.0
+    (2.0, 0.33),  # lowest empty, reaching down to +1.0
+    (3.6, 0.30),
+)
+_FE3O4_MINORITY_BANDS = (
+    (-6.2, 0.30),
+    (-4.6, 0.35),
+    (-3.0, 0.40),
+    (-0.2, 0.55),  # the band that crosses the Fermi energy and makes it a half metal
+    (2.6, 0.35),
+    (4.0, 0.30),
+)
+
+# Where the states of magnetite sit. Iron carries the 3d states that make the magnetism,
+# oxygen the 2p manifold below them. Both iron sublattices contribute equally to the
+# density of states even though their moments point in opposite directions.
+_FE3O4_CHARACTER = (
+    (range(0, 2), (2,), 0.11),  # Fe tetrahedral, d
+    (range(2, 6), (2,), 0.11),  # Fe octahedral, d
+    (range(6, 14), (1,), 0.0425),  # O, p
+)
+_FE3O4_PROJECTIONS = (14, 4)
+
+
+def Fe3O4() -> list:
+    """Band models of the majority and the minority spin channel of magnetite.
+
+    Returns
+    -------
+    -
+        One model per spin channel, both with the Fermi energy at zero. The majority
+        channel is gapped there and the minority channel is not, which is what a half
+        metal looks like.
+    """
+    return [
+        _cubic_model(_FE3O4_MAJORITY_BANDS, number_valence_bands=4),
+        _cubic_model(_FE3O4_MINORITY_BANDS, number_valence_bands=4),
+    ]
+
+
+def _cubic_model(bands, number_valence_bands):
+    centers = np.array([band[0] for band in bands])
+    amplitude = np.array([band[1] for band in bands])
+    weights = np.repeat(amplitude[:, np.newaxis], len(CUBIC_TRANSLATIONS), axis=1)
+    return Model(centers, weights, CUBIC_TRANSLATIONS, number_valence_bands, 0.0)
+
+
+def Fe3O4_character() -> np.ndarray:
+    """Weight of every atom and orbital in every band of magnetite.
+
+    Returns
+    -------
+    -
+        Array of shape ``(band, atom, orbital)`` summing to one over atoms and orbitals,
+        shared by the spin-resolved band structure and density of states.
+    """
+    number_bands = len(_FE3O4_MAJORITY_BANDS)
+    character = np.zeros((number_bands, *_FE3O4_PROJECTIONS))
+    for atoms, orbitals, weight in _FE3O4_CHARACTER:
+        for atom in atoms:
+            character[:, atom, list(orbitals)] = weight / len(orbitals)
     return character

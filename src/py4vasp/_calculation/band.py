@@ -458,7 +458,8 @@ class Band(graph.Mixin):
         For collinear calculations, the spin channels are treated separately
 
         >>> collinear_calculation.band.read()
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': ..., 'bands_up': array(...),
             'bands_down': array(...), 'occupations_up': array(...),
             'occupations_down': array(...)}}
 
@@ -466,7 +467,8 @@ class Band(graph.Mixin):
         of the first three atoms combined
 
         >>> collinear_calculation.band.read("up(1:3)")
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': ..., 'bands_up': array(...),
             'bands_down': array(...), 'occupations_up': array(...),
             'occupations_down': array(...), '1:3_up': array(...)}}
 
@@ -676,14 +678,14 @@ class Band(graph.Mixin):
         For collinear calculations, the spin channels are treated separately
 
         >>> collinear_calculation.band.to_frame()
-           kpoint_distances  bands_up  bands_down  occupations_up  occupations_down
+           kpoint_distances kpoint_labels  ...  occupations_up  occupations_down
         0  ...
 
         You can also select particular spin channels, for example the spin-up contribution
         of the first three atoms combined
 
         >>> collinear_calculation.band.to_frame("up(1:3)")
-           kpoint_distances  bands_up  ...  occupations_down  1:3_up
+           kpoint_distances kpoint_labels  ...  occupations_down  1:3_up
         0  ...
 
         For noncollinear calculations, the resulting dictionary has the same structure

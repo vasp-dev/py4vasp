@@ -111,9 +111,9 @@ def _generate_default_data(h5f, waveh5f=None):
 
 
 def _generate_collinear_data(h5f, waveh5f=None):
-    write(h5f, _demo.band.spin_polarized_bands("with_projectors"))
-    write(h5f, _demo.dos.Fe3O4("with_projectors"))
-    write(h5f, _demo.local_moment.local_moment("collinear"))
+    write(h5f, showcase.local_moment.Fe3O4())  # writes the structure both others link
+    write(h5f, showcase.dos.Fe3O4("with_projectors"))
+    write(h5f, showcase.band.Fe3O4("with_projectors"))
 
 
 def _generate_noncollinear_data(h5f, waveh5f=None):

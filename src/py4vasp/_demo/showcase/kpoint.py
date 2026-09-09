@@ -27,7 +27,20 @@ SPECIAL_POINTS = {
 # A contiguous path visiting the valence band maximum at Gamma and the conduction band
 # minimum at P, so the band structure shows that the gap of Sr2TiO4 is indirect.
 PATH = ("GM", "X", "P", "N", "GM")
-_LABELS = {"GM": r"$\Gamma$", "X": "X", "P": "P", "N": "N", "Z": "Z"}
+
+# High-symmetry points of the face-centred cubic Brillouin zone, from the same
+# standard setting. The path visits every one of them and returns to Gamma.
+FCC_SPECIAL_POINTS = {
+    "GM": (0.0, 0.0, 0.0),
+    "X": (0.5, 0.0, 0.5),
+    "W": (0.5, 0.25, 0.75),
+    "L": (0.5, 0.5, 0.5),
+    "K": (0.375, 0.375, 0.75),
+    "U": (0.625, 0.25, 0.625),
+}
+FCC_PATH = ("GM", "X", "W", "L", "GM")
+_LABELS = {name: name for name in ("X", "P", "N", "Z", "W", "L", "K", "U")}
+_LABELS["GM"] = r"$\Gamma$"
 
 
 def line_mode(labels="with_labels") -> raw.Kpoint:
@@ -40,7 +53,16 @@ def line_mode(labels="with_labels") -> raw.Kpoint:
         file without labels would. py4vasp then names the band edges by their
         coordinates instead.
     """
-    corners = [SPECIAL_POINTS[label] for label in PATH]
+    return _path(SPECIAL_POINTS, PATH, cell.Sr2TiO4(), labels)
+
+
+def line_mode_Fe3O4(labels="with_labels") -> raw.Kpoint:
+    """Band-structure path through the Brillouin zone of magnetite."""
+    return _path(FCC_SPECIAL_POINTS, FCC_PATH, cell.Fe3O4(), labels)
+
+
+def _path(special_points, path, raw_cell, labels) -> raw.Kpoint:
+    corners = [special_points[label] for label in path]
     segments = [
         np.linspace(start, finish, showcase.LINE_LENGTH)
         for start, finish in zip(corners, corners[1:])
@@ -51,8 +73,8 @@ def line_mode(labels="with_labels") -> raw.Kpoint:
         number=showcase.LINE_LENGTH,
         coordinates=raw.VaspData(coordinates),
         weights=raw.VaspData(np.ones(len(coordinates))),
-        cell=cell.Sr2TiO4(),
-        **_labels(labels),
+        cell=raw_cell,
+        **_labels(labels, path),
     )
 
 
@@ -70,7 +92,7 @@ def mesh() -> np.ndarray:
     return np.array(list(itertools.product(*axes)))
 
 
-def _labels(labels):
+def _labels(labels, path):
     if labels != "with_labels":
         return {}
     # VASP numbers the endpoints of the segments, so segment i starts at 2 * i - 1 and
@@ -78,8 +100,8 @@ def _labels(labels):
     # line mode does, and it tells py4vasp the path is continuous: a corner shared by two
     # segments carries the same name from both sides, so the tick reads "X" rather than
     # "X|", which is how py4vasp marks a jump in the path.
-    number_endpoints = 2 * (len(PATH) - 1)
-    names = [_LABELS.get(PATH[(index + 1) // 2]) for index in range(number_endpoints)]
+    number_endpoints = 2 * (len(path) - 1)
+    names = [_LABELS[path[(index + 1) // 2]] for index in range(number_endpoints)]
     return {
         "labels": raw.VaspData(np.array(names, dtype="S")),
         "label_indices": raw.VaspData(np.arange(1, number_endpoints + 1)),

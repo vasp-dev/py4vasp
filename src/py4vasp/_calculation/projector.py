@@ -109,28 +109,18 @@ class ProjectorHandler:
         Examples
         --------
 
-        For nonpolarized Fe3O4 with :tag:`LORBIT` = 10, this would work like this
+        For spin-polarized Fe3O4 with :tag:`LORBIT` = 10, this would work like this
 
         >>> import pprint
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path, selection="collinear")
         >>> pprint.pp(calculation.projector.to_dict())
-        {'atom': {'Fe': slice(0, 3, None),
-                  '1': slice(0, 1, None),
-                  '2': slice(1, 2, None),
-                  '3': slice(2, 3, None),
-                  'O': slice(3, 7, None),
-                  '4': slice(3, 4, None),
-                  '5': slice(4, 5, None),
-                  '6': slice(5, 6, None),
-                  '7': slice(6, 7, None)},
-         'orbital': {'s': slice(0, 1, None),
-                     'p': slice(1, 2, None),
-                     'd': slice(2, 3, None),
-                     'f': slice(3, 4, None)},
-         'spin': {'total': slice(0, 2, None),
-                  'up': slice(0, 1, None),
-                  'down': slice(1, 2, None)}}
+        {'atom': {'Fe': slice(0, 6, None), '1': slice(0, 1, None), ...,
+            'O': slice(6, 14, None), ...},
+         'orbital': {'s': slice(0, 1, None), 'p': slice(1, 2, None),
+            'd': slice(2, 3, None), 'f': slice(3, 4, None)},
+         'spin': {'total': slice(0, 2, None), 'up': slice(0, 1, None),
+            'down': slice(1, 2, None)}}
         """
         if self._raw_projector.orbital_types.is_none():
             return {}
@@ -354,28 +344,18 @@ class Projector:
         Examples
         --------
 
-        For nonpolarized Fe3O4 with :tag:`LORBIT` = 10, this would work like this
+        For spin-polarized Fe3O4 with :tag:`LORBIT` = 10, this would work like this
 
         >>> import pprint
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path, selection="collinear")
         >>> pprint.pp(calculation.projector.read())
-        {'atom': {'Fe': slice(0, 3, None),
-                  '1': slice(0, 1, None),
-                  '2': slice(1, 2, None),
-                  '3': slice(2, 3, None),
-                  'O': slice(3, 7, None),
-                  '4': slice(3, 4, None),
-                  '5': slice(4, 5, None),
-                  '6': slice(5, 6, None),
-                  '7': slice(6, 7, None)},
-         'orbital': {'s': slice(0, 1, None),
-                     'p': slice(1, 2, None),
-                     'd': slice(2, 3, None),
-                     'f': slice(3, 4, None)},
-         'spin': {'total': slice(0, 2, None),
-                  'up': slice(0, 1, None),
-                  'down': slice(1, 2, None)}}
+        {'atom': {'Fe': slice(0, 6, None), '1': slice(0, 1, None), ...,
+            'O': slice(6, 14, None), ...},
+         'orbital': {'s': slice(0, 1, None), 'p': slice(1, 2, None),
+            'd': slice(2, 3, None), 'f': slice(3, 4, None)},
+         'spin': {'total': slice(0, 2, None), 'up': slice(0, 1, None),
+            'down': slice(1, 2, None)}}
         """
         return merge_default(
             self._source,

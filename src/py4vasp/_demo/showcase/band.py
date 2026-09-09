@@ -3,6 +3,7 @@
 import numpy as np
 
 from py4vasp import _demo, raw
+from py4vasp._demo import showcase
 from py4vasp._demo.showcase import electronic_structure, kpoint
 
 
@@ -48,3 +49,29 @@ def _projections(number_kpoints):
     constant_along_path = np.ones(number_kpoints)
     projections = np.einsum("bao,k->aokb", character, constant_along_path)
     return projections[np.newaxis]  # a single spin component
+
+
+def Fe3O4(projectors, labels="with_labels"):
+    """Spin-polarized band structure of magnetite along the face-centred cubic path.
+
+    The majority channel is gapped at the Fermi energy while a minority band crosses it,
+    so its occupations are fractional across the path: magnetite is a half metal.
+    """
+    models = electronic_structure.Fe3O4()
+    kpoints = kpoint.line_mode_Fe3O4(labels)
+    coordinates = np.array(kpoints.coordinates)
+    eigenvalues = np.array([model.evaluate(coordinates) for model in models])
+    fermi_energy = models[0].fermi_energy
+    use_orbitals = projectors == "with_projectors"
+    raw_band = raw.Band(
+        dispersion=raw.Dispersion(kpoints, _demo.wrap_data(eigenvalues)),
+        fermi_energy=fermi_energy,
+        occupations=_demo.wrap_data(np.where(eigenvalues < fermi_energy, 1.0, 0.0)),
+        projectors=showcase.projector.Fe3O4(use_orbitals),
+    )
+    if use_orbitals:
+        character = electronic_structure.Fe3O4_character()
+        constant_along_path = np.ones(len(coordinates))
+        projections = np.einsum("bao,k->aokb", character, constant_along_path)
+        raw_band.projections = _demo.wrap_data(np.array(len(models) * [projections]))
+    return raw_band

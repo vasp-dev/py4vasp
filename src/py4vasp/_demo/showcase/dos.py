@@ -21,10 +21,11 @@ def Sr2TiO4(projectors):
     """
     model = electronic_structure.Sr2TiO4()
     use_orbitals = projectors == "with_projectors"
-    per_band = _broadened_bands(model)
+    energies = _energies([model])
+    per_band = _broadened_bands(model, energies)
     raw_dos = raw.Dos(
         fermi_energy=model.fermi_energy,
-        energies=_demo.wrap_data(_energies(model)),
+        energies=_demo.wrap_data(energies),
         dos=_demo.wrap_data([np.sum(per_band, axis=0)]),
         projectors=_demo.projector.Sr2TiO4(use_orbitals),
     )
@@ -33,20 +34,20 @@ def Sr2TiO4(projectors):
     return raw_dos
 
 
-def _energies(model):
-    eigenvalues = model.evaluate(kpoint.mesh())
-    lowest = np.min(eigenvalues) - ENERGY_MARGIN
-    highest = np.max(eigenvalues) + ENERGY_MARGIN
+def _energies(models):
+    """Energy axis that covers the eigenvalues of every spin channel with a margin."""
+    eigenvalues = [model.evaluate(kpoint.mesh()) for model in models]
+    lowest = np.min([np.min(values) for values in eigenvalues]) - ENERGY_MARGIN
+    highest = np.max([np.max(values) for values in eigenvalues]) + ENERGY_MARGIN
     return np.linspace(lowest, highest, showcase.NUMBER_POINTS)
 
 
-def _broadened_bands(model):
+def _broadened_bands(model, energies, electrons_per_band=SPIN_DEGENERACY):
     """Contribution of every band to the density of states, shape ``(band, energy)``."""
     eigenvalues = model.evaluate(kpoint.mesh())
     # dividing by the number of k points turns the sum over the mesh into an average, so
-    # every band holds exactly SPIN_DEGENERACY electrons per unit cell
-    weight = SPIN_DEGENERACY / len(eigenvalues)
-    energies = _energies(model)
+    # every band holds exactly electrons_per_band electrons per unit cell
+    weight = electrons_per_band / len(eigenvalues)
     return np.array(
         [
             showcase.broaden(energies, eigenvalues[:, band], weights=weight)
@@ -61,3 +62,30 @@ def _projections(model, per_band):
     character = electronic_structure.Sr2TiO4_character()
     projections = np.einsum("bao,be->aoe", character, per_band)
     return projections[np.newaxis]  # a single spin component
+
+
+def Fe3O4(projectors):
+    """Spin-resolved density of states of magnetite.
+
+    One channel is gapped at the Fermi energy and the other is not, so the plot shows
+    directly that magnetite is a half metal.
+    """
+    models = electronic_structure.Fe3O4()
+    use_orbitals = projectors == "with_projectors"
+    energies = _energies(models)
+    # a spin-polarized calculation resolves the channels, so each band holds one electron
+    per_band = [_broadened_bands(model, energies, 1.0) for model in models]
+    raw_dos = raw.Dos(
+        fermi_energy=models[0].fermi_energy,
+        energies=_demo.wrap_data(energies),
+        dos=_demo.wrap_data([np.sum(channel, axis=0) for channel in per_band]),
+        projectors=showcase.projector.Fe3O4(use_orbitals),
+    )
+    if use_orbitals:
+        character = electronic_structure.Fe3O4_character()
+        raw_dos.projections = _demo.wrap_data(
+            np.array(
+                [np.einsum("bao,be->aoe", character, channel) for channel in per_band]
+            )
+        )
+    return raw_dos
