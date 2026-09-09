@@ -2,11 +2,22 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Generate the content of KPOINTS files."""
 
+import numpy as np
+
+from py4vasp import exception
+from py4vasp._calculation.symmetry import _SYMPREC
+from py4vasp._util import import_
+
+spglib = import_.optional("spglib")
+
 # seekpath spells the special points of the high-symmetry path in ASCII, e.g. "GAMMA"
 # or "SIGMA_0". VASP reads the label as the remainder of the line, so we can write the
 # glyph the label stands for instead.
 _GREEK_LETTERS = {"GAMMA": "Γ", "DELTA": "Δ", "LAMBDA": "Λ", "SIGMA": "Σ"}
 _SUBSCRIPTS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+# the standardized conventional cell is at most as large as the cell it comes from,
+# so the determinant of the transformation matrix exceeds 1 only for a supercell
+_VOLUME_TOLERANCE = 1e-6
 
 
 def label_to_unicode(name: str) -> str:
@@ -51,3 +62,66 @@ def line_mode(coordinates, labels, number_points, comment: str) -> str:
 
 def _vector(coordinates) -> str:
     return " ".join(f"{coordinate:12.8f}" for coordinate in coordinates)
+
+
+def transformation_matrix(cell, symprec: float = _SYMPREC) -> np.ndarray:
+    """Determine the matrix transforming *cell* to the standardized conventional cell.
+
+    With spglib's convention (a b c)_standardized = (a b c) P⁻¹ for the basis vectors,
+    the fractional coordinates k of a reciprocal-space vector obey k = k_standardized P.
+    The matrix is a property of the fractional coordinates alone, so it does not change
+    if the cell is rotated.
+
+    Parameters
+    ----------
+    cell : tuple
+        Lattice vectors, direct coordinates, and atomic numbers as spglib expects them.
+    symprec : float
+        Distance tolerance (in Å) spglib uses to detect the symmetry.
+
+    Returns
+    -------
+    np.ndarray
+        The transformation matrix P.
+    """
+    dataset = spglib.get_symmetry_dataset(cell, symprec=symprec)
+    transformation = np.array(dataset.transformation_matrix)
+    if np.linalg.det(transformation) > 1 + _VOLUME_TOLERANCE:
+        message = (
+            "The cell is a supercell of the standardized conventional cell, so the "
+            "high-symmetry points and the symmetry-adapted mesh of the crystal do not "
+            "apply to it. Please use the primitive cell instead, e.g. by reducing the "
+            "structure with `py4vasp symmetrize --primitive`."
+        )
+        raise exception.IncorrectUsage(message)
+    return transformation
+
+
+def to_input_basis(coordinates, cell, primitive_cell, symprec: float = _SYMPREC):
+    """Express k points given in the basis of *primitive_cell* in the basis of *cell*.
+
+    Both cells are mapped onto the standardized conventional cell spglib derives from
+    them, so the two conventions cancel. Because that mapping is purely fractional, the
+    result is independent of the orientation of either cell.
+
+    Parameters
+    ----------
+    coordinates : array-like
+        k points as fractions of the reciprocal lattice vectors of *primitive_cell*.
+    cell : tuple
+        The cell in whose basis the k points are expressed, as spglib expects it.
+    primitive_cell : tuple
+        The cell in whose basis the k points are given, as spglib expects it.
+    symprec : float
+        Distance tolerance (in Å) spglib uses to detect the symmetry.
+
+    Returns
+    -------
+    np.ndarray
+        The same k points as fractions of the reciprocal lattice vectors of *cell*.
+    """
+    primitive_transformation = transformation_matrix(primitive_cell, symprec)
+    transformation = np.linalg.solve(
+        primitive_transformation, transformation_matrix(cell, symprec)
+    )
+    return np.array(coordinates) @ transformation

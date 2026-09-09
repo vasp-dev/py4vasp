@@ -5,6 +5,7 @@ import types
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._calculation import _kpoints_file
 
 
@@ -80,3 +81,109 @@ def test_line_mode_does_not_comment_labels(three_segments):
     assert "#" not in text
     kpoint_lines = [line for line in text.splitlines()[4:] if line.strip()]
     assert [line.split()[3] for line in kpoint_lines] == list("ΓXXWWΓ")
+
+
+# spglib cells (lattice vectors, direct positions, atomic numbers) of the same cubic
+# lattice in its primitive and its conventional setting
+_SIMPLE_CUBIC = (np.eye(3), [[0, 0, 0]], [1])
+_DOUBLE_CUBIC = (np.diag([2.0, 1.0, 1.0]), [[0, 0, 0], [0.5, 0, 0]], [1, 1])
+_BCC_PRIMITIVE = (
+    np.array([[-0.5, 0.5, 0.5], [0.5, -0.5, 0.5], [0.5, 0.5, -0.5]]),
+    [[0, 0, 0]],
+    [1],
+)
+_BCC_CONVENTIONAL = (np.eye(3), [[0, 0, 0], [0.5, 0.5, 0.5]], [1, 1])
+_FCC_PRIMITIVE = (
+    np.array([[0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0]]),
+    [[0, 0, 0]],
+    [1],
+)
+_FCC_CONVENTIONAL = (
+    np.eye(3),
+    [[0, 0, 0], [0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0]],
+    [1, 1, 1, 1],
+)
+
+
+def _rotate(cell):
+    "Rotate the cell rigidly; the direct coordinates of the atoms do not change."
+    lattice_vectors, positions, numbers = cell
+    angle = 0.3
+    cos, sin = np.cos(angle), np.sin(angle)
+    rotation = np.array([[cos, -sin, 0], [sin, cos, 0], [0, 0, 1]])
+    return (lattice_vectors @ rotation.T, positions, numbers)
+
+
+def _cartesian(coordinates, cell):
+    return np.array(coordinates) @ np.linalg.inv(cell[0]).T
+
+
+def test_to_input_basis_of_same_cell(Assert):
+    pytest.importorskip("spglib")
+    coordinates = [[0.5, -0.5, 0.5], [0.25, 0.25, 0.25]]
+    actual = _kpoints_file.to_input_basis(coordinates, _BCC_PRIMITIVE, _BCC_PRIMITIVE)
+    Assert.allclose(actual, coordinates)
+
+
+def test_to_input_basis_of_conventional_cell(Assert):
+    pytest.importorskip("spglib")
+    # the H point of the bcc lattice is (1/2, -1/2, 1/2) in the primitive basis and
+    # coincides with the corner (0, 1, 0) of the conventional Brillouin zone
+    actual = _kpoints_file.to_input_basis(
+        [[0.5, -0.5, 0.5]], _BCC_CONVENTIONAL, _BCC_PRIMITIVE
+    )
+    Assert.allclose(actual, [[0, 1, 0]])
+
+
+@pytest.mark.parametrize(
+    "cell, primitive_cell",
+    [
+        (_BCC_CONVENTIONAL, _BCC_PRIMITIVE),
+        (_BCC_PRIMITIVE, _BCC_CONVENTIONAL),
+        (_FCC_CONVENTIONAL, _FCC_PRIMITIVE),
+        (_FCC_PRIMITIVE, _FCC_CONVENTIONAL),
+    ],
+)
+def test_to_input_basis_preserves_cartesian_kpoint(cell, primitive_cell, Assert):
+    pytest.importorskip("spglib")
+    coordinates = [[0.5, -0.5, 0.5], [0.25, 0.25, 0.25], [0, 0, 0]]
+    actual = _kpoints_file.to_input_basis(coordinates, cell, primitive_cell)
+    Assert.allclose(_cartesian(actual, cell), _cartesian(coordinates, primitive_cell))
+
+
+def test_to_input_basis_is_rotation_invariant(Assert):
+    pytest.importorskip("spglib")
+    # seekpath returns its primitive cell in an idealized orientation that need not
+    # agree with the one of the input cell; the mapping must not notice
+    coordinates = [[0.5, -0.5, 0.5], [0.25, 0.25, 0.25]]
+    reference = _kpoints_file.to_input_basis(
+        coordinates, _BCC_CONVENTIONAL, _BCC_PRIMITIVE
+    )
+    actual = _kpoints_file.to_input_basis(
+        coordinates, _BCC_CONVENTIONAL, _rotate(_BCC_PRIMITIVE)
+    )
+    Assert.allclose(actual, reference)
+
+
+def test_to_input_basis_rejects_supercell():
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.IncorrectUsage):
+        _kpoints_file.to_input_basis([[0, 0, 0]], _DOUBLE_CUBIC, _SIMPLE_CUBIC)
+
+
+@pytest.mark.parametrize(
+    "cell, determinant",
+    [
+        (_SIMPLE_CUBIC, 1),
+        (_BCC_CONVENTIONAL, 1),
+        (_BCC_PRIMITIVE, 0.5),
+        (_FCC_CONVENTIONAL, 1),
+        (_FCC_PRIMITIVE, 0.25),
+    ],
+)
+def test_transformation_matrix(cell, determinant, Assert):
+    pytest.importorskip("spglib")
+    # the transformation matrix maps the input cell onto the standardized conventional
+    # cell; its determinant is the ratio of the two volumes
+    actual = _kpoints_file.transformation_matrix(cell)
+    Assert.allclose(np.linalg.det(actual), determinant)
