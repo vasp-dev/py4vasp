@@ -17,6 +17,13 @@ package -- the dependency runs one way only.
 
 import numpy as np
 
+from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attributes
+    cell,
+    dos,
+    electronic_structure,
+    kpoint,
+)
+
 # constants for the shape of presentation data
 NUMBER_POINTS = 301  # samples of an energy axis (density of states, optics)
 LINE_LENGTH = 41  # k points along one segment of a band-structure path

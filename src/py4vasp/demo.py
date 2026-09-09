@@ -7,6 +7,7 @@ import h5py
 
 from py4vasp import _demo, exception, raw
 from py4vasp._calculation import Calculation
+from py4vasp._demo import showcase
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_WAVEFILE
 from py4vasp._raw.write import write
 
@@ -76,8 +77,11 @@ def _write_calculation_data(generator, h5f, waveh5f=None):
 
 
 def _generate_default_data(h5f, waveh5f=None):
+    # Band and Dos share results/electron_dos/efermi, because a calculation has a
+    # single Fermi energy, and the first write to a path wins. The two therefore have to
+    # agree on it; both take it from the same band model.
+    write(h5f, showcase.dos.Sr2TiO4("with_projectors"))
     write(h5f, _demo.band.multiple_bands("with_projectors"))
-    write(h5f, _demo.dos.Sr2TiO4("with_projectors"))
     write(h5f, _demo.energy.relax(randomize=True))
     write(h5f, _demo.force.Sr2TiO4(randomize=True))
     write(h5f, _demo.stress.Sr2TiO4(randomize=True))
@@ -87,8 +91,8 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, _demo.phonon.band.Sr2TiO4())
     write(h5f, _demo.dielectric_function.electron())
     write(h5f, _demo.velocity.Sr2TiO4())
+    write(h5f, showcase.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
     write(h5f, _demo.band.line_mode("no_labels"), selection="kpoints_opt")
-    write(h5f, _demo.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
     write(h5f, _demo.current_density.current_density("all"), selection="nmr")
     write(h5f, _demo.exciton.density.Sr2TiO4())
     if waveh5f is not None:
