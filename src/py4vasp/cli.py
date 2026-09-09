@@ -128,10 +128,15 @@ def symmetrize(file, primitive, symprec, in_place, output):
         poscar = result.to_POSCAR()
     except exception.Py4VaspError as error:
         raise click.ClickException(*error.args) from error
+    _write_or_print(poscar, destination)
+
+
+def _write_or_print(text, destination):
+    "Store the generated file where the user asked for it; stdout is the default."
     if destination is None:
-        print(poscar)
+        print(text)
     else:
-        destination.write_text(poscar)
+        destination.write_text(text)
 
 
 def _read_structure(file):
@@ -158,3 +163,64 @@ def _raise_if_output_not_supported(destination):
             "single POSCAR file."
         )
         raise exception.NotImplemented(message)
+
+
+@cli.group()
+def generate():
+    """Generate an input file for a VASP calculation."""
+
+
+@generate.command("kpath")
+@click.argument(
+    "file", type=click.Path(exists=True, readable=True, path_type=pathlib.Path)
+)
+@click.option(
+    "-n",
+    "--number-points",
+    "number_points",
+    type=int,
+    default=40,
+    show_default=True,
+    help="Number of k points VASP generates along every line of the path.",
+)
+@click.option(
+    "--time-reversal/--no-time-reversal",
+    "time_reversal",
+    default=True,
+    show_default=True,
+    help="""Whether the band structure at k and -k agrees. Switch it off for a magnetic
+    system without inversion symmetry; then the path also covers the primed images of
+    the special points.""",
+)
+@click.option(
+    "--symprec",
+    type=float,
+    default=_SYMPREC,
+    show_default=True,
+    help="Symmetry tolerance in Å passed to spglib.",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(path_type=pathlib.Path),
+    help="Write the KPOINTS file to this path instead of stdout.",
+)
+def generate_kpath(file, number_points, time_reversal, symprec, output):
+    """Generate a KPOINTS file along the high-symmetry path of the structure in FILE.
+
+    FILE may be a POSCAR, CONTCAR, or HDF5 file containing a structure, or an archive
+    of a VASP calculation. seekpath determines the recommended path and py4vasp writes
+    it in line mode with the label of every special point behind its coordinates, so
+    that VASP reads the labels. By default the file is written to stdout; use
+    -o/--output to store it as KPOINTS or KPOINTS_OPT.
+    """
+    try:
+        structure = _read_structure(file)
+        kpoints = structure.generate_kpath(
+            number_points=number_points,
+            time_reversal=time_reversal,
+            symprec=symprec,
+        )
+    except exception.Py4VaspError as error:
+        raise click.ClickException(*error.args) from error
+    _write_or_print(kpoints, output)

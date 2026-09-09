@@ -341,3 +341,76 @@ def test_symmetrize_output_to_archive_not_implemented(
     result = runner.invoke(cli, ["symmetrize", str(poscar), *options])
     assert result.exit_code != 0
     assert "archive" in result.output
+
+
+# ---------------------------------------------------------------------------
+# generate kpath command
+# ---------------------------------------------------------------------------
+
+
+def test_generate_kpath_writes_to_stdout(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kpath", str(poscar)])
+    assert result.exit_code == 0
+    mock_structure.from_POSCAR.assert_called_once_with("contents")
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kpath.assert_called_once_with(
+        number_points=40, time_reversal=True, symprec=_SYMPREC
+    )
+    assert result.output == f"{structure.generate_kpath.return_value}\n"
+
+
+@pytest.mark.parametrize("flag", ("-o", "--output"))
+def test_generate_kpath_output_file(mock_structure, tmp_path, flag):
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "KPOINTS_OPT"
+    mock_structure.from_POSCAR.return_value.generate_kpath.return_value = "KPOINTS"
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kpath", str(poscar), flag, str(output)])
+    assert result.exit_code == 0
+    assert output.read_text() == "KPOINTS"
+    assert result.output == ""  # nothing written to stdout
+
+
+@pytest.mark.parametrize("flag", ("-n", "--number-points"))
+def test_generate_kpath_forwards_number_points(mock_structure, tmp_path, flag):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kpath", str(poscar), flag, "20"])
+    assert result.exit_code == 0
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kpath.assert_called_once_with(
+        number_points=20, time_reversal=True, symprec=_SYMPREC
+    )
+
+
+def test_generate_kpath_forwards_symmetry_options(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    options = ["--no-time-reversal", "--symprec", "0.1"]
+    result = runner.invoke(cli, ["generate", "kpath", str(poscar), *options])
+    assert result.exit_code == 0
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kpath.assert_called_once_with(
+        number_points=40, time_reversal=False, symprec=0.1
+    )
+
+
+def test_generate_kpath_reports_py4vasp_error(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "KPOINTS_OPT"
+    error_message = "Cannot determine the path of a supercell."
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kpath.side_effect = exception.Py4VaspError(error_message)
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kpath", str(poscar), "-o", str(output)])
+    assert result.exit_code != 0
+    assert error_message in result.output
+    assert not output.exists()
+
+
+def test_generate_kpath_missing_file():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kpath", "does_not_exist"])
+    assert result.exit_code != 0
