@@ -104,3 +104,17 @@ def Fe3O4() -> raw.Structure:
         cell=cell.Fe3O4(),
         positions=_demo.wrap_data(np.array(_FE3O4_POSITIONS) + distortion),
     )
+
+
+def Cu() -> raw.Structure:
+    """Copper in its face-centred cubic cell.
+
+    The single atom sits on a site the symmetry fixes completely, so nothing can relax
+    but the cell, which expands onto its size over the steps of the trajectory.
+    """
+    positions = np.zeros((showcase.NUMBER_STEPS, 1, 3))
+    return raw.Structure(
+        stoichiometry=stoichiometry.Cu(),
+        cell=cell.Cu(),
+        positions=_demo.wrap_data(positions),
+    )

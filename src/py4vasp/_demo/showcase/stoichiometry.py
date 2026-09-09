@@ -15,3 +15,11 @@ def Fe3O4() -> raw.Stoichiometry:
         number_ion_types=np.array((6, 8)),
         ion_types=raw.VaspData(np.array(("Fe", "O "), dtype="S")),
     )
+
+
+def Cu() -> raw.Stoichiometry:
+    """A single copper atom, the primitive cell of the face-centred cubic metal."""
+    return raw.Stoichiometry(
+        number_ion_types=np.array((1,)),
+        ion_types=raw.VaspData(np.array(("Cu",), dtype="S")),
+    )

@@ -16,3 +16,14 @@ def Fe3O4(use_orbitals, magnetism="collinear") -> raw.Projector:
         ),
         number_spin_projections=spin_projections,
     )
+
+
+def Cu(use_orbitals) -> raw.Projector:
+    """Projectors of copper, resolved by angular momentum but not by spin."""
+    return raw.Projector(
+        stoichiometry=stoichiometry.Cu(),
+        orbital_types=_demo.wrap_orbital_types(
+            use_orbitals, _demo.projector.L_RESOLVED_ORBITALS
+        ),
+        number_spin_projections=_demo.NONPOLARIZED,
+    )

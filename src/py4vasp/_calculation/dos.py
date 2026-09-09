@@ -222,6 +222,13 @@ class Dos(graph.Mixin):
 
     >>> calculation.dos.selections()
     {'dos': ['default', 'kpoints_opt'], 'atom': [...], 'orbital': [...], 'spin': [...]}
+
+    The example data above describes an insulator, so its DOS vanishes at the Fermi
+    energy. Generate a metal instead to see a DOS that does not
+
+    >>> metal = demo.calculation(path, selection="metal")
+    >>> metal.dos.read()
+    {'energies': array(...), 'total': array(...), 'fermi_energy': np.float64(0.0)}
     """
 
     def __init__(self, source, quantity_name="dos"):

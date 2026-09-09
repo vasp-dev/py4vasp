@@ -25,7 +25,12 @@ def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
         is given the generated data will be stored in a subdirectory of the given path.
     selection
         Optional choice of which data is generated. If not provided or None some default
-        data is generated that is suitable for most examples.
+        data is generated that is suitable for most examples. The alternatives describe
+        other kinds of material: "collinear" and "noncollinear" a magnet resolved by two
+        spin channels or by three spin axes, "metal" a system with states at the Fermi
+        energy, "spin_texture" a slice of the Brillouin zone, and "perovskite" a
+        structure paired with its symmetry. Note that a selection other than the default
+        contains only the quantities its kind of material illustrates.
 
     Returns
     -------
@@ -131,6 +136,14 @@ def _generate_spin_texture_data(h5f, waveh5f=None):
     write(h5f, _demo.band.spin_texture("x~z"), selection="kpoints_opt")
 
 
+def _generate_metal_data(h5f, waveh5f=None):
+    # copper, whose density of states carries states at the Fermi energy where every
+    # other selection has either a gap or only one spin channel there
+    write(h5f, showcase.structure.Cu())
+    write(h5f, showcase.dos.Cu("with_projectors"))
+    write(h5f, showcase.band.Cu("with_projectors"))
+
+
 def _generate_perovskite_data(h5f, waveh5f=None):
     # cubic SrTiO3 with its matching Pm-3m symmetry, so the symmetry-derived
     # structure properties (Wyckoff positions, equivalent atoms, ...) are consistent
@@ -145,5 +158,6 @@ _DATA_GENERATORS = {
     "collinear": _generate_collinear_data,
     "noncollinear": _generate_noncollinear_data,
     "spin_texture": _generate_spin_texture_data,
+    "metal": _generate_metal_data,
     "perovskite": _generate_perovskite_data,
 }

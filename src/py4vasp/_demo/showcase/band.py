@@ -104,3 +104,30 @@ def _Fe3O4_projections(number_kpoints, magnetism):
     directions = electronic_structure.Fe3O4_spin_directions()
     projected = np.einsum("aokb,bs->saokb", projections, directions)
     return np.concatenate(([projections], projected))
+
+
+def Cu(projectors, labels="with_labels"):
+    """Band structure of copper along the face-centred cubic path.
+
+    The free-electron band crosses the Fermi energy, so its occupations change along the
+    path where the other showcase systems keep theirs at zero or one.
+    """
+    model = electronic_structure.Cu()
+    kpoints = kpoint.line_mode_Cu(labels)
+    coordinates = np.array(kpoints.coordinates)
+    eigenvalues = model.evaluate(coordinates)
+    use_orbitals = projectors == "with_projectors"
+    raw_band = raw.Band(
+        dispersion=raw.Dispersion(kpoints, _demo.wrap_data([eigenvalues])),
+        fermi_energy=model.fermi_energy,
+        occupations=_demo.wrap_data(
+            [np.where(eigenvalues < model.fermi_energy, 1.0, 0.0)]
+        ),
+        projectors=showcase.projector.Cu(use_orbitals),
+    )
+    if use_orbitals:
+        character = electronic_structure.Cu_character()
+        constant_along_path = np.ones(len(coordinates))
+        projections = np.einsum("bao,k->aokb", character, constant_along_path)
+        raw_band.projections = _demo.wrap_data(projections[np.newaxis])
+    return raw_band

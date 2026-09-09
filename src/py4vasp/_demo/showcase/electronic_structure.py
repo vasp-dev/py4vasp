@@ -287,3 +287,37 @@ def Fe3O4_spin_directions() -> np.ndarray:
             np.cos(polar),
         ]
     ).T
+
+
+# Copper: five narrow d bands filled well below the Fermi energy and one wide
+# free-electron band that crosses it. The centre and the hopping amplitude are in eV,
+# relative to the Fermi energy; recall that with three cubic translations a band is six
+# times its amplitude wide, so the d bands are deliberately flat and the sp band is not.
+_CU_BANDS = (
+    (-3.6, 0.10),
+    (-3.2, 0.13),
+    (-2.9, 0.11),
+    (-2.6, 0.14),
+    (-2.3, 0.12),
+    (1.0, 1.60),  # the sp band, spanning -8.6 to 10.6 eV, so it crosses E_F
+)
+# The d bands carry the d character, the sp band a mixture of s and p.
+_CU_CHARACTER = (
+    (range(0, 5), (2,), 1.0),  # d
+    (range(5, 6), (0, 1), 1.0),  # s and p
+)
+_CU_PROJECTIONS = (1, 4)
+
+
+def Cu() -> Model:
+    """Band model of copper: a filled d band below a free-electron band at the Fermi energy."""
+    return _cubic_model(_CU_BANDS, number_valence_bands=5)
+
+
+def Cu_character() -> np.ndarray:
+    """Weight of every orbital in every band of copper, shape ``(band, atom, orbital)``."""
+    character = np.zeros((len(_CU_BANDS), *_CU_PROJECTIONS))
+    for bands, orbitals, weight in _CU_CHARACTER:
+        for band in bands:
+            character[band, 0, list(orbitals)] = weight / len(orbitals)
+    return character

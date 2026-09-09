@@ -61,6 +61,11 @@ def line_mode_Fe3O4(labels="with_labels") -> raw.Kpoint:
     return _path(FCC_SPECIAL_POINTS, FCC_PATH, cell.Fe3O4(), labels)
 
 
+def line_mode_Cu(labels="with_labels") -> raw.Kpoint:
+    """Band-structure path through the Brillouin zone of copper."""
+    return _path(FCC_SPECIAL_POINTS, FCC_PATH, cell.Cu(), labels)
+
+
 def _path(special_points, path, raw_cell, labels) -> raw.Kpoint:
     corners = [special_points[label] for label in path]
     segments = [

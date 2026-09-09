@@ -39,6 +39,12 @@ def test_creating_perovskite_calculation(tmp_path):
     assert calculation.structure.number_atoms() == 5
 
 
+def test_creating_metal_calculation(tmp_path):
+    # the "metal" selection is the only one with states at the Fermi energy
+    calculation = demo.calculation(tmp_path / "metal_example", "metal")
+    assert calculation.structure.number_atoms() == 1
+
+
 finder = doctest.DocTestFinder()
 
 

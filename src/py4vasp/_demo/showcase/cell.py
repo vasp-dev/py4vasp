@@ -17,6 +17,10 @@ HEIGHT = 12.68276
 # the Fd-3m spinel.
 FE3O4_LATTICE_CONSTANT = 8.394
 
+# Cubic lattice constant of copper in Angstrom, as the literature reports it for the
+# face-centred cubic metal.
+CU_LATTICE_CONSTANT = 3.615
+
 INITIAL_COMPRESSION = 0.98  # the relaxation starts from a cell 2% too small
 
 
@@ -61,8 +65,16 @@ def Fe3O4() -> raw.Cell:
     The primitive cell of the face-centred cubic spinel lattice, which holds a quarter of
     the conventional cubic cell and therefore fourteen of its fifty-six atoms.
     """
-    a = FE3O4_LATTICE_CONSTANT
-    lattice_vectors = a / 2 * np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+    return _face_centred_cubic(FE3O4_LATTICE_CONSTANT)
+
+
+def Cu() -> raw.Cell:
+    """Cell of copper over the steps of the showcase relaxation."""
+    return _face_centred_cubic(CU_LATTICE_CONSTANT)
+
+
+def _face_centred_cubic(lattice_constant) -> raw.Cell:
+    lattice_vectors = lattice_constant / 2 * np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
     scaling = showcase.converge(INITIAL_COMPRESSION, 1.0)
     return raw.Cell(
         lattice_vectors=_demo.wrap_data(np.multiply.outer(scaling, lattice_vectors)),
