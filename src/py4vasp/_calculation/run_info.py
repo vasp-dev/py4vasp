@@ -9,12 +9,13 @@ from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
     merge_default,
+    merge_strings,
     merge_to_database,
     quantity,
 )
 from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.models import RunInfoModel
-from py4vasp._util import check
+from py4vasp._util import check, convert
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     exception.Py4VaspError,
@@ -46,6 +47,44 @@ class RunInfoHandler:
             **self._dict_from_contcar(),
             **self._dict_from_phonon_dispersion(),
         }
+
+    def __str__(self) -> str:
+        data = self.to_dict()
+        system = convert.text_to_string(data["system_tag"] or "")
+        header = f"run info for {system}:" if system else "run info:"
+        lines = [header, *self._summary_lines(data)]
+        return "\n".join(lines)
+
+    def _summary_lines(self, data):
+        """Report the quantities VASP wrote, skipping the ones it did not."""
+        version = data["vasp_version"]
+        if version is not None:
+            yield f"    VASP version: {convert.text_to_string(version)}"
+        if data["num_ionic_steps"] is not None:
+            yield f"    ionic steps: {data['num_ionic_steps']}"
+        if data["fermi_energy"] is not None:
+            yield f"    Fermi energy: {data['fermi_energy']:.3f}"
+        spin = self._spin_string(data)
+        if spin is not None:
+            yield f"    spin: {spin}"
+        if data["is_metallic"] is not None:
+            yield f"    metallic: {'yes' if data['is_metallic'] else 'no'}"
+        qpoints = data["phonon_num_qpoints"]
+        modes = data["phonon_num_modes"]
+        if qpoints is not None and modes is not None:
+            yield f"    phonon dispersion: {qpoints} q-points, {modes} modes"
+
+    @staticmethod
+    def _spin_string(data):
+        if data["is_collinear"]:
+            return "collinear"
+        if data["is_noncollinear"]:
+            return "noncollinear"
+        # the two flags fall back to different fields, so one may be known while the
+        # other is not; a single False does not establish a nonpolarized calculation
+        if data["is_collinear"] is None or data["is_noncollinear"] is None:
+            return None
+        return "nonpolarized"
 
     def to_database(self) -> dict:
         """Serialize run info for the database."""
@@ -173,7 +212,9 @@ class RunInfoHandler:
     def _dict_from_phonon_dispersion(self) -> dict:
         phonon_num_qpoints = None
         phonon_num_modes = None
-        with suppress(exception.NoData):
+        # a calculation without phonons has no dispersion at all, so guard against the
+        # missing attribute the same way _dict_from_structure does
+        with suppress(exception.NoData, AttributeError):
             eigenvalues = self._raw_run_info.phonon_dispersion.eigenvalues
             phonon_num_qpoints = eigenvalues.shape[0]
             phonon_num_modes = eigenvalues.shape[1]
@@ -209,6 +250,46 @@ class RunInfo:
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read()
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
+    def selections(self) -> dict:
+        """Returns possible alternatives for this particular quantity VASP can produce.
+
+        The returned dictionary contains a single item with the name of the quantity
+        mapping to all possible selections. Each of these selections may be passed to
+        the other methods of this quantity to choose which output of VASP is used.
+
+        Returns
+        -------
+        dict
+            The key indicates this quantity and the value lists the possible choices
+            for the selection argument of its other methods.
+        """
+        from py4vasp._raw import definition as raw_module
+
+        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self))
+
+    def __str__(self, selection=None) -> str:
+        return merge_strings(
+            self._source,
+            self._quantity_name,
+            selection,
+            RunInfoHandler.from_data,
+            RunInfoHandler.__str__,
+        )
 
     def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""

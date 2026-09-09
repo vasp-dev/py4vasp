@@ -408,6 +408,11 @@ def test_to_database_scalar_dielectric_function_is_skipped(raw_data):
     assert optics._to_database() == {}
 
 
+def test_print_writes_to_stdout(electron, capsys):
+    assert electron.print() is None
+    assert capsys.readouterr().out == str(electron) + "\n"
+
+
 def test_factory_methods_read_dielectric_function(raw_data):
     # Optics owns no data of its own; from_path/from_file must access the dielectric
     # function in the schema rather than a nonexistent "optics" entry.

@@ -19,6 +19,11 @@ def Sr2TiO4(raw_data):
     return handler
 
 
+@pytest.fixture
+def dispatcher(raw_data):
+    return InternalStrain.from_data(raw_data.internal_strain("Sr2TiO4"))
+
+
 def test_Sr2TiO4_read(Sr2TiO4, Assert):
     actual = Sr2TiO4.to_dict()
     reference_structure = Sr2TiO4.ref.structure.to_dict()
@@ -30,9 +35,7 @@ def test_Sr2TiO4_read(Sr2TiO4, Assert):
     Assert.allclose(actual["internal_strain"], Sr2TiO4.ref.internal_strain)
 
 
-def test_Sr2TiO4_print(Sr2TiO4):
-    actual = str(Sr2TiO4)
-    reference = """
+REFERENCE_OUTPUT = """
 Internal strain tensor (eV/Å):
  ion  displ     X           Y           Z          XY          YZ          ZX
 ---------------------------------------------------------------------------------
@@ -58,9 +61,26 @@ Internal strain tensor (eV/Å):
         y   171.00000   175.00000   179.00000   173.00000   177.00000   175.00000
         z   180.00000   184.00000   188.00000   182.00000   186.00000   184.00000
 """.strip()
-    assert actual == reference
+
+
+def test_Sr2TiO4_print(Sr2TiO4):
+    assert str(Sr2TiO4) == REFERENCE_OUTPUT
+
+
+def test_print_dispatcher(dispatcher, format_):
+    actual, _ = format_(dispatcher)
+    assert actual == {"text/plain": REFERENCE_OUTPUT}
+
+
+def test_print_writes_to_stdout(dispatcher, capsys):
+    assert dispatcher.print() is None
+    assert capsys.readouterr().out == str(dispatcher) + "\n"
+
+
+def test_selections(dispatcher):
+    assert dispatcher.selections() == {"internal_strain": ["default"]}
 
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.internal_strain("Sr2TiO4")
-    check_factory_methods(InternalStrain, data)
+    check_factory_methods(InternalStrain, data, skip_methods=["selections"])

@@ -422,6 +422,10 @@ class ElectronPhononTransportHandler(abc.Sequence):
 
     def _has_spin_data(self):
         """Check if any instance has spin-resolved data."""
+        if len(self) == 0:
+            # a calculation without transport data has no instance to inspect, and
+            # indexing the empty dataset would raise an IndexError
+            return False
         first_instance = TransportInstance(self, 0)
         return first_instance._has_spin()
 
@@ -496,6 +500,17 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
 
     def _handler_factory(self, raw):
         return ElectronPhononTransportHandler.from_data(raw)
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
 
     def __str__(self, selection=None):
         return merge_strings(

@@ -666,12 +666,26 @@ def test_to_database_collects_available_sources(tmp_path):
     assert result["structure"]["final"].num_ions == 7
 
 
+def test_print_writes_to_stdout(Sr2TiO4, capsys):
+    assert Sr2TiO4.print() is None
+    assert capsys.readouterr().out == str(Sr2TiO4) + "\n"
+
+
+def test_selections(Sr2TiO4):
+    assert Sr2TiO4.selections() == {
+        "structure": ["default", "final", "exciton", "poscar"]
+    }
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.structure("Sr2TiO4")
     parameters = {"__getitem__": {"steps": slice(None)}}
     # the Sr2TiO4 trajectory carries no symmetry, so the symmetry-derived methods
     # raise NoData; they are exercised on the perovskite fixture instead
+    # the schema-only selections never opens the data file, so it cannot satisfy the
+    # single-access-per-method contract that check_factory_methods verifies
     skip_methods = [
+        "selections",
         "equivalent_atoms",
         "wyckoff_positions",
         "standardized_cell",

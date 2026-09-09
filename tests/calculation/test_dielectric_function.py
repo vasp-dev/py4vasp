@@ -453,6 +453,11 @@ def test_to_database_ionic(ionic):
     _check_to_database(ionic)
 
 
+def test_print_writes_to_stdout(electronic, capsys):
+    assert electronic.print() is None
+    assert capsys.readouterr().out == str(electronic) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_function("electron")
     check_factory_methods(DielectricFunction, data)

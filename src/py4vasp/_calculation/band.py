@@ -33,7 +33,6 @@ from py4vasp._util import (
 )
 
 pd = import_.optional("pandas")
-pretty = import_.optional("IPython.lib.pretty")
 
 _OCCUPATION_CUTOFF = 1e-2
 
@@ -371,6 +370,17 @@ class Band(graph.Mixin):
                 and projector.has_projector_data(raw_data.projectors)
             )
         return True
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
 
     def __str__(self, selection=None):
         return merge_strings(

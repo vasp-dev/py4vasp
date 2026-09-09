@@ -73,6 +73,15 @@ def test_to_database(exciton_eigenvector):
             assert isinstance(getattr(db_data, fld.name), (int, type(None)))
 
 
+def test_print_writes_to_stdout(exciton_eigenvector, capsys):
+    assert exciton_eigenvector.print() is None
+    assert capsys.readouterr().out == str(exciton_eigenvector) + "\n"
+
+
+def test_selections(exciton_eigenvector):
+    assert exciton_eigenvector.selections() == {"exciton_eigenvector": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.exciton_eigenvector("default")
-    check_factory_methods(ExcitonEigenvector, data)
+    check_factory_methods(ExcitonEigenvector, data, skip_methods=["selections"])

@@ -96,6 +96,15 @@ def test_to_database_in_calculation(tmp_path):
     assert "phonon_phonon_mode" not in properties
 
 
+def test_print_writes_to_stdout(phonon_mode, capsys):
+    assert phonon_mode.print() is None
+    assert capsys.readouterr().out == str(phonon_mode) + "\n"
+
+
+def test_selections(phonon_mode):
+    assert phonon_mode.selections() == {"phonon_mode": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_mode("Sr2TiO4")
-    check_factory_methods(PhononMode, data)
+    check_factory_methods(PhononMode, data, skip_methods=["selections"])

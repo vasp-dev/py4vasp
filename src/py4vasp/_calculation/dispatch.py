@@ -80,6 +80,14 @@ def quantity(name, group=None):
         if not isinstance(getattr(cls, "_path", None), property):
             cls._path = property(lambda self: self._source.path or pathlib.Path.cwd())
 
+        # The public path is an alias of _path, which the graph and view mixins write
+        # their output to. Quantities defining their own path property keep it.
+        if not isinstance(getattr(cls, "path", None), property):
+            cls.path = property(
+                lambda self: self._path,
+                doc="Returns the path from which the output is obtained.",
+            )
+
         # Every quantity shares the public is_available (documented once); the
         # per-quantity logic lives in _is_available, which defaults to the mandatory
         # schema check and is overridden by the few quantities needing custom logic.

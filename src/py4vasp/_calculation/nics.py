@@ -22,8 +22,6 @@ from py4vasp._raw.models import NicsModel
 from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
 
-pretty = import_.optional("IPython.lib.pretty")
-
 _DEFAULT_SELECTION: str = "isotropic"
 
 
@@ -46,7 +44,7 @@ class NicsHandler:
             data_string = self._points_to_string()
         return f"""\
 nucleus-independent chemical shift:
-    structure: {pretty.pretty(stoichiometry)}
+    structure: {stoichiometry}
 {data_string}"""
 
     def to_dict(self) -> dict:
@@ -288,6 +286,34 @@ class Nics(view.Mixin):
         if method in ("to_view", "to_contour"):
             return on_grid and has_grid
         return has_grid if on_grid else has_points
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
+    def selections(self) -> dict:
+        """Returns possible alternatives for this particular quantity VASP can produce.
+
+        The returned dictionary contains a single item with the name of the quantity
+        mapping to all possible selections. Each of these selections may be passed to
+        the other methods of this quantity to choose which output of VASP is used.
+
+        Returns
+        -------
+        dict
+            The key indicates this quantity and the value lists the possible choices
+            for the selection argument of its other methods.
+        """
+        from py4vasp._raw import definition as raw_module
+
+        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
     def __str__(self, selection=None):
         return merge_strings(

@@ -157,6 +157,15 @@ def test_to_database(elastic_moduli):
             ), f"mismatch in {key}: expected {value}, got {getattr(overview, key)}."
 
 
+def test_print_writes_to_stdout(elastic_modulus, capsys):
+    assert elastic_modulus.print() is None
+    assert capsys.readouterr().out == str(elastic_modulus) + "\n"
+
+
+def test_selections(elastic_modulus):
+    assert elastic_modulus.selections() == {"elastic_modulus": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.elastic_modulus("dft")
-    check_factory_methods(ElasticModulus, data)
+    check_factory_methods(ElasticModulus, data, skip_methods=["selections"])

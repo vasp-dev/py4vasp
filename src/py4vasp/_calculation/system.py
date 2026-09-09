@@ -87,6 +87,34 @@ class System:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
+    def selections(self) -> dict:
+        """Returns possible alternatives for this particular quantity VASP can produce.
+
+        The returned dictionary contains a single item with the name of the quantity
+        mapping to all possible selections. Each of these selections may be passed to
+        the other methods of this quantity to choose which output of VASP is used.
+
+        Returns
+        -------
+        dict
+            The key indicates this quantity and the value lists the possible choices
+            for the selection argument of its other methods.
+        """
+        from py4vasp._raw import definition as raw_module
+
+        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+
     def __str__(self, selection=None) -> str:
         return merge_strings(
             self._source,

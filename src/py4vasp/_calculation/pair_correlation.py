@@ -52,6 +52,14 @@ class PairCorrelationHandler:
     ) -> "PairCorrelationHandler":
         return cls(raw_pair_correlation, steps)
 
+    def __str__(self) -> str:
+        distances = self._raw_data.distances
+        pairs = ", ".join(self.labels())
+        return f"""\
+pair-correlation function:
+    distances: [{distances[0]:0.2f}, {distances[-1]:0.2f}] {len(distances)} points
+    pairs: {pairs}"""
+
     def to_dict(self, selection=None) -> dict:
         """Read the pair-correlation function and store it in a dictionary."""
         selection = self._default_selection_if_none(selection)
@@ -166,11 +174,6 @@ class PairCorrelation(graph.Mixin):
         """Create a PairCorrelation dispatcher from raw data."""
         return cls(source=DataSource(raw_pair_correlation))
 
-    @property
-    def path(self):
-        """Path used for file-export methods."""
-        return self._path
-
     def __getitem__(self, steps) -> "PairCorrelation":
         new = copy.copy(self)
         new._steps = steps
@@ -252,6 +255,34 @@ class PairCorrelation(graph.Mixin):
             self._handler_factory,
             PairCorrelationHandler.labels,
         )
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
+    def selections(self) -> dict:
+        """Returns possible alternatives for this particular quantity VASP can produce.
+
+        The returned dictionary contains a single item with the name of the quantity
+        mapping to all possible selections. Each of these selections may be passed to
+        the other methods of this quantity to choose which output of VASP is used.
+
+        Returns
+        -------
+        dict
+            The key indicates this quantity and the value lists the possible choices
+            for the selection argument of its other methods.
+        """
+        from py4vasp._raw import definition as raw_module
+
+        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
     def __str__(self, selection=None) -> str:
         return merge_strings(

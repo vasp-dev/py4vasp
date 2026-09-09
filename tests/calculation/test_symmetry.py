@@ -222,6 +222,15 @@ def test_to_database_dispatcher(symmetry):
     assert result["symmetry"]["default"] == expected
 
 
+def test_print_writes_to_stdout(symmetry, capsys):
+    assert symmetry.print() is None
+    assert capsys.readouterr().out == str(symmetry) + "\n"
+
+
+def test_selections(symmetry):
+    assert symmetry.selections() == {"symmetry": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     raw_symmetry = raw_data.symmetry("CoO")
-    check_factory_methods(Symmetry, raw_symmetry)
+    check_factory_methods(Symmetry, raw_symmetry, skip_methods=["selections"])

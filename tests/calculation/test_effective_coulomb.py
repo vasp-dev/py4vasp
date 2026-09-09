@@ -545,6 +545,11 @@ screened Hubbard J =\s+[-\d.]+\s+[-\d.]+"""
     assert re.search(expected_result, actual["text/plain"], re.MULTILINE)
 
 
+def test_print_writes_to_stdout(effective_coulomb, capsys):
+    assert effective_coulomb.print() is None
+    assert capsys.readouterr().out == str(effective_coulomb) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.effective_coulomb("crpa")
     check_factory_methods(EffectiveCoulomb, data)

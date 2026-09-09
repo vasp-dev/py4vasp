@@ -272,6 +272,7 @@ def expected_color(selection):
 def test_selections(example_moments):
     actual = example_moments.selections()
     assert actual == {
+        "local_moment": ["default"],
         "orbital_projection": example_moments.ref.projections,
         "component": example_moments.ref.components,
     }
@@ -337,6 +338,11 @@ def test_to_database(example_moments):
     assert db_data.final_spin_moment_total_max == (
         np.max(sums_moments) if (sums_moments is not None) else None
     )
+
+
+def test_print_writes_to_stdout(collinear_moments, capsys):
+    assert collinear_moments.print() is None
+    assert capsys.readouterr().out == str(collinear_moments) + "\n"
 
 
 def test_factory_methods(raw_data, check_factory_methods):

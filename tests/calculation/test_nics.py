@@ -560,9 +560,18 @@ def test_bader_charge_in_points_mode_raises(raw_data):
         nics.bader_charge(bader_analysis=analysis)
 
 
+def test_print_writes_to_stdout(nics, capsys):
+    assert nics.print() is None
+    assert capsys.readouterr().out == str(nics) + "\n"
+
+
+def test_selections(nics):
+    assert nics.selections() == {"nics": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.nics("on-a-grid")
-    check_factory_methods(Nics, data, skip_methods=["bader_charge"])
+    check_factory_methods(Nics, data, skip_methods=["selections", "bader_charge"])
 
 
 def test_is_available_on_a_grid(nics_on_a_grid):

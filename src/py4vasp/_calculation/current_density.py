@@ -22,8 +22,6 @@ from py4vasp._third_party import graph
 from py4vasp._util import check, documentation, import_, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
-pretty = import_.optional("IPython.lib.pretty")
-
 _COMMON_PARAMETERS = f"""selection : str | None = None
     Selects which of the possible available currents is used. Check the
     `selections` method for all available choices.
@@ -53,7 +51,7 @@ class CurrentDensityHandler:
         key = self._raw_current_density.valid_indices[-1]
         grid = self._raw_current_density[key].current_density.shape[1:]
         return f"""current density:
-    structure: {pretty.pretty(stoichiometry)}
+    structure: {stoichiometry}
     grid: {grid[2]}, {grid[1]}, {grid[0]}
     selections: {", ".join(str(index) for index in self._raw_current_density.valid_indices)}"""
 
@@ -207,6 +205,34 @@ class CurrentDensity:
         if method not in ("to_contour", "to_quiver"):
             return False
         return is_available_raw(self._quantity_name, raw_data, selection=selection)
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
+    def selections(self) -> dict:
+        """Returns possible alternatives for this particular quantity VASP can produce.
+
+        The returned dictionary contains a single item with the name of the quantity
+        mapping to all possible selections. Each of these selections may be passed to
+        the other methods of this quantity to choose which output of VASP is used.
+
+        Returns
+        -------
+        dict
+            The key indicates this quantity and the value lists the possible choices
+            for the selection argument of its other methods.
+        """
+        from py4vasp._raw import definition as raw_module
+
+        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
     def __str__(self, selection=None):
         return merge_strings(

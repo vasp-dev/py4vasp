@@ -75,6 +75,15 @@ def test_to_database(raw_data):
     assert db_data.total_dipole_norm == float(np.linalg.norm(total_dipole))
 
 
+def test_print_writes_to_stdout(polarization, capsys):
+    assert polarization.print() is None
+    assert capsys.readouterr().out == str(polarization) + "\n"
+
+
+def test_selections(polarization):
+    assert polarization.selections() == {"polarization": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.polarization("default")
-    check_factory_methods(Polarization, data)
+    check_factory_methods(Polarization, data, skip_methods=["selections"])

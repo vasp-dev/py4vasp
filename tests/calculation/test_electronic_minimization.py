@@ -289,6 +289,17 @@ def test_to_database(electronic_minimization, raw_data):
             ), f"{k} has unexpected type {type(v)}: {v}"
 
 
+def test_print_writes_to_stdout(electronic_minimization, capsys):
+    assert electronic_minimization.print() is None
+    assert capsys.readouterr().out == str(electronic_minimization) + "\n"
+
+
+def test_selections(electronic_minimization):
+    assert electronic_minimization.selections() == {
+        "electronic_minimization": ["default"]
+    }
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electronic_minimization()
-    check_factory_methods(ElectronicMinimization, data)
+    check_factory_methods(ElectronicMinimization, data, skip_methods=["selections"])

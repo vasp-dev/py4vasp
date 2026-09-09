@@ -303,6 +303,24 @@ def test_print_instance(band_gap, format_):
     assert actual == {"text/plain": str(instance)}
 
 
+def test_print_writes_to_stdout(band_gap, capsys):
+    assert band_gap.print() is None
+    assert capsys.readouterr().out == str(band_gap) + "\n"
+
+
+def test_empty_scattering_approximation(raw_band_gap):
+    # a calculation without electron-phonon data has no scattering approximations at
+    # all; len() and str() run in display code and must not raise for it
+    raw_band_gap.scattering_approximation = []
+    band_gap = ElectronPhononBandgap.from_data(raw_band_gap)
+    assert len(band_gap) == 0
+    # the instance count comes straight from the mask that used to raise; the rest of
+    # the text lists the randomized demo parameters, so only pin what matters here
+    actual = str(band_gap)
+    assert actual.startswith("Electron-phonon bandgap with 0 instance(s):")
+    assert "scattering_approx: []" in actual
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_band_gap("default")
     parameters = {"select": {"selection": "selfen_carrier_den=0.01"}}

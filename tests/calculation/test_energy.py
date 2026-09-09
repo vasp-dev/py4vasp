@@ -129,7 +129,7 @@ def check_to_image(MD_energy, filename_argument, expected_filename):
 
 def test_selections(MD_energy, raw_data):
     md_selections = MD_energy.selections()
-    md_selections.pop("energy")
+    assert md_selections.pop("energy") == ["default", "afqmc"]
     components = [
         "ion_electron",
         "TOTEN",
@@ -149,7 +149,7 @@ def test_selections(MD_energy, raw_data):
     assert md_selections == {"component": components}
     #
     relax_selections = Energy.from_data(raw_data.energy("relax")).selections()
-    relax_selections.pop("energy")
+    assert relax_selections.pop("energy") == ["default", "afqmc"]
     components = [
         "free_energy",
         "TOTEN",
@@ -161,7 +161,7 @@ def test_selections(MD_energy, raw_data):
     assert relax_selections == {"component": components}
     #
     afqmc_selections = Energy.from_data(raw_data.energy("afqmc")).selections()
-    afqmc_selections.pop("energy")
+    assert afqmc_selections.pop("energy") == ["default", "afqmc"]
     components = [
         "step",
         "STEP",
@@ -289,6 +289,11 @@ def test_detect_energy_format_unknown_raises():
     # an unrecognized set of labels must raise rather than silently fall through
     with pytest.raises(exception.NotImplemented):
         _detect_energy_format({"not_a_real_energy_key"})
+
+
+def test_print_writes_to_stdout(MD_energy, capsys):
+    assert MD_energy.print() is None
+    assert capsys.readouterr().out == str(MD_energy) + "\n"
 
 
 def test_factory_methods(raw_data, check_factory_methods):

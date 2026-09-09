@@ -96,6 +96,17 @@ def test_print(chemical_potential, format_):
     assert actual == {"text/plain": str(chemical_potential)}
 
 
+def test_print_writes_to_stdout(chemical_potential, capsys):
+    assert chemical_potential.print() is None
+    assert capsys.readouterr().out == str(chemical_potential) + "\n"
+
+
+def test_selections(chemical_potential):
+    assert chemical_potential.selections() == {
+        "electron_phonon_chemical_potential": ["default"]
+    }
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_chemical_potential("carrier_den")
-    check_factory_methods(ChemicalPotential, data)
+    check_factory_methods(ChemicalPotential, data, skip_methods=["selections"])

@@ -86,6 +86,14 @@ class Base:
         actual, _ = format_(self.stoichiometry)
         assert actual == self.format_output
 
+    def test_print_writes_to_stdout(self, capsys):
+        assert self.stoichiometry.print() is None
+        assert capsys.readouterr().out == str(self.stoichiometry) + "\n"
+
+    def test_selections(self):
+        expected = {"stoichiometry": ["default", "phonon", "exciton"]}
+        assert self.stoichiometry.selections() == expected
+
     def test_to_database(self):
         handler = StoichiometryHandler.from_data(self.raw_stoichiometry)
         db_data: StoichiometryModel = handler.to_database()
@@ -260,7 +268,7 @@ def test_ion_types_not_required(method, raw_data):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.stoichiometry("Sr2TiO4")
-    check_factory_methods(Stoichiometry, data, skip_methods=["to_mdtraj"])
+    check_factory_methods(Stoichiometry, data, skip_methods=["to_mdtraj", "selections"])
 
 
 def test_stoichiometry_not_collected_standalone(raw_data):

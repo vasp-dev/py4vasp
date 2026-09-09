@@ -126,6 +126,78 @@ def test_dispatcher_to_database(run_info):
     assert isinstance(result["run_info"]["default"], RunInfoModel)
 
 
+def test_print(run_info, format_):
+    actual, _ = format_(run_info)
+    reference = """\
+run info for Sr2TiO4:
+    VASP version: 99.99.99
+    ionic steps: 4
+    Fermi energy: 0.500
+    spin: nonpolarized
+    metallic: no
+    phonon dispersion: 20 q-points, 21 modes"""
+    assert actual == {"text/plain": reference}
+
+
+def test_print_omits_unknown_quantities(raw_data, format_):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.runtime = None
+    raw_run_info.phonon_dispersion = None
+    actual, _ = format_(RunInfo.from_data(raw_run_info))
+    reference = """\
+run info for Sr2TiO4:
+    ionic steps: 4
+    Fermi energy: 0.500
+    spin: nonpolarized
+    metallic: no"""
+    assert actual == {"text/plain": reference}
+
+
+@pytest.mark.parametrize(
+    "len_dos, expected",
+    [
+        (2, "    spin: collinear"),
+        (4, "    spin: noncollinear"),
+        (1, "    spin: nonpolarized"),
+    ],
+)
+def test_print_reports_the_spin_configuration(raw_data, len_dos, expected):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.len_dos = len_dos
+    assert expected in str(RunInfo.from_data(raw_run_info))
+
+
+@pytest.mark.parametrize(
+    "known_field", ("band_dispersion_eigenvalues", "band_projections")
+)
+def test_print_omits_half_known_spin_configuration(raw_data, known_field):
+    # without a DOS the two flags fall back to different fields, so one of them may be
+    # False while the other is simply unknown; that is not enough to claim nonpolarized
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.len_dos = None
+    for field in ("band_dispersion_eigenvalues", "band_projections"):
+        if field != known_field:
+            setattr(raw_run_info, field, None)
+    assert "spin:" not in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_omits_unknown_spin_configuration(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.len_dos = None
+    raw_run_info.band_dispersion_eigenvalues = None
+    raw_run_info.band_projections = None
+    assert "spin:" not in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_writes_to_stdout(run_info, capsys):
+    assert run_info.print() is None
+    assert capsys.readouterr().out == str(run_info) + "\n"
+
+
+def test_selections(run_info):
+    assert run_info.selections() == {"run_info": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.run_info("Sr2TiO4")
-    check_factory_methods(RunInfo, data)
+    check_factory_methods(RunInfo, data, skip_methods=["selections"])

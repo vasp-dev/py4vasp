@@ -155,9 +155,18 @@ Macroscopic static dielectric tensor (dimensionless)
     assert actual == {"text/plain": expected}
 
 
+def test_print_writes_to_stdout(dft_tensor, capsys):
+    assert dft_tensor.print() is None
+    assert capsys.readouterr().out == str(dft_tensor) + "\n"
+
+
+def test_selections(dft_tensor):
+    assert dft_tensor.selections() == {"dielectric_tensor": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.dielectric_tensor("dft with_ion")
-    check_factory_methods(DielectricTensor, data)
+    check_factory_methods(DielectricTensor, data, skip_methods=["selections"])
 
 
 def _check_to_database(tensor, Assert):

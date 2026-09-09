@@ -406,11 +406,6 @@ class EffectiveCoulomb(graph.Mixin):
         """Create an EffectiveCoulomb dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_coulomb))
 
-    @property
-    def path(self):
-        """Returns the path from which the output is obtained."""
-        return self._path
-
     def _handler_factory(self, raw_data):
         return EffectiveCoulombHandler.from_data(raw_data)
 
@@ -538,6 +533,17 @@ class EffectiveCoulomb(graph.Mixin):
             EffectiveCoulombHandler.selections,
         )
         return {"effective_coulomb": ["default"], **result}
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
 
     def __str__(self, selection=None) -> str:
         return merge_strings(

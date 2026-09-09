@@ -142,6 +142,15 @@ def test_to_database(velocities):
     assert db_data.initial_index_velocity_max == int(np.argmax(initial_norms))
 
 
+def test_print_writes_to_stdout(Sr2TiO4, capsys):
+    assert Sr2TiO4.print() is None
+    assert capsys.readouterr().out == str(Sr2TiO4) + "\n"
+
+
+def test_selections(Sr2TiO4):
+    assert Sr2TiO4.selections() == {"velocity": ["default"]}
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.velocity("Fe3O4")
-    check_factory_methods(Velocity, data)
+    check_factory_methods(Velocity, data, skip_methods=["selections"])

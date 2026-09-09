@@ -161,7 +161,7 @@ class EnergyHandler:
 
     def selections(self) -> dict:
         components = list(self._init_selection_dict().keys())
-        return {"energy": [], "component": components}
+        return {"component": components}
 
     def to_database(self) -> dict:
         default_dict = self._default_dict_all()
@@ -418,13 +418,28 @@ class Energy(graph.Mixin):
         -
             Dictionary containing available selection options with their possible values.
         """
-        return merge_default(
+        from py4vasp._raw import definition as raw_module
+
+        handler_selections = merge_default(
             self._source,
             self._quantity_name,
             selection,
             self._handler_factory,
             EnergyHandler.selections,
         )
+        sources = list(raw_module.selections(self._quantity_name))
+        return {self._quantity_name: sources, **handler_selections}
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
 
     def __str__(self, selection: str | None = None) -> str:
         return merge_strings(

@@ -1317,3 +1317,40 @@ class TestArchiveSource:
         del source
         gc.collect()
         assert not directory.exists()
+
+
+def _all_registered_classes():
+    """Yield (name, dispatcher class) for every quantity in the registry."""
+    for name, entry in sorted(_REGISTRY.items()):
+        if isinstance(entry, dict):
+            for member, cls in sorted(entry.items()):
+                yield f"{name}.{member}", cls
+        else:
+            yield name, entry
+
+
+REGISTERED_CLASSES = list(_all_registered_classes())
+QUANTITY_CLASSES = [cls for _, cls in REGISTERED_CLASSES]
+QUANTITY_IDS = [name for name, _ in REGISTERED_CLASSES]
+
+
+class TestPathInjected:
+    """The public path property that base.Refinery provided for every quantity."""
+
+    @pytest.mark.parametrize("cls", QUANTITY_CLASSES, ids=QUANTITY_IDS)
+    def test_path_is_a_property(self, cls):
+        assert isinstance(getattr(cls, "path", None), property)
+
+    @pytest.mark.parametrize("cls", QUANTITY_CLASSES, ids=QUANTITY_IDS)
+    def test_path_reports_calculation_directory(self, cls, tmp_path):
+        assert cls.from_path(tmp_path).path == tmp_path.resolve()
+
+    @pytest.mark.parametrize("cls", QUANTITY_CLASSES, ids=QUANTITY_IDS)
+    def test_path_defaults_to_working_directory(self, cls):
+        # in-memory data has no path, so py4vasp writes generated output to the cwd
+        assert cls(source=DataSource(None)).path == pathlib.Path.cwd()
+
+    def test_path_is_documented(self):
+        structure = dict(REGISTERED_CLASSES)["structure"]
+        expected = "Returns the path from which the output is obtained."
+        assert structure.path.__doc__ == expected

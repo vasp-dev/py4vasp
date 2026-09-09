@@ -760,6 +760,11 @@ def test_dispatcher_to_database_default(single_band):
     assert isinstance(result["band"]["default"], BandModel)
 
 
+def test_print_writes_to_stdout(multiple_bands, capsys):
+    assert multiple_bands.print() is None
+    assert capsys.readouterr().out == str(multiple_bands) + "\n"
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.band("multiple")
     parameters = {"to_quiver": {"selection": "x~y(band=1)"}}
