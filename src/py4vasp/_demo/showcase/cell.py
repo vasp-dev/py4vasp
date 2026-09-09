@@ -13,6 +13,10 @@ from py4vasp._demo import showcase
 LATTICE_CONSTANT = 3.92771
 HEIGHT = 12.68276
 
+# Cubic lattice constant of magnetite in Angstrom, as the literature reports it for
+# the Fd-3m spinel.
+FE3O4_LATTICE_CONSTANT = 8.394
+
 INITIAL_COMPRESSION = 0.98  # the relaxation starts from a cell 2% too small
 
 
@@ -47,5 +51,20 @@ def Sr2TiO4() -> raw.Cell:
     scaling = showcase.converge(INITIAL_COMPRESSION, 1.0)
     return raw.Cell(
         lattice_vectors=_demo.wrap_data(np.multiply.outer(scaling, lattice_vectors())),
+        scale=raw.VaspData(1.0),
+    )
+
+
+def Fe3O4() -> raw.Cell:
+    """Cell of magnetite over the steps of the showcase relaxation.
+
+    The primitive cell of the face-centred cubic spinel lattice, which holds a quarter of
+    the conventional cubic cell and therefore fourteen of its fifty-six atoms.
+    """
+    a = FE3O4_LATTICE_CONSTANT
+    lattice_vectors = a / 2 * np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+    scaling = showcase.converge(INITIAL_COMPRESSION, 1.0)
+    return raw.Cell(
+        lattice_vectors=_demo.wrap_data(np.multiply.outer(scaling, lattice_vectors)),
         scale=raw.VaspData(1.0),
     )
