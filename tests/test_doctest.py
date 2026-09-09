@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 import py4vasp
-from py4vasp import _calculation, demo, exception
+from py4vasp import _calculation, demo
 from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calculation attributes
     band,
     dos,
@@ -24,6 +24,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     system,
 )
 from py4vasp._util import color as _util_color
+from py4vasp._util import import_
 
 
 def test_creating_default_calculation(tmp_path):
@@ -41,10 +42,11 @@ finder = doctest.DocTestFinder()
 
 
 def find_examples(obj):
-    try:
-        return finder.find(obj)
-    except exception.ModuleNotInstalled:
-        return []
+    # Deliberately no try/except here: swallowing ModuleNotInstalled used to drop every
+    # example of a module as soon as one optional dependency was absent, which silently
+    # hid all Structure examples from every CI job. An example that needs an extra
+    # belongs in _FULL_INSTALL_EXAMPLES below, where it is skipped individually.
+    return finder.find(obj)
 
 
 def _all_calculation_examples():
@@ -71,6 +73,8 @@ def _all_calculation_examples():
 # mapped to the package it needs; they run in test_calculation_full which skips via
 # importorskip when that package is missing. Everything else runs in test_calculation.
 _FULL_INSTALL_EXAMPLES = {
+    "py4vasp._calculation.band.Band.to_frame": "pandas",
+    "py4vasp._calculation.dos.Dos.to_frame": "pandas",
     "py4vasp._calculation.neighbor_list.NeighborList.read": "scipy",
     "py4vasp._calculation.neighbor_list.NeighborList.to_string": "scipy",
     "py4vasp._calculation.optics.Optics.color": "scipy",
@@ -82,6 +86,9 @@ _FULL_INSTALL_EXAMPLES = {
     "py4vasp._calculation.structure.Structure.standardized_cell": "spglib",
     "py4vasp._calculation.structure.Structure.prototype": "spglib",
     "py4vasp._calculation.structure.Structure.symmetrize": "spglib",
+    "py4vasp._calculation.structure.Structure.to_ase": "ase",
+    "py4vasp._calculation.structure.Structure.to_lammps": "ase",
+    "py4vasp._calculation.structure.Structure.to_mdtraj": "mdtraj",
 }
 
 
@@ -173,3 +180,14 @@ def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path):
         result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0
+
+
+def test_examples_found_despite_missing_optional_module(monkeypatch):
+    # structure.py declares the optional mdtraj, which is deliberately kept out of the
+    # `all` extra, so this is the state of every CI job. A lazy proxy for an absent
+    # package must not hide the examples of the whole module it is declared in.
+    monkeypatch.setattr(
+        _calculation.structure, "mdtraj", import_.optional("_not_installed_")
+    )
+    names = [example.name for example in find_examples(_calculation.structure)]
+    assert "py4vasp._calculation.structure.Structure.read" in names

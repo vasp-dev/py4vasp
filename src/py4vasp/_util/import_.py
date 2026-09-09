@@ -28,11 +28,19 @@ class _LazyModule:
         try:
             module = self._resolve()
         except Exception:
-            raise exception.ModuleNotInstalled(
-                "You use an optional part of py4vasp that relies on the package "
-                f"'{self._name}'. Please install the package to use this functionality."
-            ) from None
+            raise self._missing_module_error(attr) from None
         return getattr(module, attr)
+
+    def _missing_module_error(self, attr):
+        if attr.startswith("__") and attr.endswith("__"):
+            # Introspection probes dunder attributes with hasattr, which swallows only
+            # AttributeError. Reporting the missing package here would propagate out of
+            # hasattr and break inspecting any module that declares this proxy.
+            return AttributeError(attr)
+        return exception.ModuleNotInstalled(
+            "You use an optional part of py4vasp that relies on the package "
+            f"'{self._name}'. Please install the package to use this functionality."
+        )
 
 
 def optional(name):

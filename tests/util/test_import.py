@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import inspect
 import subprocess
 import sys
 
@@ -63,3 +64,14 @@ def test_import_py4vasp_defers_heavy_dependencies():
         [sys.executable, "-c", code], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_special_attribute_of_missing_module_raises_attribute_error():
+    # Introspection tools probe dunder attributes with hasattr, which only swallows
+    # AttributeError. Raising ModuleNotInstalled there propagates out of hasattr and
+    # breaks any inspection of a module that merely declares an optional dependency.
+    module = import_.optional("_name_which_does_not_exist_")
+    assert not hasattr(module, "__wrapped__")
+    with pytest.raises(AttributeError):
+        module.__wrapped__
+    assert inspect.unwrap(module) is module
