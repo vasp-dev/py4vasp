@@ -77,20 +77,23 @@ def _write_calculation_data(generator, h5f, waveh5f=None):
 
 
 def _generate_default_data(h5f, waveh5f=None):
-    # Band and Dos share results/electron_dos/efermi, because a calculation has a
-    # single Fermi energy, and the first write to a path wins. The two therefore have to
-    # agree on it; both take it from the same band model.
+    # The first write to a path is the one that lands, so the order matters wherever two
+    # quantities share a field. The structure comes first because nearly every quantity
+    # links one and would otherwise decide it: Force, Stress and Velocity slice the
+    # structure with their own steps, so all four have to describe one trajectory.
+    write(h5f, showcase.structure.Sr2TiO4())
+    # Band and Dos share results/electron_dos/efermi, because a calculation has a single
+    # Fermi energy. Both take it from the same band model, so they agree on it.
     write(h5f, showcase.dos.Sr2TiO4("with_projectors"))
     write(h5f, showcase.band.Sr2TiO4("with_projectors"))
-    write(h5f, _demo.energy.relax(randomize=True))
-    write(h5f, _demo.force.Sr2TiO4(randomize=True))
-    write(h5f, _demo.stress.Sr2TiO4(randomize=True))
-    write(h5f, _demo.structure.Sr2TiO4())
+    write(h5f, showcase.energy.relax())
+    write(h5f, showcase.force.Sr2TiO4())
+    write(h5f, showcase.stress.Sr2TiO4())
     write(h5f, _demo.symmetry.CoO())
     write(h5f, _demo.system.Sr2TiO4())
     write(h5f, _demo.phonon.band.Sr2TiO4())
     write(h5f, _demo.dielectric_function.electron())
-    write(h5f, _demo.velocity.Sr2TiO4())
+    write(h5f, showcase.velocity.Sr2TiO4())
     write(h5f, showcase.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
     write(
         h5f,

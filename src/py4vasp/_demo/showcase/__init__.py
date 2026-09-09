@@ -19,9 +19,15 @@ import numpy as np
 
 from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attributes
     band,
+    cell,
     dos,
     electronic_structure,
+    energy,
+    force,
     kpoint,
+    stress,
+    structure,
+    velocity,
 )
 
 # constants for the shape of presentation data
@@ -83,7 +89,23 @@ def converge(initial, final, number_steps=NUMBER_STEPS, rate=CONVERGENCE_RATE):
     -------
     -
         Trajectory of shape ``(number_steps, *shape)`` starting exactly at *initial* and
-        approaching *final* monotonically.
+        arriving exactly at *final*, approaching it monotonically.
     """
-    decay = np.exp(-rate * np.arange(number_steps))
-    return final + np.multiply.outer(decay, np.subtract(initial, final))
+    return final + np.multiply.outer(
+        decay(number_steps, rate), np.subtract(initial, final)
+    )
+
+
+def decay(number_steps=NUMBER_STEPS, rate=CONVERGENCE_RATE):
+    """Share of the initial deviation that is left at every step of a relaxation.
+
+    Returns
+    -------
+    -
+        Weights of shape ``(number_steps,)`` that fall off exponentially from exactly one
+        at the first step to exactly zero at the last. Ending at zero matters: the final
+        structure of the showcase has to be the ideal one to the precision the symmetry
+        analysis works with, not merely close to it.
+    """
+    remaining = np.exp(-rate * np.arange(number_steps))
+    return (remaining - remaining[-1]) / (1 - remaining[-1])

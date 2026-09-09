@@ -12,6 +12,7 @@ from py4vasp import _calculation, demo
 from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calculation attributes
     band,
     dos,
+    energy,
     force,
     kpoint,
     local_moment,
@@ -54,6 +55,7 @@ def _all_calculation_examples():
         find_examples(_calculation)
         + find_examples(_calculation.band)
         + find_examples(_calculation.dos)
+        + find_examples(_calculation.energy)
         + find_examples(_calculation.force)
         + find_examples(_calculation.kpoint)
         + find_examples(_calculation.local_moment)
@@ -110,7 +112,6 @@ def interesting_example(example):
         return False
     skipped_suffixes = (
         "bandgap",
-        "energy",
         "pair_correlation",
     )
     return suffix not in skipped_suffixes

@@ -68,7 +68,17 @@ def test_converge_decays_monotonically_onto_the_final_value():
     result = showcase.converge(initial, final)
     assert result.shape == (showcase.NUMBER_STEPS,)
     assert np.all(np.diff(result) < 0)
-    assert abs(result[-1] - final) < 0.01 * abs(initial - final)
+    # arriving exactly matters: the final structure of a relaxation has to be the ideal
+    # one to the precision the symmetry analysis works with
+    assert result[-1] == pytest.approx(final)
+
+
+def test_decay_falls_from_one_to_zero():
+    weights = showcase.decay()
+    assert weights.shape == (showcase.NUMBER_STEPS,)
+    assert weights[0] == pytest.approx(1.0)
+    assert weights[-1] == pytest.approx(0.0)
+    assert np.all(np.diff(weights) < 0)
 
 
 def test_converge_broadcasts_over_arrays(Assert):

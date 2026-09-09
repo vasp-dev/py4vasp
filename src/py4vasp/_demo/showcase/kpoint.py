@@ -4,23 +4,17 @@ import itertools
 
 import numpy as np
 
-from py4vasp import _demo, raw
+from py4vasp import raw
 from py4vasp._demo import showcase
-
-# Lattice constants of the conventional I4/mmm cell of Sr2TiO4 in Angstrom. spglib
-# analyzes py4vasp._demo.structure.Sr2TiO4 to these; the literature reports a = 3.884
-# and c = 12.60 for the K2NiF4-type structure.
-SR2TIO4_A = 3.9277
-SR2TIO4_C = 12.6828
+from py4vasp._demo.showcase import cell
 
 # High-symmetry points of the body-centred tetragonal Brillouin zone with c > a, as
 # fraction of the primitive reciprocal lattice vectors. Taken from the standard setting
 # of Setyawan and Curtarolo, Comput. Mater. Sci. 49, 299 (2010); the two shape
-# parameters depend on the lattice constants. py4vasp._demo.cell.Sr2TiO4 uses a basis
-# that is this standard one turned in space -- the two have the same metric tensor, so
-# they share their fractional coordinates and these tabulated points apply unchanged.
-_ZETA = SR2TIO4_A**2 / (2 * SR2TIO4_C**2)
-_ETA = (1 + SR2TIO4_A**2 / SR2TIO4_C**2) / 4
+# parameters depend on the lattice constants, and showcase.cell gives the cell in that
+# same standard setting, so the points below are exact rather than approximate.
+_ZETA = cell.LATTICE_CONSTANT**2 / (2 * cell.HEIGHT**2)
+_ETA = (1 + cell.LATTICE_CONSTANT**2 / cell.HEIGHT**2) / 4
 SPECIAL_POINTS = {
     "GM": (0.0, 0.0, 0.0),
     "N": (0.0, 0.5, 0.0),
@@ -57,7 +51,7 @@ def line_mode(labels="with_labels") -> raw.Kpoint:
         number=showcase.LINE_LENGTH,
         coordinates=raw.VaspData(coordinates),
         weights=raw.VaspData(np.ones(len(coordinates))),
-        cell=_demo.cell.Sr2TiO4(),
+        cell=cell.Sr2TiO4(),
         **_labels(labels),
     )
 

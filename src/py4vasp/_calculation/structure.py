@@ -691,7 +691,7 @@ class Structure(view.Mixin):
     To select the results for all steps, you don't specify the array boundaries.
 
     >>> calculation.structure[:].number_steps()
-    4
+    12
 
     You can also select specific {step}s or a subset of {step}s as follows
 
