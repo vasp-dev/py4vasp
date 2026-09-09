@@ -431,8 +431,22 @@ Atoms # atomic
         if positions.ndim == 3:
             message = "Generating a KPOINTS file for multiple steps is not implemented."
             raise exception.NotImplemented(message)
-        numbers, _ = _species_numbers(self._stoichiometry().elements())
-        return (self.lattice_vectors(), positions, numbers)
+        return (self.lattice_vectors(), positions, self._atom_labels())
+
+    def _atom_labels(self):
+        """Label the atoms such that spglib recovers the symmetry VASP used.
+
+        If the structure carries VASP's symmetry, the atoms are labeled by their orbit
+        under its operations, so spglib cannot relate atoms that VASP treats as
+        inequivalent. A symmetry-lowered calculation then obtains the k points of its
+        actual symmetry instead of the higher one of the bare geometry. Without VASP's
+        symmetry -- for a structure read from a POSCAR file, say -- the elements decide
+        which atoms are equivalent.
+        """
+        if check.is_none(self._raw_structure.symmetry):
+            numbers, _ = _species_numbers(self._stoichiometry().elements())
+            return numbers
+        return self._orbit_labels()
 
     def to_database(self, steps=-1) -> StructureModel:
         """Return database-ready data for a single structure geometry.

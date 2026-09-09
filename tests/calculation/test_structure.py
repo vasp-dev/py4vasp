@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import re
 import types
 
@@ -1168,3 +1169,34 @@ def test_generate_kmesh_requires_kspacing_or_divisions(arguments):
     structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
     with pytest.raises(exception.IncorrectUsage):
         structure.generate_kmesh(**arguments)
+
+
+def _without_symmetry_operations(raw_structure):
+    """Replace VASP's symmetry by one that maps every atom only onto itself."""
+    number_atoms = np.shape(raw_structure.positions)[-2]
+    identity = np.arange(1, number_atoms + 1).reshape((1, 1, number_atoms))
+    symmetry = dataclasses.replace(
+        raw_structure.symmetry, atom_permutations=raw.VaspData(identity)
+    )
+    return dataclasses.replace(raw_structure, symmetry=symmetry)
+
+
+def test_generate_kpath_respects_symmetry_lowering(raw_data):
+    pytest.importorskip("seekpath")
+    raw_structure = raw_data.structure("SrTiO3")
+    cubic = make_structure(raw_structure).generate_kpath()
+    assert "Pm-3m" in cubic.splitlines()[0]
+    # when VASP relates no atoms by symmetry, the three oxygen atoms are inequivalent;
+    # that breaks all three four-fold axes, so the crystal is orthorhombic rather than
+    # cubic and gets the path of the lower symmetry
+    lowered = make_structure(_without_symmetry_operations(raw_structure))
+    assert "Pmmm" in lowered.generate_kpath().splitlines()[0]
+
+
+def test_generate_kpath_of_poscar_uses_the_geometry(raw_data):
+    pytest.importorskip("seekpath")
+    # a POSCAR carries no symmetry, so the elements decide which atoms are equivalent
+    # and the cubic path of the perovskite comes back
+    cubic = make_structure(raw_data.structure("SrTiO3")).generate_kpath()
+    poscar = _perovskite_poscar(_IDEAL_PEROVSKITE)
+    assert Structure.from_POSCAR(poscar).generate_kpath() == cubic
