@@ -166,10 +166,10 @@ def high_symmetry_path(
     labels = [
         (label_to_unicode(first), label_to_unicode(last)) for first, last in lines
     ]
-    return line_mode(coordinates, labels, number_points, _path_comment(path))
+    return line_mode(coordinates, labels, number_points, path_comment(path))
 
 
-def _path_comment(path) -> str:
+def path_comment(path) -> str:
     "Document the crystal the path belongs to and whether its band structure folds."
     number_cells = round(path["volume_original_wrt_prim"])
     plural = "" if number_cells == 1 else "s"
@@ -252,3 +252,38 @@ def generating_lattice(transformation, divisions) -> np.ndarray:
         vectors of the input cell.
     """
     return np.array(transformation) / np.reshape(divisions, (3, 1))
+
+
+def generating_lattice_mode(vectors, shift, comment: str) -> str:
+    """Write a k-point mesh as a KPOINTS file defined by three basis vectors.
+
+    Setting the number of k points to 0 makes VASP generate the mesh automatically from
+    the three basis vectors that follow. "Reduced" declares that they are given as
+    fractions of the reciprocal lattice vectors.
+
+    Parameters
+    ----------
+    vectors : array-like
+        The three basis vectors of the mesh as rows.
+    shift : array-like
+        Shift of the mesh in the same basis as the vectors.
+    comment : str
+        First line of the file explaining how the mesh was generated.
+
+    Returns
+    -------
+    str
+        The content of a KPOINTS file describing the mesh.
+    """
+    rows = [_vector(vector) for vector in (*vectors, shift)]
+    return "\n".join((comment, "0", "Reduced", *rows))
+
+
+def mesh_comment(divisions, kspacing: float | None = None) -> str:
+    "Document the mesh of the conventional cell the k points are generated from."
+    comment = "k mesh of the conventional cell: divisions " + " ".join(
+        str(division) for division in divisions
+    )
+    if kspacing is None:
+        return comment
+    return f"{comment}, kspacing {kspacing}"

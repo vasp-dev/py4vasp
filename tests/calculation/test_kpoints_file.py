@@ -268,3 +268,38 @@ def test_generating_lattice_is_the_same_mesh_in_every_setting(cell, Assert):
     generating_lattice = _kpoints_file.generating_lattice(transformation, [4, 4, 4])
     cartesian = generating_lattice @ np.linalg.inv(cell[0]).T
     Assert.allclose(cartesian, np.eye(3) / 4)
+
+
+def test_generating_lattice_mode():
+    vectors = [[0.25, 0, 0], [0, 0.25, 0], [0, 0, 0.5]]
+    # VASP generates the mesh automatically from three basis vectors when the number of
+    # k points is 0; "Reduced" selects fractions of the reciprocal lattice vectors
+    expected = """\
+k mesh of the conventional cell: divisions 4 4 2
+0
+Reduced
+  0.25000000   0.00000000   0.00000000
+  0.00000000   0.25000000   0.00000000
+  0.00000000   0.00000000   0.50000000
+  0.00000000   0.00000000   0.00000000"""
+    comment = "k mesh of the conventional cell: divisions 4 4 2"
+    actual = _kpoints_file.generating_lattice_mode(vectors, [0, 0, 0], comment)
+    assert actual == expected
+
+
+def test_generating_lattice_mode_with_shift():
+    vectors = np.eye(3) / 4
+    actual = _kpoints_file.generating_lattice_mode(vectors, [0.5, 0.5, 0], "comment")
+    # the shift of the mesh is the last line of the file
+    assert actual.splitlines()[-1] == "  0.50000000   0.50000000   0.00000000"
+
+
+@pytest.mark.parametrize(
+    "kspacing, expected",
+    [
+        (None, "k mesh of the conventional cell: divisions 8 8 6"),
+        (0.2, "k mesh of the conventional cell: divisions 8 8 6, kspacing 0.2"),
+    ],
+)
+def test_mesh_comment(kspacing, expected):
+    assert _kpoints_file.mesh_comment([8, 8, 6], kspacing) == expected
