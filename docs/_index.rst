@@ -69,8 +69,8 @@ matching extra
      - pandas, plotly, kaleido
      - ``plot``, ``to_plotly``, ``to_image``, ``to_frame``, ``to_csv``
    * - ``structure``
-     - ase, spglib
-     - ``to_ase``, ``to_POSCAR``, symmetry and space-group analysis
+     - ase, seekpath, spglib
+     - ``to_ase``, ``to_POSCAR``, ``generate_kpath``, symmetry and space-group analysis
    * - ``view``
      - nglview, ase
      - visualizing structures, densities, and arrows in a notebook

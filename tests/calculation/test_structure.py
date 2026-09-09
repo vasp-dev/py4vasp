@@ -999,3 +999,70 @@ def test_symmetrize_to_primitive_keeps_species_order(Assert):
     assert actual["elements"] == ["Sr", "Ti", "O", "O", "O"]
     cell = (actual["lattice_vectors"], actual["positions"], [0, 1, 2, 2, 2])
     assert spglib.get_symmetry_dataset(cell, symprec=1e-5).number == 221
+
+
+# ---------------------------------------------------------------------------
+# Generate KPOINTS files (derived from the bare geometry like symmetrize)
+# ---------------------------------------------------------------------------
+
+_BCC_CONVENTIONAL_POSCAR = """\
+Fe
+3.0
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+Fe
+2
+Direct
+0.00 0.00 0.00
+0.50 0.50 0.50"""
+
+_ZINCBLENDE_POSCAR = """\
+GaAs
+5.65
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+Ga As
+1 1
+Direct
+0.00 0.00 0.00
+0.25 0.25 0.25"""
+
+
+def test_generate_kpath_from_poscar(Assert):
+    pytest.importorskip("seekpath")
+    text = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR).generate_kpath(
+        number_points=20
+    )
+    lines = text.splitlines()
+    assert lines[1] == "20"
+    assert lines[2] == "line mode"
+    assert lines[3] == "reciprocal"
+    kpoints = [line for line in lines[4:] if line.strip()]
+    # the bcc path Γ-H-N-Γ-P-H and P-N consists of six lines, i.e. twelve k points
+    assert len(kpoints) == 12
+    assert [line.split()[3] for line in kpoints[:4]] == ["Γ", "H", "H", "N"]
+    # H is (1/2, -1/2, 1/2) in the primitive basis, which is the corner (0, 1, 0) of
+    # the conventional cell that the POSCAR uses
+    Assert.allclose([float(x) for x in kpoints[1].split()[:3]], [0, 1, 0])
+    # the conventional bcc cell contains two primitive cells, so the bands fold
+    assert "2 primitive cells" in lines[0]
+
+
+def test_generate_kpath_without_time_reversal():
+    pytest.importorskip("seekpath")
+    structure = Structure.from_POSCAR(_ZINCBLENDE_POSCAR)
+    with_reversal = structure.generate_kpath()
+    without_reversal = structure.generate_kpath(time_reversal=False)
+    # zincblende has no inversion symmetry, so without time reversal the path is
+    # augmented by the primed images of the special points
+    assert "X'" not in with_reversal
+    assert "X'" in without_reversal
+    assert len(without_reversal.splitlines()) > len(with_reversal.splitlines())
+
+
+def test_generate_kpath_multiple_steps_not_implemented(Sr2TiO4):
+    pytest.importorskip("seekpath")
+    with pytest.raises(exception.NotImplemented):
+        Sr2TiO4[:].generate_kpath()

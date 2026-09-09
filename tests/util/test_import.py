@@ -50,6 +50,7 @@ def test_import_py4vasp_defers_heavy_dependencies():
         "ase",
         "scipy",
         "mdtraj",
+        "seekpath",
         "spglib",
         "pandas",
         "IPython",

@@ -11,7 +11,7 @@ from typing import Union
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation import _kpoints_file, _stoichiometry
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
@@ -408,6 +408,23 @@ Atoms # atomic
                 lattice, positions, numbers, symprec
             )
         return _raw_structure(lattice, positions, elements)
+
+    def generate_kpath(
+        self, number_points=40, time_reversal=True, symprec=_SYMPREC
+    ) -> str:
+        """Write the recommended high-symmetry path of the crystal as a KPOINTS file."""
+        return _kpoints_file.high_symmetry_path(
+            self._spglib_cell(), number_points, time_reversal, symprec
+        )
+
+    def _spglib_cell(self):
+        """Describe a single frame the way spglib and seekpath expect it."""
+        positions = self.positions()
+        if positions.ndim == 3:
+            message = "Generating a KPOINTS file for multiple steps is not implemented."
+            raise exception.NotImplemented(message)
+        numbers, _ = _species_numbers(self._stoichiometry().elements())
+        return (self.lattice_vectors(), positions, numbers)
 
     def to_database(self, steps=-1) -> StructureModel:
         """Return database-ready data for a single structure geometry.
@@ -1569,6 +1586,80 @@ class Structure(view.Mixin):
             symprec,
         )
         return Structure.from_data(raw_structure)
+
+    def generate_kpath(self, number_points=40, time_reversal=True, symprec=_SYMPREC):
+        r"""Generate a KPOINTS file for a band structure along the recommended path.
+
+        seekpath determines the high-symmetry path of the crystal following the
+        convention of Hinuma et al. The path is written in VASP's line mode with the
+        label of every special point *behind* its coordinates, so that VASP reads the
+        labels and py4vasp puts them on the axis of the band structure. Note that many
+        other tools hide the labels behind a comment character, which makes VASP ignore
+        them. The symmetry is derived from the bare geometry, so this works for any
+        single structure including one read from a POSCAR file. This requires the
+        seekpath and the spglib package.
+
+        The k points refer to the reciprocal lattice vectors of the cell of this
+        structure, even when that is not the standardized primitive cell seekpath uses
+        internally. If the cell contains more than one primitive cell, the band
+        structure is folded; the comment line of the file reports how many primitive
+        cells the cell contains. For a supercell of the conventional cell, the path is
+        meaningless and py4vasp raises an error.
+
+        Parameters
+        ----------
+        number_points : int
+            Number of k points VASP generates along every line of the path.
+        time_reversal : bool
+            If True (default) the band structure at k and -k agrees. Set it to False
+            for a magnetic system without inversion symmetry; then the path also
+            covers the primed images of the special points.
+        symprec : float
+            Distance tolerance (in Å) spglib uses to detect the symmetry.
+
+        Returns
+        -------
+        str
+            The content of a KPOINTS file describing the path. py4vasp does not write
+            the file; store the string as KPOINTS or KPOINTS_OPT yourself.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this
+        method. You can also use your own VASP calculation data if you have it
+        available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        For cubic perovskite the recommended path connects Γ, X, M, and R. The label
+        of a special point is the fourth field of its line, which is where VASP expects
+        it.
+
+        >>> kpoints = calculation.structure.generate_kpath(number_points=20)
+        >>> print("\n".join(kpoints.splitlines()[:6]))
+        k points along high symmetry lines: Pm-3m (cP2), 1 primitive cell per unit cell
+        20
+        line mode
+        reciprocal
+          0.00000000   0.00000000   0.00000000  Γ
+          0.00000000   0.50000000   0.00000000  X
+
+        Writing the file is up to you
+
+        >>> from pathlib import Path
+        >>> _ = Path(path / "KPOINTS_OPT").write_text(kpoints)
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.generate_kpath,
+            number_points,
+            time_reversal,
+            symprec,
+        )
 
     def prototype(self):
         """Determine the AFLOW prototype label of the crystal.

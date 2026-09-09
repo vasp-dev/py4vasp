@@ -37,6 +37,7 @@ plot = [
 ]
 structure = [
     "ase>=3.23",
+    "seekpath>=2.1",
     "spglib>=2.5",
 ]
 view = [

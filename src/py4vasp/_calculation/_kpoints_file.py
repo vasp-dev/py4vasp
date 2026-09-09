@@ -8,6 +8,7 @@ from py4vasp import exception
 from py4vasp._calculation.symmetry import _SYMPREC
 from py4vasp._util import import_
 
+seekpath = import_.optional("seekpath")
 spglib = import_.optional("spglib")
 
 # seekpath spells the special points of the high-symmetry path in ASCII, e.g. "GAMMA"
@@ -125,3 +126,55 @@ def to_input_basis(coordinates, cell, primitive_cell, symprec: float = _SYMPREC)
         primitive_transformation, transformation_matrix(cell, symprec)
     )
     return np.array(coordinates) @ transformation
+
+
+def high_symmetry_path(
+    cell, number_points: int = 40, time_reversal: bool = True, symprec=_SYMPREC
+) -> str:
+    """Write the recommended high-symmetry path of a crystal as a KPOINTS file.
+
+    seekpath determines the path following the convention of Hinuma et al. It returns
+    the special points in the basis of its own standardized primitive cell, so they are
+    mapped back onto the basis of *cell* before they are written to the file.
+
+    Parameters
+    ----------
+    cell : tuple
+        Lattice vectors, direct coordinates, and atomic numbers as spglib expects them.
+    number_points : int
+        Number of k points VASP generates along every line of the path.
+    time_reversal : bool
+        Whether the k points are related by time-reversal symmetry.
+    symprec : float
+        Distance tolerance (in Å) spglib uses to detect the symmetry.
+
+    Returns
+    -------
+    str
+        The content of a KPOINTS file describing the path.
+    """
+    path = seekpath.get_path(cell, with_time_reversal=time_reversal, symprec=symprec)
+    primitive_cell = (
+        path["primitive_lattice"],
+        path["primitive_positions"],
+        path["primitive_types"],
+    )
+    points = path["point_coords"]
+    lines = path["path"]
+    coordinates = np.array([[points[first], points[last]] for first, last in lines])
+    coordinates = to_input_basis(coordinates, cell, primitive_cell, symprec)
+    labels = [
+        (label_to_unicode(first), label_to_unicode(last)) for first, last in lines
+    ]
+    return line_mode(coordinates, labels, number_points, _path_comment(path))
+
+
+def _path_comment(path) -> str:
+    "Document the crystal the path belongs to and whether its band structure folds."
+    number_cells = round(path["volume_original_wrt_prim"])
+    plural = "" if number_cells == 1 else "s"
+    return (
+        "k points along high symmetry lines: "
+        f"{path['spacegroup_international']} ({path['bravais_lattice_extended']}), "
+        f"{number_cells} primitive cell{plural} per unit cell"
+    )

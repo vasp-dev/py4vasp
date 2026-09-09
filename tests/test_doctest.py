@@ -82,6 +82,7 @@ _FULL_INSTALL_EXAMPLES = {
     "py4vasp._calculation.structure.Structure.standardized_cell": "spglib",
     "py4vasp._calculation.structure.Structure.prototype": "spglib",
     "py4vasp._calculation.structure.Structure.symmetrize": "spglib",
+    "py4vasp._calculation.structure.Structure.generate_kpath": "seekpath",
 }
 
 
