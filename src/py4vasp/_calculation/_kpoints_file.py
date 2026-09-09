@@ -208,8 +208,9 @@ def divisions_from_kspacing(reciprocal_lattice, kspacing: float) -> list[int]:
     """Determine the number of k points along every direction for a given spacing.
 
     Following VASP's KSPACING tag, the number of divisions along direction i is
-    ⌈2π |b_i| / KSPACING⌉, so the distance between neighboring k points does not exceed
-    *kspacing*. Rounding up implies at least one k point along every direction.
+    2π |b_i| / KSPACING rounded to the nearest integer, with at least one k point along
+    every direction. VASP truncates the sum of the ratio and 0.5 to an integer, so a
+    ratio of exactly one half rounds up.
 
     Parameters
     ----------
@@ -224,4 +225,6 @@ def divisions_from_kspacing(reciprocal_lattice, kspacing: float) -> list[int]:
         The number of k points along the three directions.
     """
     lengths = 2 * np.pi * np.linalg.norm(reciprocal_lattice, axis=1)
-    return [int(np.ceil(length / kspacing)) for length in lengths]
+    # int(x + 0.5) reproduces the truncation VASP applies instead of numpy's rounding
+    # of a half to the nearest even integer
+    return [max(1, int(length / kspacing + 0.5)) for length in lengths]

@@ -218,7 +218,12 @@ def test_conventional_reciprocal_lattice_of_tetragonal_cell(Assert):
 
 @pytest.mark.parametrize(
     "kspacing, expected",
-    [(1.0, [2, 2, 2]), (0.5, [4, 4, 4]), (0.2, [8, 8, 8]), (1000.0, [1, 1, 1])],
+    [
+        (1.0, [2, 2, 2]),  # 1.571 -> 2
+        (0.5, [3, 3, 3]),  # 3.142 rounds down to 3, a ceiling would give 4
+        (0.2, [8, 8, 8]),  # 7.854 -> 8
+        (1000.0, [1, 1, 1]),  # rounds to zero, but VASP always samples one k point
+    ],
 )
 def test_divisions_from_kspacing(kspacing, expected):
     # a cubic cell with a = 4 Å has reciprocal lattice vectors of length 2π/4 ≈ 1.571/Å
@@ -231,4 +236,4 @@ def test_divisions_from_kspacing_of_anisotropic_cell():
     # 4 Å along the first two directions and 12 Å along the third one
     reciprocal_lattice = np.diag([0.25, 0.25, 1 / 12])
     actual = _kpoints_file.divisions_from_kspacing(reciprocal_lattice, 0.5)
-    assert actual == [4, 4, 2]
+    assert actual == [3, 3, 1]
