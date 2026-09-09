@@ -62,13 +62,23 @@ def demo_calculation(tmp_path_factory):
     return demo.calculation(tmp_path_factory.mktemp("demo") / "calculation")
 
 
+# NeighborList builds its table with a scipy KD-tree, so its text is unavailable in a
+# py4vasp-core install; the rest of the quantities must format themselves with numpy
+# and h5py alone.
+_UNAVAILABLE = (
+    exception.NoData,
+    exception.FileAccessError,
+    exception.ModuleNotInstalled,
+)
+
+
 @pytest.mark.parametrize("name", _public_quantities())
 def test_print_writes_the_string_representation(name, demo_calculation, capsys):
     quantity = _resolve(demo_calculation, name)
     try:
         expected = str(quantity)
-    except (exception.NoData, exception.FileAccessError):
-        pytest.skip(f"the demo calculation contains no data for {name}")
+    except _UNAVAILABLE as error:
+        pytest.skip(f"cannot render {name} here: {type(error).__name__}")
     assert quantity.print() is None
     assert capsys.readouterr().out == expected + "\n"
 
@@ -78,8 +88,10 @@ def test_selections_reports_what_can_be_selected(name, demo_calculation):
     quantity = _resolve(demo_calculation, name)
     try:
         selections = quantity.selections()
-    except (exception.NoData, exception.FileAccessError):
-        pytest.skip(f"the demo calculation contains no data for {name}")
+    except _UNAVAILABLE as error:
+        pytest.skip(
+            f"cannot list the selections of {name} here: {type(error).__name__}"
+        )
     # NeighborList deliberately reports a flat list of atom-type pairs; every other
     # quantity maps its own name (and any further keys) to a list of choices
     assert selections
