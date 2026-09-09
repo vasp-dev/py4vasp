@@ -7,10 +7,11 @@ import numpy as np
 import pytest
 
 from py4vasp import exception, raw
+from py4vasp._calculation import _kpoints_file
 from py4vasp._calculation._stoichiometry import Stoichiometry, StoichiometryHandler
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.models import StructureModel
-from py4vasp._util import check
+from py4vasp._util import check, import_
 
 REF_POSCAR = """\
 Sr2TiO4
@@ -1066,3 +1067,36 @@ def test_generate_kpath_multiple_steps_not_implemented(Sr2TiO4):
     pytest.importorskip("seekpath")
     with pytest.raises(exception.NotImplemented):
         Sr2TiO4[:].generate_kpath()
+
+
+_BCC_SUPERCELL_POSCAR = """\
+Fe
+3.0
+2.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+Fe
+4
+Direct
+0.00 0.00 0.00
+0.25 0.50 0.50
+0.50 0.00 0.00
+0.75 0.50 0.50"""
+
+
+def test_generate_kpath_without_seekpath(monkeypatch):
+    monkeypatch.setattr(
+        _kpoints_file, "seekpath", import_.optional("_seekpath_not_installed_")
+    )
+    with pytest.raises(exception.ModuleNotInstalled):
+        Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR).generate_kpath()
+
+
+def test_generate_kpath_of_supercell():
+    pytest.importorskip("seekpath")
+    # the high-symmetry points of the crystal do not apply to a supercell, so py4vasp
+    # refuses to write a path that would silently be wrong
+    structure = Structure.from_POSCAR(_BCC_SUPERCELL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        structure.generate_kpath()
+    assert "primitive cell" in str(error.value)
