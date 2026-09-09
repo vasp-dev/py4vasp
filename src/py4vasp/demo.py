@@ -117,9 +117,9 @@ def _generate_collinear_data(h5f, waveh5f=None):
 
 
 def _generate_noncollinear_data(h5f, waveh5f=None):
-    write(h5f, _demo.band.noncollinear_bands("with_projectors"))
-    write(h5f, _demo.dos.Ba2PbO4("noncollinear"))
-    write(h5f, _demo.local_moment.local_moment("orbital_moments"))
+    write(h5f, showcase.local_moment.Fe3O4("noncollinear"))
+    write(h5f, showcase.dos.Fe3O4("with_projectors", "noncollinear"))
+    write(h5f, showcase.band.Fe3O4("with_projectors", magnetism="noncollinear"))
     if waveh5f is not None:
         write(waveh5f, _demo.density.Fe3O4("noncollinear"))
         write(waveh5f, _demo.density.Fe3O4("noncollinear"), selection="tau")

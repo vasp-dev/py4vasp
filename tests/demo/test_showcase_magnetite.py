@@ -141,3 +141,56 @@ def test_charges_are_positive_and_larger_on_oxygen(Assert):
     assert np.all(charges[OXYGEN, 1] > charges[OXYGEN, 2])
     # iron carries its charge in the d shell
     assert np.all(charges[TETRAHEDRAL, 2] > charges[TETRAHEDRAL, 1])
+
+
+@pytest.fixture
+def noncollinear_dos():
+    return dos.Fe3O4("with_projectors", "noncollinear")
+
+
+def test_noncollinear_dos_resolves_charge_and_three_spin_components(noncollinear_dos):
+    dos_values = np.array(noncollinear_dos.dos)
+    assert dos_values.shape == (4, showcase.NUMBER_POINTS)
+    charge, *spin = dos_values
+    assert np.all(charge >= 0)
+    # the three components must differ from one another, or an index bug that mixes them
+    # up would go unnoticed
+    for first, second in ((0, 1), (0, 2), (1, 2)):
+        assert not np.allclose(spin[first], spin[second])
+
+
+def test_noncollinear_charge_is_the_sum_of_both_channels(noncollinear_dos, Assert):
+    collinear = np.array(dos.Fe3O4("no_projectors").dos)
+    charge = np.array(noncollinear_dos.dos)[0]
+    # the same material, so the charge of the noncollinear calculation is what the two
+    # channels of the collinear one add up to
+    Assert.allclose(charge, np.sum(collinear, axis=0))
+
+
+def test_noncollinear_spin_points_along_the_sublattices(noncollinear_dos):
+    energies = np.array(noncollinear_dos.energies)
+    sigma_z = np.array(noncollinear_dos.dos)[3]
+    # the two iron sublattices order antiparallel, so the projection along z changes sign
+    # between the states the one dominates and the states the other does
+    assert np.max(sigma_z) > 0
+    assert np.min(sigma_z) < 0
+
+
+def test_noncollinear_band_has_one_set_of_eigenvalues():
+    raw_band = band.Fe3O4("with_projectors", magnetism="noncollinear")
+    eigenvalues = np.array(raw_band.dispersion.eigenvalues)
+    # a noncollinear calculation does not split the bands by spin; the spin appears in
+    # the four components of the projections instead
+    assert eigenvalues.shape[0] == 1
+    assert np.array(raw_band.projections).shape[0] == 4
+
+
+def test_noncollinear_local_moments_carry_all_three_axes(Assert):
+    raw_moment = local_moment.Fe3O4("noncollinear")
+    moments = np.array(raw_moment.spin_moments)
+    assert moments.shape == (showcase.NUMBER_STEPS, 4, 14, 3)
+    assert not raw_moment.orbital_moments.is_none()
+    # the length of the moment of every atom is what the collinear calculation reports
+    vector = np.sum(moments[-1, 1:], axis=-1)
+    collinear = np.sum(np.array(local_moment.Fe3O4().spin_moments)[-1, 1], axis=-1)
+    Assert.allclose(np.linalg.norm(vector, axis=0), np.abs(collinear))

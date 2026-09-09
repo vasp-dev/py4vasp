@@ -64,28 +64,47 @@ def _projections(model, per_band):
     return projections[np.newaxis]  # a single spin component
 
 
-def Fe3O4(projectors):
+def Fe3O4(projectors, magnetism="collinear"):
     """Spin-resolved density of states of magnetite.
 
     One channel is gapped at the Fermi energy and the other is not, so the plot shows
     directly that magnetite is a half metal.
+
+    Parameters
+    ----------
+    projectors
+        Pass ``"with_projectors"`` to add the orbital projections.
+    magnetism
+        Pass ``"noncollinear"`` to resolve the charge and the three spin axes instead of
+        the two channels of a collinear calculation.
     """
     models = electronic_structure.Fe3O4()
     use_orbitals = projectors == "with_projectors"
     energies = _energies(models)
     # a spin-polarized calculation resolves the channels, so each band holds one electron
     per_band = [_broadened_bands(model, energies, 1.0) for model in models]
+    resolved = _spin_resolved_bands(per_band, magnetism)
     raw_dos = raw.Dos(
         fermi_energy=models[0].fermi_energy,
         energies=_demo.wrap_data(energies),
-        dos=_demo.wrap_data([np.sum(channel, axis=0) for channel in per_band]),
-        projectors=showcase.projector.Fe3O4(use_orbitals),
+        dos=_demo.wrap_data(np.sum(resolved, axis=1)),
+        projectors=showcase.projector.Fe3O4(use_orbitals, magnetism),
     )
     if use_orbitals:
         character = electronic_structure.Fe3O4_character()
         raw_dos.projections = _demo.wrap_data(
-            np.array(
-                [np.einsum("bao,be->aoe", character, channel) for channel in per_band]
-            )
+            np.einsum("bao,cbe->caoe", character, resolved)
         )
     return raw_dos
+
+
+def _spin_resolved_bands(per_band, magnetism):
+    """Contribution of every band to every spin component, ``(component, band, energy)``."""
+    majority, minority = per_band
+    if magnetism == "collinear":
+        return np.array([majority, minority])
+    # a noncollinear calculation reports the charge and the projection of the
+    # magnetization onto the three axes; every band contributes along its own direction
+    directions = electronic_structure.Fe3O4_spin_directions()
+    projected = np.einsum("ba,be->abe", directions, majority - minority)
+    return np.concatenate(([majority + minority], projected))

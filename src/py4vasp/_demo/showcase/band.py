@@ -51,27 +51,56 @@ def _projections(number_kpoints):
     return projections[np.newaxis]  # a single spin component
 
 
-def Fe3O4(projectors, labels="with_labels"):
+def Fe3O4(projectors, labels="with_labels", magnetism="collinear"):
     """Spin-polarized band structure of magnetite along the face-centred cubic path.
 
     The majority channel is gapped at the Fermi energy while a minority band crosses it,
     so its occupations are fractional across the path: magnetite is a half metal.
+
+    Parameters
+    ----------
+    projectors
+        Pass ``"with_projectors"`` to add the orbital projections.
+    labels
+        Pass ``"no_labels"`` to leave the high-symmetry points unnamed.
+    magnetism
+        Pass ``"noncollinear"`` for a single set of eigenvalues whose projections
+        resolve the charge and the three spin axes.
     """
     models = electronic_structure.Fe3O4()
     kpoints = kpoint.line_mode_Fe3O4(labels)
     coordinates = np.array(kpoints.coordinates)
-    eigenvalues = np.array([model.evaluate(coordinates) for model in models])
     fermi_energy = models[0].fermi_energy
     use_orbitals = projectors == "with_projectors"
+    eigenvalues = _eigenvalues(models, coordinates, magnetism)
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, _demo.wrap_data(eigenvalues)),
         fermi_energy=fermi_energy,
         occupations=_demo.wrap_data(np.where(eigenvalues < fermi_energy, 1.0, 0.0)),
-        projectors=showcase.projector.Fe3O4(use_orbitals),
+        projectors=showcase.projector.Fe3O4(use_orbitals, magnetism),
     )
     if use_orbitals:
-        character = electronic_structure.Fe3O4_character()
-        constant_along_path = np.ones(len(coordinates))
-        projections = np.einsum("bao,k->aokb", character, constant_along_path)
-        raw_band.projections = _demo.wrap_data(np.array(len(models) * [projections]))
+        raw_band.projections = _demo.wrap_data(
+            _Fe3O4_projections(len(coordinates), magnetism)
+        )
     return raw_band
+
+
+def _eigenvalues(models, coordinates, magnetism):
+    if magnetism == "collinear":
+        return np.array([model.evaluate(coordinates) for model in models])
+    # a noncollinear calculation does not split the bands by spin, so it has one set of
+    # eigenvalues; the spin shows up in the components of the projections instead
+    return np.array([models[0].evaluate(coordinates)])
+
+
+def _Fe3O4_projections(number_kpoints, magnetism):
+    character = electronic_structure.Fe3O4_character()
+    constant_along_path = np.ones(number_kpoints)
+    projections = np.einsum("bao,k->aokb", character, constant_along_path)
+    if magnetism == "collinear":
+        return np.array(2 * [projections])
+    # the charge, then the projection of every band onto each of the three spin axes
+    directions = electronic_structure.Fe3O4_spin_directions()
+    projected = np.einsum("aokb,bs->saokb", projections, directions)
+    return np.concatenate(([projections], projected))

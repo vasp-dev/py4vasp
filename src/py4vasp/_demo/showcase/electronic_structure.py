@@ -218,6 +218,19 @@ _FE3O4_CHARACTER = (
 )
 _FE3O4_PROJECTIONS = (14, 4)
 
+# Direction the spin of every band points in, as polar and azimuthal angle in degrees.
+# The bands the tetrahedral iron dominates point opposite to those the octahedral iron
+# dominates, which is the ferrimagnetic order seen with three spin axes instead of two,
+# and every direction is canted away from z so that all three components are visible.
+_FE3O4_SPIN_DIRECTIONS = (
+    (20.0, 35.0),
+    (25.0, 40.0),
+    (30.0, 45.0),
+    (18.0, 30.0),  # the band at the Fermi energy, on the octahedral sublattice
+    (160.0, 210.0),  # the tetrahedral sublattice, pointing the other way
+    (155.0, 200.0),
+)
+
 
 def Fe3O4() -> list:
     """Band models of the majority and the minority spin channel of magnetite.
@@ -257,3 +270,20 @@ def Fe3O4_character() -> np.ndarray:
         for atom in atoms:
             character[:, atom, list(orbitals)] = weight / len(orbitals)
     return character
+
+
+def Fe3O4_spin_directions() -> np.ndarray:
+    """Unit vector the spin of every band points along, shape ``(band, axis)``.
+
+    A collinear calculation only distinguishes parallel from antiparallel; a noncollinear
+    one resolves the direction, so the antiparallel iron sublattices of magnetite appear
+    as directions that differ by nearly 180 degrees rather than by a sign.
+    """
+    polar, azimuthal = np.radians(np.array(_FE3O4_SPIN_DIRECTIONS)).T
+    return np.array(
+        [
+            np.sin(polar) * np.cos(azimuthal),
+            np.sin(polar) * np.sin(azimuthal),
+            np.cos(polar),
+        ]
+    ).T

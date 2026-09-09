@@ -17,13 +17,24 @@ _OXYGEN_CHARGE = (1.78, 4.42, 0.09)
 _TETRAHEDRAL_MOMENT = (-0.04, -0.11, -4.85)
 _OCTAHEDRAL_MOMENT = (0.03, 0.09, 4.28)
 _OXYGEN_MOMENT = (0.002, 0.046, 0.002)
+# Polar and azimuthal angle in degrees of the moment of every atom, for a calculation
+# that resolves the direction. The tetrahedral iron already points against the
+# octahedral iron, so the collinear sign is folded into the length of the moment and the
+# canting only turns each moment away from the z axis.
+_CANTING = 2 * [(22.0, 35.0)] + 4 * [(18.0, 30.0)] + 8 * [(25.0, 40.0)]
 
 
-def Fe3O4() -> raw.LocalMoment:
+def Fe3O4(magnetism="collinear") -> raw.LocalMoment:
     """Charges and magnetic moments of magnetite over the showcase relaxation.
 
     The moments grow onto their converged values as the relaxation settles, the way the
     magnetization of a spin-polarized calculation does.
+
+    Parameters
+    ----------
+    magnetism
+        Pass ``"noncollinear"`` to resolve the moment of every atom along the three
+        axes, and to add the orbital moments a calculation with spin-orbit coupling has.
     """
     converged = np.array(
         2 * [_TETRAHEDRAL_MOMENT] + 4 * [_OCTAHEDRAL_MOMENT] + 8 * [_OXYGEN_MOMENT]
@@ -32,8 +43,38 @@ def Fe3O4() -> raw.LocalMoment:
     # the moments start out too small, as they do before the magnetization is converged
     moments = showcase.converge(0.75 * converged, converged)
     steps = showcase.NUMBER_STEPS
-    spin_moments = np.stack((np.broadcast_to(charges, (steps, 14, 3)), moments), axis=1)
-    return raw.LocalMoment(
+    charges = np.broadcast_to(charges, (steps, 14, 3))
+    magnetization = _magnetization(moments, magnetism)
+    # VASP stores the components along the second axis, after the steps
+    spin_moments = np.moveaxis(np.concatenate(([charges], magnetization)), 0, 1)
+    moment = raw.LocalMoment(
         structure=structure.Fe3O4(),
         spin_moments=_demo.wrap_data(spin_moments),
     )
+    if magnetism == "noncollinear":
+        # spin-orbit coupling induces an orbital moment of a few percent of the spin one,
+        # which VASP reports separately and without an s contribution
+        orbital = np.moveaxis(0.06 * magnetization, 0, 1)
+        moment.orbital_moments = _demo.wrap_data(orbital[:, :, :, 1:])
+    return moment
+
+
+def _magnetization(moments, magnetism):
+    """Magnetization along every axis it is resolved on, ``(axis, step, atom, orbital)``."""
+    if magnetism == "collinear":
+        return moments[np.newaxis]
+    # every atom keeps the length of its moment and turns it away from the z axis, so the
+    # two sublattices differ by a direction rather than by a sign
+    return np.einsum("saq,ax->xsaq", moments, _canted_directions())
+
+
+def _canted_directions():
+    """Unit vector the moment of every atom points along, shape ``(atom, axis)``."""
+    polar, azimuthal = np.radians(np.array(_CANTING)).T
+    return np.array(
+        [
+            np.sin(polar) * np.cos(azimuthal),
+            np.sin(polar) * np.sin(azimuthal),
+            np.cos(polar),
+        ]
+    ).T

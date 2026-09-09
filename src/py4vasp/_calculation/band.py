@@ -476,14 +476,16 @@ class Band(graph.Mixin):
         as for the nonpolarized case
 
         >>> noncollinear_calculation.band.read()
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...)}}
 
         If you want to investigate the spin projection of the bands, you can select
         particular spin components. Here, we select the x and z components of the spin
 
         >>> noncollinear_calculation.band.read("sigma_x, sigma_z")
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...), 'sigma_x': array(...), 'sigma_z': array(...),
             'is_spin_projection': ['sigma_x', 'sigma_z']}}
 
@@ -692,14 +694,14 @@ class Band(graph.Mixin):
         as for the nonpolarized case
 
         >>> noncollinear_calculation.band.to_frame()
-           kpoint_distances  bands  occupations
+           kpoint_distances kpoint_labels  bands  occupations
         0  ...
 
         If you want to investigate the spin projection of the bands, you can select
         particular spin components. Here, we select the x and z components of the spin
 
         >>> noncollinear_calculation.band.to_frame("sigma_x, sigma_z")
-           kpoint_distances  bands  occupations  sigma_x  sigma_z
+           kpoint_distances kpoint_labels  bands  occupations  sigma_x  sigma_z
         0  ...
 
         Add the contribution of three d orbitals
