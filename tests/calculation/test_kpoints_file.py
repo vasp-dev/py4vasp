@@ -187,3 +187,48 @@ def test_transformation_matrix(cell, determinant, Assert):
     # cell; its determinant is the ratio of the two volumes
     actual = _kpoints_file.transformation_matrix(cell)
     Assert.allclose(np.linalg.det(actual), determinant)
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        _SIMPLE_CUBIC,
+        _BCC_PRIMITIVE,
+        _BCC_CONVENTIONAL,
+        _FCC_PRIMITIVE,
+        _FCC_CONVENTIONAL,
+    ],
+)
+def test_conventional_reciprocal_lattice(cell, Assert):
+    pytest.importorskip("spglib")
+    # all these cells describe a cubic lattice with a = 1, so the reciprocal lattice of
+    # their conventional cell is the unit cube no matter which setting is used
+    transformation = _kpoints_file.transformation_matrix(cell)
+    actual = _kpoints_file.conventional_reciprocal_lattice(cell[0], transformation)
+    Assert.allclose(actual, np.eye(3))
+
+
+def test_conventional_reciprocal_lattice_of_tetragonal_cell(Assert):
+    pytest.importorskip("spglib")
+    cell = (np.diag([2.0, 2.0, 3.0]), [[0, 0, 0]], [1])
+    transformation = _kpoints_file.transformation_matrix(cell)
+    actual = _kpoints_file.conventional_reciprocal_lattice(cell[0], transformation)
+    Assert.allclose(actual, np.diag([0.5, 0.5, 1 / 3]))
+
+
+@pytest.mark.parametrize(
+    "kspacing, expected",
+    [(1.0, [2, 2, 2]), (0.5, [4, 4, 4]), (0.2, [8, 8, 8]), (1000.0, [1, 1, 1])],
+)
+def test_divisions_from_kspacing(kspacing, expected):
+    # a cubic cell with a = 4 Å has reciprocal lattice vectors of length 2π/4 ≈ 1.571/Å
+    reciprocal_lattice = np.eye(3) / 4
+    actual = _kpoints_file.divisions_from_kspacing(reciprocal_lattice, kspacing)
+    assert actual == expected
+
+
+def test_divisions_from_kspacing_of_anisotropic_cell():
+    # 4 Å along the first two directions and 12 Å along the third one
+    reciprocal_lattice = np.diag([0.25, 0.25, 1 / 12])
+    actual = _kpoints_file.divisions_from_kspacing(reciprocal_lattice, 0.5)
+    assert actual == [4, 4, 2]

@@ -178,3 +178,50 @@ def _path_comment(path) -> str:
         f"{path['spacegroup_international']} ({path['bravais_lattice_extended']}), "
         f"{number_cells} primitive cell{plural} per unit cell"
     )
+
+
+def conventional_reciprocal_lattice(lattice_vectors, transformation) -> np.ndarray:
+    """Determine the reciprocal lattice vectors of the standardized conventional cell.
+
+    The conventional cell follows from the input one as A_conventional = P⁻ᵀ A, so its
+    reciprocal lattice vectors are P inv(A)ᵀ. Deriving the mesh from these vectors
+    rather than from the ones of the input cell makes it commensurate with the symmetry
+    of the crystal even when the calculation runs in the primitive cell.
+
+    Parameters
+    ----------
+    lattice_vectors : array-like
+        The lattice vectors A of the input cell as rows.
+    transformation : array-like
+        The transformation matrix P from :func:`transformation_matrix`.
+
+    Returns
+    -------
+    np.ndarray
+        The reciprocal lattice vectors of the conventional cell as rows, without the
+        factor 2π.
+    """
+    return np.array(transformation) @ np.linalg.inv(lattice_vectors).T
+
+
+def divisions_from_kspacing(reciprocal_lattice, kspacing: float) -> list[int]:
+    """Determine the number of k points along every direction for a given spacing.
+
+    Following VASP's KSPACING tag, the number of divisions along direction i is
+    ⌈2π |b_i| / KSPACING⌉, so the distance between neighboring k points does not exceed
+    *kspacing*. Rounding up implies at least one k point along every direction.
+
+    Parameters
+    ----------
+    reciprocal_lattice : array-like
+        The reciprocal lattice vectors as rows, without the factor 2π.
+    kspacing : float
+        The largest allowed distance between two k points in Å⁻¹.
+
+    Returns
+    -------
+    list[int]
+        The number of k points along the three directions.
+    """
+    lengths = 2 * np.pi * np.linalg.norm(reciprocal_lattice, axis=1)
+    return [int(np.ceil(length / kspacing)) for length in lengths]
