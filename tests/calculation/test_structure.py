@@ -1262,3 +1262,69 @@ def test_from_POSCAR_rejects_incomplete_content(poscar):
     # bare IndexError or StopIteration escape through an internal traceback
     with pytest.raises(exception.IncorrectUsage):
         Structure.from_POSCAR(poscar)
+
+
+_MOS2_POSCAR = """\
+MoS2
+1.0
+ 3.1600000 0.0000000 0.0000000
+-1.5800000 2.7366425 0.0000000
+ 0.0000000 0.0000000 20.000000
+Mo S
+1 2
+Direct
+0.3333333 0.6666667 0.5000000
+0.6666667 0.3333333 0.4220000
+0.6666667 0.3333333 0.5780000"""
+
+_FCC_PRIMITIVE_POSCAR = """\
+Si
+5.43
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+Si
+1
+Direct
+0.00 0.00 0.00"""
+
+_FCC_CONVENTIONAL_POSCAR = """\
+Si
+5.43
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+Si
+4
+Direct
+0.00 0.00 0.00
+0.00 0.50 0.50
+0.50 0.00 0.50
+0.50 0.50 0.00"""
+
+
+@pytest.mark.parametrize("poscar", [_FCC_PRIMITIVE_POSCAR, _FCC_CONVENTIONAL_POSCAR])
+def test_conventional_lattice_vectors(poscar, Assert):
+    pytest.importorskip("spglib")
+    # both settings of the same crystal have the same conventional cell, and that is
+    # the cell the divisions of a generated mesh count along
+    structure = Structure.from_POSCAR(poscar)
+    Assert.allclose(structure.conventional_lattice_vectors(), 5.43 * np.eye(3))
+
+
+def test_conventional_lattice_vectors_of_a_slab(Assert):
+    pytest.importorskip("spglib")
+    # a hexagonal slab keeps its vacuum axis, so the user can see which division
+    # belongs to it
+    structure = Structure.from_POSCAR(_MOS2_POSCAR)
+    actual = structure.conventional_lattice_vectors(symprec=1e-3)
+    # the conventional vectors are built from the cell of the POSCAR, which writes
+    # a * sqrt(3) / 2 with seven decimals, so they inherit that imprecision
+    lengths = np.linalg.norm(actual, axis=1)
+    Assert.allclose(lengths, [3.16, 3.16, 20.0], tolerance=1e9)
+
+
+def test_conventional_lattice_vectors_multiple_steps(Sr2TiO4):
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.NotImplemented):
+        Sr2TiO4[:].conventional_lattice_vectors()

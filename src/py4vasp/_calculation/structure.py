@@ -425,6 +425,12 @@ Atoms # atomic
             self._spglib_cell(), kspacing, divisions, shift, symprec
         )
 
+    def conventional_lattice_vectors(self, symprec=_SYMPREC) -> np.ndarray:
+        """Return the lattice vectors of the standardized conventional cell."""
+        cell = self._spglib_cell()
+        transformation = _kpoints_file.transformation_matrix(cell, symprec)
+        return np.linalg.inv(transformation).T @ cell[0]
+
     def _spglib_cell(self):
         """Describe a single frame the way spglib and seekpath expect it."""
         positions = self.positions()
@@ -1753,6 +1759,55 @@ class Structure(view.Mixin):
             kspacing,
             divisions,
             shift,
+            symprec,
+        )
+
+    def conventional_lattice_vectors(self, symprec=_SYMPREC):
+        """Determine the lattice vectors of the standardized conventional cell.
+
+        Every crystal has a conventional cell that carries the full symmetry of its
+        lattice. py4vasp derives it with spglib from the bare geometry, so this works
+        for any single structure including one read from a POSCAR file -- unlike
+        :meth:`standardized_cell`, which reports the cell VASP's own symmetry implies
+        and therefore requires a calculation. Only the lattice vectors are returned;
+        the atoms are not mapped onto the conventional cell.
+
+        This is the cell that :meth:`generate_kmesh` subdivides, so use it to find out
+        which direction a particular number of divisions belongs to. For a slab, the
+        vector of length ~20 Å is the vacuum, and it usually wants a single k point.
+
+        Parameters
+        ----------
+        symprec : float
+            Distance tolerance (in Å) spglib uses to detect the symmetry.
+
+        Returns
+        -------
+        np.ndarray
+            The three lattice vectors of the conventional cell as rows, in Å.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this
+        method. You can also use your own VASP calculation data if you have it
+        available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        For cubic perovskite the conventional cell is the cell of the calculation
+
+        >>> calculation.structure.conventional_lattice_vectors()
+        array([[4., 0., 0.],
+               [0., 4., 0.],
+               [0., 0., 4.]])
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.conventional_lattice_vectors,
             symprec,
         )
 
