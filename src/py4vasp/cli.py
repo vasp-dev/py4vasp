@@ -122,7 +122,7 @@ def symmetrize(file, primitive, symprec, in_place, output):
         raise click.UsageError(message)
     destination = file if in_place else output
     try:
-        _raise_if_output_not_supported(destination)
+        _raise_if_output_not_supported(destination, "the symmetrized structure")
         structure = _read_structure(file)
         result = structure.symmetrize(to_primitive=primitive, symprec=symprec)
         poscar = result.to_POSCAR()
@@ -147,20 +147,17 @@ def _read_structure(file):
     return Structure.from_POSCAR(file.read_text())
 
 
-def _raise_if_output_not_supported(destination):
-    "The symmetrized structure is written as POSCAR, so it must not overwrite input."
+def _raise_if_output_not_supported(destination, description):
+    "py4vasp generates text files, so they must not overwrite the data of a calculation."
     if destination is None:
         return
     if destination.suffix in _HDF5_SUFFIXES:
-        message = (
-            "Writing the symmetrized structure to an HDF5 file is not implemented."
-        )
+        message = f"Writing {description} to an HDF5 file is not implemented."
         raise exception.NotImplemented(message)
     if archive.is_archive(destination):
         message = (
-            "Writing the symmetrized structure to an archive is not implemented. Note "
-            "that using --in-place on an archive would replace the whole archive by a "
-            "single POSCAR file."
+            f"Writing {description} to an archive is not implemented. Note that it "
+            "would replace the whole archive by a single text file."
         )
         raise exception.NotImplemented(message)
 
@@ -215,6 +212,7 @@ def generate_kpath(file, number_points, time_reversal, symprec, output):
     -o/--output to store it as KPOINTS or KPOINTS_OPT.
     """
     try:
+        _raise_if_output_not_supported(output, "a KPOINTS file")
         structure = _read_structure(file)
         kpoints = structure.generate_kpath(
             number_points=number_points,
@@ -278,6 +276,7 @@ def generate_kmesh(file, kspacing, divisions, shift, symprec, output):
         message = "Please specify either the --kspacing or the --divisions of the mesh."
         raise click.UsageError(message)
     try:
+        _raise_if_output_not_supported(output, "a KPOINTS file")
         structure = _read_structure(file)
         kpoints = structure.generate_kmesh(
             kspacing=kspacing,

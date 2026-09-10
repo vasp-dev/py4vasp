@@ -496,3 +496,41 @@ def test_generate_kmesh_reports_py4vasp_error(mock_structure, tmp_path):
     assert result.exit_code != 0
     assert error_message in result.output
     assert not output.exists()
+
+
+# ---------------------------------------------------------------------------
+# generate does not overwrite the input files of a calculation
+# ---------------------------------------------------------------------------
+
+_GENERATE_COMMANDS = [("kpath", []), ("kmesh", ["--kspacing", "0.2"])]
+
+
+@pytest.mark.parametrize("command, options", _GENERATE_COMMANDS)
+@pytest.mark.parametrize("suffix", (".h5", ".hdf5"))
+def test_generate_does_not_overwrite_hdf5(
+    mock_structure, tmp_path, command, options, suffix
+):
+    poscar = _write(tmp_path / "POSCAR")
+    output = _write(tmp_path / f"vaspout{suffix}", "not really HDF5")
+    runner = CliRunner()
+    options = [*options, "-o", str(output)]
+    result = runner.invoke(cli, ["generate", command, str(poscar), *options])
+    assert result.exit_code != 0
+    assert "not implemented" in result.output.lower()
+    assert output.read_text() == "not really HDF5"  # the file is untouched
+    mock_structure.from_POSCAR.assert_not_called()
+
+
+@pytest.mark.parametrize("command, options", _GENERATE_COMMANDS)
+def test_generate_does_not_overwrite_archive(
+    mock_structure, example_archive, tmp_path, command, options
+):
+    poscar = _write(tmp_path / "POSCAR")
+    original = example_archive.read_bytes()
+    runner = CliRunner()
+    options = [*options, "-o", str(example_archive)]
+    result = runner.invoke(cli, ["generate", command, str(poscar), *options])
+    assert result.exit_code != 0
+    assert "archive" in result.output
+    assert example_archive.read_bytes() == original
+    mock_structure.from_POSCAR.assert_not_called()
