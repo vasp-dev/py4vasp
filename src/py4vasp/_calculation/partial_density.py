@@ -353,38 +353,43 @@ class PartialDensity(view.Mixin):
 
     Examples
     --------
-    First, we create some example data do that you can follow along. Please define a
-    variable `path` with the path to a directory that exists and does not contain any
-    VASP calculation data. Alternatively, you can use your own data if you have run
-    VASP and construct `calculation` from it.
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not contain any VASP
+    calculation data. Alternatively, use your own data if you have run VASP.
+
+    The partial charge of the example data describes a graphite surface, because that
+    is what a partial charge is usually used for: only a cell with a vacuum region
+    above the surface can be scanned with a simulated microscope.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation(path, "surface")
 
-    For your own postprocessing, you can read the band data into a Python dictionary:
+    For your own postprocessing, you can read the data into a Python dictionary:
 
     >>> calculation.partial_density.read()
-    {'structure': {...}, 'grid': array([...]), 'bands': array([...]), 'kpoints': array([...]), 'partial_density': array([[[...]]], ...)}
+    {'structure': {...}, 'grid': array([ 21,  21, 199]), 'bands': array([0]),
+     'kpoints': array([0]), 'partial_density': array([[[...]]], ...)}
 
     Alternatively, obtain the density as a numpy array directly:
 
-    >>> calculation.partial_density.to_numpy()
-    array([[[...]]], ...)
+    >>> calculation.partial_density.to_numpy().shape
+    (21, 21, 199)
 
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.partial_density.plot()
-    View(...)
+    View(..., grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='total',
+        isosurfaces=[Isosurface(...)], ...)], ...)
 
     It is also possible to access the contributing bands ([0] means all bands
     contribute), grid, and contributing k-points:
 
     >>> calculation.partial_density.bands()
-    array([...])
+    array([0])
     >>> calculation.partial_density.grid()
-    array([...])
+    array([ 21,  21, 199])
     >>> calculation.partial_density.kpoints()
-    array([...])
+    array([0])
 
     Finally, you can inspect possible selections with:
 
@@ -531,14 +536,26 @@ class PartialDensity(view.Mixin):
 
         Examples
         --------
-        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
-        >>> calculation.partial_density.to_numpy() # doctest: +SKIP
-        array(...)
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not contain any VASP
+        calculation data. Alternatively, use your own data if you have run VASP.
 
-        You can also specify the spin channel, band, and k-point:
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "surface")
 
-        >>> calculation.partial_density.to_numpy(selection="up", band=2, kpoint=3) # doctest: +SKIP
-        array(...)
+        >>> calculation.partial_density.to_numpy().shape
+        (21, 21, 199)
+
+        A band or k point can only be selected if VASP separated them, which requires
+        LSEPB and LSEPK in the INCAR file. The example data sums them, which is what
+        `bands()` reporting [0] means, so asking for one warns and returns the sum.
+
+        >>> import warnings
+        >>> with warnings.catch_warnings(record=True) as caught:
+        ...     warnings.simplefilter("always")
+        ...     summed = calculation.partial_density.to_numpy(band=2)
+        >>> print(caught[0].category.__name__)
+        UserWarning
         """
         return merge_default(
             self._source,
@@ -577,14 +594,22 @@ class PartialDensity(view.Mixin):
 
         Examples
         --------
-        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
-        >>> calculation.partial_density.to_view() # doctest: +SKIP
-        View(...)
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not contain any VASP
+        calculation data. Alternatively, use your own data if you have run VASP.
 
-        You can also specify the spin channel, the supercell, and user options:
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "surface")
 
-        >>> calculation.partial_density.to_view(selection="up", supercell=2, isolevel=0.3) # doctest: +SKIP
-        View(...)
+        >>> calculation.partial_density.to_view()
+        View(..., grid_scalars=[GridQuantity(..., label='total', ...)], ...)
+
+        The isosurface is drawn at a fixed value of the density. Raise it to see a
+        surface that hugs the atoms more closely, and replicate the cell to show more
+        than one surface unit
+
+        >>> calculation.partial_density.to_view(supercell=2, isolevel=0.4)
+        View(..., supercell=array([2, 2, 2]), ...)
         """
         return merge_default(
             self._source,
@@ -632,24 +657,36 @@ class PartialDensity(view.Mixin):
 
         Examples
         --------
-        >>> calculation = Calculation.from_path(".") # doctest: +SKIP
-        >>> calculation.partial_density.to_stm() # doctest: +SKIP
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not contain any VASP
+        calculation data. Alternatively, use your own data if you have run VASP.
 
-        You can also specify the mode and spin channel:
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "surface")
 
-        >>> calculation.partial_density.to_stm(selection="constant_current up") # doctest: +SKIP
+        The image of the graphite surface in the example data shows one maximum per
+        surface cell rather than the honeycomb of its atoms. That is what a microscope
+        sees of graphite: the stacking makes the two atoms of a layer inequivalent, and
+        only one of them carries weight at the Fermi energy.
 
-        In `constant_height` mode, you can also specify the tip height:
+        >>> calculation.partial_density.to_stm().series.label
+        'STM of C8 for both spin channels at constant height=2.00 Angstrom'
 
-        >>> calculation.partial_density.to_stm(selection="constant_height", tip_height=3.0) # doctest: +SKIP
+        In `constant_height` mode, you can specify how far above the surface the tip is
 
-        Similarly, in `constant_current` mode, you can specify the tunneling current:
+        >>> calculation.partial_density.to_stm(selection="constant_height", tip_height=3.0)
+        Graph(series=Contour(data=array([[...]]), ...), ...)
 
-        >>> calculation.partial_density.to_stm(selection="constant_current", current=0.5) # doctest: +SKIP
+        In `constant_current` mode, the tip follows a contour of the tunneling current
+        instead, so the image is a height rather than a current
+
+        >>> calculation.partial_density.to_stm(selection="constant_current", current=0.5)
+        Graph(series=Contour(..., color_scheme='monochrome', ...), ...)
 
         You may also wish to specify a larger supercell for better visualization:
 
-        >>> calculation.partial_density.to_stm(supercell=3) # doctest: +SKIP
+        >>> calculation.partial_density.to_stm(supercell=3).series.supercell
+        array([3, 3])
         """
         if stm_settings is None:
             stm_settings = self.STM_settings()

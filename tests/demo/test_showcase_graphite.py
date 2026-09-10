@@ -3,7 +3,8 @@
 import numpy as np
 import pytest
 
-from py4vasp._demo.showcase import cell, structure
+from py4vasp._calculation.density import Density
+from py4vasp._demo.showcase import cell, density, partial_density, structure
 
 # Literature values for graphite: a = 2.4612 A, c = 6.7079 A, so the layers sit
 # 3.35395 A apart and the carbon atoms 1.42104 A from each other in a layer.
@@ -97,3 +98,103 @@ def test_slab_is_centred_in_the_cell(cartesian, raw_structure, Assert):
 
 def test_cell_has_no_extra_scale(raw_structure):
     assert np.array(raw_structure.cell.scale) == 1.0
+
+
+@pytest.fixture
+def raw_partial_density():
+    return partial_density.Graphite()
+
+
+@pytest.fixture
+def surface_state(raw_partial_density):
+    """The partial charge with the grid axes in the order the field was evaluated in."""
+    return np.array(raw_partial_density.partial_charge)[0, 0, 0].T
+
+
+def test_partial_charge_is_summed_over_bands_and_kpoints(raw_partial_density):
+    # py4vasp refuses to simulate a microscope from a separated calculation, and zero
+    # is how VASP marks a summed band or k point
+    assert list(np.array(raw_partial_density.bands)) == [0]
+    assert list(np.array(raw_partial_density.kpoints)) == [0]
+    assert np.array(raw_partial_density.partial_charge).shape[:3] == (1, 1, 1)
+
+
+def test_partial_charge_shares_the_grid_with_the_density(raw_partial_density, Assert):
+    # the Bader basins a partial charge is integrated in are built from the density, and
+    # py4vasp refuses to combine two grids of different shape
+    charge = np.array(density.Graphite().charge)[0]
+    Assert.allclose(np.array(raw_partial_density.grid), np.array(charge.shape[::-1]))
+    assert np.array(raw_partial_density.partial_charge)[0, 0, 0].shape == charge.shape
+
+
+def test_partial_charge_peaks_at_one(surface_state, Assert):
+    # py4vasp draws its isosurface at an absolute level, so the largest value has to be
+    # a known one for the default level to mean anything
+    assert np.all(surface_state >= 0.0)
+    Assert.allclose(np.max(surface_state), 1.0)
+
+
+def test_default_isolevel_encloses_the_slab(surface_state):
+    # a level that encloses almost nothing shows no surface, and one that encloses
+    # almost everything shows the box; the surface has to hug the atoms
+    enclosed = np.mean(surface_state > 0.2)
+    assert 0.15 < enclosed < 0.35
+
+
+def test_state_decays_into_the_vacuum(surface_state, raw_partial_density):
+    heights = _height_of_every_plane(raw_partial_density)
+    top = np.max(np.array(structure.Graphite().positions)[:, 2]) * cell.GRAPHITE_HEIGHT
+    far_above = surface_state[:, :, heights > top + 3.0]
+    assert np.max(far_above) < 1e-3
+    # but not so fast that a tip held above the surface has nothing to tunnel into
+    just_above = surface_state[:, :, np.abs(heights - top - 1.0) < 0.1]
+    assert np.max(just_above) > 1e-3
+
+
+def _height_of_every_plane(raw_partial_density):
+    number_planes = np.array(raw_partial_density.grid)[2]
+    return np.arange(number_planes) / number_planes * cell.GRAPHITE_HEIGHT
+
+
+def test_only_one_sublattice_shows_at_the_surface(surface_state, raw_partial_density):
+    # Bernal stacking makes the two atoms of a layer inequivalent, so a microscope
+    # image of graphite shows a triangular lattice of one maximum per cell rather than
+    # the honeycomb the atoms form
+    heights = _height_of_every_plane(raw_partial_density)
+    positions = np.array(structure.Graphite().positions)
+    top = np.max(positions[:, 2]) * cell.GRAPHITE_HEIGHT
+    plane = surface_state[:, :, np.argmin(np.abs(heights - top - 1.0))]
+    counts = np.array(raw_partial_density.grid)[:2]
+    exposed = plane[tuple(np.rint(np.array([2 / 3, 1 / 3]) * counts).astype(int))]
+    eclipsed = plane[tuple(np.rint(np.array([1 / 3, 2 / 3]) * counts).astype(int))]
+    assert exposed > 2 * eclipsed
+    assert np.isclose(np.max(plane), exposed)
+
+
+def test_exposed_sublattice_carries_more_of_the_state():
+    positions = np.array(structure.Graphite().positions)
+    weights = partial_density.sublattice_weights(positions)
+    # every layer has exactly one atom eclipsed by the layer next to it
+    assert np.count_nonzero(weights == partial_density.EXPOSED_WEIGHT) == 4
+    assert np.count_nonzero(weights == partial_density.ECLIPSED_WEIGHT) == 4
+    assert partial_density.ECLIPSED_WEIGHT < partial_density.EXPOSED_WEIGHT
+
+
+def test_density_holds_the_valence_electrons_of_every_carbon(Assert):
+    # VASP multiplies a density by the volume of the cell, so the mean over the grid is
+    # the number of electrons rather than a density
+    charge = np.array(density.Graphite().charge)
+    electrons = NUMBER_ATOMS * density.VALENCE_ELECTRONS["C"]
+    assert abs(np.mean(charge) / electrons - 1) < 1e-9
+
+
+def test_bader_analysis_finds_the_electrons_of_every_atom(Assert):
+    quantity = Density.from_data(density.Graphite())
+    charges = quantity.bader_charge(bader_analysis=quantity.bader_analysis())
+    values = np.array(list(charges.values()))
+    assert len(values) == NUMBER_ATOMS
+    electrons = NUMBER_ATOMS * density.VALENCE_ELECTRONS["C"]
+    # the basins partition the whole cell, so they account for every electron but the
+    # Gaussian tails the images leave out
+    assert abs(np.sum(values) / electrons - 1) < 1e-9
+    assert np.all(np.abs(values - density.VALENCE_ELECTRONS["C"]) < 0.5)

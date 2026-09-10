@@ -21,6 +21,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     neighbor_list,
     optics,
     pair_correlation,
+    partial_density,
     phonon_band,
     phonon_dos,
     phonon_mode,
@@ -83,6 +84,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.neighbor_list)
         + find_examples(_calculation.optics)
         + find_examples(_calculation.pair_correlation)
+        + find_examples(_calculation.partial_density)
         + find_examples(_calculation.phonon_band)
         + find_examples(_calculation.phonon_dos)
         + find_examples(_calculation.phonon_mode)
@@ -106,6 +108,7 @@ _FULL_INSTALL_EXAMPLES = {
     "py4vasp._calculation.neighbor_list.NeighborList.read": "scipy",
     "py4vasp._calculation.neighbor_list.NeighborList.to_string": "scipy",
     "py4vasp._calculation.optics.Optics.color": "scipy",
+    "py4vasp._calculation.partial_density.PartialDensity.to_stm": "scipy",
     "py4vasp._calculation.symmetry.Symmetry.space_group": "spglib",
     "py4vasp._calculation.symmetry.Symmetry.point_group_schoenflies": "spglib",
     "py4vasp._calculation.symmetry.Symmetry.bravais_lattice": "spglib",
@@ -228,7 +231,6 @@ _EXAMPLES_NOT_RUNNABLE_YET = (
     "density",
     "exciton_density",
     "nics",
-    "partial_density",
     "potential",
 )
 
