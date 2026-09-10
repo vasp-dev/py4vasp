@@ -161,3 +161,67 @@ def test_optical_weight_moves_from_the_cation_to_the_anion(Assert):
     oxygen = np.sum(phonon.mode_weights()[3:, 3:], axis=1)
     assert np.all(np.diff(oxygen) > 0)
     assert oxygen[0] < 0.05 and oxygen[-1] > 0.9
+
+
+@pytest.fixture
+def raw_mode():
+    return phonon.mode_Sr2TiO4()
+
+
+@pytest.fixture
+def mode_frequencies(raw_mode):
+    """The complex frequencies VASP stores as pairs of reals, in THz."""
+    complex_ev = np.array(raw_mode.frequencies).flatten().view(np.complex128)
+    return complex_ev * phonon.EV_TO_THZ
+
+
+def test_mode_reports_one_frequency_per_degree_of_freedom(mode_frequencies):
+    assert mode_frequencies.shape == (NUMBER_MODES,)
+
+
+def test_no_mode_is_unstable(mode_frequencies):
+    # VASP reports an unstable mode as an imaginary frequency, so a crystal at its
+    # energy minimum has none
+    assert np.all(mode_frequencies.imag == 0.0)
+    assert np.all(mode_frequencies.real >= 0.0)
+
+
+def test_three_modes_translate_the_crystal(mode_frequencies, Assert):
+    Assert.allclose(np.sort(mode_frequencies.real)[:3], np.zeros(3))
+    assert np.all(np.sort(mode_frequencies.real)[3:] > 0.0)
+
+
+def test_mode_frequencies_are_the_zone_centre_of_the_dispersion(
+    mode_frequencies, Assert
+):
+    at_gamma = phonon.branch_frequencies(np.zeros((1, 3)))[0]
+    Assert.allclose(np.sort(mode_frequencies.real), np.sort(at_gamma))
+
+
+def test_mode_frequencies_match_the_dispersion_at_gamma(mode_frequencies, raw_band):
+    # the path starts at Gamma, so the first q point of the dispersion is the same one
+    frequencies = np.array(raw_band.dispersion.eigenvalues)
+    np.testing.assert_allclose(
+        np.sort(mode_frequencies.real), np.sort(frequencies[0]), atol=1e-10
+    )
+
+
+def test_mode_displacements_are_normalized(raw_mode, Assert):
+    eigenvectors = np.array(raw_mode.eigenvectors)
+    assert eigenvectors.shape == (NUMBER_MODES, NUMBER_MODES)
+    Assert.allclose(np.sum(eigenvectors**2, axis=1), np.ones(NUMBER_MODES))
+
+
+def test_mode_displacements_carry_the_share_of_their_mode(raw_mode, Assert):
+    # the displacement pattern of a mode has to distribute the mode over the atoms the
+    # same way the projected density of states does
+    eigenvectors = np.array(raw_mode.eigenvectors)
+    per_atom = np.sum(eigenvectors.reshape(NUMBER_MODES, phonon.NUMBER_ATOMS, 3) ** 2, axis=2)
+    Assert.allclose(per_atom, phonon.mode_weights())
+
+
+def test_mode_describes_the_relaxed_structure(raw_mode, Assert):
+    from py4vasp._demo.showcase import structure
+
+    positions = np.array(raw_mode.structure.positions)
+    Assert.allclose(positions[-1], structure.ideal_positions())

@@ -99,6 +99,7 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, _demo.system.Sr2TiO4())
     write(h5f, showcase.phonon.band_Sr2TiO4())
     write(h5f, showcase.phonon.dos_Sr2TiO4())
+    write(h5f, showcase.phonon.mode_Sr2TiO4())
     write(h5f, showcase.dielectric_function.electron())
     write(h5f, showcase.velocity.Sr2TiO4())
     write(h5f, showcase.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")

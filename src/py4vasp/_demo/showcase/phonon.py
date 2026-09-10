@@ -20,6 +20,9 @@ MASSES = (87.62, 87.62, 47.87, 16.00, 16.00, 16.00, 16.00)
 # stretching modes, so the share moves from the cations to the anions with frequency.
 OPTICAL_EXPONENTS = (-6.0, 6.0)
 BROADENING = 0.25  # THz, wide enough to sample smoothly and narrow enough to resolve
+# VASP stores the eigenvalues of the dynamical matrix as energies, so the showcase
+# converts its frequencies; py4vasp prints them back in THz with the same factor.
+EV_TO_THZ = 241.798934781
 ENERGY_MARGIN = 1.5  # THz of empty axis above the highest branch
 # Frequency in THz that every optical branch reaches at the zone centre. Sr2TiO4 has
 # eighteen of them, spread over the range an oxide occupies; the heavier the atoms
@@ -186,3 +189,37 @@ def dos_Sr2TiO4() -> raw.PhononDos:
         projections=_demo.wrap_data(projections),
         stoichiometry=_demo.stoichiometry.Sr2TiO4(has_ion_types=True),
     )
+
+
+def mode_Sr2TiO4() -> raw.PhononMode:
+    """Phonon modes of Sr2TiO4 at the zone centre.
+
+    The frequencies are the ones the dispersion reports at Gamma, so the three acoustic
+    branches come out at exactly zero: they translate the whole crystal, which costs no
+    energy. None of them is imaginary, which is what marks a structure as stable.
+    """
+    at_gamma = branch_frequencies(np.zeros((1, 3)))[0] / EV_TO_THZ
+    # VASP stores the eigenvalues of the dynamical matrix as complex numbers so that an
+    # unstable mode can be reported as an imaginary frequency
+    complex_frequencies = at_gamma.astype(np.complex128)
+    return raw.PhononMode(
+        structure=structure.Sr2TiO4(),
+        frequencies=_demo.wrap_data(complex_frequencies.view(np.float64).reshape(-1, 2)),
+        eigenvectors=_demo.wrap_data(_displacements()),
+    )
+
+
+def _displacements():
+    """Real displacement pattern of every zone-centre mode, shape ``(mode, mode)``.
+
+    A mode at Gamma is real, so the pattern is the real part of the one the dispersion
+    carries, rescaled so that every atom keeps the share :func:`mode_weights` gives it.
+    The trailing axis runs over the three directions of every atom in turn, as VASP
+    flattens them.
+    """
+    mode = np.arange(NUMBER_MODES)[:, np.newaxis, np.newaxis]
+    atom = np.arange(NUMBER_ATOMS)[np.newaxis, :, np.newaxis]
+    axis = np.arange(3)[np.newaxis, np.newaxis, :]
+    pattern = np.cos(np.pi * (mode + 1) * (3 * atom + axis) / NUMBER_MODES)
+    scale = np.sqrt(mode_weights() / np.sum(pattern**2, axis=-1))
+    return (pattern * scale[:, :, np.newaxis]).reshape(NUMBER_MODES, NUMBER_MODES)
