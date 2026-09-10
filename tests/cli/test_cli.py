@@ -28,7 +28,16 @@ def mock_calculation():
 @pytest.fixture
 def mock_structure():
     with patch("py4vasp.cli.Structure", autospec=True) as mock:
+        structure = mock.from_POSCAR.return_value
+        structure.conventional_lattice_vectors.return_value = _CONVENTIONAL_CELL
+        structure.generate_kmesh.return_value = _KMESH_TEXT
         yield mock
+
+
+# a slab, so that the three axes are told apart in the report
+_CONVENTIONAL_CELL = [[3.16, 0.0, 0.0], [-1.58, 2.7366, 0.0], [0.0, 0.0, 20.0]]
+# the command reads the divisions back out of the text it generated
+_KMESH_TEXT = "k mesh of the conventional cell: divisions 4 4 4\n0\nReduced"
 
 
 @pytest.mark.parametrize("lammps", ("LAMMPS", "Lammps", "lammps"))
@@ -431,7 +440,7 @@ def test_generate_kmesh_writes_to_stdout(mock_structure, tmp_path):
     structure.generate_kmesh.assert_called_once_with(
         kspacing=0.2, divisions=None, shift=None, symprec=_SYMPREC
     )
-    assert result.output == f"{structure.generate_kmesh.return_value}\n"
+    assert result.stdout == f"{structure.generate_kmesh.return_value}\n"
 
 
 @pytest.mark.parametrize("flag", ("-o", "--output"))
@@ -444,7 +453,8 @@ def test_generate_kmesh_output_file(mock_structure, tmp_path, flag):
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
     assert result.exit_code == 0
     assert output.read_text() == "MESH"
-    assert result.output == ""  # nothing written to stdout
+    assert result.stdout == ""  # the file is not echoed to stdout
+    assert "conventional cell" in result.stderr  # but the report still reaches the user
 
 
 @pytest.mark.parametrize("flag", ("-d", "--divisions"))
@@ -570,3 +580,32 @@ def test_generate_does_not_overwrite_archive(
     assert "archive" in result.output
     assert example_archive.read_bytes() == original
     mock_structure.from_POSCAR.assert_not_called()
+
+
+def test_generate_kmesh_reports_the_conventional_cell(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kmesh.return_value = (
+        "k mesh of the conventional cell: divisions 2 10 6, kspacing 0.2\n0\nReduced"
+    )
+    runner = CliRunner()
+    options = ["--kspacing", "0.2", "--symprec", "0.1"]
+    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
+    assert result.exit_code == 0
+    # the file itself stays a KPOINTS file, byte for byte
+    assert result.stdout == f"{structure.generate_kmesh.return_value}\n"
+    # the report tells the user which axis each division belongs to
+    assert "Divisions 2 10 6" in result.stderr
+    assert "conventional cell" in result.stderr
+    for name, vector in zip("abc", _CONVENTIONAL_CELL):
+        assert f"  {name} " in result.stderr
+        assert f"{vector[0]:12.8f}" in result.stderr
+    structure.conventional_lattice_vectors.assert_called_once_with(symprec=0.1)
+
+
+def test_generate_kpath_does_not_report_a_conventional_cell(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kpath", str(poscar)])
+    assert result.exit_code == 0
+    assert result.stderr == ""  # the path does not count along the conventional cell

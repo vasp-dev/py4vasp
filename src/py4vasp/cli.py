@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pathlib
+import re
 
 import click
 
@@ -319,6 +320,28 @@ def generate_kmesh(file, kspacing, divisions, shift, symprec, output):
             shift=shift,
             symprec=symprec,
         )
+        lattice_vectors = structure.conventional_lattice_vectors(symprec=symprec)
     except exception.Py4VaspError as error:
         raise click.ClickException(*error.args) from error
+    click.echo(_conventional_cell_report(kpoints, lattice_vectors), err=True)
     _write_or_print(kpoints, output)
+
+
+def _conventional_cell_report(kpoints, lattice_vectors):
+    """Tell the user which axis every division of the mesh belongs to.
+
+    The mesh subdivides the conventional cell, which is not necessarily the cell in
+    the input file, so without this the numbers passed to --divisions are a guess.
+    It goes to stderr to keep the KPOINTS file on stdout byte for byte.
+    """
+    divisions = re.search(r"divisions ([\d ]+)", kpoints.splitlines()[0])
+    subject = (
+        f"Divisions {divisions.group(1).strip()} count"
+        if divisions
+        else "The divisions count"
+    )
+    rows = (
+        f"  {name} " + " ".join(f"{component:12.8f}" for component in vector)
+        for name, vector in zip("abc", lattice_vectors)
+    )
+    return "\n".join((f"{subject} along the conventional cell:", *rows))
