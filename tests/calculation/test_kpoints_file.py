@@ -8,6 +8,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation import _kpoints_file
+from py4vasp._calculation.symmetry import _SYMPREC
 
 
 @pytest.mark.parametrize(
@@ -342,3 +343,41 @@ def test_unrelated_warning_is_not_reported_as_an_ambiguity(monkeypatch):
     messages = [str(warning.message) for warning in caught]
     assert not any("ambiguous" in message for message in messages)
     assert any("sqrt(3)a" in message for message in messages)  # passed through as is
+
+
+def _cell_with_position(position):
+    "A cubic cell whose second atom sits at the given direct coordinate."
+    return (np.eye(3), [[0, 0, 0], [position, position, position]], [1, 2])
+
+
+@pytest.mark.parametrize("position", [0.333, 0.667, -0.333, 0.1667])
+def test_rounded_fraction_warns(position):
+    # a coordinate typed as a rounded fraction breaks the symmetry by more than the
+    # default tolerance, and spglib then reports a lower symmetry than the crystal has
+    with pytest.warns(UserWarning, match="symprec"):
+        _kpoints_file.warn_if_precision_is_insufficient(
+            _cell_with_position(position)[1], _SYMPREC
+        )
+
+
+@pytest.mark.parametrize(
+    "position",
+    # 0.16667 is off by 3e-6, which is below symprec, so it needs no warning either
+    [0.5, 0.25, 0.75, 0.125, 0.0, 1.0, 1 / 3, 2 / 3, 0.422, 0.3333333, 0.16667],
+)
+def test_exact_values_do_not_warn(position):
+    # exact fractions, values written with enough digits, and coordinates that are not
+    # fractions at all must stay silent -- crying wolf would train users to ignore it
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _kpoints_file.warn_if_precision_is_insufficient(
+            _cell_with_position(position)[1], _SYMPREC
+        )
+
+
+@pytest.mark.parametrize("generate", ["high_symmetry_path", "regular_mesh"])
+def test_generators_check_the_precision(generate):
+    pytest.importorskip("seekpath")
+    arguments = {"regular_mesh": {"kspacing": 0.5}}.get(generate, {})
+    with pytest.warns(UserWarning, match="symprec"):
+        getattr(_kpoints_file, generate)(_cell_with_position(0.333), **arguments)

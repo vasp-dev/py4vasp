@@ -2,7 +2,9 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Generate the content of KPOINTS files."""
 
+import decimal
 import warnings
+from fractions import Fraction
 
 import numpy as np
 
@@ -21,6 +23,9 @@ _SUBSCRIPTS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
 # the standardized conventional cell is at most as large as the cell it comes from,
 # so the determinant of the transformation matrix exceeds 1 only for a supercell
 _VOLUME_TOLERANCE = 1e-6
+# denominators of the direct coordinates of the common Wyckoff positions; a coordinate
+# close to one of these but not equal to it was most likely typed as a rounded fraction
+_SIMPLE_DENOMINATOR = 12
 
 
 def label_to_unicode(name: str) -> str:
@@ -155,6 +160,7 @@ def high_symmetry_path(
     str
         The content of a KPOINTS file describing the path.
     """
+    warn_if_precision_is_insufficient(cell[1], symprec)
     if number_points < 1:
         message = (
             "VASP samples at least one k point along every line of the path, but "
@@ -353,6 +359,7 @@ def regular_mesh(
         The content of a KPOINTS file describing the mesh.
     """
     _raise_if_mesh_not_valid(kspacing, divisions, shift)
+    warn_if_precision_is_insufficient(cell[1], symprec)
     transformation = transformation_matrix(cell, symprec)
     if divisions is None:
         reciprocal_lattice = conventional_reciprocal_lattice(cell[0], transformation)
@@ -407,3 +414,48 @@ def _raise_if_not_three_elements(values, description):
             f"{np.size(values)} were given."
         )
         raise exception.IncorrectUsage(message)
+
+
+def warn_if_precision_is_insufficient(positions, symprec: float) -> None:
+    """Warn about direct coordinates written as a rounded fraction.
+
+    A coordinate typed as 0.333 instead of 1/3 sits further from its exact position
+    than the default tolerance allows, so spglib reports a lower symmetry than the
+    crystal has and the k points follow from the wrong space group. Only the number of
+    digits gives that away, because the coordinate itself looks perfectly reasonable.
+
+    This does not catch every way a cell can be imprecise -- a lattice vector rounded
+    to a few decimals is indistinguishable from a lattice constant chosen exactly -- so
+    the space group reported in the comment line of the generated file remains the check
+    that matters.
+    """
+    for value in np.asarray(positions, dtype=np.float64).flatten():
+        precision = _written_precision(value)
+        if precision <= symprec:
+            continue
+        fraction = _rounded_fraction(value, precision)
+        if fraction is None:
+            continue
+        message = (
+            f"The direct coordinate {value} looks like {fraction} rounded to "
+            f"{-decimal.Decimal(repr(float(value))).as_tuple().exponent} digits, which "
+            f"is further from the exact position than symprec={symprec}. The symmetry "
+            "detection may therefore find a lower symmetry than your crystal has. "
+            "Check the space group in the first line of the generated file; write more "
+            "digits or raise symprec if it is not the one you expect."
+        )
+        warnings.warn(message, UserWarning)
+        return
+
+
+def _written_precision(value) -> float:
+    "Half of the last digit the number is written with, e.g. 0.0005 for 0.333."
+    exponent = decimal.Decimal(repr(float(value))).as_tuple().exponent
+    return 0.5 * 10.0**exponent
+
+
+def _rounded_fraction(value, precision) -> Fraction | None:
+    "The simple fraction the value is a rounded version of, if there is one."
+    fraction = Fraction(float(value)).limit_denominator(_SIMPLE_DENOMINATOR)
+    distance = abs(float(value) - float(fraction))
+    return fraction if 0 < distance <= precision else None
