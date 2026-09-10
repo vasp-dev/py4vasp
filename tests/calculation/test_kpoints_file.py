@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+import warnings
 
 import numpy as np
 import pytest
@@ -303,3 +304,41 @@ def test_generating_lattice_mode_with_shift():
 )
 def test_mesh_comment(kspacing, expected):
     assert _kpoints_file.mesh_comment([8, 8, 6], kspacing) == expected
+
+
+def _patch_seekpath_warning(monkeypatch, category):
+    """Make seekpath emit a warning of *category* and otherwise work as usual."""
+    import seekpath
+    import seekpath.hpkot
+
+    real_get_path = seekpath.get_path
+
+    def get_path_with_warning(*args, **kwargs):
+        warnings.warn("hR lattice, but sqrt(3)a almost equal to sqrt(2)c", category)
+        return real_get_path(*args, **kwargs)
+
+    monkeypatch.setattr(_kpoints_file.seekpath, "get_path", get_path_with_warning)
+
+
+def test_seekpath_warning_is_reported_with_context(monkeypatch):
+    pytest.importorskip("seekpath")
+    import seekpath.hpkot
+
+    _patch_seekpath_warning(monkeypatch, seekpath.hpkot.EdgeCaseWarning)
+    with pytest.warns(UserWarning, match="symprec") as caught:
+        _kpoints_file.high_symmetry_path(_BCC_PRIMITIVE)
+    # the original text is kept so the user can look it up, and gets context added
+    assert any("sqrt(3)a" in str(warning.message) for warning in caught)
+
+
+def test_unrelated_warning_is_not_reported_as_an_ambiguity(monkeypatch):
+    pytest.importorskip("seekpath")
+    # spglib emits a DeprecationWarning on every call; dressing that up as a symmetry
+    # ambiguity would cry wolf on every single path
+    _patch_seekpath_warning(monkeypatch, DeprecationWarning)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _kpoints_file.high_symmetry_path(_BCC_PRIMITIVE)
+    messages = [str(warning.message) for warning in caught]
+    assert not any("ambiguous" in message for message in messages)
+    assert any("sqrt(3)a" in message for message in messages)  # passed through as is

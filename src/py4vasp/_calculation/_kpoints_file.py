@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Generate the content of KPOINTS files."""
 
+import warnings
+
 import numpy as np
 
 from py4vasp import exception
@@ -159,7 +161,12 @@ def high_symmetry_path(
             f"number_points is {number_points}."
         )
         raise exception.IncorrectUsage(message)
-    path = seekpath.get_path(cell, with_time_reversal=time_reversal, symprec=symprec)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        path = seekpath.get_path(
+            cell, with_time_reversal=time_reversal, symprec=symprec
+        )
+    _report_warnings_of_seekpath(caught)
     primitive_cell = (
         path["primitive_lattice"],
         path["primitive_positions"],
@@ -173,6 +180,28 @@ def high_symmetry_path(
         (label_to_unicode(first), label_to_unicode(last)) for first, last in lines
     ]
     return line_mode(coordinates, labels, number_points, path_comment(path))
+
+
+def _report_warnings_of_seekpath(caught):
+    """Give the ambiguities seekpath reports the context a user needs.
+
+    seekpath warns when a lattice sits close to a more symmetric one, which decides
+    which path it picks. Its bare warning names the coincidence but not what to do
+    about it. Everything else -- spglib emits a DeprecationWarning on every call -- is
+    passed on unchanged, so that we do not cry wolf.
+    """
+    for warning in caught:
+        if issubclass(warning.category, seekpath.hpkot.EdgeCaseWarning):
+            message = (
+                f"seekpath reports that the lattice is a borderline case: "
+                f"{warning.message} It resolves the ambiguity one way, so the path may "
+                "not be the one you expect. Check the space group in the first line of "
+                "the file, and pass a different symprec if your cell is only "
+                "approximately symmetric."
+            )
+            warnings.warn(message, UserWarning)
+        else:
+            warnings.warn(warning.message, warning.category)
 
 
 def path_comment(path) -> str:
