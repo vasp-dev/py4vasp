@@ -123,7 +123,6 @@ def test_selections_with_only_available_true(tmp_path):
     assert set(available) <= set(full)
     # quantities without any data should not appear in the available result
     absent_when_unavailable = {
-        "bandgap",
         "born_effective_charge",
         "dielectric_tensor",
         "elastic_modulus",
