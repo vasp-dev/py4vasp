@@ -179,10 +179,29 @@ def test_noncollinear_spin_points_along_the_sublattices(noncollinear_dos):
 def test_noncollinear_band_has_one_set_of_eigenvalues():
     raw_band = band.Fe3O4("with_projectors", magnetism="noncollinear")
     eigenvalues = np.array(raw_band.dispersion.eigenvalues)
+    collinear = np.array(band.Fe3O4("no_projectors").dispersion.eigenvalues)
     # a noncollinear calculation does not split the bands by spin; the spin appears in
-    # the four components of the projections instead
+    # the four components of the projections instead. It does not lose half the bands
+    # either: the spinor basis holds as many as the two channels have together.
     assert eigenvalues.shape[0] == 1
-    assert np.array(raw_band.projections).shape[0] == 4
+    assert eigenvalues.shape[2] == 2 * collinear.shape[2]
+    assert np.array(raw_band.projections).shape == (4, 14, 4, *eigenvalues.shape[1:])
+
+
+def test_noncollinear_band_agrees_with_its_density_of_states(Assert):
+    # Band and Dos are written from the same models, so a gap in one and states at the
+    # Fermi energy in the other would mean the two disagree about the material
+    raw_band = band.Fe3O4("no_projectors", magnetism="noncollinear")
+    raw_dos = dos.Fe3O4("no_projectors", "noncollinear")
+    eigenvalues = np.array(raw_band.dispersion.eigenvalues)[0]
+    energies, charge = np.array(raw_dos.energies), np.array(raw_dos.dos)[0]
+    at_fermi = np.argmin(np.abs(energies - raw_dos.fermi_energy))
+    assert charge[at_fermi] > 0.05 * charge.max()
+    below = eigenvalues[eigenvalues < raw_band.fermi_energy].max()
+    above = eigenvalues[eigenvalues > raw_band.fermi_energy].min()
+    # the density of states carries weight at the Fermi energy, so no band may leave a
+    # gap around it that the broadening could not have filled
+    assert above - below < 4 * showcase.BROADENING
 
 
 def test_noncollinear_local_moments_carry_all_three_axes(Assert):

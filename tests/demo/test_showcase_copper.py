@@ -73,3 +73,14 @@ def test_a_band_crosses_the_fermi_energy(raw_band):
     # the free-electron band is filled at some k points and empty at others
     assert np.any((filling > 0.01) & (filling < 0.99))
     assert np.min(eigenvalues) < raw_band.fermi_energy < np.max(eigenvalues)
+
+
+def test_only_the_free_electron_band_reaches_the_fermi_energy(raw_dos):
+    energies = np.array(raw_dos.energies)
+    projections = np.array(raw_dos.projections)[0]
+    # the d bands stop about 1.9 eV below the Fermi energy, so every state at and above
+    # it belongs to the free-electron band. A d weight up there would mean the character
+    # had been attached to whichever band happened to sort into the d columns.
+    above = energies > -0.8
+    assert np.max(projections[0, 2][above]) < 1e-3
+    assert np.max(projections[0, :2][:, above]) > 0.05

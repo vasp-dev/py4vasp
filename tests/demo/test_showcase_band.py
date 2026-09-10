@@ -86,12 +86,6 @@ def test_model_never_closes_the_gap(model):
     assert np.min(conduction) >= model.conduction_band_minimum - 1e-10
 
 
-def test_model_orders_eigenvalues_like_vasp(model):
-    # VASP writes the eigenvalues of every k point in ascending order
-    eigenvalues = model.evaluate(kpoint.mesh())
-    assert np.all(np.diff(eigenvalues, axis=1) >= 0)
-
-
 def test_model_has_an_indirect_gap(model, Assert):
     # the valence band maximum sits at Gamma and the conduction band minimum at P, so
     # the band structure along the path actually shows why the gap is indirect
@@ -173,3 +167,31 @@ def test_band_without_labels_falls_back_to_coordinates(model):
     # py4vasp then labels the band edges with the coordinates of the k point
     labels = Kpoint.from_data(raw_band.dispersion.kpoints).labels()
     assert labels[0] == "$[0 0 0]$"
+
+
+def test_raw_band_eigenvalues_are_sorted_like_vasp(raw_band):
+    # VASP writes the eigenvalues of every k point in ascending order, so the band
+    # structure carries them sorted even though the model keeps them by band
+    eigenvalues = np.array(raw_band.dispersion.eigenvalues)[0]
+    assert np.all(np.diff(eigenvalues, axis=1) >= 0)
+
+
+def test_model_keeps_the_eigenvalues_of_a_band_together(model):
+    # the density of states attaches an orbital character to every band, so column n has
+    # to stay band n; sorting is the job of whoever writes the band structure
+    eigenvalues = model.evaluate(kpoint.mesh())
+    at_gamma = model.evaluate([kpoint.SPECIAL_POINTS["GM"]])[0]
+    assert np.argmax(at_gamma) == model.number_bands - 1
+    assert eigenvalues.shape == (len(kpoint.mesh()), model.number_bands)
+
+
+def test_sort_bands_records_where_every_band_went(Assert):
+    # copper is the case that matters: its free-electron band dips below the d bands, so
+    # the column a band occupies changes from one k point to the next
+    model = electronic_structure.Cu()
+    by_band = model.evaluate(kpoint.mesh())
+    eigenvalues, order = electronic_structure.sort_bands(by_band)
+    assert np.all(np.diff(eigenvalues, axis=1) >= 0)
+    assert np.any(order != np.arange(model.number_bands))
+    # following the order back recovers the eigenvalue of each band
+    Assert.allclose(np.take_along_axis(eigenvalues, np.argsort(order), axis=1), by_band)

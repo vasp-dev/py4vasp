@@ -24,7 +24,9 @@ def Sr2TiO4(projectors, labels="with_labels"):
     """
     model = electronic_structure.Sr2TiO4()
     kpoints = kpoint.line_mode(labels)
-    eigenvalues = model.evaluate(np.array(kpoints.coordinates))
+    eigenvalues, order = electronic_structure.sort_bands(
+        model.evaluate(np.array(kpoints.coordinates))
+    )
     use_orbitals = projectors == "with_projectors"
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, _demo.wrap_data([eigenvalues])),
@@ -37,18 +39,9 @@ def Sr2TiO4(projectors, labels="with_labels"):
         projectors=_demo.projector.Sr2TiO4(use_orbitals),
     )
     if use_orbitals:
-        raw_band.projections = _demo.wrap_data(_projections(len(eigenvalues)))
+        character = electronic_structure.Sr2TiO4_character()
+        raw_band.projections = _demo.wrap_data([_project(character, order)])
     return raw_band
-
-
-def _projections(number_kpoints):
-    # Every state projects with the character of its band, the same character the
-    # density of states is decomposed with. It does not vary along the path, so a fat
-    # band has a constant width per band and the contrast is between the bands.
-    character = electronic_structure.Sr2TiO4_character()
-    constant_along_path = np.ones(number_kpoints)
-    projections = np.einsum("bao,k->aokb", character, constant_along_path)
-    return projections[np.newaxis]  # a single spin component
 
 
 def Fe3O4(projectors, labels="with_labels", magnetism="collinear"):
@@ -64,15 +57,18 @@ def Fe3O4(projectors, labels="with_labels", magnetism="collinear"):
     labels
         Pass ``"no_labels"`` to leave the high-symmetry points unnamed.
     magnetism
-        Pass ``"noncollinear"`` for a single set of eigenvalues whose projections
-        resolve the charge and the three spin axes.
+        Pass ``"noncollinear"`` for a single set of eigenvalues that holds the bands of
+        both channels, with projections resolving the charge and the three spin axes.
     """
     models = electronic_structure.Fe3O4()
     kpoints = kpoint.line_mode_Fe3O4(labels)
     coordinates = np.array(kpoints.coordinates)
     fermi_energy = models[0].fermi_energy
     use_orbitals = projectors == "with_projectors"
-    eigenvalues = _eigenvalues(models, coordinates, magnetism)
+    if magnetism == "collinear":
+        eigenvalues, orders = _collinear_bands(models, coordinates)
+    else:
+        eigenvalues, orders = _noncollinear_bands(models, coordinates)
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, _demo.wrap_data(eigenvalues)),
         fermi_energy=fermi_energy,
@@ -80,30 +76,8 @@ def Fe3O4(projectors, labels="with_labels", magnetism="collinear"):
         projectors=showcase.projector.Fe3O4(use_orbitals, magnetism),
     )
     if use_orbitals:
-        raw_band.projections = _demo.wrap_data(
-            _Fe3O4_projections(len(coordinates), magnetism)
-        )
+        raw_band.projections = _demo.wrap_data(_Fe3O4_projections(orders, magnetism))
     return raw_band
-
-
-def _eigenvalues(models, coordinates, magnetism):
-    if magnetism == "collinear":
-        return np.array([model.evaluate(coordinates) for model in models])
-    # a noncollinear calculation does not split the bands by spin, so it has one set of
-    # eigenvalues; the spin shows up in the components of the projections instead
-    return np.array([models[0].evaluate(coordinates)])
-
-
-def _Fe3O4_projections(number_kpoints, magnetism):
-    character = electronic_structure.Fe3O4_character()
-    constant_along_path = np.ones(number_kpoints)
-    projections = np.einsum("bao,k->aokb", character, constant_along_path)
-    if magnetism == "collinear":
-        return np.array(2 * [projections])
-    # the charge, then the projection of every band onto each of the three spin axes
-    directions = electronic_structure.Fe3O4_spin_directions()
-    projected = np.einsum("aokb,bs->saokb", projections, directions)
-    return np.concatenate(([projections], projected))
 
 
 def Cu(projectors, labels="with_labels"):
@@ -114,8 +88,9 @@ def Cu(projectors, labels="with_labels"):
     """
     model = electronic_structure.Cu()
     kpoints = kpoint.line_mode_Cu(labels)
-    coordinates = np.array(kpoints.coordinates)
-    eigenvalues = model.evaluate(coordinates)
+    eigenvalues, order = electronic_structure.sort_bands(
+        model.evaluate(np.array(kpoints.coordinates))
+    )
     use_orbitals = projectors == "with_projectors"
     raw_band = raw.Band(
         dispersion=raw.Dispersion(kpoints, _demo.wrap_data([eigenvalues])),
@@ -127,7 +102,58 @@ def Cu(projectors, labels="with_labels"):
     )
     if use_orbitals:
         character = electronic_structure.Cu_character()
-        constant_along_path = np.ones(len(coordinates))
-        projections = np.einsum("bao,k->aokb", character, constant_along_path)
-        raw_band.projections = _demo.wrap_data(projections[np.newaxis])
+        raw_band.projections = _demo.wrap_data([_project(character, order)])
     return raw_band
+
+
+def _collinear_bands(models, coordinates):
+    """One set of eigenvalues per spin channel, each sorted on its own."""
+    sorted_channels = [
+        electronic_structure.sort_bands(model.evaluate(coordinates)) for model in models
+    ]
+    eigenvalues = np.array([channel for channel, _ in sorted_channels])
+    orders = [order for _, order in sorted_channels]
+    return eigenvalues, orders
+
+
+def _noncollinear_bands(models, coordinates):
+    """A single set of eigenvalues holding the bands of both spin channels.
+
+    A noncollinear calculation does not split the bands by spin, but it does not lose
+    half of them either: the spinor basis carries as many bands as the two channels have
+    together. Taking only one channel would show the gap of that channel while the
+    density of states, which sums both, shows states at the Fermi energy.
+    """
+    channels = [model.evaluate(coordinates) for model in models]
+    eigenvalues, order = electronic_structure.sort_bands(
+        np.concatenate(channels, axis=-1)
+    )
+    return eigenvalues[np.newaxis], [order]
+
+
+def _project(character, order):
+    """Project every state with the character of the band it belongs to.
+
+    The character is the one the density of states is decomposed with, so a fat band and
+    a projected density of states tell the same story. It follows the permutation that
+    sorted the eigenvalues, because the band sitting in a given column changes from one
+    k point to the next wherever two bands cross.
+    """
+    per_state = character[order]  # (kpoint, band, atom, orbital)
+    return np.einsum("kbao->aokb", per_state)
+
+
+def _Fe3O4_projections(orders, magnetism):
+    character = electronic_structure.Fe3O4_character()
+    if magnetism == "collinear":
+        return np.array([_project(character, order) for order in orders])
+    # the charge, then the projection of every state onto each of the three spin axes.
+    # The bands of the two channels are merged, so the character and the spin direction
+    # of both are stacked and follow the same permutation.
+    (order,) = orders
+    both_channels = np.concatenate(2 * [character])
+    directions = electronic_structure.Fe3O4_spin_directions()
+    both_directions = np.concatenate((directions, -directions))
+    charge = _project(both_channels, order)
+    projected = np.einsum("aokb,kbs->saokb", charge, both_directions[order])
+    return np.concatenate(([charge], projected))

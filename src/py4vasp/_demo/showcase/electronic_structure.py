@@ -73,6 +73,26 @@ _CONDUCTION_CHARACTER = (
 )
 
 
+def sort_bands(eigenvalues):
+    """Bring the eigenvalues of every k point into the ascending order VASP writes.
+
+    Parameters
+    ----------
+    eigenvalues
+        Eigenvalues of shape ``(kpoint, band)`` as :meth:`Model.evaluate` returns them.
+
+    Returns
+    -------
+    -
+        The sorted eigenvalues, and for every slot the band its value came from. Sorting
+        mixes the bands wherever two of them cross -- the free-electron band of copper
+        dips below its d bands -- so anything attached to a band has to follow the same
+        permutation.
+    """
+    order = np.argsort(eigenvalues, axis=-1)
+    return np.take_along_axis(eigenvalues, order, axis=-1), order
+
+
 @dataclasses.dataclass(frozen=True)
 class Model:
     """Eigenvalues as ``E_n(k) = centre_n + sum_i weight_ni cos(2 pi k . R_i)``."""
@@ -112,11 +132,15 @@ class Model:
         Returns
         -------
         -
-            Eigenvalues of shape ``(kpoint, band)``, ascending per k point as VASP
-            writes them.
+            Eigenvalues of shape ``(kpoint, band)``, with the eigenvalue of band n in
+            column n. They are deliberately not sorted: an orbital character belongs to
+            a band, and sorting mixes the columns wherever two bands cross, which would
+            attach the character to the wrong states. Pass them through
+            :func:`sort_bands` when writing a band structure, where the ascending order
+            VASP uses is what a reader expects.
         """
         phase = np.cos(2 * np.pi * np.asarray(kpoints) @ self.translations.T)
-        return np.sort(self.centers + phase @ self.weights.T, axis=-1)
+        return self.centers + phase @ self.weights.T
 
     @property
     def _valence(self):
