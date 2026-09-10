@@ -94,7 +94,7 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, showcase.energy.relax())
     write(h5f, showcase.force.Sr2TiO4())
     write(h5f, showcase.stress.Sr2TiO4())
-    write(h5f, _demo.symmetry.CoO())
+    write(h5f, showcase.symmetry.Sr2TiO4())
     write(h5f, _demo.system.Sr2TiO4())
     write(h5f, showcase.phonon.band_Sr2TiO4())
     write(h5f, showcase.dielectric_function.electron())

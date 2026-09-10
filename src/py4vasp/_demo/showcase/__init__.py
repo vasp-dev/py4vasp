@@ -32,6 +32,7 @@ from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attr
     stoichiometry,
     stress,
     structure,
+    symmetry,
     velocity,
 )
 
