@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import doctest
+import importlib
 import pathlib
 from unittest.mock import patch
 
@@ -20,9 +21,11 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     optics,
     phonon_band,
     projector,
+    stress,
     structure,
     symmetry,
     system,
+    velocity,
 )
 from py4vasp._util import color as _util_color
 from py4vasp._util import import_
@@ -69,9 +72,11 @@ def _all_calculation_examples():
         + find_examples(_calculation.optics)
         + find_examples(_calculation.phonon_band)
         + find_examples(_calculation.projector)
+        + find_examples(_calculation.stress)
         + find_examples(_calculation.structure)
         + find_examples(_calculation.symmetry)
         + find_examples(_calculation.system)
+        + find_examples(_calculation.velocity)
     )
     return [example for example in examples if interesting_example(example)]
 
@@ -198,3 +203,44 @@ def test_examples_found_despite_missing_optional_module(monkeypatch):
     )
     names = [example.name for example in find_examples(_calculation.structure)]
     assert "py4vasp._calculation.structure.Structure.read" in names
+
+
+# Modules whose examples call demo.calculation but still cannot be collected: their
+# method-level examples build a calculation with py4vasp.Calculation.from_path(".")
+# instead, which has no data to read. They need those examples rewritten onto the demo
+# before they can join the list above; until then they are knowingly excluded here so
+# that a module going uncollected by accident is still reported.
+_EXAMPLES_NOT_RUNNABLE_YET = (
+    "current_density",
+    "density",
+    "exciton_density",
+    "nics",
+    "partial_density",
+    "potential",
+)
+
+
+def _modules_building_their_own_data():
+    """Names of the _calculation modules whose examples create the data they need."""
+    directory = pathlib.Path(_calculation.__file__).parent
+    for path in sorted(directory.glob("[a-z]*.py")):
+        module = importlib.import_module(f"py4vasp._calculation.{path.stem}")
+        if any(_builds_a_calculation(example) for example in find_examples(module)):
+            yield path.stem
+
+
+def _builds_a_calculation(example):
+    return any("demo.calculation(" in line.source for line in example.examples)
+
+
+def test_every_self_contained_example_is_collected():
+    # _all_calculation_examples enumerates the modules by hand, so a module is silently
+    # dropped when nobody remembers to add it. Every example of every module dropped
+    # that way stops running, which is how the Structure examples once vanished.
+    collected = {example.name.split(".")[2] for example in _all_calculation_examples()}
+    candidates = set(_modules_building_their_own_data())
+    assert candidates, "no module builds its own data, so the search above is broken"
+    forgotten = sorted(candidates - collected - set(_EXAMPLES_NOT_RUNNABLE_YET))
+    assert not forgotten, f"examples of {forgotten} are never executed"
+    stale = sorted(set(_EXAMPLES_NOT_RUNNABLE_YET) & collected)
+    assert not stale, f"{stale} are collected now, so drop them from the exclusion"
