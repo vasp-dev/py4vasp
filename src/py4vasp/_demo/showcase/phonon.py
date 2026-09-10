@@ -3,7 +3,7 @@
 import numpy as np
 
 from py4vasp import _demo, raw
-from py4vasp._demo.showcase import kpoint, stoichiometry, structure
+from py4vasp._demo.showcase import electronic_structure, kpoint, structure
 
 NUMBER_ATOMS = 7
 NUMBER_MODES = 3 * NUMBER_ATOMS
@@ -43,15 +43,26 @@ def band_Sr2TiO4() -> raw.PhononBand:
     """
     qpoints = kpoint.line_mode()
     coordinates = np.array(qpoints.coordinates)
-    frequencies = np.concatenate(
-        (_acoustic(coordinates), _optical(coordinates)), axis=1
-    )
+    by_branch = np.concatenate((_acoustic(coordinates), _optical(coordinates)), axis=1)
+    # VASP writes the frequencies of every q point in ascending order. The acoustic
+    # branches overtake the lower optical ones away from Gamma, so the two groups have to
+    # be sorted together, and the displacement patterns follow the same permutation to
+    # stay with their frequency.
+    frequencies, order = electronic_structure.sort_bands(by_branch)
+    eigenvectors = _eigenvectors(len(coordinates))
     return raw.PhononBand(
         dispersion=raw.Dispersion(qpoints, _demo.wrap_data(frequencies)),
         stoichiometry=_demo.stoichiometry.Sr2TiO4(has_ion_types=True),
-        eigenvectors=_demo.wrap_data(_eigenvectors(len(coordinates))),
+        eigenvectors=_demo.wrap_data(
+            np.take_along_axis(eigenvectors, _expand(order), axis=1)
+        ),
         primitive_positions=_demo.wrap_data(structure.ideal_positions()),
     )
+
+
+def _expand(order):
+    """Shape the permutation so it applies to the trailing axes of the eigenvectors."""
+    return order[:, :, np.newaxis, np.newaxis, np.newaxis]
 
 
 def _acoustic(coordinates):

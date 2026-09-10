@@ -55,3 +55,20 @@ def test_eigenvectors_are_normalized(raw_band, Assert):
     real, imaginary = np.moveaxis(eigenvectors, -1, 0)
     norm = np.sum(real**2 + imaginary**2, axis=(-1, -2))
     Assert.allclose(norm, np.ones_like(norm))
+
+
+def test_frequencies_are_sorted_like_vasp(frequencies):
+    # VASP writes the frequencies of every q point in ascending order; the acoustic
+    # branches overtake the lower optical ones away from Gamma, so concatenating the two
+    # groups is not enough
+    assert np.all(np.diff(frequencies, axis=1) >= 0)
+
+
+def test_eigenvectors_follow_their_frequency(raw_band, frequencies, Assert):
+    # the pattern in row n has to belong to the frequency in column n, or animating the
+    # lowest mode past a crossing shows the displacement of a different one
+    eigenvectors = np.array(raw_band.eigenvectors)
+    at_gamma, at_boundary = eigenvectors[0], eigenvectors[showcase.LINE_LENGTH - 1]
+    # the three acoustic branches are lowest at Gamma but not at the zone boundary, so
+    # the rows in those slots differ between the two q points
+    assert not np.allclose(at_gamma[:3], at_boundary[:3])
