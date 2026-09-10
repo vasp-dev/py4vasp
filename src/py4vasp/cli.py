@@ -250,6 +250,9 @@ def generate_kpath(file, number_points, time_reversal, symprec, output):
         )
     except exception.Py4VaspError as error:
         raise click.ClickException(*error.args) from error
+    # the symmetry decides the path, so the space group must be visible however the
+    # file is stored -- to stdout, to --output, or into a shell redirection
+    click.echo(kpoints.splitlines()[0], err=True)
     _write_or_print(kpoints, output)
 
 

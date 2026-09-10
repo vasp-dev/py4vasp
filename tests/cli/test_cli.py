@@ -31,6 +31,7 @@ def mock_structure():
         structure = mock.from_POSCAR.return_value
         structure.conventional_lattice_vectors.return_value = _CONVENTIONAL_CELL
         structure.generate_kmesh.return_value = _KMESH_TEXT
+        structure.generate_kpath.return_value = _KPATH_TEXT
         yield mock
 
 
@@ -38,6 +39,11 @@ def mock_structure():
 _CONVENTIONAL_CELL = [[3.16, 0.0, 0.0], [-1.58, 2.7366, 0.0], [0.0, 0.0, 20.0]]
 # the command reads the divisions back out of the text it generated
 _KMESH_TEXT = "k mesh of the conventional cell: divisions 4 4 4\n0\nReduced"
+# the first line carries the space group the --symprec help tells the user to check
+_KPATH_TEXT = (
+    "k points along high symmetry lines: Fd-3m (cF2), 1 primitive cell per unit cell"
+    "\n40\nline mode\nreciprocal"
+)
 
 
 @pytest.mark.parametrize("lammps", ("LAMMPS", "Lammps", "lammps"))
@@ -367,7 +373,7 @@ def test_generate_kpath_writes_to_stdout(mock_structure, tmp_path):
     structure.generate_kpath.assert_called_once_with(
         number_points=40, time_reversal=True, symprec=_SYMPREC
     )
-    assert result.output == f"{structure.generate_kpath.return_value}\n"
+    assert result.stdout == f"{structure.generate_kpath.return_value}\n"
 
 
 @pytest.mark.parametrize("flag", ("-o", "--output"))
@@ -379,7 +385,7 @@ def test_generate_kpath_output_file(mock_structure, tmp_path, flag):
     result = runner.invoke(cli, ["generate", "kpath", str(poscar), flag, str(output)])
     assert result.exit_code == 0
     assert output.read_text() == "KPOINTS"
-    assert result.output == ""  # nothing written to stdout
+    assert result.stdout == ""  # the file is not echoed to stdout
 
 
 @pytest.mark.parametrize("flag", ("-n", "--number-points"))
@@ -608,4 +614,22 @@ def test_generate_kpath_does_not_report_a_conventional_cell(mock_structure, tmp_
     runner = CliRunner()
     result = runner.invoke(cli, ["generate", "kpath", str(poscar)])
     assert result.exit_code == 0
-    assert result.stderr == ""  # the path does not count along the conventional cell
+    # the path does not count divisions along the conventional cell, so it says nothing
+    # about that cell -- but it does report the space group, see the test below
+    assert "conventional cell" not in result.stderr
+
+
+@pytest.mark.parametrize("writes_a_file", (True, False))
+def test_generate_kpath_reports_the_space_group(
+    mock_structure, tmp_path, writes_a_file
+):
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "KPOINTS_OPT"
+    options = ["-o", str(output)] if writes_a_file else []
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kpath", str(poscar), *options])
+    assert result.exit_code == 0
+    # the --symprec help tells the user to check the space group, so it has to be
+    # visible whether the file goes to stdout, to -o, or into a shell redirection
+    assert "Fd-3m (cF2)" in result.stderr
+    assert "1 primitive cell" in result.stderr
