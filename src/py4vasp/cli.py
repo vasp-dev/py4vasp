@@ -162,6 +162,31 @@ def _raise_if_output_not_supported(destination, description):
         raise exception.NotImplemented(message)
 
 
+class _Divisions(click.ParamType):
+    """The number of k points along the three directions as a single token.
+
+    Passing the three numbers as separate arguments would make a variadic option
+    swallow the file argument, so "8,8,6" is one token. A single number requests the
+    same number of divisions along every direction.
+    """
+
+    name = "divisions"
+
+    def convert(self, value, param, ctx):
+        numbers = [number.strip() for number in str(value).split(",")]
+        if not all(number.isdecimal() for number in numbers):
+            self.fail(
+                f"{value!r} is not a comma separated list of integers", param, ctx
+            )
+        numbers = [int(number) for number in numbers]
+        if len(numbers) == 1:
+            return tuple(numbers * 3)
+        if len(numbers) != 3:
+            message = f"expected one or three numbers, but {value!r} has {len(numbers)}"
+            self.fail(message, param, ctx)
+        return tuple(numbers)
+
+
 @cli.group()
 def generate():
     """Generate an input file for a VASP calculation."""
@@ -237,10 +262,11 @@ def generate_kpath(file, number_points, time_reversal, symprec, output):
 @click.option(
     "-d",
     "--divisions",
-    type=int,
-    nargs=3,
-    help="""Number of k points along the three directions of the conventional cell.
-    Specify either this or the k-point spacing.""",
+    type=_Divisions(),
+    metavar="N,N,N",
+    help="""Number of k points along the three directions of the conventional cell,
+    e.g. 8,8,6 or 8 for the same number along every direction. Specify either this or
+    the k-point spacing.""",
 )
 @click.option(
     "--shift",

@@ -448,16 +448,42 @@ def test_generate_kmesh_output_file(mock_structure, tmp_path, flag):
 
 
 @pytest.mark.parametrize("flag", ("-d", "--divisions"))
-def test_generate_kmesh_forwards_divisions(mock_structure, tmp_path, flag):
+@pytest.mark.parametrize("options_first", (True, False))
+def test_generate_kmesh_forwards_divisions(
+    mock_structure, tmp_path, flag, options_first
+):
     poscar = _write(tmp_path / "POSCAR")
     runner = CliRunner()
-    options = [flag, "8", "8", "6", "--symprec", "0.1"]
-    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
+    options = [flag, "8,8,6", "--symprec", "0.1"]
+    # a single token cannot swallow the file argument, whichever order they come in
+    arguments = [*options, str(poscar)] if options_first else [str(poscar), *options]
+    result = runner.invoke(cli, ["generate", "kmesh", *arguments])
     assert result.exit_code == 0
     structure = mock_structure.from_POSCAR.return_value
     structure.generate_kmesh.assert_called_once_with(
         kspacing=None, divisions=(8, 8, 6), shift=None, symprec=0.1
     )
+
+
+def test_generate_kmesh_divisions_shorthand(mock_structure, tmp_path):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), "-d", "8"])
+    assert result.exit_code == 0
+    structure = mock_structure.from_POSCAR.return_value
+    structure.generate_kmesh.assert_called_once_with(
+        kspacing=None, divisions=(8, 8, 8), shift=None, symprec=_SYMPREC
+    )
+
+
+@pytest.mark.parametrize("value", ("8,8", "8,8,6,6", "eight", "8,8,six", ""))
+def test_generate_kmesh_rejects_malformed_divisions(mock_structure, tmp_path, value):
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", "kmesh", str(poscar), "-d", value])
+    assert result.exit_code != 0
+    assert "--divisions" in result.output
+    mock_structure.from_POSCAR.assert_not_called()
 
 
 def test_generate_kmesh_forwards_shift(mock_structure, tmp_path):
@@ -476,7 +502,7 @@ def test_generate_kmesh_forwards_shift(mock_structure, tmp_path):
     "options, expected",
     [
         ([], "not"),  # neither given: must not complain about both being given
-        (["--kspacing", "0.2", "--divisions", "8", "8", "8"], "only one"),
+        (["--kspacing", "0.2", "--divisions", "8,8,8"], "only one"),
     ],
 )
 def test_generate_kmesh_without_density_fails(
