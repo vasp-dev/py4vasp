@@ -5,7 +5,7 @@ import numpy as np
 
 from py4vasp import _demo, raw
 from py4vasp._demo import showcase
-from py4vasp._demo.showcase import electronic_structure, kpoint
+from py4vasp._demo.showcase import electronic_structure, kpoint, workfunction
 
 # The labels VASP writes, in the order it writes them. The k coordinates belong to the
 # three extrema above them: the valence band maximum, the conduction band minimum, and
@@ -93,3 +93,25 @@ def _trajectory(relaxed):
         for axis in range(3)
     ]
     return np.transpose(energies + coordinates)
+
+
+def Graphite() -> raw.Bandgap:
+    """Band extrema of the graphite slab, a semimetal with no gap.
+
+    The bands touch at the K point of the hexagonal Brillouin zone, so the valence band
+    maximum and the conduction band minimum coincide there and every gap is zero. The
+    work function links this to report the band edges of the surface alongside the
+    vacuum level.
+    """
+    fermi_energy = workfunction.FERMI_ENERGY
+    dirac_point = (1 / 3, 1 / 3, 0.0)
+    values = [
+        *4 * [fermi_energy],  # both edges of both the fundamental and the direct gap
+        fermi_energy,
+        *3 * dirac_point,  # the three extrema all sit at the same k point
+    ]
+    return raw.Bandgap(
+        labels=np.array(LABELS, dtype="S"),
+        # a single step, because a surface calculation is not a relaxation
+        values=_demo.wrap_data([[values]]),
+    )

@@ -27,9 +27,11 @@ CU_LATTICE_CONSTANT = 3.615
 GRAPHITE_LATTICE_CONSTANT = 2.4612
 GRAPHITE_INTERLAYER_DISTANCE = 3.35395
 # Height of the slab cell. The four layers span three interlayer distances, so this
-# leaves close to ten Angstrom of vacuum, twice what py4vasp demands of a cell it
-# places a scanning tip above.
-GRAPHITE_HEIGHT = 20.0
+# leaves close to fourteen Angstrom of vacuum, far more than the five py4vasp demands
+# of a cell it places a scanning tip above. The generous margin is what gives the
+# plane-averaged potential a flat plateau to read a work function off, rather than a
+# tail of the slab that is still decaying when the next cell begins.
+GRAPHITE_HEIGHT = 24.0
 
 INITIAL_COMPRESSION = 0.98  # the relaxation starts from a cell 2% too small
 

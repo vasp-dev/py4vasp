@@ -4,12 +4,21 @@ import numpy as np
 import pytest
 
 from py4vasp._calculation.density import Density
-from py4vasp._demo.showcase import cell, density, partial_density, structure
+from py4vasp._calculation.bandgap import BandgapHandler
+from py4vasp._demo.showcase import (
+    cell,
+    density,
+    partial_density,
+    structure,
+    workfunction,
+)
 
 # Literature values for graphite: a = 2.4612 A, c = 6.7079 A, so the layers sit
 # 3.35395 A apart and the carbon atoms 1.42104 A from each other in a layer.
 LATTICE_CONSTANT = 2.4612
 INTERLAYER = 3.35395
+# The work function of highly oriented pyrolytic graphite, as the literature reports it.
+WORK_FUNCTION = 4.6
 BOND_LENGTH = LATTICE_CONSTANT / np.sqrt(3)
 NUMBER_LAYERS = 4
 NUMBER_ATOMS = 2 * NUMBER_LAYERS
@@ -198,3 +207,82 @@ def test_bader_analysis_finds_the_electrons_of_every_atom(Assert):
     # Gaussian tails the images leave out
     assert abs(np.sum(values) / electrons - 1) < 1e-9
     assert np.all(np.abs(values - density.VALENCE_ELECTRONS["C"]) < 0.5)
+
+
+@pytest.fixture
+def raw_workfunction():
+    return workfunction.Graphite()
+
+
+@pytest.fixture
+def profile(raw_workfunction):
+    return (
+        np.array(raw_workfunction.distance),
+        np.array(raw_workfunction.average_potential),
+    )
+
+
+def test_potential_is_averaged_over_the_planes_normal_to_the_vacuum(raw_workfunction):
+    assert int(raw_workfunction.idipol) == 3
+
+
+def test_distance_spans_the_cell(profile, raw_partial_density):
+    distance, _ = profile
+    assert distance[0] == 0.0
+    assert np.all(np.diff(distance) > 0)
+    assert distance[-1] < cell.GRAPHITE_HEIGHT
+    # the same points the grid quantities are sampled on, so the profiles line up
+    assert len(distance) == np.array(raw_partial_density.grid)[2]
+
+
+def test_potential_is_flat_in_the_vacuum(profile):
+    distance, potential = profile
+    heights = np.array(structure.Graphite().positions)[:, 2] * cell.GRAPHITE_HEIGHT
+    # the slab is centred, so the vacuum wraps around the boundary of the cell
+    in_vacuum = (distance < np.min(heights) - 4.5) | (distance > np.max(heights) + 4.5)
+    assert np.count_nonzero(in_vacuum) > 20
+    assert np.ptp(potential[in_vacuum]) < 0.05
+
+
+def test_potential_is_deep_inside_the_slab(profile):
+    distance, potential = profile
+    heights = np.array(structure.Graphite().positions)[:, 2] * cell.GRAPHITE_HEIGHT
+    inside = (distance > np.min(heights)) & (distance < np.max(heights))
+    # deep and without a gap all the way through: the potential of a slab does not
+    # return to the vacuum level between its layers, because it is the density
+    # convolved with a Coulomb interaction rather than the density itself
+    assert np.all(potential[inside] < -10.0)
+
+
+def test_vacuum_potential_is_the_level_the_potential_settles_at(
+    raw_workfunction, profile, Assert
+):
+    _, potential = profile
+    vacuum = np.array(raw_workfunction.vacuum_potential)
+    assert vacuum.shape == (2,)
+    # a slab centred in its cell exposes the same surface on both sides
+    Assert.allclose(vacuum[0], vacuum[1])
+    assert abs(vacuum[0] - np.max(potential)) < 1e-3
+
+
+def test_work_function_is_the_literature_value(raw_workfunction, Assert):
+    # the literature value is spelled out here rather than taken from the producer, so
+    # that changing the constant there does not silently change what is being claimed
+    vacuum = np.array(raw_workfunction.vacuum_potential)[0]
+    Assert.allclose(vacuum - raw_workfunction.fermi_energy, WORK_FUNCTION)
+
+
+def test_fermi_energy_lies_between_the_vacuum_and_the_bottom_of_the_potential(
+    raw_workfunction, profile
+):
+    _, potential = profile
+    assert np.min(potential) < raw_workfunction.fermi_energy < np.max(potential)
+
+
+def test_surface_has_no_band_gap(raw_workfunction, Assert):
+    # graphite is a semimetal, so the bands touch and every gap the work function
+    # reports alongside the vacuum level is zero
+    gap = BandgapHandler.from_data(raw_workfunction.reference_potential)
+    Assert.allclose(gap.fundamental(), 0.0)
+    Assert.allclose(gap.direct(), 0.0)
+    Assert.allclose(gap.valence_band_maximum(), raw_workfunction.fermi_energy)

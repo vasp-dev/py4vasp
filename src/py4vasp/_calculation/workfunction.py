@@ -109,6 +109,35 @@ class Workfunction(graph.Mixin):
     engineering. In VASP, you can compute the workfunction by setting the :tag:`IDIPOL`
     flag in the INCAR file. This class provides then the functionality to analyze the
     resulting potential.
+
+    Examples
+    --------
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not contain any VASP
+    calculation data. Alternatively, use your own data if you have run VASP.
+
+    A work function needs a surface, so the example data is a graphite slab with vacuum
+    on either side of it.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path, "surface")
+
+    Printing it summarizes the potential in the vacuum and the reference energies
+    inside the surface. The work function is the distance between the two: it costs
+    4.6 eV to take an electron from the Fermi energy of graphite out to the vacuum.
+
+    >>> print(calculation.workfunction)
+    workfunction along lattice vector 3:
+        vacuum potential: 0.000 0.000
+        Fermi energy: -4.600
+        valence band maximum: -4.600
+        conduction band minimum: -4.600
+
+    Plotting shows where those numbers come from: the potential is flat in the vacuum,
+    drops at each surface of the slab and stays deep inside it.
+
+    >>> calculation.workfunction.plot()
+    Graph(series=Series(x=array([...]), y=array([...]), label='potential', ...), ...)
     """
 
     def __init__(self, source, quantity_name: str = "workfunction"):
@@ -133,9 +162,32 @@ class Workfunction(graph.Mixin):
 
         Returns
         -------
-        dict
-            Contains vacuum potential, average potential and relevant reference energies
-            within the surface.
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not contain any VASP
+        calculation data. Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "surface")
+
+        >>> sorted(calculation.workfunction.read())
+        ['average_potential', 'conduction_band_minimum', 'direction', 'distance',
+         'fermi_energy', 'vacuum_potential', 'valence_band_maximum']
+
+        The work function is the vacuum potential relative to the Fermi energy. VASP
+        reports the vacuum on either side of the slab, which is the same on both for a
+        surface as symmetric as this one.
+
+        >>> data = calculation.workfunction.read()
+        >>> round(data["vacuum_potential"][0] - data["fermi_energy"], 3)
+        np.float64(4.6)
+
+        The averaged potential is reported as well, so you can determine the vacuum
+        level with an algorithm of your own.
+
+        >>> calculation.workfunction.read()["average_potential"].shape
+        (239,)
         """
         return merge_default(
             self._source,
@@ -158,6 +210,20 @@ class Workfunction(graph.Mixin):
             A plot where the distance in the unit cell along the selected lattice vector
             is on the x axis and the averaged potential across the plane of the other
             two lattice vectors is on the y axis.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not contain any VASP
+        calculation data. Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "surface")
+
+        >>> calculation.workfunction.to_graph()
+        Graph(series=Series(x=array([...]), y=array([...]), label='potential', ...),
+              xlabel='distance along lattice vector 3 (Å)', ...,
+              ylabel='average potential (eV)', ...)
         """
         return merge_graphs(
             self._source,
@@ -190,6 +256,18 @@ class Workfunction(graph.Mixin):
         dict
             The key indicates this quantity and the value lists the possible choices
             for the selection argument of its other methods.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not contain any VASP
+        calculation data. Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "surface")
+
+        >>> calculation.workfunction.selections()
+        {'workfunction': ['default']}
         """
         from py4vasp._raw import definition as raw_module
 

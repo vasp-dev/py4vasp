@@ -154,6 +154,8 @@ def _generate_surface_data(h5f, waveh5f=None):
     # needs: py4vasp refuses to place a scanning tip above a bulk crystal
     write(h5f, showcase.structure.Graphite())
     write(h5f, showcase.partial_density.Graphite())
+    # the work function links the band gap of the surface, so it writes both
+    write(h5f, showcase.workfunction.Graphite())
     if waveh5f is not None:
         # the Bader basins a partial charge is integrated in come from the density, so
         # the two have to describe the same crystal on the same grid

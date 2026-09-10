@@ -367,13 +367,13 @@ class PartialDensity(view.Mixin):
     For your own postprocessing, you can read the data into a Python dictionary:
 
     >>> calculation.partial_density.read()
-    {'structure': {...}, 'grid': array([ 21,  21, 199]), 'bands': array([0]),
+    {'structure': {...}, 'grid': array([ 21,  21, 239]), 'bands': array([0]),
      'kpoints': array([0]), 'partial_density': array([[[...]]], ...)}
 
     Alternatively, obtain the density as a numpy array directly:
 
     >>> calculation.partial_density.to_numpy().shape
-    (21, 21, 199)
+    (21, 21, 239)
 
     You can also visualize a 3d isosurface of the density:
 
@@ -387,7 +387,7 @@ class PartialDensity(view.Mixin):
     >>> calculation.partial_density.bands()
     array([0])
     >>> calculation.partial_density.grid()
-    array([ 21,  21, 199])
+    array([ 21,  21, 239])
     >>> calculation.partial_density.kpoints()
     array([0])
 
@@ -544,7 +544,7 @@ class PartialDensity(view.Mixin):
         >>> calculation = demo.calculation(path, "surface")
 
         >>> calculation.partial_density.to_numpy().shape
-        (21, 21, 199)
+        (21, 21, 239)
 
         A band or k point can only be selected if VASP separated them, which requires
         LSEPB and LSEPK in the INCAR file. The example data sums them, which is what

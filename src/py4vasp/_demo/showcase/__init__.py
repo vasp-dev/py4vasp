@@ -39,6 +39,7 @@ from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attr
     structure,
     symmetry,
     velocity,
+    workfunction,
 )
 
 # constants for the shape of presentation data

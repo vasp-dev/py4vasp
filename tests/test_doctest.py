@@ -31,6 +31,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     symmetry,
     system,
     velocity,
+    workfunction,
 )
 from py4vasp._util import color as _util_color
 from py4vasp._util import import_
@@ -94,6 +95,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.symmetry)
         + find_examples(_calculation.system)
         + find_examples(_calculation.velocity)
+        + find_examples(_calculation.workfunction)
     )
     return [example for example in examples if interesting_example(example)]
 
