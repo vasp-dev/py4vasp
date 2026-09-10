@@ -21,6 +21,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     neighbor_list,
     optics,
     phonon_band,
+    phonon_dos,
     projector,
     stress,
     structure,
@@ -73,6 +74,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.neighbor_list)
         + find_examples(_calculation.optics)
         + find_examples(_calculation.phonon_band)
+        + find_examples(_calculation.phonon_dos)
         + find_examples(_calculation.projector)
         + find_examples(_calculation.stress)
         + find_examples(_calculation.structure)

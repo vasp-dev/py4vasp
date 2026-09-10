@@ -72,3 +72,92 @@ def test_eigenvectors_follow_their_frequency(raw_band, frequencies, Assert):
     # the three acoustic branches are lowest at Gamma but not at the zone boundary, so
     # the rows in those slots differ between the two q points
     assert not np.allclose(at_gamma[:3], at_boundary[:3])
+
+
+@pytest.fixture
+def raw_dos():
+    return phonon.dos_Sr2TiO4()
+
+
+@pytest.fixture
+def dos(raw_dos):
+    return np.array(raw_dos.energies), np.array(raw_dos.dos)
+
+
+def test_dos_spans_the_whole_dispersion(dos, frequencies):
+    energies, _ = dos
+    assert energies[0] == 0.0  # a stable crystal has no state below zero frequency
+    assert energies[-1] > np.max(frequencies)
+    assert len(energies) == showcase.NUMBER_POINTS
+
+
+def test_dos_is_positive_everywhere(dos):
+    _, values = dos
+    assert np.all(values >= 0.0)
+
+
+def test_dos_integrates_to_the_number_of_modes(dos):
+    energies, values = dos
+    # the energy axis starts at zero, so the part of the broadening that the modes at
+    # the zone centre spread below it is missing; everything else is accounted for
+    integral = np.trapezoid(values, energies)
+    assert abs(integral / NUMBER_MODES - 1) < 1e-3
+
+
+def test_dos_ends_where_the_highest_branch_does(dos, frequencies):
+    energies, values = dos
+    occupied = energies[values > 0.01 * np.max(values)]
+    highest = np.max(frequencies)
+    # the edge is the highest frequency of the dispersion, smeared by the broadening
+    assert highest < occupied[-1] < highest + 4 * phonon.BROADENING
+    assert np.all(values[energies > highest + 4 * phonon.BROADENING] < 1e-3)
+
+
+def test_projections_add_up_to_the_total(raw_dos, Assert):
+    projections = np.array(raw_dos.projections)
+    assert projections.shape == (phonon.NUMBER_ATOMS, 3, showcase.NUMBER_POINTS)
+    Assert.allclose(np.sum(projections, axis=(0, 1)), np.array(raw_dos.dos))
+
+
+def _share_of_element(raw_dos, element, window):
+    projections = np.array(raw_dos.projections)[:, :, window]
+    elements = np.array(["Sr", "Sr", "Ti", "O", "O", "O", "O"])
+    selected = np.sum(projections[elements == element])
+    return selected / np.sum(projections)
+
+
+def test_acoustic_region_is_carried_by_the_heavy_atom(raw_dos):
+    # the acoustic modes translate the whole cell, so the mass-weighted eigenvector
+    # puts most of the weight on strontium, the heaviest atom of the crystal
+    energies = np.array(raw_dos.energies)
+    window = energies < np.min(phonon.OPTICAL_AT_GAMMA) - 4 * phonon.BROADENING
+    assert _share_of_element(raw_dos, "Sr", window) > 0.5
+
+
+def test_top_of_the_spectrum_is_carried_by_oxygen(raw_dos):
+    # the highest branches are the oxygen stretching modes of the oxide
+    energies = np.array(raw_dos.energies)
+    window = energies > max(phonon.OPTICAL_AT_GAMMA) - phonon.BROADENING
+    assert _share_of_element(raw_dos, "O", window) > 0.9
+
+
+def test_stoichiometry_names_the_projected_atoms(raw_dos):
+    stoichiometry = raw_dos.stoichiometry
+    assert np.sum(np.array(stoichiometry.number_ion_types)) == phonon.NUMBER_ATOMS
+
+
+def test_eigenvector_weight_follows_the_atomic_masses(Assert):
+    # VASP reports mass-weighted displacements, so an acoustic mode that moves every
+    # atom by the same amount carries a weight proportional to the mass
+    weight = phonon.mode_weights()[0]
+    Assert.allclose(weight / weight[0], np.array(phonon.MASSES) / phonon.MASSES[0])
+
+
+def test_mode_weights_are_normalized(Assert):
+    Assert.allclose(np.sum(phonon.mode_weights(), axis=1), np.ones(NUMBER_MODES))
+
+
+def test_optical_weight_moves_from_the_cation_to_the_anion(Assert):
+    oxygen = np.sum(phonon.mode_weights()[3:, 3:], axis=1)
+    assert np.all(np.diff(oxygen) > 0)
+    assert oxygen[0] < 0.05 and oxygen[-1] > 0.9
