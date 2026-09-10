@@ -1243,3 +1243,22 @@ def test_generate_kpath_rejects_invalid_number_points(number_points):
     structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
     with pytest.raises(exception.IncorrectUsage):
         structure.generate_kpath(number_points=number_points)
+
+
+_INCOMPLETE_POSCARS = {
+    "empty": "",
+    "comment only": "Si",
+    "no elements or positions": "Si\n5.43\n0 .5 .5\n.5 0 .5\n.5 .5 0",
+    "no positions": "Si\n5.43\n0 .5 .5\n.5 0 .5\n.5 .5 0\nSi\n1\nDirect",
+    "no coordinate system": "Si\n5.43\n0 .5 .5\n.5 0 .5\n.5 .5 0\nSi\n1",
+}
+
+
+@pytest.mark.parametrize(
+    "poscar", _INCOMPLETE_POSCARS.values(), ids=_INCOMPLETE_POSCARS
+)
+def test_from_POSCAR_rejects_incomplete_content(poscar):
+    # a truncated or empty file is a mistake of the user, so py4vasp must not let a
+    # bare IndexError or StopIteration escape through an internal traceback
+    with pytest.raises(exception.IncorrectUsage):
+        Structure.from_POSCAR(poscar)

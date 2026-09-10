@@ -1995,6 +1995,9 @@ def _replace_or_set_elements(poscar, elements):
     line_with_elements = 5
     elements = "" if not elements else " ".join(elements)
     lines = poscar.split("\n")
+    if len(lines) <= line_with_elements:
+        # too short to contain that line; the parser reports the incomplete POSCAR
+        return poscar
     if _elements_not_in_poscar(lines[line_with_elements]):
         _raise_error_if_elements_not_set(elements)
         lines.insert(line_with_elements, elements)
