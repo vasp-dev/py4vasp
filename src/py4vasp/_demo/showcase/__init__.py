@@ -19,6 +19,7 @@ import numpy as np
 
 from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attributes
     band,
+    bandgap,
     cell,
     dielectric_function,
     dos,

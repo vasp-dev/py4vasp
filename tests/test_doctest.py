@@ -12,6 +12,7 @@ import py4vasp
 from py4vasp import _calculation, demo
 from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calculation attributes
     band,
+    bandgap,
     dos,
     energy,
     force,
@@ -63,6 +64,7 @@ def _all_calculation_examples():
     examples = (
         find_examples(_calculation)
         + find_examples(_calculation.band)
+        + find_examples(_calculation.bandgap)
         + find_examples(_calculation.dos)
         + find_examples(_calculation.energy)
         + find_examples(_calculation.force)
@@ -121,10 +123,7 @@ def interesting_example(example):
     suffix = example.name.split(".")[-1]
     if len(example.examples) == 0:
         return False
-    skipped_suffixes = (
-        "bandgap",
-        "pair_correlation",
-    )
+    skipped_suffixes = ("pair_correlation",)
     return suffix not in skipped_suffixes
 
 
