@@ -340,10 +340,16 @@ def _raise_if_mesh_not_valid(kspacing, divisions, shift):
     divides by zero, and a shift with the wrong number of elements silently produces a
     line VASP cannot read.
     """
-    if (kspacing is None) == (divisions is None):
+    if kspacing is None and divisions is None:
         message = (
-            "Please specify either the spacing of the k points or the number of "
-            "divisions of the mesh, but not both of them."
+            "Please specify how dense the mesh should be, either with the kspacing "
+            "argument or with the divisions of the conventional cell."
+        )
+        raise exception.IncorrectUsage(message)
+    if kspacing is not None and divisions is not None:
+        message = (
+            "The kspacing and the divisions both set the density of the mesh, so "
+            "please specify only one of them."
         )
         raise exception.IncorrectUsage(message)
     if divisions is None:

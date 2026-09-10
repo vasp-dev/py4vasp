@@ -272,8 +272,17 @@ def generate_kmesh(file, kspacing, divisions, shift, symprec, output):
     """
     divisions = divisions or None
     shift = shift or None
-    if (kspacing is None) == (divisions is None):
-        message = "Please specify either the --kspacing or the --divisions of the mesh."
+    if kspacing is None and divisions is None:
+        message = (
+            "Please specify how dense the mesh should be, either with --kspacing or "
+            "with --divisions."
+        )
+        raise click.UsageError(message)
+    if kspacing is not None and divisions is not None:
+        message = (
+            "--kspacing and --divisions both set the density of the mesh, so please "
+            "specify only one of them."
+        )
         raise click.UsageError(message)
     try:
         _raise_if_output_not_supported(output, "a KPOINTS file")

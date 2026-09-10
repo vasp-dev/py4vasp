@@ -1163,12 +1163,26 @@ def test_generate_kmesh_with_shift(Assert):
     Assert.allclose(shift, [0.5, 0.5, 0.0])
 
 
-@pytest.mark.parametrize("arguments", [{}, {"kspacing": 0.5, "divisions": [2, 2, 2]}])
-def test_generate_kmesh_requires_kspacing_or_divisions(arguments):
+def test_generate_kmesh_without_kspacing_or_divisions():
     pytest.importorskip("spglib")
     structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
-    with pytest.raises(exception.IncorrectUsage):
-        structure.generate_kmesh(**arguments)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        structure.generate_kmesh()
+    # the message must ask for one of the two arguments by name; complaining about
+    # both of them being given sends the user looking for an argument they did not pass
+    message = str(error.value)
+    assert "kspacing" in message and "divisions" in message
+    assert "both" not in message
+
+
+def test_generate_kmesh_with_kspacing_and_divisions():
+    pytest.importorskip("spglib")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        structure.generate_kmesh(kspacing=0.5, divisions=[2, 2, 2])
+    message = str(error.value)
+    assert "kspacing" in message and "divisions" in message
+    assert "both" in message
 
 
 def _without_symmetry_operations(raw_structure):

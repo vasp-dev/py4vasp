@@ -473,14 +473,24 @@ def test_generate_kmesh_forwards_shift(mock_structure, tmp_path):
 
 
 @pytest.mark.parametrize(
-    "options", ([], ["--kspacing", "0.2", "--divisions", "8", "8", "8"])
+    "options, expected",
+    [
+        ([], "not"),  # neither given: must not complain about both being given
+        (["--kspacing", "0.2", "--divisions", "8", "8", "8"], "only one"),
+    ],
 )
-def test_generate_kmesh_without_density_fails(mock_structure, tmp_path, options):
+def test_generate_kmesh_without_density_fails(
+    mock_structure, tmp_path, options, expected
+):
     poscar = _write(tmp_path / "POSCAR")
     runner = CliRunner()
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
     assert result.exit_code != 0
     assert "--kspacing" in result.output and "--divisions" in result.output
+    if expected == "only one":
+        assert "only one" in result.output
+    else:
+        assert "only one" not in result.output
     mock_structure.from_POSCAR.assert_not_called()
 
 
