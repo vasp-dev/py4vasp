@@ -1344,3 +1344,32 @@ def test_from_POSCAR_rejects_content_that_is_not_a_poscar(content):
     # as a numpy ValueError about converting a string to a float
     with pytest.raises(exception.IncorrectUsage):
         Structure.from_POSCAR(content)
+
+
+_VASP4_POSCAR = """\
+Si
+5.43
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+2
+Direct
+0.00 0.00 0.00
+0.25 0.25 0.25"""
+
+
+def test_from_POSCAR_without_elements_offers_every_route():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        Structure.from_POSCAR(_VASP4_POSCAR)
+    message = str(error.value)
+    # the message is read by Python users and by command line users, so it must name
+    # a route each of them can take
+    assert "elements=" in message
+    assert "--elements" in message
+    # and it must not leak the indentation of the source it is written in
+    assert not any(line.startswith("  ") for line in message.splitlines())
+
+
+def test_from_POSCAR_with_elements_is_accepted(Assert):
+    structure = Structure.from_POSCAR(_VASP4_POSCAR, elements=["Si"])
+    assert structure.read()["elements"] == ["Si", "Si"]

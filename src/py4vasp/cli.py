@@ -140,11 +140,13 @@ def _write_or_print(text, destination):
         destination.write_text(text)
 
 
-def _read_structure(file):
+def _read_structure(file, elements=None):
     if archive.is_archive(file):
         return py4vasp.Calculation.from_archive(file).structure
     if file.suffix in _HDF5_SUFFIXES:
         return py4vasp.Calculation.from_file(file).structure
+    if elements:
+        return Structure.from_POSCAR(file.read_text(), elements=elements)
     return Structure.from_POSCAR(file.read_text())
 
 
@@ -167,6 +169,20 @@ def _raise_if_output_not_supported(destination, description):
             "would replace the whole archive by a single text file."
         )
         raise exception.NotImplemented(message)
+
+
+class _Elements(click.ParamType):
+    "The chemical elements of the ions as a single comma separated token."
+
+    name = "elements"
+
+    def convert(self, value, param, ctx):
+        elements = [element.strip() for element in str(value).split(",")]
+        if not all(element.isalpha() for element in elements):
+            self.fail(
+                f"{value!r} is not a comma separated list of elements", param, ctx
+            )
+        return elements
 
 
 class _Divisions(click.ParamType):
@@ -233,12 +249,19 @@ def generate():
     e.g. 1e-3.""",
 )
 @click.option(
+    "--elements",
+    type=_Elements(),
+    metavar="Si,O",
+    help="""Elements of the ions in the same order as their counts in the file. Old
+    POSCAR files do not name them; then you have to provide them here.""",
+)
+@click.option(
     "-o",
     "--output",
     type=click.Path(path_type=pathlib.Path),
     help="Write the KPOINTS file to this path instead of stdout.",
 )
-def generate_kpath(file, number_points, time_reversal, symprec, output):
+def generate_kpath(file, number_points, time_reversal, symprec, elements, output):
     """Generate a KPOINTS file along the high-symmetry path of the structure in FILE.
 
     FILE may be a POSCAR, CONTCAR, or HDF5 file containing a structure, or an archive
@@ -249,7 +272,7 @@ def generate_kpath(file, number_points, time_reversal, symprec, output):
     """
     try:
         _raise_if_output_not_supported(output, "a KPOINTS file")
-        structure = _read_structure(file)
+        structure = _read_structure(file, elements)
         kpoints = structure.generate_kpath(
             number_points=number_points,
             time_reversal=time_reversal,
@@ -302,12 +325,19 @@ def generate_kpath(file, number_points, time_reversal, symprec, output):
     e.g. 1e-3.""",
 )
 @click.option(
+    "--elements",
+    type=_Elements(),
+    metavar="Si,O",
+    help="""Elements of the ions in the same order as their counts in the file. Old
+    POSCAR files do not name them; then you have to provide them here.""",
+)
+@click.option(
     "-o",
     "--output",
     type=click.Path(path_type=pathlib.Path),
     help="Write the KPOINTS file to this path instead of stdout.",
 )
-def generate_kmesh(file, kspacing, divisions, shift, symprec, output):
+def generate_kmesh(file, kspacing, divisions, shift, symprec, elements, output):
     """Generate a KPOINTS file with a mesh adapted to the structure in FILE.
 
     FILE may be a POSCAR, CONTCAR, or HDF5 file containing a structure, or an archive
@@ -332,7 +362,7 @@ def generate_kmesh(file, kspacing, divisions, shift, symprec, output):
         raise click.UsageError(message)
     try:
         _raise_if_output_not_supported(output, "a KPOINTS file")
-        structure = _read_structure(file)
+        structure = _read_structure(file, elements)
         kpoints = structure.generate_kmesh(
             kspacing=kspacing,
             divisions=divisions,

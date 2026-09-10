@@ -2091,9 +2091,11 @@ def _elements_not_in_poscar(elements):
 
 def _raise_error_if_elements_not_set(elements):
     if not elements:
-        message = """The POSCAR file does not specify the elements needed to create a
-            Structure. Please pass `elements=[...]` to the `from_POSCAR` routine where
-            ... are the elements in the same order as in the POSCAR."""
+        message = """\
+The POSCAR does not name the elements of the ions; old POSCAR files leave that line
+out. Please provide them in the same order as the ion counts, either by passing
+elements=["Si", "O"] to from_POSCAR, by using --elements Si,O on the command line, or
+by adding a line with the element names above the line with the ion counts."""
         raise exception.IncorrectUsage(message)
 
 

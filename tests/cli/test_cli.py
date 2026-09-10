@@ -665,3 +665,15 @@ def test_generate_rejects_a_directory_as_input(
     assert "Traceback" not in result.output
     assert "directory" in result.output.lower()
     mock_structure.from_POSCAR.assert_not_called()
+
+
+@pytest.mark.parametrize("command, options", _GENERATE_COMMANDS)
+def test_generate_forwards_elements(mock_structure, tmp_path, command, options):
+    # old POSCAR files do not name their elements, and the user must be able to say
+    # so from the command line rather than being told to call a Python routine
+    poscar = _write(tmp_path / "POSCAR")
+    runner = CliRunner()
+    options = [*options, "--elements", "Si,O"]
+    result = runner.invoke(cli, ["generate", command, str(poscar), *options])
+    assert result.exit_code == 0
+    mock_structure.from_POSCAR.assert_called_once_with("contents", elements=["Si", "O"])
