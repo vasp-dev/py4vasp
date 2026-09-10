@@ -39,8 +39,11 @@ FCC_SPECIAL_POINTS = {
     "U": (0.625, 0.25, 0.625),
 }
 FCC_PATH = ("GM", "X", "W", "L", "GM")
-# every point is named after itself, except that Gamma is spelled as a Greek letter
-_LABELS = {"GM": r"$\Gamma$"}
+# Every point is named after itself, except that Gamma is spelled as the Greek letter.
+# Spelled as the character rather than as "$\Gamma$": py4vasp hands the label straight
+# to the plotting frontend, and only some of them parse LaTeX -- the static image export
+# renders it, a notebook shows the markup verbatim.
+_LABELS = {"GM": "Γ"}
 
 
 def line_mode(labels="with_labels") -> raw.Kpoint:
@@ -107,8 +110,12 @@ def _labels(labels, path):
     # "X|", which is how py4vasp marks a jump in the path.
     number_endpoints = 2 * (len(path) - 1)
     names = [_label(path[(index + 1) // 2]) for index in range(number_endpoints)]
+    # VASP stores the labels as byte strings, and numpy would encode them as ASCII, which
+    # the Greek letter is not. py4vasp decodes them as UTF-8 when reading, so encode them
+    # that way rather than falling back to markup that the frontends do not all parse.
+    encoded = np.array([name.encode("utf-8") for name in names])
     return {
-        "labels": raw.VaspData(np.array(names, dtype="S")),
+        "labels": raw.VaspData(encoded),
         "label_indices": raw.VaspData(np.arange(1, number_endpoints + 1)),
     }
 

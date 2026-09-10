@@ -38,7 +38,7 @@ def test_path_is_labelled_at_the_high_symmetry_points(path):
     labelled = {index: label for index, label in enumerate(kpoints.labels()) if label}
     # every corner is named from both of the segments it belongs to, so a corner shared
     # by two segments appears twice carrying the same name
-    gamma = "$" + chr(92) + "Gamma$"
+    gamma = "Γ"
     assert list(labelled.values()) == [gamma, "X", "X", "P", "P", "N", "N", gamma]
     assert list(labelled) == [0, 40, 41, 81, 82, 122, 123, 163]
 
@@ -47,7 +47,7 @@ def test_path_ticks_do_not_mark_a_jump(raw_band):
     # py4vasp joins the labels of two k points at the same distance with a "|" to mark a
     # discontinuity in the path; a contiguous path must not produce one
     pytest.importorskip("plotly")
-    gamma = "$" + chr(92) + "Gamma$"
+    gamma = "Γ"
     xticks = Band.from_data(raw_band).to_graph().xticks
     assert list(xticks.values()) == [gamma, "X", "P", "N", gamma]
 

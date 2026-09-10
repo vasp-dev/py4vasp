@@ -472,7 +472,7 @@ class Kpoint:
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
         >>> [label for label in calculation.kpoint.labels() if label]
-        ['$\\\\Gamma$', 'X', 'X', 'P', 'P', 'N', 'N', '$\\\\Gamma$']
+        ['Γ', 'X', 'X', 'P', 'P', 'N', 'N', 'Γ']
 
         If line mode is used but no labels were given, VASP automatically assigns labels
         to the band edges. In this case, the band-edge points carry LaTeX-formatted
