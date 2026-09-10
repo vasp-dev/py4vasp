@@ -28,9 +28,10 @@ def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
         data is generated that is suitable for most examples. The alternatives describe
         other kinds of material: "collinear" and "noncollinear" a magnet resolved by two
         spin channels or by three spin axes, "metal" a system with states at the Fermi
-        energy, "spin_texture" a slice of the Brillouin zone, and "perovskite" a
-        structure paired with its symmetry. Note that a selection other than the default
-        contains only the quantities its kind of material illustrates.
+        energy, "surface" a slab with vacuum on both sides, "spin_texture" a slice of
+        the Brillouin zone, and "perovskite" a structure paired with its symmetry. Note
+        that a selection other than the default contains only the quantities its kind of
+        material illustrates.
 
     Returns
     -------
@@ -148,6 +149,12 @@ def _generate_metal_data(h5f, waveh5f=None):
     write(h5f, showcase.band.Cu("with_projectors"))
 
 
+def _generate_surface_data(h5f, waveh5f=None):
+    # a graphite slab with vacuum above and below, the kind of cell a surface property
+    # needs: py4vasp refuses to place a scanning tip above a bulk crystal
+    write(h5f, showcase.structure.Graphite())
+
+
 def _generate_perovskite_data(h5f, waveh5f=None):
     # cubic SrTiO3 with its matching Pm-3m symmetry, so the symmetry-derived
     # structure properties (Wyckoff positions, equivalent atoms, ...) are consistent
@@ -163,5 +170,6 @@ _DATA_GENERATORS = {
     "noncollinear": _generate_noncollinear_data,
     "spin_texture": _generate_spin_texture_data,
     "metal": _generate_metal_data,
+    "surface": _generate_surface_data,
     "perovskite": _generate_perovskite_data,
 }

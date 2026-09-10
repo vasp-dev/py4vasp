@@ -21,6 +21,16 @@ FE3O4_LATTICE_CONSTANT = 8.394
 # face-centred cubic metal.
 CU_LATTICE_CONSTANT = 3.615
 
+# Lattice constants of graphite in Angstrom as the literature reports them for the
+# Bernal-stacked crystal: a = 2.4612 and c = 6.7079, so the layers sit half of c apart.
+# py4vasp._demo.cell.Graphite uses 2.44105 instead, a hundredth of an Angstrom short.
+GRAPHITE_LATTICE_CONSTANT = 2.4612
+GRAPHITE_INTERLAYER_DISTANCE = 3.35395
+# Height of the slab cell. The four layers span three interlayer distances, so this
+# leaves close to ten Angstrom of vacuum, twice what py4vasp demands of a cell it
+# places a scanning tip above.
+GRAPHITE_HEIGHT = 20.0
+
 INITIAL_COMPRESSION = 0.98  # the relaxation starts from a cell 2% too small
 
 
@@ -79,4 +89,22 @@ def _face_centred_cubic(lattice_constant) -> raw.Cell:
     return raw.Cell(
         lattice_vectors=_demo.wrap_data(np.multiply.outer(scaling, lattice_vectors)),
         scale=raw.VaspData(1.0),
+    )
+
+
+def Graphite() -> raw.Cell:
+    """Hexagonal cell of the graphite slab, with the vacuum along the third vector.
+
+    The two in-plane vectors enclose 120 degrees, which is the setting that puts the
+    carbon atoms of a layer on the two sublattices of a honeycomb at (0, 0) and
+    (1/3, 2/3).
+    """
+    a, c = GRAPHITE_LATTICE_CONSTANT, GRAPHITE_HEIGHT
+    lattice_vectors = [
+        [a, 0.0, 0.0],
+        [-a / 2, a * np.sqrt(3) / 2, 0.0],
+        [0.0, 0.0, c],
+    ]
+    return raw.Cell(
+        lattice_vectors=_demo.wrap_data(lattice_vectors), scale=raw.VaspData(1.0)
     )

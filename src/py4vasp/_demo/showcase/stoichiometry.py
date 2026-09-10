@@ -23,3 +23,11 @@ def Cu() -> raw.Stoichiometry:
         number_ion_types=np.array((1,)),
         ion_types=raw.VaspData(np.array(("Cu",), dtype="S")),
     )
+
+
+def Graphite() -> raw.Stoichiometry:
+    """Eight carbon atoms, the four layers of the showcase graphite slab."""
+    return raw.Stoichiometry(
+        number_ion_types=np.array((8,)),
+        ion_types=raw.VaspData(np.array(("C",), dtype="S")),
+    )

@@ -46,6 +46,13 @@ def test_creating_perovskite_calculation(tmp_path):
     assert calculation.structure.number_atoms() == 5
 
 
+def test_creating_surface_calculation(tmp_path):
+    # the "surface" selection is the only one with a vacuum region, which the surface
+    # quantities need
+    calculation = demo.calculation(tmp_path / "surface_example", "surface")
+    assert calculation.structure.number_atoms() == 8
+
+
 def test_creating_metal_calculation(tmp_path):
     # the "metal" selection is the only one with states at the Fermi energy
     calculation = demo.calculation(tmp_path / "metal_example", "metal")

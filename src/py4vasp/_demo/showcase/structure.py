@@ -118,3 +118,41 @@ def Cu() -> raw.Structure:
         cell=cell.Cu(),
         positions=_demo.wrap_data(positions),
     )
+
+
+# The two sublattices of a honeycomb layer, and the shift that turns one layer into the
+# next. Bernal stacking moves every second layer so that one of its two atoms sits above
+# an atom of the layer below and the other above the centre of a hexagon; that is what
+# distinguishes graphite from a stack of aligned graphene sheets.
+_GRAPHENE_SUBLATTICES = ((0.0, 0.0), (1.0 / 3.0, 2.0 / 3.0))
+_BERNAL_SHIFT = (1.0 / 3.0, 2.0 / 3.0)
+NUMBER_GRAPHITE_LAYERS = 4
+
+
+def Graphite() -> raw.Structure:
+    """Four Bernal-stacked layers of graphite with vacuum above and below.
+
+    Highly oriented pyrolytic graphite is what a scanning tunneling microscope is
+    usually calibrated on, and its honeycomb is what makes the corrugation of an image
+    of it recognizable. An even number of layers gives the slab two equivalent surfaces,
+    and it is centred in the cell so that the vacuum is the same on both sides.
+    """
+    return raw.Structure(
+        stoichiometry=stoichiometry.Graphite(),
+        cell=cell.Graphite(),
+        positions=_demo.wrap_data(_graphite_positions()),
+    )
+
+
+def _graphite_positions():
+    """Fractional positions of the slab, the layers from the bottom up."""
+    spacing = cell.GRAPHITE_INTERLAYER_DISTANCE / cell.GRAPHITE_HEIGHT
+    thickness = (NUMBER_GRAPHITE_LAYERS - 1) * spacing
+    bottom = (1.0 - thickness) / 2
+    positions = []
+    for layer in range(NUMBER_GRAPHITE_LAYERS):
+        shift = np.multiply(layer % 2, _BERNAL_SHIFT)
+        for sublattice in _GRAPHENE_SUBLATTICES:
+            in_plane = (np.add(sublattice, shift)) % 1.0
+            positions.append((*in_plane, bottom + layer * spacing))
+    return np.array(positions)
