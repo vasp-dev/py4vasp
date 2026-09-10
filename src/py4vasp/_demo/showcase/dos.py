@@ -22,8 +22,9 @@ def Sr2TiO4(projectors):
     """
     model = electronic_structure.Sr2TiO4()
     use_orbitals = projectors == "with_projectors"
-    energies = _energies([model])
-    per_band = _broadened_bands(model, energies)
+    (eigenvalues,) = _eigenvalues([model])
+    energies = _energies([eigenvalues])
+    per_band = _broadened_bands(eigenvalues, energies)
     raw_dos = raw.Dos(
         fermi_energy=model.fermi_energy,
         energies=_demo.wrap_data(energies),
@@ -35,29 +36,36 @@ def Sr2TiO4(projectors):
     return raw_dos
 
 
-def _energies(models):
+def _eigenvalues(models):
+    """Eigenvalues of every spin channel on the k mesh, evaluated once.
+
+    Evaluating the mesh is the dominant cost of a density of states and every doctest
+    builds one, so the callers below pass these on rather than asking again.
+    """
+    return [model.evaluate(kpoint.mesh()) for model in models]
+
+
+def _energies(eigenvalues):
     """Energy axis that covers the eigenvalues of every spin channel with a margin."""
-    eigenvalues = [model.evaluate(kpoint.mesh()) for model in models]
     lowest = np.min([np.min(values) for values in eigenvalues]) - ENERGY_MARGIN
     highest = np.max([np.max(values) for values in eigenvalues]) + ENERGY_MARGIN
     return np.linspace(lowest, highest, showcase.NUMBER_POINTS)
 
 
-def _broadened_bands(model, energies, electrons_per_band=SPIN_DEGENERACY, width=None):
+def _broadened_bands(
+    eigenvalues, energies, electrons_per_band=SPIN_DEGENERACY, width=None
+):
     """Contribution of every band to the density of states, shape ``(band, energy)``."""
     # resolved here rather than as a default argument: this module is imported while the
     # package that holds the constant is still being set up
     width = showcase.BROADENING if width is None else width
-    eigenvalues = model.evaluate(kpoint.mesh())
     # dividing by the number of k points turns the sum over the mesh into an average, so
     # every band holds exactly electrons_per_band electrons per unit cell
     weight = electrons_per_band / len(eigenvalues)
     return np.array(
         [
-            showcase.broaden(
-                energies, eigenvalues[:, band], weights=weight, width=width
-            )
-            for band in range(model.number_bands)
+            showcase.broaden(energies, band, weights=weight, width=width)
+            for band in eigenvalues.T
         ]
     )
 
@@ -86,9 +94,10 @@ def Fe3O4(projectors, magnetism="collinear"):
     """
     models = electronic_structure.Fe3O4()
     use_orbitals = projectors == "with_projectors"
-    energies = _energies(models)
+    eigenvalues = _eigenvalues(models)
+    energies = _energies(eigenvalues)
     # a spin-polarized calculation resolves the channels, so each band holds one electron
-    per_band = [_broadened_bands(model, energies, 1.0) for model in models]
+    per_band = [_broadened_bands(channel, energies, 1.0) for channel in eigenvalues]
     resolved = _spin_resolved_bands(per_band, magnetism)
     raw_dos = raw.Dos(
         fermi_energy=models[0].fermi_energy,
@@ -125,10 +134,11 @@ def Cu(projectors):
     """
     model = electronic_structure.Cu()
     use_orbitals = projectors == "with_projectors"
-    energies = _energies([model])
+    (eigenvalues,) = _eigenvalues([model])
+    energies = _energies([eigenvalues])
     # the free-electron band of a metal spans twenty electronvolts, so the k mesh samples
     # it thinly; a metal is anyway usually plotted with more smearing than an insulator
-    per_band = _broadened_bands(model, energies, width=METAL_BROADENING)
+    per_band = _broadened_bands(eigenvalues, energies, width=METAL_BROADENING)
     raw_dos = raw.Dos(
         fermi_energy=model.fermi_energy,
         energies=_demo.wrap_data(energies),

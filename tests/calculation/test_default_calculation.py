@@ -357,3 +357,11 @@ def test_unknown_selection_raises(tmp_path):
     # the selection is checked before anything is created, so an invalid one does not
     # leave a directory with two empty HDF5 files behind
     assert not path.exists()
+
+
+def test_generating_data_twice_in_one_path_raises(tmp_path):
+    path = tmp_path / "demo_calculation"
+    demo.calculation(path)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        demo.calculation(path)
+    assert str(path) in str(error.value)

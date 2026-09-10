@@ -195,3 +195,12 @@ def test_sort_bands_records_where_every_band_went(Assert):
     assert np.any(order != np.arange(model.number_bands))
     # following the order back recovers the eigenvalue of each band
     Assert.allclose(np.take_along_axis(eigenvalues, np.argsort(order), axis=1), by_band)
+
+
+@pytest.mark.parametrize(
+    "name", sorted({**kpoint.SPECIAL_POINTS, **kpoint.FCC_SPECIAL_POINTS})
+)
+def test_every_special_point_can_be_labelled(name):
+    # a point defined in the module but missing from the label table used to raise a bare
+    # KeyError as soon as it was put on a path
+    assert kpoint._label(name)

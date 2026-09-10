@@ -39,8 +39,8 @@ FCC_SPECIAL_POINTS = {
     "U": (0.625, 0.25, 0.625),
 }
 FCC_PATH = ("GM", "X", "W", "L", "GM")
-_LABELS = {name: name for name in ("X", "P", "N", "Z", "W", "L", "K", "U")}
-_LABELS["GM"] = r"$\Gamma$"
+# every point is named after itself, except that Gamma is spelled as a Greek letter
+_LABELS = {"GM": r"$\Gamma$"}
 
 
 def line_mode(labels="with_labels") -> raw.Kpoint:
@@ -106,8 +106,12 @@ def _labels(labels, path):
     # segments carries the same name from both sides, so the tick reads "X" rather than
     # "X|", which is how py4vasp marks a jump in the path.
     number_endpoints = 2 * (len(path) - 1)
-    names = [_LABELS[path[(index + 1) // 2]] for index in range(number_endpoints)]
+    names = [_label(path[(index + 1) // 2]) for index in range(number_endpoints)]
     return {
         "labels": raw.VaspData(np.array(names, dtype="S")),
         "label_indices": raw.VaspData(np.arange(1, number_endpoints + 1)),
     }
+
+
+def _label(name):
+    return _LABELS.get(name, name)
