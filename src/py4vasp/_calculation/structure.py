@@ -1643,7 +1643,13 @@ class Structure(view.Mixin):
             for a magnetic system without inversion symmetry; then the path also
             covers the primed images of the special points.
         symprec : float
-            Distance tolerance (in Å) spglib uses to detect the symmetry.
+            Distance in Å within which spglib considers two atoms symmetry
+            equivalent. The default is tighter than a POSCAR written with four
+            decimals, so a cell that is only approximately symmetric may come out
+            with a lower space group than it should -- and then the k points follow
+            from the wrong symmetry. The space group is stated in the first line of
+            the generated file; if it is not the one you expect, write more digits or
+            raise this tolerance (1e-3 is a common choice).
 
         Returns
         -------
@@ -1706,16 +1712,27 @@ class Structure(view.Mixin):
         Parameters
         ----------
         kspacing : float
-            The largest allowed distance between two k points in Å⁻¹, following the
-            convention of VASP's KSPACING tag. Specify either this or the *divisions*.
+            Density of the mesh in Å⁻¹, following the convention of VASP's KSPACING
+            tag: the number of divisions along direction i is 2π|b_i| / kspacing
+            rounded to the nearest integer, and at least one. Because that rounds
+            down as readily as up, the resulting distance between k points may exceed
+            *kspacing* somewhat. Specify either this or the *divisions*.
         divisions : Sequence[int]
             The number of k points along the three directions of the conventional
-            cell. Specify either this or the *kspacing*.
+            cell, which is *not* necessarily the cell of this structure -- use
+            :meth:`conventional_lattice_vectors` to see which axis is which. Specify
+            either this or the *kspacing*.
         shift : array-like
             Shift of the mesh as fractions of its basis vectors. By default the mesh
             contains the Γ point.
         symprec : float
-            Distance tolerance (in Å) spglib uses to detect the symmetry.
+            Distance in Å within which spglib considers two atoms symmetry
+            equivalent. The default is tighter than a POSCAR written with four
+            decimals, so a cell that is only approximately symmetric may come out
+            with a lower space group than it should -- and then the k points follow
+            from the wrong symmetry. The space group is stated in the first line of
+            the generated file; if it is not the one you expect, write more digits or
+            raise this tolerance (1e-3 is a common choice).
 
         Returns
         -------
@@ -1779,7 +1796,13 @@ class Structure(view.Mixin):
         Parameters
         ----------
         symprec : float
-            Distance tolerance (in Å) spglib uses to detect the symmetry.
+            Distance in Å within which spglib considers two atoms symmetry
+            equivalent. The default is tighter than a POSCAR written with four
+            decimals, so a cell that is only approximately symmetric may come out
+            with a lower space group than it should -- and then the k points follow
+            from the wrong symmetry. The space group is stated in the first line of
+            the generated file; if it is not the one you expect, write more digits or
+            raise this tolerance (1e-3 is a common choice).
 
         Returns
         -------

@@ -220,7 +220,10 @@ def generate():
     type=float,
     default=_SYMPREC,
     show_default=True,
-    help="Symmetry tolerance in Å passed to spglib.",
+    help="""Distance in Å within which spglib considers atoms symmetry equivalent.
+    The default is tighter than a POSCAR written with four decimals; if the space
+    group in the first line of the output is lower than you expect, raise it to
+    e.g. 1e-3.""",
 )
 @click.option(
     "-o",
@@ -257,8 +260,10 @@ def generate_kpath(file, number_points, time_reversal, symprec, output):
 @click.option(
     "--kspacing",
     type=float,
-    help="""Largest allowed distance between two k points in Å⁻¹, following the
-    convention of VASP's KSPACING tag. Specify either this or the divisions.""",
+    help="""Density of the mesh in Å⁻¹, following VASP's KSPACING tag: the number of
+    divisions along a direction is 2*pi*|b_i| / kspacing rounded to the nearest
+    integer, at least one. Rounding down can make the actual spacing larger than this
+    value. Specify either this or the divisions.""",
 )
 @click.option(
     "-d",
@@ -280,7 +285,10 @@ def generate_kpath(file, number_points, time_reversal, symprec, output):
     type=float,
     default=_SYMPREC,
     show_default=True,
-    help="Symmetry tolerance in Å passed to spglib.",
+    help="""Distance in Å within which spglib considers atoms symmetry equivalent.
+    The default is tighter than a POSCAR written with four decimals; if the space
+    group in the first line of the output is lower than you expect, raise it to
+    e.g. 1e-3.""",
 )
 @click.option(
     "-o",
