@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import functools
+
 import numpy as np
 
 from py4vasp import _demo, raw
@@ -167,6 +169,23 @@ def dos_Sr2TiO4() -> raw.PhononDos:
     branches. The projections use the displacement patterns of those same branches,
     which is what makes a projected density of states and a fat band tell one story.
     """
+    energies, projections = _spectrum()
+    return raw.PhononDos(
+        energies=_demo.wrap_data(energies),
+        dos=_demo.wrap_data(np.sum(projections, axis=(0, 1))),
+        projections=_demo.wrap_data(projections),
+        stoichiometry=_demo.stoichiometry.Sr2TiO4(has_ion_types=True),
+    )
+
+
+@functools.lru_cache(maxsize=1)
+def _spectrum():
+    """Energy axis and projections of the spectrum, broadened once.
+
+    Every example in the documentation builds the demo data again in the same process,
+    so broadening the mesh is cached. The arrays are read-only and
+    :func:`py4vasp._demo.wrap_data` copies them, so no caller can reach the cache.
+    """
     qpoints = kpoint.mesh()
     by_branch = branch_frequencies(qpoints)
     energies = np.linspace(
@@ -183,12 +202,9 @@ def dos_Sr2TiO4() -> raw.PhononDos:
         ]
     )
     projections = np.einsum("mad,me->ade", _weight_per_axis(), per_mode)
-    return raw.PhononDos(
-        energies=_demo.wrap_data(energies),
-        dos=_demo.wrap_data(np.sum(projections, axis=(0, 1))),
-        projections=_demo.wrap_data(projections),
-        stoichiometry=_demo.stoichiometry.Sr2TiO4(has_ion_types=True),
-    )
+    energies.setflags(write=False)
+    projections.setflags(write=False)
+    return energies, projections
 
 
 def mode_Sr2TiO4() -> raw.PhononMode:

@@ -27,6 +27,7 @@ from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attr
     energy,
     force,
     kpoint,
+    pair_correlation,
     local_moment,
     phonon,
     projector,

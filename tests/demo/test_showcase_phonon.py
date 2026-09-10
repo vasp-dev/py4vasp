@@ -225,3 +225,11 @@ def test_mode_describes_the_relaxed_structure(raw_mode, Assert):
 
     positions = np.array(raw_mode.structure.positions)
     Assert.allclose(positions[-1], structure.ideal_positions())
+
+
+def test_spectrum_is_broadened_once(raw_dos):
+    # every example in the documentation builds the demo data again in the same process
+    energies, projections = phonon._spectrum()
+    assert not projections.flags.writeable
+    assert phonon._spectrum()[1] is projections
+    assert np.array(raw_dos.projections) is not projections

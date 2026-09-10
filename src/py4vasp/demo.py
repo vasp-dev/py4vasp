@@ -93,6 +93,7 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, showcase.band.Sr2TiO4("with_projectors"))
     write(h5f, showcase.energy.relax())
     write(h5f, showcase.bandgap.Sr2TiO4())
+    write(h5f, showcase.pair_correlation.Sr2TiO4())
     write(h5f, showcase.force.Sr2TiO4())
     write(h5f, showcase.stress.Sr2TiO4())
     write(h5f, showcase.symmetry.Sr2TiO4())

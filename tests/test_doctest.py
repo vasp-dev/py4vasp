@@ -20,6 +20,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     local_moment,
     neighbor_list,
     optics,
+    pair_correlation,
     phonon_band,
     phonon_dos,
     phonon_mode,
@@ -74,6 +75,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.local_moment)
         + find_examples(_calculation.neighbor_list)
         + find_examples(_calculation.optics)
+        + find_examples(_calculation.pair_correlation)
         + find_examples(_calculation.phonon_band)
         + find_examples(_calculation.phonon_dos)
         + find_examples(_calculation.phonon_mode)
@@ -127,8 +129,9 @@ def interesting_example(example):
     suffix = example.name.split(".")[-1]
     if len(example.examples) == 0:
         return False
-    skipped_suffixes = ("pair_correlation",)
-    return suffix not in skipped_suffixes
+    # Every module with examples is collected now, so nothing has to be filtered by
+    # name. Add a suffix here if a docstring gains an example that cannot be executed.
+    return True
 
 
 def _run_calculation_example(example, tmp_path):
