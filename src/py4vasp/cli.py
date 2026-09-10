@@ -264,11 +264,20 @@ def generate():
 def generate_kpath(file, number_points, time_reversal, symprec, elements, output):
     """Generate a KPOINTS file along the high-symmetry path of the structure in FILE.
 
-    FILE may be a POSCAR, CONTCAR, or HDF5 file containing a structure, or an archive
-    of a VASP calculation. seekpath determines the recommended path and py4vasp writes
-    it in line mode with the label of every special point behind its coordinates, so
-    that VASP reads the labels. By default the file is written to stdout; use
-    -o/--output to store it as KPOINTS or KPOINTS_OPT.
+    FILE may be a POSCAR, a CONTCAR, an HDF5 file such as vaspout.h5, or a zip archive
+    holding a VASP calculation (not a directory). seekpath determines the recommended
+    path and py4vasp writes it in line mode with the label of every special point
+    behind its coordinates, so that VASP reads the labels. The labels are written as
+    UTF-8, e.g. Γ; VASP passes them through unchanged.
+
+    The k points are expressed in the reciprocal basis of the cell in FILE, not in the
+    standardized primitive basis seekpath works in, so the file suits your structure as
+    it is. If your cell holds several primitive cells, the band structure is folded and
+    a path may run from Γ back to Γ; the space group and the number of primitive cells
+    are reported on stderr and repeated in the first line of the file.
+
+    By default the file is written to stdout; use -o/--output to store it as KPOINTS or
+    KPOINTS_OPT.
     """
     try:
         _raise_if_output_not_supported(output, "a KPOINTS file")
@@ -340,11 +349,20 @@ def generate_kpath(file, number_points, time_reversal, symprec, elements, output
 def generate_kmesh(file, kspacing, divisions, shift, symprec, elements, output):
     """Generate a KPOINTS file with a mesh adapted to the structure in FILE.
 
-    FILE may be a POSCAR, CONTCAR, or HDF5 file containing a structure, or an archive
-    of a VASP calculation. The mesh subdivides the reciprocal lattice vectors of the
-    conventional cell, so it retains the full symmetry of the lattice even when the
-    calculation runs in the primitive cell. By default the file is written to stdout;
-    use -o/--output to store it as KPOINTS.
+    FILE may be a POSCAR, a CONTCAR, an HDF5 file such as vaspout.h5, or a zip archive
+    holding a VASP calculation (not a directory). The mesh subdivides the reciprocal
+    lattice vectors of the conventional cell, so it retains the full symmetry of the
+    lattice even when the calculation runs in the primitive cell -- a plain grid of the
+    primitive cell would break that symmetry and leave VASP fewer k points to reduce.
+
+    Consequently the file is not a "8 8 8" grid but VASP's generating-lattice form: a
+    zero for the number of k points, the word Reduced, and then the three basis vectors
+    of the mesh followed by its shift, as fractions of the reciprocal lattice vectors of
+    the cell in FILE. The divisions count along the conventional cell, whose lattice
+    vectors are reported on stderr so you can tell which direction is which; for a slab
+    that is how you find the vacuum axis, which usually wants a single k point.
+
+    By default the file is written to stdout; use -o/--output to store it as KPOINTS.
     """
     divisions = divisions or None
     shift = shift or None
