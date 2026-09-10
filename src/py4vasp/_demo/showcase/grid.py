@@ -9,6 +9,7 @@ smooth, periodic in the lattice, and peaked where the atoms are. The one here is
 promolecule: a superposition of atom-centred Gaussians, which is what a charge density
 looks like before the atoms are allowed to bond.
 """
+
 import functools
 import itertools
 

@@ -59,7 +59,9 @@ def test_operations_are_the_tetragonal_point_group(rotations):
 def test_crystal_is_centrosymmetric(rotations):
     # the inversion is what distinguishes I4/mmm from the tetragonal groups without it,
     # and Symmetry.has_inversion_symmetry reports it
-    assert any(np.array_equal(rotation, -np.eye(3, dtype=int)) for rotation in rotations)
+    assert any(
+        np.array_equal(rotation, -np.eye(3, dtype=int)) for rotation in rotations
+    )
 
 
 def test_inverse_operations_point_at_the_inverse(raw_symmetry, rotations):

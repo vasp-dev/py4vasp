@@ -216,7 +216,9 @@ def test_mode_displacements_carry_the_share_of_their_mode(raw_mode, Assert):
     # the displacement pattern of a mode has to distribute the mode over the atoms the
     # same way the projected density of states does
     eigenvectors = np.array(raw_mode.eigenvectors)
-    per_atom = np.sum(eigenvectors.reshape(NUMBER_MODES, phonon.NUMBER_ATOMS, 3) ** 2, axis=2)
+    per_atom = np.sum(
+        eigenvectors.reshape(NUMBER_MODES, phonon.NUMBER_ATOMS, 3) ** 2, axis=2
+    )
     Assert.allclose(per_atom, phonon.mode_weights())
 
 

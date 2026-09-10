@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from py4vasp._demo import showcase
-from py4vasp._demo.showcase import bandgap, band, electronic_structure, kpoint
+from py4vasp._demo.showcase import band, bandgap, electronic_structure, kpoint
 
 NUMBER_LABELS = 14
 

@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Pair-correlation function of the showcase crystals, from their neighbour shells."""
+
 import functools
 import itertools
 
@@ -159,5 +160,8 @@ def _correlate(distances, pairs, volume, number_first, number_second):
     density = number_second / volume
     uniform = 4 * np.pi * distances**2 * density * number_first
     return np.divide(
-        neighbours_per_distance, uniform, out=np.zeros_like(distances), where=uniform > 0
+        neighbours_per_distance,
+        uniform,
+        out=np.zeros_like(distances),
+        where=uniform > 0,
     )

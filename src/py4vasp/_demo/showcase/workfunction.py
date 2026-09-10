@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Work function of the showcase surface: the potential across the slab."""
+
 import numpy as np
 
 from py4vasp import _demo, raw

@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Band extrema of the showcase crystals over the steps of their trajectory."""
+
 import numpy as np
 
 from py4vasp import _demo, raw
@@ -82,9 +83,7 @@ def _trajectory(relaxed):
         "direct gap top": CONDUCTION_SHIFT,
         "Fermi energy": 0.0,
     }
-    energies = [
-        relaxed[label] + shift * remaining for label, shift in shifts.items()
-    ]
+    energies = [relaxed[label] + shift * remaining for label, shift in shifts.items()]
     # the extrema stay at their high-symmetry points while the crystal relaxes, so the
     # k coordinates are the same at every step
     coordinates = [

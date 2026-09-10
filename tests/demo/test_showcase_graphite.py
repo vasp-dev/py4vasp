@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from py4vasp._calculation.density import Density
 from py4vasp._calculation.bandgap import BandgapHandler
+from py4vasp._calculation.density import Density
 from py4vasp._demo.showcase import (
     cell,
     density,
@@ -40,16 +40,15 @@ def test_slab_holds_four_layers_of_carbon(raw_structure):
     assert np.array(raw_structure.positions).shape == (NUMBER_ATOMS, 3)
     stoichiometry = raw_structure.stoichiometry
     assert list(np.array(stoichiometry.number_ion_types)) == [NUMBER_ATOMS]
-    assert [name.decode().strip() for name in np.array(stoichiometry.ion_types)] == ["C"]
+    ion_types = [name.decode().strip() for name in np.array(stoichiometry.ion_types)]
+    assert ion_types == ["C"]
 
 
 def test_in_plane_cell_is_the_literature_one(raw_structure, Assert):
     lattice_vectors = np.array(raw_structure.cell.lattice_vectors)
     lengths = np.linalg.norm(lattice_vectors[:2], axis=1)
     Assert.allclose(lengths, np.full(2, LATTICE_CONSTANT))
-    angle = np.degrees(
-        np.arccos(np.dot(*lattice_vectors[:2]) / np.prod(lengths))
-    )
+    angle = np.degrees(np.arccos(np.dot(*lattice_vectors[:2]) / np.prod(lengths)))
     Assert.allclose(angle, 120.0)
 
 

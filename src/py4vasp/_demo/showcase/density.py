@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Charge density of the showcase crystals on their real-space grid."""
+
 import numpy as np
 
 from py4vasp import _demo, raw

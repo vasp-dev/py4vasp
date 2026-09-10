@@ -7,15 +7,16 @@ way :func:`py4vasp._demo.symmetry.SrTiO3` generates the cubic ones: a transcribe
 of sixteen 3x3 matrices is impossible to review, and generating them makes the claim
 that they *are* the point group checkable.
 """
+
 import numpy as np
 
 from py4vasp import _demo, raw
+from py4vasp._demo.showcase import cell, structure
 from py4vasp._demo.symmetry import (
     _atom_permutations,
     _inverse_operations,
     _reciprocal_rotations,
 )
-from py4vasp._demo.showcase import cell, structure
 
 ISYM = 2  # the ISYM setting that makes VASP use symmetry without the charge symmetrizer
 

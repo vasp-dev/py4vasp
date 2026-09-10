@@ -130,9 +130,7 @@ def mode_weights() -> np.ndarray:
         strontium carries the bottom of the spectrum and oxygen the top.
     """
     masses = np.array(MASSES)
-    acoustic = np.broadcast_to(
-        masses / np.sum(masses), (NUMBER_ACOUSTIC, NUMBER_ATOMS)
-    )
+    acoustic = np.broadcast_to(masses / np.sum(masses), (NUMBER_ACOUSTIC, NUMBER_ATOMS))
     softness = 1 / np.sqrt(masses)
     exponents = np.linspace(*OPTICAL_EXPONENTS, len(OPTICAL_AT_GAMMA))[:, np.newaxis]
     optical = softness**exponents
@@ -218,9 +216,10 @@ def mode_Sr2TiO4() -> raw.PhononMode:
     # VASP stores the eigenvalues of the dynamical matrix as complex numbers so that an
     # unstable mode can be reported as an imaginary frequency
     complex_frequencies = at_gamma.astype(np.complex128)
+    as_pairs_of_reals = complex_frequencies.view(np.float64).reshape(-1, 2)
     return raw.PhononMode(
         structure=structure.Sr2TiO4(),
-        frequencies=_demo.wrap_data(complex_frequencies.view(np.float64).reshape(-1, 2)),
+        frequencies=_demo.wrap_data(as_pairs_of_reals),
         eigenvectors=_demo.wrap_data(_displacements()),
     )
 
