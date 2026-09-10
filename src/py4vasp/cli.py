@@ -152,6 +152,12 @@ def _raise_if_output_not_supported(destination, description):
     "py4vasp generates text files, so they must not overwrite the data of a calculation."
     if destination is None:
         return
+    if not destination.parent.is_dir():
+        message = (
+            f"The directory {destination.parent} does not exist, so {description} "
+            "cannot be written there. Please create it or choose another path."
+        )
+        raise exception.IncorrectUsage(message)
     if destination.suffix in _HDF5_SUFFIXES:
         message = f"Writing {description} to an HDF5 file is not implemented."
         raise exception.NotImplemented(message)
@@ -195,7 +201,8 @@ def generate():
 
 @generate.command("kpath")
 @click.argument(
-    "file", type=click.Path(exists=True, readable=True, path_type=pathlib.Path)
+    "file",
+    type=click.Path(exists=True, readable=True, dir_okay=False, path_type=pathlib.Path),
 )
 @click.option(
     "-n",
@@ -258,7 +265,8 @@ def generate_kpath(file, number_points, time_reversal, symprec, output):
 
 @generate.command("kmesh")
 @click.argument(
-    "file", type=click.Path(exists=True, readable=True, path_type=pathlib.Path)
+    "file",
+    type=click.Path(exists=True, readable=True, dir_okay=False, path_type=pathlib.Path),
 )
 @click.option(
     "--kspacing",

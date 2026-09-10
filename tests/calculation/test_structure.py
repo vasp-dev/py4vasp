@@ -1328,3 +1328,19 @@ def test_conventional_lattice_vectors_multiple_steps(Sr2TiO4):
     pytest.importorskip("spglib")
     with pytest.raises(exception.NotImplemented):
         Sr2TiO4[:].conventional_lattice_vectors()
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "ENCUT = 400\nISMEAR = 0\nSIGMA = 0.2\nNSW = 0\nIBRION = -1\nPREC = A",
+        "not a structure at all\njust some text\nthat happens to have\nsix lines\n"
+        "of prose in it\nand nothing numeric\nanywhere\nhere",
+    ],
+    ids=["INCAR", "prose"],
+)
+def test_from_POSCAR_rejects_content_that_is_not_a_poscar(content):
+    # pointing py4vasp at the wrong file is an ordinary slip, so it must not surface
+    # as a numpy ValueError about converting a string to a float
+    with pytest.raises(exception.IncorrectUsage):
+        Structure.from_POSCAR(content)

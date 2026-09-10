@@ -633,3 +633,35 @@ def test_generate_kpath_reports_the_space_group(
     # visible whether the file goes to stdout, to -o, or into a shell redirection
     assert "Fd-3m (cF2)" in result.stderr
     assert "1 primitive cell" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# generate reports mistakes without a traceback
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("command, options", _GENERATE_COMMANDS)
+def test_generate_rejects_a_missing_output_directory(
+    mock_structure, tmp_path, command, options
+):
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "nosuchdir" / "KPOINTS"
+    runner = CliRunner()
+    options = [*options, "-o", str(output)]
+    result = runner.invoke(cli, ["generate", command, str(poscar), *options])
+    assert result.exit_code != 0
+    assert "Traceback" not in result.output
+    assert "nosuchdir" in result.output
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("command, options", _GENERATE_COMMANDS)
+def test_generate_rejects_a_directory_as_input(
+    mock_structure, tmp_path, command, options
+):
+    runner = CliRunner()
+    result = runner.invoke(cli, ["generate", command, str(tmp_path), *options])
+    assert result.exit_code != 0
+    assert "Traceback" not in result.output
+    assert "directory" in result.output.lower()
+    mock_structure.from_POSCAR.assert_not_called()
