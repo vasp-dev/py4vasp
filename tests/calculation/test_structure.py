@@ -1200,3 +1200,32 @@ def test_generate_kpath_of_poscar_uses_the_geometry(raw_data):
     cubic = make_structure(raw_data.structure("SrTiO3")).generate_kpath()
     poscar = _perovskite_poscar(_IDEAL_PEROVSKITE)
     assert Structure.from_POSCAR(poscar).generate_kpath() == cubic
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"kspacing": 0},
+        {"kspacing": -0.2},
+        {"divisions": [0, 4, 4]},
+        {"divisions": [-4, 4, 4]},
+        {"divisions": [8, 8]},
+        {"divisions": [8, 8, 8, 8]},
+        {"divisions": [4, 4, 4], "shift": [0.5, 0.5]},
+    ],
+)
+def test_generate_kmesh_rejects_invalid_arguments(arguments):
+    pytest.importorskip("spglib")
+    # a mesh that is not sampled or a vector with the wrong number of elements would
+    # end up as nan, inf, or a malformed line in the file, so py4vasp refuses it
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage):
+        structure.generate_kmesh(**arguments)
+
+
+@pytest.mark.parametrize("number_points", [0, -10])
+def test_generate_kpath_rejects_invalid_number_points(number_points):
+    pytest.importorskip("seekpath")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage):
+        structure.generate_kpath(number_points=number_points)

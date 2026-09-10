@@ -153,6 +153,12 @@ def high_symmetry_path(
     str
         The content of a KPOINTS file describing the path.
     """
+    if number_points < 1:
+        message = (
+            "VASP samples at least one k point along every line of the path, but "
+            f"number_points is {number_points}."
+        )
+        raise exception.IncorrectUsage(message)
     path = seekpath.get_path(cell, with_time_reversal=time_reversal, symprec=symprec)
     primitive_cell = (
         path["primitive_lattice"],
@@ -317,12 +323,7 @@ def regular_mesh(
     str
         The content of a KPOINTS file describing the mesh.
     """
-    if (kspacing is None) == (divisions is None):
-        message = (
-            "Please specify either the spacing of the k points or the number of "
-            "divisions of the mesh, but not both of them."
-        )
-        raise exception.IncorrectUsage(message)
+    _raise_if_mesh_not_valid(kspacing, divisions, shift)
     transformation = transformation_matrix(cell, symprec)
     if divisions is None:
         reciprocal_lattice = conventional_reciprocal_lattice(cell[0], transformation)
@@ -330,3 +331,44 @@ def regular_mesh(
     vectors = generating_lattice(transformation, divisions)
     shift = (0, 0, 0) if shift is None else shift
     return generating_lattice_mode(vectors, shift, mesh_comment(divisions, kspacing))
+
+
+def _raise_if_mesh_not_valid(kspacing, divisions, shift):
+    """Reject arguments that would end up as nan, inf, or a malformed line in the file.
+
+    Without these checks a spacing of zero raises an OverflowError, a division of zero
+    divides by zero, and a shift with the wrong number of elements silently produces a
+    line VASP cannot read.
+    """
+    if (kspacing is None) == (divisions is None):
+        message = (
+            "Please specify either the spacing of the k points or the number of "
+            "divisions of the mesh, but not both of them."
+        )
+        raise exception.IncorrectUsage(message)
+    if divisions is None:
+        if kspacing <= 0:
+            message = (
+                "The spacing of the k points is a distance in the reciprocal space, so "
+                f"it must be positive, but it is {kspacing}."
+            )
+            raise exception.IncorrectUsage(message)
+    else:
+        _raise_if_not_three_elements(divisions, "divisions of the mesh")
+        if any(division < 1 for division in divisions):
+            message = (
+                "Every direction is sampled by at least one k point, but the divisions "
+                f"of the mesh are {list(divisions)}."
+            )
+            raise exception.IncorrectUsage(message)
+    if shift is not None:
+        _raise_if_not_three_elements(shift, "shift of the mesh")
+
+
+def _raise_if_not_three_elements(values, description):
+    if np.size(values) != 3:
+        message = (
+            f"The {description} must have three elements, one for every direction, but "
+            f"{np.size(values)} were given."
+        )
+        raise exception.IncorrectUsage(message)
