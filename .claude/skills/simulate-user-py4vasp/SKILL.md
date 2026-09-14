@@ -26,8 +26,10 @@ what it reports. All paths are relative to the repo/worktree root.
 
 Whenever the diff touches the **user interface**:
 
-- a public method (no leading underscore) added to or changed on a quantity class
-  under `src/py4vasp/_calculation/`
+- a public method or class (no leading underscore) under `src/py4vasp/_calculation/`
+  whose signature **or docstring** changed, or one that was added. The docstring counts
+  because it is the documentation a user reads: a branch can rewrite thirty of them,
+  leave every `def` line untouched, and change the interface completely.
 - any change to `src/py4vasp/cli.py`
 - any change under `docs/`
 
