@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import re
 import types
 
@@ -7,10 +8,11 @@ import numpy as np
 import pytest
 
 from py4vasp import exception, raw
+from py4vasp._calculation import _kpoints_file
 from py4vasp._calculation._stoichiometry import Stoichiometry, StoichiometryHandler
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.models import StructureModel
-from py4vasp._util import check
+from py4vasp._util import check, import_
 
 REF_POSCAR = """\
 Sr2TiO4
@@ -1017,3 +1019,375 @@ def test_symmetrize_to_primitive_keeps_species_order(Assert):
     assert actual["elements"] == ["Sr", "Ti", "O", "O", "O"]
     cell = (actual["lattice_vectors"], actual["positions"], [0, 1, 2, 2, 2])
     assert spglib.get_symmetry_dataset(cell, symprec=1e-5).number == 221
+
+
+# ---------------------------------------------------------------------------
+# Generate KPOINTS files (derived from the bare geometry like symmetrize)
+# ---------------------------------------------------------------------------
+
+_BCC_CONVENTIONAL_POSCAR = """\
+Fe
+3.0
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+Fe
+2
+Direct
+0.00 0.00 0.00
+0.50 0.50 0.50"""
+
+_ZINCBLENDE_POSCAR = """\
+GaAs
+5.65
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+Ga As
+1 1
+Direct
+0.00 0.00 0.00
+0.25 0.25 0.25"""
+
+
+def test_generate_kpath_from_poscar(Assert):
+    pytest.importorskip("seekpath")
+    text = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR).generate_kpath(
+        number_points=20
+    )
+    lines = text.splitlines()
+    assert lines[1] == "20"
+    assert lines[2] == "line mode"
+    assert lines[3] == "reciprocal"
+    kpoints = [line for line in lines[4:] if line.strip()]
+    # the bcc path Γ-H-N-Γ-P-H and P-N consists of six lines, i.e. twelve k points
+    assert len(kpoints) == 12
+    assert [line.split()[3] for line in kpoints[:4]] == ["Γ", "H", "H", "N"]
+    # H is (1/2, -1/2, 1/2) in the primitive basis, which is the corner (0, 1, 0) of
+    # the conventional cell that the POSCAR uses
+    Assert.allclose([float(x) for x in kpoints[1].split()[:3]], [0, 1, 0])
+    # the conventional bcc cell contains two primitive cells, so the bands fold
+    assert "2 primitive cells" in lines[0]
+
+
+def test_generate_kpath_without_time_reversal():
+    pytest.importorskip("seekpath")
+    structure = Structure.from_POSCAR(_ZINCBLENDE_POSCAR)
+    with_reversal = structure.generate_kpath()
+    without_reversal = structure.generate_kpath(time_reversal=False)
+    # zincblende has no inversion symmetry, so without time reversal the path is
+    # augmented by the primed images of the special points
+    assert "X'" not in with_reversal
+    assert "X'" in without_reversal
+    assert len(without_reversal.splitlines()) > len(with_reversal.splitlines())
+
+
+def test_generate_kpath_multiple_steps_not_implemented(Sr2TiO4):
+    pytest.importorskip("seekpath")
+    with pytest.raises(exception.NotImplemented):
+        Sr2TiO4[:].generate_kpath()
+
+
+_BCC_SUPERCELL_POSCAR = """\
+Fe
+3.0
+2.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+Fe
+4
+Direct
+0.00 0.00 0.00
+0.25 0.50 0.50
+0.50 0.00 0.00
+0.75 0.50 0.50"""
+
+
+def test_generate_kpath_without_seekpath(monkeypatch):
+    monkeypatch.setattr(
+        _kpoints_file, "seekpath", import_.optional("_seekpath_not_installed_")
+    )
+    with pytest.raises(exception.ModuleNotInstalled):
+        Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR).generate_kpath()
+
+
+def test_generate_kpath_of_supercell():
+    pytest.importorskip("seekpath")
+    # the high-symmetry points of the crystal do not apply to a supercell, so py4vasp
+    # refuses to write a path that would silently be wrong
+    structure = Structure.from_POSCAR(_BCC_SUPERCELL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        structure.generate_kpath()
+    assert "primitive cell" in str(error.value)
+
+
+_BCC_PRIMITIVE_POSCAR = """\
+Fe
+3.0
+-0.5  0.5  0.5
+ 0.5 -0.5  0.5
+ 0.5  0.5 -0.5
+Fe
+1
+Direct
+0.00 0.00 0.00"""
+
+
+def _mesh_vectors(text):
+    "The three basis vectors of the mesh follow the comment, the count, and the mode."
+    return [[float(x) for x in line.split()] for line in text.splitlines()[3:6]]
+
+
+def test_generate_kmesh_from_kspacing():
+    pytest.importorskip("spglib")
+    # the conventional cell has a = 3 Å, so |b| 2π = 2.094/Å rounds to four divisions
+    expected = """\
+k mesh of the conventional cell: divisions 4 4 4, kspacing 0.5
+0
+Reduced
+  0.25000000   0.00000000   0.00000000
+  0.00000000   0.25000000   0.00000000
+  0.00000000   0.00000000   0.25000000
+  0.00000000   0.00000000   0.00000000"""
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    assert structure.generate_kmesh(kspacing=0.5) == expected
+
+
+def test_generate_kmesh_of_primitive_cell(Assert):
+    pytest.importorskip("spglib")
+    # the same crystal in its primitive setting is sampled by the same mesh of the
+    # conventional cell, which is not a regular grid of the primitive cell
+    structure = Structure.from_POSCAR(_BCC_PRIMITIVE_POSCAR)
+    text = structure.generate_kmesh(kspacing=0.5)
+    assert "divisions 4 4 4" in text.splitlines()[0]
+    expected = 0.125 * np.array([[-1, 1, 1], [1, -1, 1], [1, 1, -1]])
+    Assert.allclose(_mesh_vectors(text), expected)
+
+
+def test_generate_kmesh_with_explicit_divisions(Assert):
+    pytest.importorskip("spglib")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    text = structure.generate_kmesh(divisions=[2, 2, 2])
+    # without a kspacing the comment does not claim one
+    assert text.splitlines()[0] == "k mesh of the conventional cell: divisions 2 2 2"
+    Assert.allclose(_mesh_vectors(text), np.diag([0.5, 0.5, 0.5]))
+
+
+def test_generate_kmesh_with_shift(Assert):
+    pytest.importorskip("spglib")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    text = structure.generate_kmesh(divisions=[2, 2, 2], shift=[0.5, 0.5, 0.0])
+    shift = [float(x) for x in text.splitlines()[6].split()]
+    Assert.allclose(shift, [0.5, 0.5, 0.0])
+
+
+def test_generate_kmesh_without_kspacing_or_divisions():
+    pytest.importorskip("spglib")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        structure.generate_kmesh()
+    # the message must ask for one of the two arguments by name; complaining about
+    # both of them being given sends the user looking for an argument they did not pass
+    message = str(error.value)
+    assert "kspacing" in message and "divisions" in message
+    assert "both" not in message
+
+
+def test_generate_kmesh_with_kspacing_and_divisions():
+    pytest.importorskip("spglib")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        structure.generate_kmesh(kspacing=0.5, divisions=[2, 2, 2])
+    message = str(error.value)
+    assert "kspacing" in message and "divisions" in message
+    assert "both" in message
+
+
+def _without_symmetry_operations(raw_structure):
+    """Replace VASP's symmetry by one that maps every atom only onto itself."""
+    number_atoms = np.shape(raw_structure.positions)[-2]
+    identity = np.arange(1, number_atoms + 1).reshape((1, 1, number_atoms))
+    symmetry = dataclasses.replace(
+        raw_structure.symmetry, atom_permutations=raw.VaspData(identity)
+    )
+    return dataclasses.replace(raw_structure, symmetry=symmetry)
+
+
+def test_generate_kpath_respects_symmetry_lowering(raw_data):
+    pytest.importorskip("seekpath")
+    raw_structure = raw_data.structure("SrTiO3")
+    cubic = make_structure(raw_structure).generate_kpath()
+    assert "Pm-3m" in cubic.splitlines()[0]
+    # when VASP relates no atoms by symmetry, the three oxygen atoms are inequivalent;
+    # that breaks all three four-fold axes, so the crystal is orthorhombic rather than
+    # cubic and gets the path of the lower symmetry
+    lowered = make_structure(_without_symmetry_operations(raw_structure))
+    assert "Pmmm" in lowered.generate_kpath().splitlines()[0]
+
+
+def test_generate_kpath_of_poscar_uses_the_geometry(raw_data):
+    pytest.importorskip("seekpath")
+    # a POSCAR carries no symmetry, so the elements decide which atoms are equivalent
+    # and the cubic path of the perovskite comes back
+    cubic = make_structure(raw_data.structure("SrTiO3")).generate_kpath()
+    poscar = _perovskite_poscar(_IDEAL_PEROVSKITE)
+    assert Structure.from_POSCAR(poscar).generate_kpath() == cubic
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"kspacing": 0},
+        {"kspacing": -0.2},
+        {"divisions": [0, 4, 4]},
+        {"divisions": [-4, 4, 4]},
+        {"divisions": [8, 8]},
+        {"divisions": [8, 8, 8, 8]},
+        {"divisions": [4, 4, 4], "shift": [0.5, 0.5]},
+    ],
+)
+def test_generate_kmesh_rejects_invalid_arguments(arguments):
+    pytest.importorskip("spglib")
+    # a mesh that is not sampled or a vector with the wrong number of elements would
+    # end up as nan, inf, or a malformed line in the file, so py4vasp refuses it
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage):
+        structure.generate_kmesh(**arguments)
+
+
+@pytest.mark.parametrize("number_points", [0, -10])
+def test_generate_kpath_rejects_invalid_number_points(number_points):
+    pytest.importorskip("seekpath")
+    structure = Structure.from_POSCAR(_BCC_CONVENTIONAL_POSCAR)
+    with pytest.raises(exception.IncorrectUsage):
+        structure.generate_kpath(number_points=number_points)
+
+
+_INCOMPLETE_POSCARS = {
+    "empty": "",
+    "comment only": "Si",
+    "no elements or positions": "Si\n5.43\n0 .5 .5\n.5 0 .5\n.5 .5 0",
+    "no positions": "Si\n5.43\n0 .5 .5\n.5 0 .5\n.5 .5 0\nSi\n1\nDirect",
+    "no coordinate system": "Si\n5.43\n0 .5 .5\n.5 0 .5\n.5 .5 0\nSi\n1",
+}
+
+
+@pytest.mark.parametrize(
+    "poscar", _INCOMPLETE_POSCARS.values(), ids=_INCOMPLETE_POSCARS
+)
+def test_from_POSCAR_rejects_incomplete_content(poscar):
+    # a truncated or empty file is a mistake of the user, so py4vasp must not let a
+    # bare IndexError or StopIteration escape through an internal traceback
+    with pytest.raises(exception.IncorrectUsage):
+        Structure.from_POSCAR(poscar)
+
+
+_MOS2_POSCAR = """\
+MoS2
+1.0
+ 3.1600000 0.0000000 0.0000000
+-1.5800000 2.7366425 0.0000000
+ 0.0000000 0.0000000 20.000000
+Mo S
+1 2
+Direct
+0.3333333 0.6666667 0.5000000
+0.6666667 0.3333333 0.4220000
+0.6666667 0.3333333 0.5780000"""
+
+_FCC_PRIMITIVE_POSCAR = """\
+Si
+5.43
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+Si
+1
+Direct
+0.00 0.00 0.00"""
+
+_FCC_CONVENTIONAL_POSCAR = """\
+Si
+5.43
+1.0 0.0 0.0
+0.0 1.0 0.0
+0.0 0.0 1.0
+Si
+4
+Direct
+0.00 0.00 0.00
+0.00 0.50 0.50
+0.50 0.00 0.50
+0.50 0.50 0.00"""
+
+
+@pytest.mark.parametrize("poscar", [_FCC_PRIMITIVE_POSCAR, _FCC_CONVENTIONAL_POSCAR])
+def test_conventional_lattice_vectors(poscar, Assert):
+    pytest.importorskip("spglib")
+    # both settings of the same crystal have the same conventional cell, and that is
+    # the cell the divisions of a generated mesh count along
+    structure = Structure.from_POSCAR(poscar)
+    Assert.allclose(structure.conventional_lattice_vectors(), 5.43 * np.eye(3))
+
+
+def test_conventional_lattice_vectors_of_a_slab(Assert):
+    pytest.importorskip("spglib")
+    # a hexagonal slab keeps its vacuum axis, so the user can see which division
+    # belongs to it
+    structure = Structure.from_POSCAR(_MOS2_POSCAR)
+    actual = structure.conventional_lattice_vectors(symprec=1e-3)
+    # the conventional vectors are built from the cell of the POSCAR, which writes
+    # a * sqrt(3) / 2 with seven decimals, so they inherit that imprecision
+    lengths = np.linalg.norm(actual, axis=1)
+    Assert.allclose(lengths, [3.16, 3.16, 20.0], tolerance=1e9)
+
+
+def test_conventional_lattice_vectors_multiple_steps(Sr2TiO4):
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.NotImplemented):
+        Sr2TiO4[:].conventional_lattice_vectors()
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "ENCUT = 400\nISMEAR = 0\nSIGMA = 0.2\nNSW = 0\nIBRION = -1\nPREC = A",
+        "not a structure at all\njust some text\nthat happens to have\nsix lines\n"
+        "of prose in it\nand nothing numeric\nanywhere\nhere",
+    ],
+    ids=["INCAR", "prose"],
+)
+def test_from_POSCAR_rejects_content_that_is_not_a_poscar(content):
+    # pointing py4vasp at the wrong file is an ordinary slip, so it must not surface
+    # as a numpy ValueError about converting a string to a float
+    with pytest.raises(exception.IncorrectUsage):
+        Structure.from_POSCAR(content)
+
+
+_VASP4_POSCAR = """\
+Si
+5.43
+0.0 0.5 0.5
+0.5 0.0 0.5
+0.5 0.5 0.0
+2
+Direct
+0.00 0.00 0.00
+0.25 0.25 0.25"""
+
+
+def test_from_POSCAR_without_elements_offers_every_route():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        Structure.from_POSCAR(_VASP4_POSCAR)
+    message = str(error.value)
+    # the message is read by Python users and by command line users, so it must name
+    # a route each of them can take
+    assert "elements=" in message
+    assert "--elements" in message
+    # and it must not leak the indentation of the source it is written in
+    assert not any(line.startswith("  ") for line in message.splitlines())
+
+
+def test_from_POSCAR_with_elements_is_accepted(Assert):
+    structure = Structure.from_POSCAR(_VASP4_POSCAR, elements=["Si"])
+    assert structure.read()["elements"] == ["Si", "Si"]

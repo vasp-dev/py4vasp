@@ -153,6 +153,13 @@ rather than discovering them mid-implementation:
   in the test, as existing tests do. Note it on the chunk.
 - **Docs.** New public methods usually need adding to the relevant file under
   `docs/`; fold it into the chunk that introduces the method.
+- **A user-interface change owes user-facing documentation.** A new public method
+  or CLI command will be validated by **simulate-user-py4vasp** before it can be
+  pushed: a subagent that may read only the documentation has to work out how to
+  use it. So the chunk that introduces the method carries its documentation — not
+  just its docstring — and `--help` text that stands on its own. Plan the wording
+  of the tolerances, units and conventions the user must know; that is where such
+  a change usually fails.
 
 ## Out of scope for this skill
 

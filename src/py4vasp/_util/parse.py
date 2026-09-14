@@ -41,6 +41,26 @@ class PoscarParser:
     poscar_lines: List[str]
 
     def parse_lines(self):
+        try:
+            return self._parse_mandatory_and_optional_lines()
+        except ValueError as error:
+            # a number was expected where the file has something else, so this is
+            # very likely not a POSCAR at all
+            message = f"""\
+The file does not look like a POSCAR: {error}. A POSCAR contains a comment line, a
+scaling factor, three lattice vectors, the number of ions per type, the coordinate
+system, and one line per ion. Please check that you selected the right file."""
+            raise exception.IncorrectUsage(message) from error
+        except StopIteration as error:
+            # the mandatory parts consume the lines with next, so an incomplete file
+            # exhausts the iterator; the optional parts handle that case themselves
+            message = """\
+The POSCAR ended before all required parts were read. A POSCAR contains a comment
+line, a scaling factor, three lattice vectors, the number of ions per type, the
+coordinate system, and one line per ion. Please check that the file is complete."""
+            raise exception.IncorrectUsage(message) from error
+
+    def _parse_mandatory_and_optional_lines(self):
         remaining_lines = iter(self.poscar_lines)
         result = {"system": next(remaining_lines)}
         result, remaining_lines = self._parse_scaling_factor(result, remaining_lines)
