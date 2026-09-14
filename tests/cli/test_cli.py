@@ -710,7 +710,11 @@ def test_generate_writes_utf8(mock_structure, tmp_path, command, options):
         cli, ["generate", command, str(poscar), *options, "-o", str(output)]
     )
     assert result.exit_code == 0
-    assert output.read_bytes() == text.encode("utf-8")
+    written = output.read_bytes()
+    assert "Γ".encode("utf-8") in written  # the label survived as UTF-8
+    # Windows writes CRLF in text mode, which VASP and py4vasp both cope with, so the
+    # comparison is about the encoding and the content, not the line separator
+    assert written.replace(b"\r\n", b"\n") == text.encode("utf-8")
 
 
 @pytest.mark.parametrize("command, options", _GENERATE_COMMANDS)
