@@ -494,6 +494,15 @@ def test_custom_xticks(parabola):
     # empty ticks should be replace by " " because otherwise plotly will replace them
 
 
+def test_latex_xticks_converted_to_unicode(parabola):
+    pytest.importorskip("plotly")
+    graph = Graph(parabola)
+    graph.xticks = {0.0: r"$\Gamma$", 0.5: "X", 1.0: r"M|$\Gamma$"}
+    fig = graph.to_plotly()
+    # plotly delegates "$...$" to MathJax, which breaks the figure in JupyterLab
+    assert fig.layout.xaxis.ticktext == ("Γ", "X", "M|Γ")
+
+
 def test_title(parabola):
     pytest.importorskip("plotly")
     graph = Graph(parabola)
