@@ -47,14 +47,16 @@ class InputFile:
         p.text(str(self))
 
     def _write_to_file(self, string):
-        with open(Path(self._path) / self.__class__.__name__, "w") as file:
+        path = Path(self._path) / self.__class__.__name__
+        with open(path, "w", encoding="utf-8") as file:
             file.write(string)
 
     def _write_to_memory(self, string):
         self._content = string
 
     def _read_from_file(self):
-        with open(Path(self._path) / self.__class__.__name__, "r") as file:
+        path = Path(self._path) / self.__class__.__name__
+        with open(path, "r", encoding="utf-8") as file:
             return file.read()
 
     def _read_from_memory(self):

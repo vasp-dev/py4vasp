@@ -11,7 +11,7 @@ from typing import Union
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._calculation import _stoichiometry
+from py4vasp._calculation import _kpoints_file, _stoichiometry
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.cell import CellHandler
 from py4vasp._calculation.dispatch import (
@@ -408,6 +408,51 @@ Atoms # atomic
                 lattice, positions, numbers, symprec
             )
         return _raw_structure(lattice, positions, elements)
+
+    def generate_kpath(
+        self, number_points=40, time_reversal=True, symprec=_SYMPREC
+    ) -> str:
+        """Write the recommended high-symmetry path of the crystal as a KPOINTS file."""
+        return _kpoints_file.high_symmetry_path(
+            self._spglib_cell(), number_points, time_reversal, symprec
+        )
+
+    def generate_kmesh(
+        self, kspacing=None, divisions=None, shift=None, symprec=_SYMPREC
+    ) -> str:
+        """Write a mesh commensurate with the symmetry of the crystal as a KPOINTS file."""
+        return _kpoints_file.regular_mesh(
+            self._spglib_cell(), kspacing, divisions, shift, symprec
+        )
+
+    def conventional_lattice_vectors(self, symprec=_SYMPREC) -> np.ndarray:
+        """Return the lattice vectors of the standardized conventional cell."""
+        cell = self._spglib_cell()
+        transformation = _kpoints_file.transformation_matrix(cell, symprec)
+        return np.linalg.inv(transformation).T @ cell[0]
+
+    def _spglib_cell(self):
+        """Describe a single frame the way spglib and seekpath expect it."""
+        positions = self.positions()
+        if positions.ndim == 3:
+            message = "Generating a KPOINTS file for multiple steps is not implemented."
+            raise exception.NotImplemented(message)
+        return (self.lattice_vectors(), positions, self._atom_labels())
+
+    def _atom_labels(self):
+        """Label the atoms such that spglib recovers the symmetry VASP used.
+
+        If the structure carries VASP's symmetry, the atoms are labeled by their orbit
+        under its operations, so spglib cannot relate atoms that VASP treats as
+        inequivalent. A symmetry-lowered calculation then obtains the k points of its
+        actual symmetry instead of the higher one of the bare geometry. Without VASP's
+        symmetry -- for a structure read from a POSCAR file, say -- the elements decide
+        which atoms are equivalent.
+        """
+        if check.is_none(self._raw_structure.symmetry):
+            numbers, _ = _species_numbers(self._stoichiometry().elements())
+            return numbers
+        return self._orbit_labels()
 
     def to_database(self, steps=-1) -> StructureModel:
         """Return database-ready data for a single structure geometry.
@@ -1570,6 +1615,226 @@ class Structure(view.Mixin):
         )
         return Structure.from_data(raw_structure)
 
+    def generate_kpath(self, number_points=40, time_reversal=True, symprec=_SYMPREC):
+        r"""Generate a KPOINTS file for a band structure along the recommended path.
+
+        seekpath determines the high-symmetry path of the crystal following the
+        convention of Hinuma et al. The path is written in VASP's line mode with the
+        label of every special point *behind* its coordinates, so that VASP reads the
+        labels and py4vasp puts them on the axis of the band structure. Note that many
+        other tools hide the labels behind a comment character, which makes VASP ignore
+        them. The symmetry is derived from the bare geometry, so this works for any
+        single structure including one read from a POSCAR file. This requires the
+        seekpath and the spglib package.
+
+        The k points refer to the reciprocal lattice vectors of the cell of this
+        structure, even when that is not the standardized primitive cell seekpath uses
+        internally. If the cell contains more than one primitive cell, the band
+        structure is folded; the comment line of the file reports how many primitive
+        cells the cell contains. For a supercell of the conventional cell, the path is
+        meaningless and py4vasp raises an error.
+
+        Parameters
+        ----------
+        number_points : int
+            Number of k points VASP generates along every line of the path.
+        time_reversal : bool
+            If True (default) the band structure at k and -k agrees. Set it to False
+            for a magnetic system without inversion symmetry; then the path also
+            covers the primed images of the special points.
+        symprec : float
+            Distance in Å within which spglib considers two atoms symmetry
+            equivalent. The default is tighter than a POSCAR written with four
+            decimals, so a cell that is only approximately symmetric may come out
+            with a lower space group than it should -- and then the k points follow
+            from the wrong symmetry. The space group is stated in the first line of
+            the generated file; if it is not the one you expect, write more digits or
+            raise this tolerance (1e-3 is a common choice).
+
+        Returns
+        -------
+        str
+            The content of a KPOINTS file describing the path. py4vasp does not write
+            the file; store the string as KPOINTS or KPOINTS_OPT yourself.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this
+        method. You can also use your own VASP calculation data if you have it
+        available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        For cubic perovskite the recommended path connects Γ, X, M, and R. The label
+        of a special point is the fourth field of its line, which is where VASP expects
+        it.
+
+        >>> kpoints = calculation.structure.generate_kpath(number_points=20)
+        >>> print("\n".join(kpoints.splitlines()[:6]))
+        k points along high symmetry lines: Pm-3m (cP2), 1 primitive cell per unit cell
+        20
+        line mode
+        reciprocal
+          0.00000000   0.00000000   0.00000000  Γ
+          0.00000000   0.50000000   0.00000000  X
+
+        Writing the file is up to you. The labels are not ASCII, so store the file
+        as UTF-8 -- VASP reads the labels back unchanged.
+
+        >>> from pathlib import Path
+        >>> _ = Path(path / "KPOINTS_OPT").write_text(kpoints, encoding="utf-8")
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.generate_kpath,
+            number_points,
+            time_reversal,
+            symprec,
+        )
+
+    def generate_kmesh(
+        self, kspacing=None, divisions=None, shift=None, symprec=_SYMPREC
+    ):
+        """Generate a KPOINTS file with a mesh adapted to the symmetry of the crystal.
+
+        The mesh subdivides the reciprocal lattice vectors of the *conventional* cell,
+        so it retains the full symmetry of the lattice even when the calculation runs
+        in the primitive cell. A regular grid of the primitive cell would break that
+        symmetry, so VASP could not reduce the k points as far. py4vasp writes the
+        mesh as the three basis vectors VASP generates it from, expressed in the
+        reciprocal basis of the cell of this structure. The symmetry is derived from
+        the bare geometry, so this works for any single structure including one read
+        from a POSCAR file. This requires the spglib package.
+
+        Parameters
+        ----------
+        kspacing : float
+            Density of the mesh in Å⁻¹, following the convention of VASP's KSPACING
+            tag: the number of divisions along direction i is 2π|b_i| / kspacing
+            rounded to the nearest integer, and at least one. Because that rounds
+            down as readily as up, the resulting distance between k points may exceed
+            *kspacing* somewhat. Specify either this or the *divisions*.
+        divisions : Sequence[int]
+            The number of k points along the three directions of the conventional
+            cell, which is *not* necessarily the cell of this structure -- use
+            :meth:`conventional_lattice_vectors` to see which axis is which. Specify
+            either this or the *kspacing*.
+        shift : array-like
+            Shift of the mesh as fractions of its basis vectors. By default the mesh
+            contains the Γ point.
+        symprec : float
+            Distance in Å within which spglib considers two atoms symmetry
+            equivalent. The default is tighter than a POSCAR written with four
+            decimals, so a cell that is only approximately symmetric may come out
+            with a lower space group than it should -- and then the k points follow
+            from the wrong symmetry. The space group is stated in the first line of
+            the generated file; if it is not the one you expect, write more digits or
+            raise this tolerance (1e-3 is a common choice).
+
+        Returns
+        -------
+        str
+            The content of a KPOINTS file describing the mesh. py4vasp does not write
+            the file; store the string as KPOINTS yourself.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this
+        method. You can also use your own VASP calculation data if you have it
+        available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        The cubic perovskite has a lattice constant of 4 Å, so a spacing of 0.3 Å⁻¹
+        amounts to five divisions along every direction.
+
+        >>> print(calculation.structure.generate_kmesh(kspacing=0.3))
+        k mesh of the conventional cell: divisions 5 5 5, kspacing 0.3
+        0
+        Reduced
+          0.20000000   0.00000000   0.00000000
+          0.00000000   0.20000000   0.00000000
+          0.00000000   0.00000000   0.20000000
+          0.00000000   0.00000000   0.00000000
+
+        Alternatively, you set the number of divisions yourself
+
+        >>> kpoints = calculation.structure.generate_kmesh(divisions=[6, 6, 6])
+        >>> print(kpoints.splitlines()[0])
+        k mesh of the conventional cell: divisions 6 6 6
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.generate_kmesh,
+            kspacing,
+            divisions,
+            shift,
+            symprec,
+        )
+
+    def conventional_lattice_vectors(self, symprec=_SYMPREC):
+        """Determine the lattice vectors of the standardized conventional cell.
+
+        Every crystal has a conventional cell that carries the full symmetry of its
+        lattice. py4vasp derives it with spglib from the bare geometry, so this works
+        for any single structure including one read from a POSCAR file -- unlike
+        :meth:`standardized_cell`, which reports the cell VASP's own symmetry implies
+        and therefore requires a calculation. Only the lattice vectors are returned;
+        the atoms are not mapped onto the conventional cell.
+
+        This is the cell that :meth:`generate_kmesh` subdivides, so use it to find out
+        which direction a particular number of divisions belongs to. For a slab, the
+        vector of length ~20 Å is the vacuum, and it usually wants a single k point.
+
+        Parameters
+        ----------
+        symprec : float
+            Distance in Å within which spglib considers two atoms symmetry
+            equivalent. The default is tighter than a POSCAR written with four
+            decimals, so a cell that is only approximately symmetric may come out
+            with a lower space group than it should -- and then the k points follow
+            from the wrong symmetry. The space group is stated in the first line of
+            the generated file; if it is not the one you expect, write more digits or
+            raise this tolerance (1e-3 is a common choice).
+
+        Returns
+        -------
+        np.ndarray
+            The three lattice vectors of the conventional cell as rows, in Å.
+
+        Examples
+        --------
+        First, we create some example data so that we can illustrate how to use this
+        method. You can also use your own VASP calculation data if you have it
+        available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path, "perovskite")
+
+        For cubic perovskite the conventional cell is the cell of the calculation
+
+        >>> calculation.structure.conventional_lattice_vectors()
+        array([[4., 0., 0.],
+               [0., 4., 0.],
+               [0., 0., 4.]])
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            StructureHandler.conventional_lattice_vectors,
+            symprec,
+        )
+
     def prototype(self):
         """Determine the AFLOW prototype label of the crystal.
 
@@ -1809,6 +2074,9 @@ def _replace_or_set_elements(poscar, elements):
     line_with_elements = 5
     elements = "" if not elements else " ".join(elements)
     lines = poscar.split("\n")
+    if len(lines) <= line_with_elements:
+        # too short to contain that line; the parser reports the incomplete POSCAR
+        return poscar
     if _elements_not_in_poscar(lines[line_with_elements]):
         _raise_error_if_elements_not_set(elements)
         lines.insert(line_with_elements, elements)
@@ -1824,9 +2092,11 @@ def _elements_not_in_poscar(elements):
 
 def _raise_error_if_elements_not_set(elements):
     if not elements:
-        message = """The POSCAR file does not specify the elements needed to create a
-            Structure. Please pass `elements=[...]` to the `from_POSCAR` routine where
-            ... are the elements in the same order as in the POSCAR."""
+        message = """\
+The POSCAR does not name the elements of the ions; old POSCAR files leave that line
+out. Please provide them in the same order as the ion counts, either by passing
+elements=["Si", "O"] to from_POSCAR, by using --elements Si,O on the command line, or
+by adding a line with the element names above the line with the ion counts."""
         raise exception.IncorrectUsage(message)
 
 

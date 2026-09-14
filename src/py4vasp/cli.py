@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pathlib
+import re
 
 import click
 
@@ -122,39 +123,294 @@ def symmetrize(file, primitive, symprec, in_place, output):
         raise click.UsageError(message)
     destination = file if in_place else output
     try:
-        _raise_if_output_not_supported(destination)
+        _raise_if_output_not_supported(destination, "the symmetrized structure")
         structure = _read_structure(file)
         result = structure.symmetrize(to_primitive=primitive, symprec=symprec)
         poscar = result.to_POSCAR()
     except exception.Py4VaspError as error:
         raise click.ClickException(*error.args) from error
+    _write_or_print(poscar, destination)
+
+
+def _write_or_print(text, destination):
+    "Store the generated file where the user asked for it; stdout is the default."
     if destination is None:
-        print(poscar)
+        print(text)
     else:
-        destination.write_text(poscar)
+        # the k-point labels are not ASCII, so the encoding must not be left to the
+        # locale -- it is cp1252 on Windows, which cannot represent them
+        destination.write_text(text, encoding="utf-8")
 
 
-def _read_structure(file):
+def _read_structure(file, elements=None):
     if archive.is_archive(file):
         return py4vasp.Calculation.from_archive(file).structure
     if file.suffix in _HDF5_SUFFIXES:
         return py4vasp.Calculation.from_file(file).structure
+    if elements:
+        return Structure.from_POSCAR(file.read_text(), elements=elements)
     return Structure.from_POSCAR(file.read_text())
 
 
-def _raise_if_output_not_supported(destination):
-    "The symmetrized structure is written as POSCAR, so it must not overwrite input."
+def _raise_if_output_not_supported(destination, description):
+    "py4vasp generates text files, so they must not overwrite the data of a calculation."
     if destination is None:
         return
-    if destination.suffix in _HDF5_SUFFIXES:
+    if not destination.parent.is_dir():
         message = (
-            "Writing the symmetrized structure to an HDF5 file is not implemented."
+            f"The directory {destination.parent} does not exist, so {description} "
+            "cannot be written there. Please create it or choose another path."
         )
+        raise exception.IncorrectUsage(message)
+    if destination.suffix in _HDF5_SUFFIXES:
+        message = f"Writing {description} to an HDF5 file is not implemented."
         raise exception.NotImplemented(message)
     if archive.is_archive(destination):
         message = (
-            "Writing the symmetrized structure to an archive is not implemented. Note "
-            "that using --in-place on an archive would replace the whole archive by a "
-            "single POSCAR file."
+            f"Writing {description} to an archive is not implemented. Note that it "
+            "would replace the whole archive by a single text file."
         )
         raise exception.NotImplemented(message)
+
+
+class _Elements(click.ParamType):
+    "The chemical elements of the ions as a single comma separated token."
+
+    name = "elements"
+
+    def convert(self, value, param, ctx):
+        elements = [element.strip() for element in str(value).split(",")]
+        if not all(element.isalpha() for element in elements):
+            self.fail(
+                f"{value!r} is not a comma separated list of elements", param, ctx
+            )
+        return elements
+
+
+class _Divisions(click.ParamType):
+    """The number of k points along the three directions as a single token.
+
+    Passing the three numbers as separate arguments would make a variadic option
+    swallow the file argument, so "8,8,6" is one token. A single number requests the
+    same number of divisions along every direction.
+    """
+
+    name = "divisions"
+
+    def convert(self, value, param, ctx):
+        numbers = [number.strip() for number in str(value).split(",")]
+        if not all(number.isdecimal() for number in numbers):
+            self.fail(
+                f"{value!r} is not a comma separated list of integers", param, ctx
+            )
+        numbers = [int(number) for number in numbers]
+        if len(numbers) == 1:
+            return tuple(numbers * 3)
+        if len(numbers) != 3:
+            message = f"expected one or three numbers, but {value!r} has {len(numbers)}"
+            self.fail(message, param, ctx)
+        return tuple(numbers)
+
+
+@cli.group()
+def generate():
+    """Generate an input file for a VASP calculation."""
+
+
+@generate.command("kpath")
+@click.argument(
+    "file",
+    type=click.Path(exists=True, readable=True, dir_okay=False, path_type=pathlib.Path),
+)
+@click.option(
+    "-n",
+    "--number-points",
+    "number_points",
+    type=int,
+    default=40,
+    show_default=True,
+    help="Number of k points VASP generates along every line of the path.",
+)
+@click.option(
+    "--time-reversal/--no-time-reversal",
+    "time_reversal",
+    default=True,
+    show_default=True,
+    help="""Whether the band structure at k and -k agrees. Switch it off for a magnetic
+    system without inversion symmetry; then the path also covers the primed images of
+    the special points.""",
+)
+@click.option(
+    "--symprec",
+    type=float,
+    default=_SYMPREC,
+    show_default=True,
+    help="""Distance in Å within which spglib considers atoms symmetry equivalent.
+    The default is tighter than a POSCAR written with four decimals; if the space
+    group in the first line of the output is lower than you expect, raise it to
+    e.g. 1e-3.""",
+)
+@click.option(
+    "--elements",
+    type=_Elements(),
+    metavar="Si,O",
+    help="""Elements of the ions in the same order as their counts in the file. Old
+    POSCAR files do not name them; then you have to provide them here.""",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(path_type=pathlib.Path),
+    help="Write the KPOINTS file to this path instead of stdout.",
+)
+def generate_kpath(file, number_points, time_reversal, symprec, elements, output):
+    """Generate a KPOINTS file along the high-symmetry path of the structure in FILE.
+
+    FILE may be a POSCAR, a CONTCAR, an HDF5 file such as vaspout.h5, or a zip archive
+    holding a VASP calculation (not a directory). seekpath determines the recommended
+    path and py4vasp writes it in line mode with the label of every special point
+    behind its coordinates, so that VASP reads the labels. The labels are written as
+    UTF-8, e.g. Γ; VASP passes them through unchanged.
+
+    The k points are expressed in the reciprocal basis of the cell in FILE, not in the
+    standardized primitive basis seekpath works in, so the file suits your structure as
+    it is. If your cell holds several primitive cells, the band structure is folded and
+    a path may run from Γ back to Γ; the space group and the number of primitive cells
+    are reported on stderr and repeated in the first line of the file.
+
+    By default the file is written to stdout; use -o/--output to store it as KPOINTS or
+    KPOINTS_OPT.
+    """
+    try:
+        _raise_if_output_not_supported(output, "a KPOINTS file")
+        structure = _read_structure(file, elements)
+        kpoints = structure.generate_kpath(
+            number_points=number_points,
+            time_reversal=time_reversal,
+            symprec=symprec,
+        )
+    except exception.Py4VaspError as error:
+        raise click.ClickException(*error.args) from error
+    # the symmetry decides the path, so the space group must be visible however the
+    # file is stored -- to stdout, to --output, or into a shell redirection
+    click.echo(kpoints.splitlines()[0], err=True)
+    _write_or_print(kpoints, output)
+
+
+@generate.command("kmesh")
+@click.argument(
+    "file",
+    type=click.Path(exists=True, readable=True, dir_okay=False, path_type=pathlib.Path),
+)
+@click.option(
+    "--kspacing",
+    type=float,
+    help="""Density of the mesh in Å⁻¹, following VASP's KSPACING tag: the number of
+    divisions along a direction is 2*pi*|b_i| / kspacing rounded to the nearest
+    integer, at least one. Rounding down can make the actual spacing larger than this
+    value. Specify either this or the divisions.""",
+)
+@click.option(
+    "-d",
+    "--divisions",
+    type=_Divisions(),
+    metavar="N,N,N",
+    help="""Number of k points along the three directions of the conventional cell,
+    e.g. 8,8,6 or 8 for the same number along every direction. Specify either this or
+    the k-point spacing.""",
+)
+@click.option(
+    "--shift",
+    type=float,
+    nargs=3,
+    help="Shift of the mesh as fractions of its basis vectors.",
+)
+@click.option(
+    "--symprec",
+    type=float,
+    default=_SYMPREC,
+    show_default=True,
+    help="""Distance in Å within which spglib considers atoms symmetry equivalent.
+    The default is tighter than a POSCAR written with four decimals; if the space
+    group in the first line of the output is lower than you expect, raise it to
+    e.g. 1e-3.""",
+)
+@click.option(
+    "--elements",
+    type=_Elements(),
+    metavar="Si,O",
+    help="""Elements of the ions in the same order as their counts in the file. Old
+    POSCAR files do not name them; then you have to provide them here.""",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(path_type=pathlib.Path),
+    help="Write the KPOINTS file to this path instead of stdout.",
+)
+def generate_kmesh(file, kspacing, divisions, shift, symprec, elements, output):
+    """Generate a KPOINTS file with a mesh adapted to the structure in FILE.
+
+    FILE may be a POSCAR, a CONTCAR, an HDF5 file such as vaspout.h5, or a zip archive
+    holding a VASP calculation (not a directory). The mesh subdivides the reciprocal
+    lattice vectors of the conventional cell, so it retains the full symmetry of the
+    lattice even when the calculation runs in the primitive cell -- a plain grid of the
+    primitive cell would break that symmetry and leave VASP fewer k points to reduce.
+
+    Consequently the file is not a "8 8 8" grid but VASP's generating-lattice form: a
+    zero for the number of k points, the word Reduced, and then the three basis vectors
+    of the mesh followed by its shift, as fractions of the reciprocal lattice vectors of
+    the cell in FILE. The divisions count along the conventional cell, whose lattice
+    vectors are reported on stderr so you can tell which direction is which; for a slab
+    that is how you find the vacuum axis, which usually wants a single k point.
+
+    By default the file is written to stdout; use -o/--output to store it as KPOINTS.
+    """
+    divisions = divisions or None
+    shift = shift or None
+    if kspacing is None and divisions is None:
+        message = (
+            "Please specify how dense the mesh should be, either with --kspacing or "
+            "with --divisions."
+        )
+        raise click.UsageError(message)
+    if kspacing is not None and divisions is not None:
+        message = (
+            "--kspacing and --divisions both set the density of the mesh, so please "
+            "specify only one of them."
+        )
+        raise click.UsageError(message)
+    try:
+        _raise_if_output_not_supported(output, "a KPOINTS file")
+        structure = _read_structure(file, elements)
+        kpoints = structure.generate_kmesh(
+            kspacing=kspacing,
+            divisions=divisions,
+            shift=shift,
+            symprec=symprec,
+        )
+        lattice_vectors = structure.conventional_lattice_vectors(symprec=symprec)
+    except exception.Py4VaspError as error:
+        raise click.ClickException(*error.args) from error
+    click.echo(_conventional_cell_report(kpoints, lattice_vectors), err=True)
+    _write_or_print(kpoints, output)
+
+
+def _conventional_cell_report(kpoints, lattice_vectors):
+    """Tell the user which axis every division of the mesh belongs to.
+
+    The mesh subdivides the conventional cell, which is not necessarily the cell in
+    the input file, so without this the numbers passed to --divisions are a guess.
+    It goes to stderr to keep the KPOINTS file on stdout byte for byte.
+    """
+    divisions = re.search(r"divisions ([\d ]+)", kpoints.splitlines()[0])
+    subject = (
+        f"Divisions {divisions.group(1).strip()} count"
+        if divisions
+        else "The divisions count"
+    )
+    rows = (
+        f"  {name} " + " ".join(f"{component:12.8f}" for component in vector)
+        for name, vector in zip("abc", lattice_vectors)
+    )
+    return "\n".join((f"{subject} along the conventional cell:", *rows))

@@ -1,0 +1,383 @@
+# Copyright © VASP Software GmbH,
+# Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import types
+import warnings
+
+import numpy as np
+import pytest
+
+from py4vasp import exception
+from py4vasp._calculation import _kpoints_file
+from py4vasp._calculation.symmetry import _SYMPREC
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("GAMMA", "Γ"),
+        ("SIGMA_0", "Σ₀"),
+        ("DELTA_0", "Δ₀"),
+        ("LAMBDA_0", "Λ₀"),
+        ("K_2", "K₂"),
+        ("H_12", "H₁₂"),
+        ("X", "X"),
+        # seekpath only labels its special points with the Greek letters above and a
+        # numeric subscript; anything else is passed on as it is
+        ("UNKNOWN", "UNKNOWN"),
+        ("H_a", "H_a"),
+    ],
+)
+def test_label_to_unicode(name, expected):
+    assert _kpoints_file.label_to_unicode(name) == expected
+
+
+@pytest.fixture
+def three_segments():
+    path = types.SimpleNamespace()
+    path.coordinates = np.array(
+        [
+            [[0, 0, 0], [0.5, 0.5, 0]],
+            [[0.5, 0.5, 0], [0.5, 0.75, 0.25]],
+            [[0.5, 0.75, 0.25], [0, 0, 0]],
+        ]
+    )
+    path.labels = [("Γ", "X"), ("X", "W"), ("W", "Γ")]
+    path.comment = "k points along high symmetry lines"
+    path.number_points = 40
+    return path
+
+
+def test_line_mode(three_segments):
+    expected = """\
+k points along high symmetry lines
+40
+line mode
+reciprocal
+  0.00000000   0.00000000   0.00000000  Γ
+  0.50000000   0.50000000   0.00000000  X
+
+  0.50000000   0.50000000   0.00000000  X
+  0.50000000   0.75000000   0.25000000  W
+
+  0.50000000   0.75000000   0.25000000  W
+  0.00000000   0.00000000   0.00000000  Γ"""
+    actual = _kpoints_file.line_mode(
+        three_segments.coordinates,
+        three_segments.labels,
+        three_segments.number_points,
+        three_segments.comment,
+    )
+    assert actual == expected
+
+
+def test_line_mode_does_not_comment_labels(three_segments):
+    # Many tools hide the labels behind a comment character; then VASP does not read
+    # them. VASP expects the label as the fourth field of the k-point line.
+    text = _kpoints_file.line_mode(
+        three_segments.coordinates,
+        three_segments.labels,
+        three_segments.number_points,
+        three_segments.comment,
+    )
+    assert "!" not in text
+    assert "#" not in text
+    kpoint_lines = [line for line in text.splitlines()[4:] if line.strip()]
+    assert [line.split()[3] for line in kpoint_lines] == list("ΓXXWWΓ")
+
+
+# spglib cells (lattice vectors, direct positions, atomic numbers) of the same cubic
+# lattice in its primitive and its conventional setting
+_SIMPLE_CUBIC = (np.eye(3), [[0, 0, 0]], [1])
+_DOUBLE_CUBIC = (np.diag([2.0, 1.0, 1.0]), [[0, 0, 0], [0.5, 0, 0]], [1, 1])
+_BCC_PRIMITIVE = (
+    np.array([[-0.5, 0.5, 0.5], [0.5, -0.5, 0.5], [0.5, 0.5, -0.5]]),
+    [[0, 0, 0]],
+    [1],
+)
+_BCC_CONVENTIONAL = (np.eye(3), [[0, 0, 0], [0.5, 0.5, 0.5]], [1, 1])
+_FCC_PRIMITIVE = (
+    np.array([[0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0]]),
+    [[0, 0, 0]],
+    [1],
+)
+_FCC_CONVENTIONAL = (
+    np.eye(3),
+    [[0, 0, 0], [0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0]],
+    [1, 1, 1, 1],
+)
+
+
+def _rotate(cell):
+    "Rotate the cell rigidly; the direct coordinates of the atoms do not change."
+    lattice_vectors, positions, numbers = cell
+    angle = 0.3
+    cos, sin = np.cos(angle), np.sin(angle)
+    rotation = np.array([[cos, -sin, 0], [sin, cos, 0], [0, 0, 1]])
+    return (lattice_vectors @ rotation.T, positions, numbers)
+
+
+def _cartesian(coordinates, cell):
+    return np.array(coordinates) @ np.linalg.inv(cell[0]).T
+
+
+def test_to_input_basis_of_same_cell(Assert):
+    pytest.importorskip("spglib")
+    coordinates = [[0.5, -0.5, 0.5], [0.25, 0.25, 0.25]]
+    actual = _kpoints_file.to_input_basis(coordinates, _BCC_PRIMITIVE, _BCC_PRIMITIVE)
+    Assert.allclose(actual, coordinates)
+
+
+def test_to_input_basis_of_conventional_cell(Assert):
+    pytest.importorskip("spglib")
+    # the H point of the bcc lattice is (1/2, -1/2, 1/2) in the primitive basis and
+    # coincides with the corner (0, 1, 0) of the conventional Brillouin zone
+    actual = _kpoints_file.to_input_basis(
+        [[0.5, -0.5, 0.5]], _BCC_CONVENTIONAL, _BCC_PRIMITIVE
+    )
+    Assert.allclose(actual, [[0, 1, 0]])
+
+
+@pytest.mark.parametrize(
+    "cell, primitive_cell",
+    [
+        (_BCC_CONVENTIONAL, _BCC_PRIMITIVE),
+        (_BCC_PRIMITIVE, _BCC_CONVENTIONAL),
+        (_FCC_CONVENTIONAL, _FCC_PRIMITIVE),
+        (_FCC_PRIMITIVE, _FCC_CONVENTIONAL),
+    ],
+)
+def test_to_input_basis_preserves_cartesian_kpoint(cell, primitive_cell, Assert):
+    pytest.importorskip("spglib")
+    coordinates = [[0.5, -0.5, 0.5], [0.25, 0.25, 0.25], [0, 0, 0]]
+    actual = _kpoints_file.to_input_basis(coordinates, cell, primitive_cell)
+    Assert.allclose(_cartesian(actual, cell), _cartesian(coordinates, primitive_cell))
+
+
+def test_to_input_basis_is_rotation_invariant(Assert):
+    pytest.importorskip("spglib")
+    # seekpath returns its primitive cell in an idealized orientation that need not
+    # agree with the one of the input cell; the mapping must not notice
+    coordinates = [[0.5, -0.5, 0.5], [0.25, 0.25, 0.25]]
+    reference = _kpoints_file.to_input_basis(
+        coordinates, _BCC_CONVENTIONAL, _BCC_PRIMITIVE
+    )
+    actual = _kpoints_file.to_input_basis(
+        coordinates, _BCC_CONVENTIONAL, _rotate(_BCC_PRIMITIVE)
+    )
+    Assert.allclose(actual, reference)
+
+
+def test_to_input_basis_rejects_supercell():
+    pytest.importorskip("spglib")
+    with pytest.raises(exception.IncorrectUsage):
+        _kpoints_file.to_input_basis([[0, 0, 0]], _DOUBLE_CUBIC, _SIMPLE_CUBIC)
+
+
+@pytest.mark.parametrize(
+    "cell, determinant",
+    [
+        (_SIMPLE_CUBIC, 1),
+        (_BCC_CONVENTIONAL, 1),
+        (_BCC_PRIMITIVE, 0.5),
+        (_FCC_CONVENTIONAL, 1),
+        (_FCC_PRIMITIVE, 0.25),
+    ],
+)
+def test_transformation_matrix(cell, determinant, Assert):
+    pytest.importorskip("spglib")
+    # the transformation matrix maps the input cell onto the standardized conventional
+    # cell; its determinant is the ratio of the two volumes
+    actual = _kpoints_file.transformation_matrix(cell)
+    Assert.allclose(np.linalg.det(actual), determinant)
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        _SIMPLE_CUBIC,
+        _BCC_PRIMITIVE,
+        _BCC_CONVENTIONAL,
+        _FCC_PRIMITIVE,
+        _FCC_CONVENTIONAL,
+    ],
+)
+def test_conventional_reciprocal_lattice(cell, Assert):
+    pytest.importorskip("spglib")
+    # all these cells describe a cubic lattice with a = 1, so the reciprocal lattice of
+    # their conventional cell is the unit cube no matter which setting is used
+    transformation = _kpoints_file.transformation_matrix(cell)
+    actual = _kpoints_file.conventional_reciprocal_lattice(cell[0], transformation)
+    Assert.allclose(actual, np.eye(3))
+
+
+def test_conventional_reciprocal_lattice_of_tetragonal_cell(Assert):
+    pytest.importorskip("spglib")
+    cell = (np.diag([2.0, 2.0, 3.0]), [[0, 0, 0]], [1])
+    transformation = _kpoints_file.transformation_matrix(cell)
+    actual = _kpoints_file.conventional_reciprocal_lattice(cell[0], transformation)
+    Assert.allclose(actual, np.diag([0.5, 0.5, 1 / 3]))
+
+
+@pytest.mark.parametrize(
+    "kspacing, expected",
+    [
+        (1.0, [2, 2, 2]),  # 1.571 -> 2
+        (0.5, [3, 3, 3]),  # 3.142 rounds down to 3, a ceiling would give 4
+        (0.2, [8, 8, 8]),  # 7.854 -> 8
+        (1000.0, [1, 1, 1]),  # rounds to zero, but VASP always samples one k point
+    ],
+)
+def test_divisions_from_kspacing(kspacing, expected):
+    # a cubic cell with a = 4 Å has reciprocal lattice vectors of length 2π/4 ≈ 1.571/Å
+    reciprocal_lattice = np.eye(3) / 4
+    actual = _kpoints_file.divisions_from_kspacing(reciprocal_lattice, kspacing)
+    assert actual == expected
+
+
+def test_divisions_from_kspacing_of_anisotropic_cell():
+    # 4 Å along the first two directions and 12 Å along the third one
+    reciprocal_lattice = np.diag([0.25, 0.25, 1 / 12])
+    actual = _kpoints_file.divisions_from_kspacing(reciprocal_lattice, 0.5)
+    assert actual == [3, 3, 1]
+
+
+def test_generating_lattice_of_conventional_cell(Assert):
+    pytest.importorskip("spglib")
+    # the conventional cell needs no transformation, so the mesh simply subdivides its
+    # own reciprocal lattice vectors
+    transformation = _kpoints_file.transformation_matrix(_SIMPLE_CUBIC)
+    actual = _kpoints_file.generating_lattice(transformation, [4, 4, 2])
+    Assert.allclose(actual, np.diag([0.25, 0.25, 0.5]))
+
+
+def test_generating_lattice_of_primitive_cell(Assert):
+    pytest.importorskip("spglib")
+    # for the primitive fcc cell every conventional reciprocal lattice vector is a half
+    # sum of two primitive ones, so the rows of the transformation matrix are divided by
+    # the number of divisions
+    transformation = _kpoints_file.transformation_matrix(_FCC_PRIMITIVE)
+    actual = _kpoints_file.generating_lattice(transformation, [4, 4, 4])
+    expected = [[0, 0.125, 0.125], [0.125, 0, 0.125], [0.125, 0.125, 0]]
+    Assert.allclose(actual, expected)
+
+
+@pytest.mark.parametrize("cell", [_FCC_PRIMITIVE, _FCC_CONVENTIONAL])
+def test_generating_lattice_is_the_same_mesh_in_every_setting(cell, Assert):
+    pytest.importorskip("spglib")
+    # this is the point of the generalized mesh: whichever setting of the cell the user
+    # provides, the k points end up on the same mesh of the conventional cell
+    transformation = _kpoints_file.transformation_matrix(cell)
+    generating_lattice = _kpoints_file.generating_lattice(transformation, [4, 4, 4])
+    cartesian = generating_lattice @ np.linalg.inv(cell[0]).T
+    Assert.allclose(cartesian, np.eye(3) / 4)
+
+
+def test_generating_lattice_mode():
+    vectors = [[0.25, 0, 0], [0, 0.25, 0], [0, 0, 0.5]]
+    # VASP generates the mesh automatically from three basis vectors when the number of
+    # k points is 0; "Reduced" selects fractions of the reciprocal lattice vectors
+    expected = """\
+k mesh of the conventional cell: divisions 4 4 2
+0
+Reduced
+  0.25000000   0.00000000   0.00000000
+  0.00000000   0.25000000   0.00000000
+  0.00000000   0.00000000   0.50000000
+  0.00000000   0.00000000   0.00000000"""
+    comment = "k mesh of the conventional cell: divisions 4 4 2"
+    actual = _kpoints_file.generating_lattice_mode(vectors, [0, 0, 0], comment)
+    assert actual == expected
+
+
+def test_generating_lattice_mode_with_shift():
+    vectors = np.eye(3) / 4
+    actual = _kpoints_file.generating_lattice_mode(vectors, [0.5, 0.5, 0], "comment")
+    # the shift of the mesh is the last line of the file
+    assert actual.splitlines()[-1] == "  0.50000000   0.50000000   0.00000000"
+
+
+@pytest.mark.parametrize(
+    "kspacing, expected",
+    [
+        (None, "k mesh of the conventional cell: divisions 8 8 6"),
+        (0.2, "k mesh of the conventional cell: divisions 8 8 6, kspacing 0.2"),
+    ],
+)
+def test_mesh_comment(kspacing, expected):
+    assert _kpoints_file.mesh_comment([8, 8, 6], kspacing) == expected
+
+
+def _patch_seekpath_warning(monkeypatch, category):
+    """Make seekpath emit a warning of *category* and otherwise work as usual."""
+    import seekpath
+    import seekpath.hpkot
+
+    real_get_path = seekpath.get_path
+
+    def get_path_with_warning(*args, **kwargs):
+        warnings.warn("hR lattice, but sqrt(3)a almost equal to sqrt(2)c", category)
+        return real_get_path(*args, **kwargs)
+
+    monkeypatch.setattr(_kpoints_file.seekpath, "get_path", get_path_with_warning)
+
+
+def test_seekpath_warning_is_reported_with_context(monkeypatch):
+    pytest.importorskip("seekpath")
+    import seekpath.hpkot
+
+    _patch_seekpath_warning(monkeypatch, seekpath.hpkot.EdgeCaseWarning)
+    with pytest.warns(UserWarning, match="symprec") as caught:
+        _kpoints_file.high_symmetry_path(_BCC_PRIMITIVE)
+    # the original text is kept so the user can look it up, and gets context added
+    assert any("sqrt(3)a" in str(warning.message) for warning in caught)
+
+
+def test_unrelated_warning_is_not_reported_as_an_ambiguity(monkeypatch):
+    pytest.importorskip("seekpath")
+    # spglib emits a DeprecationWarning on every call; dressing that up as a symmetry
+    # ambiguity would cry wolf on every single path
+    _patch_seekpath_warning(monkeypatch, DeprecationWarning)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _kpoints_file.high_symmetry_path(_BCC_PRIMITIVE)
+    messages = [str(warning.message) for warning in caught]
+    assert not any("ambiguous" in message for message in messages)
+    assert any("sqrt(3)a" in message for message in messages)  # passed through as is
+
+
+def _cell_with_position(position):
+    "A cubic cell whose second atom sits at the given direct coordinate."
+    return (np.eye(3), [[0, 0, 0], [position, position, position]], [1, 2])
+
+
+@pytest.mark.parametrize("position", [0.333, 0.667, -0.333, 0.1667])
+def test_rounded_fraction_warns(position):
+    # a coordinate typed as a rounded fraction breaks the symmetry by more than the
+    # default tolerance, and spglib then reports a lower symmetry than the crystal has
+    with pytest.warns(UserWarning, match="symprec"):
+        _kpoints_file.warn_if_precision_is_insufficient(
+            _cell_with_position(position)[1], _SYMPREC
+        )
+
+
+@pytest.mark.parametrize(
+    "position",
+    # 0.16667 is off by 3e-6, which is below symprec, so it needs no warning either
+    [0.5, 0.25, 0.75, 0.125, 0.0, 1.0, 1 / 3, 2 / 3, 0.422, 0.3333333, 0.16667],
+)
+def test_exact_values_do_not_warn(position):
+    # exact fractions, values written with enough digits, and coordinates that are not
+    # fractions at all must stay silent -- crying wolf would train users to ignore it
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _kpoints_file.warn_if_precision_is_insufficient(
+            _cell_with_position(position)[1], _SYMPREC
+        )
+
+
+@pytest.mark.parametrize("generate", ["high_symmetry_path", "regular_mesh"])
+def test_generators_check_the_precision(generate):
+    pytest.importorskip("seekpath")
+    arguments = {"regular_mesh": {"kspacing": 0.5}}.get(generate, {})
+    with pytest.warns(UserWarning, match="symprec"):
+        getattr(_kpoints_file, generate)(_cell_with_position(0.333), **arguments)
