@@ -40,7 +40,10 @@ def grid_for(lattice_vectors, spacing: float = TARGET_SPACING) -> tuple:
         cell is orthogonal, which leaves every operator derived from it asymmetric.
     """
     counts = interplanar_spacing(lattice_vectors) / spacing
-    return tuple(2 * np.rint((counts - 1) / 2).astype(int) + 1)
+    # floor rather than round to the nearest odd number: the ratio lands on an exact
+    # half whenever the spacing divides the cell, and which way numpy breaks that tie
+    # is not something the size of a grid should depend on
+    return tuple(2 * np.floor(counts / 2).astype(int) + 1)
 
 
 def interplanar_spacing(lattice_vectors) -> np.ndarray:

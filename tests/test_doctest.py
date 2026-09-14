@@ -138,7 +138,6 @@ def get_full_calculation_examples():
 
 
 def interesting_example(example):
-    suffix = example.name.split(".")[-1]
     if len(example.examples) == 0:
         return False
     # Every module with examples is collected now, so nothing has to be filtered by

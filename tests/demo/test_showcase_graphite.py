@@ -135,11 +135,21 @@ def test_partial_charge_shares_the_grid_with_the_density(raw_partial_density, As
     assert np.array(raw_partial_density.partial_charge)[0, 0, 0].shape == charge.shape
 
 
-def test_partial_charge_peaks_at_one(surface_state, Assert):
+def test_partial_charge_peaks_at_one(surface_state, raw_partial_density, Assert):
     # py4vasp draws its isosurface at an absolute level, so the largest value has to be
-    # a known one for the default level to mean anything
+    # a known one for the default level to mean anything. Normalizing guarantees the
+    # value; what it does not guarantee is where the peak sits, so check that too --
+    # it belongs on a carbon that no neighbouring layer eclipses.
     assert np.all(surface_state >= 0.0)
     Assert.allclose(np.max(surface_state), 1.0)
+    counts = np.array(raw_partial_density.grid)
+    peak = np.unravel_index(np.argmax(surface_state), surface_state.shape)
+    positions = np.array(structure.Graphite().positions)
+    exposed = positions[
+        partial_density.sublattice_weights(positions) == partial_density.EXPOSED_WEIGHT
+    ]
+    on_an_atom = np.rint(exposed * counts).astype(int) % counts
+    assert any(np.array_equal(peak, site) for site in on_an_atom)
 
 
 def test_default_isolevel_encloses_the_slab(surface_state):
@@ -247,10 +257,14 @@ def test_potential_is_deep_inside_the_slab(profile):
     distance, potential = profile
     heights = np.array(structure.Graphite().positions)[:, 2] * cell.GRAPHITE_HEIGHT
     inside = (distance > np.min(heights)) & (distance < np.max(heights))
-    # deep and without a gap all the way through: the potential of a slab does not
-    # return to the vacuum level between its layers, because it is the density
-    # convolved with a Coulomb interaction rather than the density itself
-    assert np.all(potential[inside] < -10.0)
+    # It oscillates once per layer, as a planar average does, but it stays deep the
+    # whole way through: the potential of a slab does not climb back to the vacuum
+    # level between its layers, because it is the density convolved with a Coulomb
+    # interaction rather than the density itself.
+    interior = potential[inside]
+    assert np.max(interior) < -12.0
+    assert np.min(interior) > -1.01 * workfunction.POTENTIAL_DEPTH
+    assert np.ptp(interior) < 0.35 * workfunction.POTENTIAL_DEPTH
 
 
 def test_vacuum_potential_is_the_level_the_potential_settles_at(

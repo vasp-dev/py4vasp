@@ -95,14 +95,23 @@ def _acoustic(coordinates):
 
 
 def _optical(coordinates):
-    """Eighteen branches dispersing gently around their zone-centre frequency."""
+    """Eighteen branches dispersing gently around their zone-centre frequency.
+
+    All of them follow one modulation, a cosine of the sum of the reduced coordinates;
+    only the amplitude differs per branch, so the bundle widens away from the zone
+    centre rather than fanning out in different directions. That is a weaker model than
+    the electronic one, and it shows in the density of states: a cosine of a single
+    integer vector takes only five values on the q mesh, so each branch contributes
+    five sharp lines rather than a band. The envelope is right and the edges are the
+    edges of the dispersion, but the optical part of the spectrum is more structured
+    than a real one. Giving each branch its own set of translations, the way
+    :class:`electronic_structure.Model` does, is what would fix it.
+    """
     reduced = coordinates - np.round(coordinates)
-    # each branch disperses along a different combination of the reciprocal directions,
-    # so the bundle fans out instead of running in parallel
-    phases = np.arange(1, len(OPTICAL_AT_GAMMA) + 1)
+    amplitudes = np.arange(1, len(OPTICAL_AT_GAMMA) + 1)
     modulation = np.cos(2 * np.pi * np.sum(reduced, axis=1))
     shape = (len(coordinates), len(OPTICAL_AT_GAMMA))
-    dispersion = _OPTICAL_WIDTH * np.outer(modulation - 1, np.sqrt(phases) / 4)
+    dispersion = _OPTICAL_WIDTH * np.outer(modulation - 1, np.sqrt(amplitudes) / 4)
     return np.broadcast_to(OPTICAL_AT_GAMMA, shape) + dispersion
 
 

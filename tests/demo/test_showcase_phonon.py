@@ -191,13 +191,6 @@ def test_three_modes_translate_the_crystal(mode_frequencies, Assert):
     assert np.all(np.sort(mode_frequencies.real)[3:] > 0.0)
 
 
-def test_mode_frequencies_are_the_zone_centre_of_the_dispersion(
-    mode_frequencies, Assert
-):
-    at_gamma = phonon.branch_frequencies(np.zeros((1, 3)))[0]
-    Assert.allclose(np.sort(mode_frequencies.real), np.sort(at_gamma))
-
-
 def test_mode_frequencies_match_the_dispersion_at_gamma(mode_frequencies, raw_band):
     # the path starts at Gamma, so the first q point of the dispersion is the same one
     frequencies = np.array(raw_band.dispersion.eigenvalues)

@@ -10,10 +10,12 @@ from py4vasp._demo.showcase import cell, grid, structure
 Z_DIRECTION = 3  # the IDIPOL setting that averages over the planes normal to z
 # The plane-averaged potential is not a local function of the density: it is the density
 # convolved with the Coulomb interaction, which reaches much further than an atom. So it
-# is modelled with a width several times the one showcase.density uses, which is what
-# keeps the interior of the slab at one depth instead of dipping once per layer.
+# is modelled with a width several times the one showcase.density uses. It still dips
+# once per layer, as a real planar average does; what the wider width buys is that the
+# potential stays deep between the layers instead of climbing back towards the vacuum
+# level, which an atomic width would make it do.
 POTENTIAL_WIDTH = 1.2  # Angstrom
-POTENTIAL_DEPTH = 18.0  # eV below the vacuum level in the middle of the slab
+POTENTIAL_DEPTH = 18.0  # eV below the vacuum level at a layer of the slab
 # The work function of highly oriented pyrolytic graphite as the literature reports it.
 # The vacuum level is the zero of the energy axis, which is the convention a work
 # function is quoted in, so the Fermi energy lies this far below zero.
@@ -24,10 +26,10 @@ FERMI_ENERGY = -WORK_FUNCTION
 def Graphite() -> raw.Workfunction:
     """Plane-averaged potential across the graphite slab.
 
-    The potential is flat in the vacuum, drops at each surface and stays at one depth
-    through the slab, which is the shape a work function is read off. The vacuum level
-    is the zero of the energy axis, so the work function is the Fermi energy with the
-    sign reversed.
+    The potential is flat in the vacuum, drops at each surface, and oscillates deep
+    inside the slab, once per layer. That is the shape a work function is read off: what
+    matters is the flat part, and the vacuum level is the zero of the energy axis, so the
+    work function is the Fermi energy with the sign reversed.
     """
     distance, potential = _profile()
     vacuum_level = np.max(potential)

@@ -160,8 +160,8 @@ class PairCorrelation(graph.Mixin):
     Examples
     --------
     First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not contain any VASP
-    calculation data. Alternatively, use your own data if you have run VASP.
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    use your own data if you have run VASP.
 
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path)
@@ -221,8 +221,8 @@ class PairCorrelation(graph.Mixin):
         Examples
         --------
         First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not contain any VASP
-        calculation data. Alternatively, use your own data if you have run VASP.
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
@@ -251,7 +251,9 @@ class PairCorrelation(graph.Mixin):
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
-    @documentation.format(selection=_selection_string("the total one is used"))
+    @documentation.format(
+        selection=_selection_string("the total pair-correlation function is used")
+    )
     def to_graph(self, selection="total") -> graph.Graph:
         """Plot selected pair-correlation functions.
 
@@ -268,8 +270,8 @@ class PairCorrelation(graph.Mixin):
         Examples
         --------
         First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not contain any VASP
-        calculation data. Alternatively, use your own data if you have run VASP.
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
@@ -297,8 +299,8 @@ class PairCorrelation(graph.Mixin):
         Examples
         --------
         First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not contain any VASP
-        calculation data. Alternatively, use your own data if you have run VASP.
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)

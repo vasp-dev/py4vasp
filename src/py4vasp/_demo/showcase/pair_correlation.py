@@ -9,7 +9,7 @@ import numpy as np
 
 from py4vasp import _demo, raw
 from py4vasp._demo import showcase
-from py4vasp._demo.showcase import cell, structure
+from py4vasp._demo.showcase import cell, grid, structure
 from py4vasp._util import convert
 
 MAX_DISTANCE = 8.0  # Angstrom, far enough to show the crystal settling around one
@@ -117,14 +117,8 @@ def _shifts(lattice_vectors):
     the length instead leaves the outermost shells incomplete, and the curve then
     settles below one rather than around it.
     """
-    volume = np.abs(np.linalg.det(lattice_vectors))
-    areas = np.linalg.norm(
-        np.cross(
-            np.roll(lattice_vectors, -1, axis=0), np.roll(lattice_vectors, -2, axis=0)
-        ),
-        axis=1,
-    )
-    counts = np.ceil(_reach() * areas / volume).astype(int)
+    spacing = grid.interplanar_spacing(lattice_vectors)
+    counts = np.ceil(_reach() / spacing).astype(int)
     return np.array(list(itertools.product(*[np.arange(-n, n + 1) for n in counts])))
 
 

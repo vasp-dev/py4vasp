@@ -197,10 +197,9 @@ class Dos(graph.Mixin):
     Examples
     --------
 
-    First, we create some example data do that you can follow along. Please define a
-    variable `path` with the path to a directory that exists and does not contain any
-    VASP calculation data. Alternatively, you can use your own data if you have run
-    VASP with :tag:`LORBIT`.
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    you can use your own data if you have run VASP with :tag:`LORBIT`.
 
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path)
@@ -278,10 +277,10 @@ class Dos(graph.Mixin):
         selection, you will obtain the projected DOS with a label corresponding to the
         projection.
 
-        We create some example data do that you can follow along. Please define a
-        variable `path` with the path to a directory that exists and does not contain any
-        VASP calculation data. Alternatively, you can use your own data if you have run
-        VASP with :tag:`LORBIT`.
+        We create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, you can use your own data if you have run VASP with
+        :tag:`LORBIT`.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
@@ -383,10 +382,10 @@ class Dos(graph.Mixin):
         calculation and you pass in a selection, py4vasp will add additional lines
         corresponding to the selected projections.
 
-        We create some example data do that you can follow along. Please define a
-        variable `path` with the path to a directory that exists and does not contain any
-        VASP calculation data. Alternatively, you can use your own data if you have run
-        VASP with :tag:`LORBIT`.
+        We create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, you can use your own data if you have run VASP with
+        :tag:`LORBIT`.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
@@ -476,10 +475,10 @@ class Dos(graph.Mixin):
     def to_frame(self, selection=None):
         """Read the data into a pandas DataFrame.
 
-        We create some example data do that you can follow along. Please define a
-        variable `path` with the path to a directory that exists and does not contain any
-        VASP calculation data. Alternatively, you can use your own data if you have run
-        VASP with :tag:`LORBIT`.
+        We create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, you can use your own data if you have run VASP with
+        :tag:`LORBIT`.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)

@@ -113,8 +113,8 @@ class Workfunction(graph.Mixin):
     Examples
     --------
     First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not contain any VASP
-    calculation data. Alternatively, use your own data if you have run VASP.
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    use your own data if you have run VASP.
 
     A work function needs a surface, so the example data is a graphite slab with vacuum
     on either side of it.
@@ -162,11 +162,15 @@ class Workfunction(graph.Mixin):
 
         Returns
         -------
+        dict
+            Contains vacuum potential, average potential and relevant reference energies
+            within the surface.
+
         Examples
         --------
         First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not contain any VASP
-        calculation data. Alternatively, use your own data if you have run VASP.
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path, "surface")
@@ -214,8 +218,8 @@ class Workfunction(graph.Mixin):
         Examples
         --------
         First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not contain any VASP
-        calculation data. Alternatively, use your own data if you have run VASP.
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path, "surface")
@@ -260,8 +264,8 @@ class Workfunction(graph.Mixin):
         Examples
         --------
         First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not contain any VASP
-        calculation data. Alternatively, use your own data if you have run VASP.
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path, "surface")

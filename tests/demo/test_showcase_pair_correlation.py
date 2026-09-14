@@ -32,8 +32,9 @@ def functions(raw_pair_correlation):
 
 def test_every_label_names_a_function(raw_pair_correlation):
     shape = np.array(raw_pair_correlation.function).shape
-    number_pairs = 1 + NUMBER_ATOMS * (NUMBER_ATOMS + 1) // 2 - 15  # total plus 6 pairs
-    assert shape == (showcase.NUMBER_STEPS, 7, showcase.NUMBER_POINTS)
+    # the total, plus one function per unordered pair of the three elements
+    number_pairs = 1 + 3 * 4 // 2
+    assert shape == (showcase.NUMBER_STEPS, number_pairs, showcase.NUMBER_POINTS)
     assert raw_pair_correlation.labels[0] == "total"
     assert len(raw_pair_correlation.labels) == shape[1]
 
@@ -135,8 +136,6 @@ def test_first_peak_py4vasp_reports_is_the_shortest_bond(raw_pair_correlation, A
 def test_correlation_functions_are_evaluated_once(raw_pair_correlation):
     # counting the neighbour shells of twelve steps dominates the cost of building the
     # demo data, and every example in the documentation builds it again
-    first = pair_correlation.Sr2TiO4()
-    assert np.array(first.function) is not np.array(raw_pair_correlation.function)
     distances, function = pair_correlation._correlation_functions()
     assert not function.flags.writeable
     assert pair_correlation._correlation_functions()[1] is function
