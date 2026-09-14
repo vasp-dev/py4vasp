@@ -19,6 +19,24 @@ from py4vasp._calculation.symmetry import _SYMPREC
 from py4vasp.cli import cli
 
 
+def _runner():
+    """Build a runner that keeps stdout and stderr apart.
+
+    click separates the two streams from version 8.2 on. Before that it mixes them
+    unless mix_stderr is switched off, and that argument no longer exists in the newer
+    versions -- so the tests have to ask for separation in whichever way works.
+    """
+    try:
+        return CliRunner(mix_stderr=False)
+    except TypeError:
+        return CliRunner()
+
+
+def _messages(result):
+    "Everything the command printed, whichever of the two streams it chose."
+    return result.stdout + result.stderr
+
+
 @pytest.fixture
 def mock_calculation():
     with patch("py4vasp.Calculation", autospec=True) as mock:
@@ -48,7 +66,7 @@ _KPATH_TEXT = (
 
 @pytest.mark.parametrize("lammps", ("LAMMPS", "Lammps", "lammps"))
 def test_convert_lammps(mock_calculation, lammps):
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["convert", "structure", lammps])
     assert result.exit_code == 0
     check_conversion_called(mock_calculation, result)
@@ -57,7 +75,7 @@ def test_convert_lammps(mock_calculation, lammps):
 @pytest.mark.parametrize("position", ("first", "middle", "last"))
 @pytest.mark.parametrize("selection", (("-s", "choice"), ("--selection", "choice")))
 def test_convert_selection(mock_calculation, position, selection):
-    runner = CliRunner()
+    runner = _runner()
     result = invoke_runner_with_options(runner, position, selection)
     check_conversion_called(mock_calculation, result, selection=selection[1])
 
@@ -71,7 +89,7 @@ def test_convert_path(mock_calculation, position, argument, path, tmp_path):
         expected_path.mkdir()
     else:
         expected_path.touch()
-    runner = CliRunner()
+    runner = _runner()
     result = invoke_runner_with_options(runner, position, (argument, expected_path))
     check_conversion_called(mock_calculation, result, expected_path=expected_path)
 
@@ -102,31 +120,31 @@ def check_conversion_called(
     else:
         structure.to_lammps.assert_called_once_with(selection=selection)
     converted = structure.to_lammps.return_value
-    assert f"{converted}\n" == result.output
+    assert f"{converted}\n" == result.stdout
 
 
 def test_convert_wrong_quantity():
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["convert", "not_implemented"])
     assert result.exit_code != 0
-    assert "Invalid value" in result.output
-    assert "not_implemented" in result.output
+    assert "Invalid value" in _messages(result)
+    assert "not_implemented" in _messages(result)
 
 
 def test_convert_wrong_format(mock_calculation):
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["convert", "structure", "not_implemented"])
     assert result.exit_code != 0
     mock_calculation.from_path.assert_not_called()
 
 
 def test_error_in_py4vasp(mock_calculation):
-    runner = CliRunner()
+    runner = _runner()
     error_message = "Custom error message."
     mock_calculation.from_path.side_effect = exception.Py4VaspError(error_message)
     result = runner.invoke(cli, ["convert", "structure", "lammps"])
     assert result.exit_code != 0
-    assert error_message in result.output
+    assert error_message in _messages(result)
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +160,7 @@ def _write(path, text="contents"):
 @pytest.mark.parametrize("filename", ("POSCAR", "CONTCAR", "structure.vasp"))
 def test_symmetrize_poscar_to_stdout(mock_structure, tmp_path, filename):
     poscar = _write(tmp_path / filename)
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(poscar)])
     assert result.exit_code == 0
     mock_structure.from_POSCAR.assert_called_once_with("contents")
@@ -150,26 +168,26 @@ def test_symmetrize_poscar_to_stdout(mock_structure, tmp_path, filename):
     structure.symmetrize.assert_called_once_with(to_primitive=False, symprec=_SYMPREC)
     symmetrized = structure.symmetrize.return_value
     symmetrized.to_POSCAR.assert_called_once_with()
-    assert result.output == f"{symmetrized.to_POSCAR.return_value}\n"
+    assert result.stdout == f"{symmetrized.to_POSCAR.return_value}\n"
 
 
 @pytest.mark.parametrize("suffix", (".h5", ".hdf5"))
 def test_symmetrize_hdf5_reads_via_calculation(mock_calculation, tmp_path, suffix):
     hdf5 = _write(tmp_path / f"vaspout{suffix}")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(hdf5)])
     assert result.exit_code == 0
     mock_calculation.from_file.assert_called_once_with(hdf5)
     structure = mock_calculation.from_file.return_value.structure
     structure.symmetrize.assert_called_once_with(to_primitive=False, symprec=_SYMPREC)
     symmetrized = structure.symmetrize.return_value
-    assert result.output == f"{symmetrized.to_POSCAR.return_value}\n"
+    assert result.stdout == f"{symmetrized.to_POSCAR.return_value}\n"
 
 
 @pytest.mark.parametrize("flag", ("-p", "--primitive"))
 def test_symmetrize_primitive_flag(mock_structure, tmp_path, flag):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(poscar), flag])
     assert result.exit_code == 0
     structure = mock_structure.from_POSCAR.return_value
@@ -178,7 +196,7 @@ def test_symmetrize_primitive_flag(mock_structure, tmp_path, flag):
 
 def test_symmetrize_symprec_option(mock_structure, tmp_path):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(poscar), "--symprec", "0.1"])
     assert result.exit_code == 0
     structure = mock_structure.from_POSCAR.return_value
@@ -189,14 +207,14 @@ def test_symmetrize_error_in_py4vasp(mock_structure, tmp_path):
     poscar = _write(tmp_path / "POSCAR")
     error_message = "Cannot symmetrize."
     mock_structure.from_POSCAR.side_effect = exception.Py4VaspError(error_message)
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(poscar)])
     assert result.exit_code != 0
-    assert error_message in result.output
+    assert error_message in _messages(result)
 
 
 def test_symmetrize_missing_file():
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", "does_not_exist"])
     assert result.exit_code != 0
 
@@ -211,51 +229,51 @@ def test_symmetrize_output_file(mock_structure, tmp_path, flag):
     poscar = _write(tmp_path / "POSCAR")
     output = tmp_path / "symmetrized.vasp"
     _set_symmetrized_poscar(mock_structure, "SYMMETRIZED")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(poscar), flag, str(output)])
     assert result.exit_code == 0
     assert output.read_text() == "SYMMETRIZED"
-    assert result.output == ""  # nothing written to stdout
+    assert result.stdout == ""  # nothing written to stdout
 
 
 @pytest.mark.parametrize("flag", ("-i", "--in-place"))
 def test_symmetrize_in_place(mock_structure, tmp_path, flag):
     poscar = _write(tmp_path / "POSCAR")
     _set_symmetrized_poscar(mock_structure, "SYMMETRIZED")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(poscar), flag])
     assert result.exit_code == 0
     mock_structure.from_POSCAR.assert_called_once_with("contents")
     assert poscar.read_text() == "SYMMETRIZED"
-    assert result.output == ""
+    assert result.stdout == ""
 
 
 def test_symmetrize_in_place_and_output_are_exclusive(mock_structure, tmp_path):
     poscar = _write(tmp_path / "POSCAR")
     output = tmp_path / "out.vasp"
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(poscar), "-i", "-o", str(output)])
     assert result.exit_code != 0
-    assert "mutually exclusive" in result.output
+    assert "mutually exclusive" in _messages(result)
 
 
 @pytest.mark.parametrize("suffix", (".h5", ".hdf5"))
 def test_symmetrize_output_to_hdf5_not_implemented(mock_structure, tmp_path, suffix):
     poscar = _write(tmp_path / "POSCAR")
     output = tmp_path / f"out{suffix}"
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(poscar), "-o", str(output)])
     assert result.exit_code != 0
-    assert "not implemented" in result.output.lower()
+    assert "not implemented" in _messages(result).lower()
     assert not output.exists()
 
 
 def test_symmetrize_in_place_hdf5_not_implemented(mock_calculation, tmp_path):
     hdf5 = _write(tmp_path / "vaspout.h5")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(hdf5), "-i"])
     assert result.exit_code != 0
-    assert "not implemented" in result.output.lower()
+    assert "not implemented" in _messages(result).lower()
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +312,7 @@ def example_archive(tmp_path):
 
 @pytest.mark.parametrize("argument", ("-f", "--from"))
 def test_convert_archive(mock_calculation, example_archive, argument):
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(
         cli, ["convert", "structure", "lammps", argument, str(example_archive)]
     )
@@ -306,7 +324,7 @@ def test_convert_archive(mock_calculation, example_archive, argument):
 
 @pytest.mark.parametrize("argument", ("-a", "--archive-path"))
 def test_convert_archive_path(mock_calculation, example_archive, argument):
-    runner = CliRunner()
+    runner = _runner()
     options = ["--from", str(example_archive), argument, "relax"]
     result = runner.invoke(cli, ["convert", "structure", "lammps", *options])
     assert result.exit_code == 0
@@ -314,24 +332,24 @@ def test_convert_archive_path(mock_calculation, example_archive, argument):
 
 
 def test_convert_archive_path_without_archive(mock_calculation, tmp_path):
-    runner = CliRunner()
+    runner = _runner()
     options = ["--from", str(tmp_path), "--archive-path", "relax"]
     result = runner.invoke(cli, ["convert", "structure", "lammps", *options])
     assert result.exit_code != 0
-    assert "is not an\narchive that py4vasp can read" in result.output
+    assert "is not an\narchive that py4vasp can read" in _messages(result)
     mock_calculation.from_path.assert_not_called()
     mock_calculation.from_archive.assert_not_called()
 
 
 def test_symmetrize_archive(mock_calculation, example_archive):
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(example_archive)])
     assert result.exit_code == 0
     mock_calculation.from_archive.assert_called_once_with(example_archive)
     structure = mock_calculation.from_archive.return_value.structure
     structure.symmetrize.assert_called_once_with(to_primitive=False, symprec=_SYMPREC)
     symmetrized = structure.symmetrize.return_value
-    assert result.output == f"{symmetrized.to_POSCAR.return_value}\n"
+    assert result.stdout == f"{symmetrized.to_POSCAR.return_value}\n"
 
 
 @pytest.mark.parametrize("flag", ("-i", "--in-place"))
@@ -339,10 +357,10 @@ def test_symmetrize_in_place_archive_not_implemented(
     mock_calculation, example_archive, flag
 ):
     original = example_archive.read_bytes()
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["symmetrize", str(example_archive), flag])
     assert result.exit_code != 0
-    assert "archive" in result.output
+    assert "archive" in _messages(result)
     assert example_archive.read_bytes() == original
     mock_calculation.from_archive.assert_not_called()
 
@@ -351,11 +369,11 @@ def test_symmetrize_output_to_archive_not_implemented(
     mock_calculation, example_archive, tmp_path
 ):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     options = ["--output", str(example_archive)]
     result = runner.invoke(cli, ["symmetrize", str(poscar), *options])
     assert result.exit_code != 0
-    assert "archive" in result.output
+    assert "archive" in _messages(result)
 
 
 # ---------------------------------------------------------------------------
@@ -365,7 +383,7 @@ def test_symmetrize_output_to_archive_not_implemented(
 
 def test_generate_kpath_writes_to_stdout(mock_structure, tmp_path):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kpath", str(poscar)])
     assert result.exit_code == 0
     mock_structure.from_POSCAR.assert_called_once_with("contents")
@@ -381,7 +399,7 @@ def test_generate_kpath_output_file(mock_structure, tmp_path, flag):
     poscar = _write(tmp_path / "POSCAR")
     output = tmp_path / "KPOINTS_OPT"
     mock_structure.from_POSCAR.return_value.generate_kpath.return_value = "KPOINTS"
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kpath", str(poscar), flag, str(output)])
     assert result.exit_code == 0
     assert output.read_text() == "KPOINTS"
@@ -391,7 +409,7 @@ def test_generate_kpath_output_file(mock_structure, tmp_path, flag):
 @pytest.mark.parametrize("flag", ("-n", "--number-points"))
 def test_generate_kpath_forwards_number_points(mock_structure, tmp_path, flag):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kpath", str(poscar), flag, "20"])
     assert result.exit_code == 0
     structure = mock_structure.from_POSCAR.return_value
@@ -402,7 +420,7 @@ def test_generate_kpath_forwards_number_points(mock_structure, tmp_path, flag):
 
 def test_generate_kpath_forwards_symmetry_options(mock_structure, tmp_path):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     options = ["--no-time-reversal", "--symprec", "0.1"]
     result = runner.invoke(cli, ["generate", "kpath", str(poscar), *options])
     assert result.exit_code == 0
@@ -418,15 +436,15 @@ def test_generate_kpath_reports_py4vasp_error(mock_structure, tmp_path):
     error_message = "Cannot determine the path of a supercell."
     structure = mock_structure.from_POSCAR.return_value
     structure.generate_kpath.side_effect = exception.Py4VaspError(error_message)
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kpath", str(poscar), "-o", str(output)])
     assert result.exit_code != 0
-    assert error_message in result.output
+    assert error_message in _messages(result)
     assert not output.exists()
 
 
 def test_generate_kpath_missing_file():
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kpath", "does_not_exist"])
     assert result.exit_code != 0
 
@@ -438,7 +456,7 @@ def test_generate_kpath_missing_file():
 
 def test_generate_kmesh_writes_to_stdout(mock_structure, tmp_path):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), "--kspacing", "0.2"])
     assert result.exit_code == 0
     mock_structure.from_POSCAR.assert_called_once_with("contents")
@@ -454,7 +472,7 @@ def test_generate_kmesh_output_file(mock_structure, tmp_path, flag):
     poscar = _write(tmp_path / "POSCAR")
     output = tmp_path / "KPOINTS"
     mock_structure.from_POSCAR.return_value.generate_kmesh.return_value = "MESH"
-    runner = CliRunner()
+    runner = _runner()
     options = ["--kspacing", "0.2", flag, str(output)]
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
     assert result.exit_code == 0
@@ -469,7 +487,7 @@ def test_generate_kmesh_forwards_divisions(
     mock_structure, tmp_path, flag, options_first
 ):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     options = [flag, "8,8,6", "--symprec", "0.1"]
     # a single token cannot swallow the file argument, whichever order they come in
     arguments = [*options, str(poscar)] if options_first else [str(poscar), *options]
@@ -483,7 +501,7 @@ def test_generate_kmesh_forwards_divisions(
 
 def test_generate_kmesh_divisions_shorthand(mock_structure, tmp_path):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), "-d", "8"])
     assert result.exit_code == 0
     structure = mock_structure.from_POSCAR.return_value
@@ -495,16 +513,16 @@ def test_generate_kmesh_divisions_shorthand(mock_structure, tmp_path):
 @pytest.mark.parametrize("value", ("8,8", "8,8,6,6", "eight", "8,8,six", ""))
 def test_generate_kmesh_rejects_malformed_divisions(mock_structure, tmp_path, value):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), "-d", value])
     assert result.exit_code != 0
-    assert "--divisions" in result.output
+    assert "--divisions" in _messages(result)
     mock_structure.from_POSCAR.assert_not_called()
 
 
 def test_generate_kmesh_forwards_shift(mock_structure, tmp_path):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     options = ["--kspacing", "0.2", "--shift", "0.5", "0.5", "0.0"]
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
     assert result.exit_code == 0
@@ -525,14 +543,14 @@ def test_generate_kmesh_without_density_fails(
     mock_structure, tmp_path, options, expected
 ):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
     assert result.exit_code != 0
-    assert "--kspacing" in result.output and "--divisions" in result.output
+    assert "--kspacing" in _messages(result) and "--divisions" in _messages(result)
     if expected == "only one":
-        assert "only one" in result.output
+        assert "only one" in _messages(result)
     else:
-        assert "only one" not in result.output
+        assert "only one" not in _messages(result)
     mock_structure.from_POSCAR.assert_not_called()
 
 
@@ -542,11 +560,11 @@ def test_generate_kmesh_reports_py4vasp_error(mock_structure, tmp_path):
     error_message = "Cannot determine the mesh of a supercell."
     structure = mock_structure.from_POSCAR.return_value
     structure.generate_kmesh.side_effect = exception.Py4VaspError(error_message)
-    runner = CliRunner()
+    runner = _runner()
     options = ["--kspacing", "0.2", "-o", str(output)]
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
     assert result.exit_code != 0
-    assert error_message in result.output
+    assert error_message in _messages(result)
     assert not output.exists()
 
 
@@ -564,11 +582,11 @@ def test_generate_does_not_overwrite_hdf5(
 ):
     poscar = _write(tmp_path / "POSCAR")
     output = _write(tmp_path / f"vaspout{suffix}", "not really HDF5")
-    runner = CliRunner()
+    runner = _runner()
     options = [*options, "-o", str(output)]
     result = runner.invoke(cli, ["generate", command, str(poscar), *options])
     assert result.exit_code != 0
-    assert "not implemented" in result.output.lower()
+    assert "not implemented" in _messages(result).lower()
     assert output.read_text() == "not really HDF5"  # the file is untouched
     mock_structure.from_POSCAR.assert_not_called()
 
@@ -579,11 +597,11 @@ def test_generate_does_not_overwrite_archive(
 ):
     poscar = _write(tmp_path / "POSCAR")
     original = example_archive.read_bytes()
-    runner = CliRunner()
+    runner = _runner()
     options = [*options, "-o", str(example_archive)]
     result = runner.invoke(cli, ["generate", command, str(poscar), *options])
     assert result.exit_code != 0
-    assert "archive" in result.output
+    assert "archive" in _messages(result)
     assert example_archive.read_bytes() == original
     mock_structure.from_POSCAR.assert_not_called()
 
@@ -594,7 +612,7 @@ def test_generate_kmesh_reports_the_conventional_cell(mock_structure, tmp_path):
     structure.generate_kmesh.return_value = (
         "k mesh of the conventional cell: divisions 2 10 6, kspacing 0.2\n0\nReduced"
     )
-    runner = CliRunner()
+    runner = _runner()
     options = ["--kspacing", "0.2", "--symprec", "0.1"]
     result = runner.invoke(cli, ["generate", "kmesh", str(poscar), *options])
     assert result.exit_code == 0
@@ -611,7 +629,7 @@ def test_generate_kmesh_reports_the_conventional_cell(mock_structure, tmp_path):
 
 def test_generate_kpath_does_not_report_a_conventional_cell(mock_structure, tmp_path):
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kpath", str(poscar)])
     assert result.exit_code == 0
     # the path does not count divisions along the conventional cell, so it says nothing
@@ -626,7 +644,7 @@ def test_generate_kpath_reports_the_space_group(
     poscar = _write(tmp_path / "POSCAR")
     output = tmp_path / "KPOINTS_OPT"
     options = ["-o", str(output)] if writes_a_file else []
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", "kpath", str(poscar), *options])
     assert result.exit_code == 0
     # the --symprec help tells the user to check the space group, so it has to be
@@ -646,12 +664,12 @@ def test_generate_rejects_a_missing_output_directory(
 ):
     poscar = _write(tmp_path / "POSCAR")
     output = tmp_path / "nosuchdir" / "KPOINTS"
-    runner = CliRunner()
+    runner = _runner()
     options = [*options, "-o", str(output)]
     result = runner.invoke(cli, ["generate", command, str(poscar), *options])
     assert result.exit_code != 0
-    assert "Traceback" not in result.output
-    assert "nosuchdir" in result.output
+    assert "Traceback" not in _messages(result)
+    assert "nosuchdir" in _messages(result)
     assert not output.exists()
 
 
@@ -659,11 +677,11 @@ def test_generate_rejects_a_missing_output_directory(
 def test_generate_rejects_a_directory_as_input(
     mock_structure, tmp_path, command, options
 ):
-    runner = CliRunner()
+    runner = _runner()
     result = runner.invoke(cli, ["generate", command, str(tmp_path), *options])
     assert result.exit_code != 0
-    assert "Traceback" not in result.output
-    assert "directory" in result.output.lower()
+    assert "Traceback" not in _messages(result)
+    assert "directory" in _messages(result).lower()
     mock_structure.from_POSCAR.assert_not_called()
 
 
@@ -672,7 +690,7 @@ def test_generate_forwards_elements(mock_structure, tmp_path, command, options):
     # old POSCAR files do not name their elements, and the user must be able to say
     # so from the command line rather than being told to call a Python routine
     poscar = _write(tmp_path / "POSCAR")
-    runner = CliRunner()
+    runner = _runner()
     options = [*options, "--elements", "Si,O"]
     result = runner.invoke(cli, ["generate", command, str(poscar), *options])
     assert result.exit_code == 0
