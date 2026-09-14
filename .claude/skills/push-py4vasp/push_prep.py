@@ -10,6 +10,8 @@ It prints the decisions the push workflow needs:
   1. Changed files, classified into CODE (*.py under src/ or tests/) vs
      non-code (docs / CI / tooling).
   2. Whether a code review is required (any code changes present).
+  3. Whether a user simulation is required (the diff touches the user
+     interface: a public method of a quantity class, the CLI, or docs/).
   3. A suggested descriptive branch name derived from the commit subjects.
   4. The GitHub PR "compare" URL for origin.
   5. A draft PR message (title + summary bullets) to copy/paste.
@@ -57,6 +59,32 @@ def classify(files):
     for f in files:
         (code if is_code(f) else noncode).append(f)
     return code, noncode
+
+
+def public_methods_in_diff(root, base):
+    """Public methods whose signature is added or changed under _calculation."""
+    diff = git(root, "diff", "-U0", base, "HEAD", "--", "src/py4vasp/_calculation")
+    diff += "\n" + git(root, "diff", "-U0", "--", "src/py4vasp/_calculation")
+    diff += "\n" + git(root, "diff", "-U0", "--cached", "--", "src/py4vasp/_calculation")
+    methods, path = {}, None
+    for line in diff.splitlines():
+        if line.startswith("+++ b/"):
+            path = line[len("+++ b/") :]
+        elif path and (match := re.match(r"[+-]\s+def ([a-z][A-Za-z0-9_]*)\(", line)):
+            methods.setdefault(path, set()).add(match.group(1))
+    return {path: sorted(names) for path, names in methods.items()}
+
+
+def user_interface_reasons(root, base, files):
+    """Why a user simulation is required; an empty list means it is not."""
+    reasons = []
+    if "src/py4vasp/cli.py" in files:
+        reasons.append("src/py4vasp/cli.py changed - the command line interface")
+    if documentation := [f for f in files if f.startswith("docs/")]:
+        reasons.append(f"documentation changed - {', '.join(documentation)}")
+    for path, names in public_methods_in_diff(root, base).items():
+        reasons.append(f"public method(s) in {path} - {', '.join(names)}")
+    return reasons
 
 
 def commit_subjects(root, base):
@@ -123,15 +151,25 @@ def main():
     else:
         print("NO - only docs/CI/tooling changed. Skip the review; go straight to push.")
 
-    print("\n" + "=" * 60 + "\n3. SUGGESTED BRANCH NAME\n" + "=" * 60)
+    print("\n" + "=" * 60 + "\n3. USER SIMULATION REQUIRED?\n" + "=" * 60)
+    reasons = user_interface_reasons(root, base, files)
+    if reasons:
+        print("USER SIMULATION REQUIRED: YES - the diff touches the user interface:")
+        print(*("\n  " + reason for reason in reasons))
+        print("\nDispatch /simulate-user-py4vasp to a subagent unless a simulation was")
+        print("already run for this diff (ask the user if unsure). NOT from plan mode.")
+    else:
+        print("USER SIMULATION REQUIRED: NO - no public method, CLI, or docs change.")
+
+    print("\n" + "=" * 60 + "\n4. SUGGESTED BRANCH NAME\n" + "=" * 60)
     print(f"  {branch}")
     print("  (Derive a fresh descriptive name; refine this if it misses the point.)")
 
-    print("\n" + "=" * 60 + "\n4. PR COMPARE URL (origin)\n" + "=" * 60)
+    print("\n" + "=" * 60 + "\n5. PR COMPARE URL (origin)\n" + "=" * 60)
     print(f"  {compare_url}")
     print("  (Replace the branch segment if you push under a different name.)")
 
-    print("\n" + "=" * 60 + "\n5. DRAFT PR MESSAGE\n" + "=" * 60)
+    print("\n" + "=" * 60 + "\n6. DRAFT PR MESSAGE\n" + "=" * 60)
     title = subjects[0] if subjects else branch
     print(f"Title: {title}\n")
     print("## Summary")

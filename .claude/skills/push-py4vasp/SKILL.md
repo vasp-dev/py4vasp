@@ -25,13 +25,14 @@ python .claude/skills/push-py4vasp/push_prep.py
 ```
 
 It prints: changed files split into **CODE** (`*.py` under `src/` or `tests/`) vs
-non-code (docs/CI/tooling); whether a review is required; a suggested branch
-name; the PR compare URL; and a draft PR message. Read this first — it drives
-every decision below.
+non-code (docs/CI/tooling); whether a review is required; whether a **user
+simulation** is required (and why); a suggested branch name; the PR compare URL;
+and a draft PR message. Read this first — it drives every decision below.
 
 ## Step 1 — review gate (only if CODE changed)
 
-If the driver reports **no** code changes (only docs/CI/tooling), skip to Step 3.
+If the driver reports **no** code changes (only docs/CI/tooling), skip to Step 2 —
+a docs change still faces the user simulation gate.
 
 If code changed, a py4vasp review must exist for this diff:
 - If you already ran `/review-py4vasp` on this diff earlier in the session and
@@ -45,13 +46,35 @@ If code changed, a py4vasp review must exist for this diff:
 Then **address the findings** — fix the code, or record why a finding is a
 non-issue. Re-run the affected tests (see `/review-py4vasp` for the invocation).
 
-## Step 2 — confirm (hard stop before publishing)
+## Step 2 — user simulation gate (only if the user interface changed)
+
+If the driver reports `USER SIMULATION REQUIRED: NO`, skip to Step 3.
+
+Otherwise somebody who may read only the documentation must have tried this diff.
+The internal gates cannot see a feature that works perfectly and cannot be found,
+or one whose defaults quietly produce the wrong physics:
+
+- If you already ran `/simulate-user-py4vasp` for this diff earlier in the session
+  and its blockers were addressed, skip re-running it.
+- If you **cannot tell** whether a simulation was done, ask the user before
+  dispatching.
+- Otherwise follow the `/simulate-user-py4vasp` skill — it writes the premise and
+  dispatches the subagent itself. Do not hand-roll the dispatch, and **never run it
+  from plan mode** (the subagent inherits plan mode and cannot write an input file,
+  which silently removes most of the surface a user touches).
+
+Then act on the report: blockers and documentation gaps are fixed before the push;
+a documentation gap larger than this change is recorded in `backlog/` as a short
+markdown file; annoyances go into the PR message so the human reviewer inherits
+them.
+
+## Step 3 — confirm (hard stop before publishing)
 
 STOP and ask the user to confirm before formatting and pushing. Pushing
 publishes the branch to `origin` (`vasp-dev/py4vasp`) — do not proceed without
 an explicit go-ahead.
 
-## Step 3 — format
+## Step 4 — format
 
 Apply the project's formatters to `src` and `tests` (no-op if pre-commit already
 ran):
@@ -75,7 +98,7 @@ If either step changed files, commit that:
 git commit -am "Apply black and isort"
 ```
 
-## Step 4 — branch + push
+## Step 5 — branch + push
 
 Create a **fresh descriptive** branch (start from the driver's suggestion, refine
 if it misses the point), then push it and set upstream:
@@ -88,7 +111,7 @@ git switch -c feat/<descriptive-name>
 git push -u origin feat/<descriptive-name>
 ```
 
-## Step 5 — PR link + message
+## Step 6 — PR link + message
 
 Give the user the compare URL and the draft message from Step 0 (the driver
 already built both, using the real branch name if you kept its suggestion — else
@@ -109,10 +132,12 @@ Present the draft PR message in a copy-paste block.
 - **`gh` is not installed** here (only `glab`). Do not reach for `gh pr create`;
   hand over the constructed compare URL instead — the driver builds it from
   `remote.origin.url`.
-- **Non-code = review-skipped, but still formatted + pushed.** A docs/CI/tooling
-  change goes straight from Step 0 to Step 3.
+- **Non-code = review-skipped, but not necessarily gate-free.** A CI/tooling
+  change goes straight from Step 0 to Step 4. A **docs** change skips the code
+  review yet still requires the user simulation — the documentation is precisely
+  what that gate reads.
 - **The driver is read-only.** `push_prep.py` never pushes, commits, or edits;
-  re-run it freely. The only publishing action is `git push` in Step 4.
+  re-run it freely. The only publishing action is `git push` in Step 5.
 - **Worktree note:** run inside the worktree you actually changed; the driver
   reports the checkout path so you can confirm.
 
