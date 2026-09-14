@@ -137,7 +137,9 @@ def _write_or_print(text, destination):
     if destination is None:
         print(text)
     else:
-        destination.write_text(text)
+        # the k-point labels are not ASCII, so the encoding must not be left to the
+        # locale -- it is cp1252 on Windows, which cannot represent them
+        destination.write_text(text, encoding="utf-8")
 
 
 def _read_structure(file, elements=None):

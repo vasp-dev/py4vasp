@@ -1679,10 +1679,11 @@ class Structure(view.Mixin):
           0.00000000   0.00000000   0.00000000  Γ
           0.00000000   0.50000000   0.00000000  X
 
-        Writing the file is up to you
+        Writing the file is up to you. The labels are not ASCII, so store the file
+        as UTF-8 -- VASP reads the labels back unchanged.
 
         >>> from pathlib import Path
-        >>> _ = Path(path / "KPOINTS_OPT").write_text(kpoints)
+        >>> _ = Path(path / "KPOINTS_OPT").write_text(kpoints, encoding="utf-8")
         """
         return merge_default(
             self._source,

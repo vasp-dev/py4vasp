@@ -153,7 +153,7 @@ def test_error_in_py4vasp(mock_calculation):
 
 
 def _write(path, text="contents"):
-    path.write_text(text)
+    path.write_text(text, encoding="utf-8")
     return path
 
 
@@ -695,3 +695,35 @@ def test_generate_forwards_elements(mock_structure, tmp_path, command, options):
     result = runner.invoke(cli, ["generate", command, str(poscar), *options])
     assert result.exit_code == 0
     mock_structure.from_POSCAR.assert_called_once_with("contents", elements=["Si", "O"])
+
+
+@pytest.mark.parametrize("command, options", _GENERATE_COMMANDS)
+def test_generate_writes_utf8(mock_structure, tmp_path, command, options):
+    # the labels of the special points are not ASCII, so the bytes on disk must be
+    # UTF-8 whatever the machine's locale happens to be
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "KPOINTS"
+    text = "k points\n40\nline mode\nreciprocal\n 0.0 0.0 0.0  Γ"
+    generate = getattr(mock_structure.from_POSCAR.return_value, f"generate_{command}")
+    generate.return_value = text
+    result = _runner().invoke(
+        cli, ["generate", command, str(poscar), *options, "-o", str(output)]
+    )
+    assert result.exit_code == 0
+    assert output.read_bytes() == text.encode("utf-8")
+
+
+@pytest.mark.parametrize("command, options", _GENERATE_COMMANDS)
+def test_generate_does_not_depend_on_the_locale(
+    mock_structure, tmp_path, command, options
+):
+    # Path.write_text without an encoding uses the locale, which is cp1252 on Windows
+    # and cannot represent Γ; this test fails on a UTF-8 machine too
+    poscar = _write(tmp_path / "POSCAR")
+    output = tmp_path / "KPOINTS"
+    arguments = ["generate", command, str(poscar), *options, "-o", str(output)]
+    with patch.object(pathlib.Path, "write_text") as write_text:
+        result = _runner().invoke(cli, arguments)
+    assert result.exit_code == 0
+    write_text.assert_called_once()
+    assert write_text.call_args.kwargs.get("encoding") == "utf-8"
