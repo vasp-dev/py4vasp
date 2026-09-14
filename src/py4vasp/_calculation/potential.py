@@ -275,7 +275,7 @@ class Potential(view.Mixin):
     For your own postprocessing, you can read the potential data into a Python dictionary:
 
     >>> calculation.potential.read()
-    {'structure': {...}, 'total': array([[[...]]], ...), 'ionic': array([[[...]]], ...), 'xc': array([[[...]]], ...), 'hartree': array([[[...]]], ...)}
+    {'structure': {...}, 'total': array([[[...]]]...), 'ionic': array([[[...]]]...), 'xc': array([[[...]]]...), 'hartree': array([[[...]]]...)}
 
     You can also plot the 3d isosurface of the selected potential:
 

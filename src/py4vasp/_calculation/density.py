@@ -321,12 +321,12 @@ class Density(view.Mixin):
     For your own postprocessing, you can read the band data into a Python dictionary:
 
     >>> calculation.density.read()
-    {'structure': ..., 'charge': array([[[...]]], ...)}
+    {'structure': ..., 'charge': array([[[...]]]...)}
 
     Alternatively, obtain the density as a numpy array directly:
 
     >>> calculation.density.to_numpy()
-    array([[[[...]]]], ...)
+    array([[[[...]]]]...)
 
     It is also possible to test for non-polarized, collinear, and noncollinear calculations
     with:

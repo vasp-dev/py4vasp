@@ -368,7 +368,7 @@ class PartialDensity(view.Mixin):
 
     >>> calculation.partial_density.read()
     {'structure': {...}, 'grid': array([ 21,  21, 239]), 'bands': array([0]),
-     'kpoints': array([0]), 'partial_density': array([[[...]]], ...)}
+     'kpoints': array([0]), 'partial_density': array([[[...]]]...)}
 
     Alternatively, obtain the density as a numpy array directly:
 
@@ -554,8 +554,8 @@ class PartialDensity(view.Mixin):
         >>> with warnings.catch_warnings(record=True) as caught:
         ...     warnings.simplefilter("always")
         ...     summed = calculation.partial_density.to_numpy(band=2)
-        >>> print(caught[0].category.__name__)
-        UserWarning
+        >>> [str(w.message).splitlines()[0] for w in caught if w.category is UserWarning]
+        ['The band index 2 is not available.']
         """
         return merge_default(
             self._source,
