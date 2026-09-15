@@ -168,7 +168,7 @@ class Force(view.Mixin):
     To select the results for all steps, you don't specify the array boundaries.
 
     >>> calculation.force[:].number_steps()
-    4
+    12
 
     You can also select specific steps or a subset of steps as follows
 

@@ -19,7 +19,7 @@ from py4vasp._config import VASP_COLORS
 from py4vasp._third_party.graph.contour import Contour
 from py4vasp._third_party.graph.series import Series
 from py4vasp._third_party.graph.trace import Trace
-from py4vasp._util import import_, merge
+from py4vasp._util import convert, import_, merge
 
 go = import_.optional("plotly.graph_objects")
 pio = import_.optional("plotly.io")
@@ -504,7 +504,10 @@ class Graph(Sequence):
 
     def _xtick_labels(self):
         # empty labels will be overwritten by plotly so we put a single space in them
-        return tuple(label or " " for label in self.xticks.values())
+        return tuple(
+            convert.math_to_unicode(label) if label else " "
+            for label in self.xticks.values()
+        )
 
     def _set_yaxis_options(self, figure):
         if self._subplot_on:

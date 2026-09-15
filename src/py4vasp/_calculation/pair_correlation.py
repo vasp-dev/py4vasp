@@ -5,7 +5,6 @@ import copy
 import numpy as np
 
 from py4vasp import raw
-from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
@@ -32,10 +31,8 @@ selection : str
     'total' for the total pair-correlation function or the name of any
     two ion types (e.g. 'Sr~Ti') for a specific pair-correlation function.
     When no selection is given, {default}. Separate
-    distinct labels by commas or whitespace. For a complete list of all
-    possible selections, please use
-
-    >>> calculation.pair_correlation.labels()
+    distinct labels by commas or whitespace. The :py:meth:`labels` method
+    returns a complete list of all possible selections.
 """
 
 
@@ -143,7 +140,6 @@ pair-correlation function:
 
 
 @quantity("pair_correlation")
-@documentation.format(examples=slice_.examples("pair_correlation", step="block"))
 class PairCorrelation(graph.Mixin):
     """The pair-correlation function measures the distribution of atoms.
 
@@ -161,7 +157,31 @@ class PairCorrelation(graph.Mixin):
     trajectory into multiple subsets include the tag :tag:`KBLOCK` in your INCAR
     file.
 
-    {examples}
+    Examples
+    --------
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    use your own data if you have run VASP.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    Plot the total pair-correlation function of the final block
+
+    >>> calculation.pair_correlation.plot()
+    Graph(series=[Series(x=array([...]), y=array([...]), label='total', ...)], ...)
+
+    A summary of the pairs the function resolves is printed by
+
+    >>> print(calculation.pair_correlation)
+    pair-correlation function:
+        distances: [0.00, 8.00] 301 points
+        pairs: total, Sr~Sr, Sr~Ti, Sr~O, Ti~Ti, Ti~O, O~O
+
+    Use the [] operator to select the blocks VASP sampled
+
+    >>> calculation.pair_correlation[:].read()["total"].shape
+    (12, 301)
     """
 
     def __init__(self, source, quantity_name: str = "pair_correlation", steps=None):
@@ -182,10 +202,7 @@ class PairCorrelation(graph.Mixin):
     def _handler_factory(self, raw_data):
         return PairCorrelationHandler.from_data(raw_data, steps=self._steps)
 
-    @documentation.format(
-        selection=_selection_string("all possibilities are read"),
-        examples=slice_.examples("pair_correlation", "to_dict", "block"),
-    )
+    @documentation.format(selection=_selection_string("all possibilities are read"))
     def read(self, selection=None) -> dict:
         """Read the pair-correlation function and store it in a dictionary.
 
@@ -201,7 +218,26 @@ class PairCorrelation(graph.Mixin):
             dictionary contains the distances at which the pair-correlation functions
             are evaluated.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Without a selection you obtain the distances and every pair of the crystal
+
+        >>> sorted(calculation.pair_correlation.read())
+        ['O~O', 'Sr~O', 'Sr~Sr', 'Sr~Ti', 'Ti~O', 'Ti~Ti', 'distances', 'total']
+
+        Select a single pair to see where its neighbours are. The nearest neighbour of
+        titanium is an oxygen roughly two Angstrom away, so the function rises there
+
+        >>> data = calculation.pair_correlation.read("Ti~O")
+        >>> round(data["distances"][data["Ti~O"].argmax()], 2)
+        np.float64(1.97)
         """
         return merge_default(
             self._source,
@@ -211,17 +247,12 @@ class PairCorrelation(graph.Mixin):
             PairCorrelationHandler.to_dict,
         )
 
-    @documentation.format(
-        selection=_selection_string("all possibilities are read"),
-        examples=slice_.examples("pair_correlation", "to_dict", "block"),
-    )
     def to_dict(self, selection=None) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
     @documentation.format(
-        selection=_selection_string("the total pair correlation is used"),
-        examples=slice_.examples("pair_correlation", "to_graph", "block"),
+        selection=_selection_string("the total pair-correlation function is used")
     )
     def to_graph(self, selection="total") -> graph.Graph:
         """Plot selected pair-correlation functions.
@@ -236,7 +267,23 @@ class PairCorrelation(graph.Mixin):
             The graph plots the pair-correlation function for all selected blocks
             and ion pairs.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.pair_correlation.to_graph()
+        Graph(series=[Series(x=array([...]), y=array([...]), label='total', ...)],
+              xlabel='Distance (Å)', ...)
+
+        Compare the neighbours of two pairs by selecting both
+
+        >>> calculation.pair_correlation.to_graph("Ti~O, Sr~O")
+        Graph(series=[Series(..., label='Ti~O', ...), Series(..., label='Sr~O', ...)], ...)
         """
         return merge_graphs(
             self._source,
@@ -247,7 +294,20 @@ class PairCorrelation(graph.Mixin):
         )
 
     def labels(self) -> tuple:
-        """Return all possible labels for the selection string."""
+        """Return all possible labels for the selection string.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.pair_correlation.labels()
+        ('total', 'Sr~Sr', 'Sr~Ti', 'Sr~O', 'Ti~Ti', 'Ti~O', 'O~O')
+        """
         return merge_default(
             self._source,
             self._quantity_name,
@@ -304,17 +364,3 @@ class PairCorrelation(graph.Mixin):
             PairCorrelationHandler.from_data,
             PairCorrelationHandler.to_database,
         )
-
-
-def _selection_string(default):
-    return f"""\
-selection : str
-    String specifying which pair-correlation functions are used. Select
-    'total' for the total pair-correlation function or the name of any
-    two ion types (e.g. 'Sr~Ti') for a specific pair-correlation function.
-    When no selection is given, {default}. Separate
-    distinct labels by commas or whitespace. For a complete list of all
-    possible selections, please use
-
-    >>> calculation.pair_correlation.labels()
-"""

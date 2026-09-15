@@ -91,7 +91,31 @@ class PhononMode:
     around their equilibrium positions. Each mode is characterized by a frequency
     and a displacement pattern that shows how atoms move relative to each other.
     Low-frequency modes correspond to long-wavelength vibrations, while
-    high-frequency modes involve more localized atomic motion."""
+    high-frequency modes involve more localized atomic motion.
+
+    Examples
+    --------
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    use your own data if you have run VASP.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    Printing the modes lists every frequency in the units a phonon calculation is
+    usually reported in. The first three vanish because they translate the whole
+    crystal, which costs no energy
+
+    >>> print(calculation.phonon.mode)
+     Eigenvalues of the dynamical matrix
+     -----------------------------------
+       1 f  =    0.000000 THz     0.000000 2PiTHz    0.000000 cm-1     0.000000 meV
+       2 f  =    0.000000 THz...
+
+    A mode marked "f/i" instead of "f" has an imaginary frequency and describes a
+    displacement that lowers the energy, so the structure is not at a minimum. The
+    example data is stable and has none.
+    """
 
     def __init__(self, source, quantity_name: str = "phonon_mode"):
         self._source = source
@@ -127,6 +151,18 @@ class PhononMode:
         dict
             The key indicates this quantity and the value lists the possible choices
             for the selection argument of its other methods.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.phonon.mode.selections()
+        {'phonon_mode': ['default']}
         """
         from py4vasp._raw import definition as raw_module
 
@@ -155,6 +191,24 @@ class PhononMode:
         -------
         dict
             Structural information, phonon frequencies and eigenvectors.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> sorted(calculation.phonon.mode.read())
+        ['eigenvectors', 'frequencies', 'structure']
+
+        The eigenvectors give the displacement of every atom along every direction,
+        one row per mode
+
+        >>> calculation.phonon.mode.read()["eigenvectors"].shape
+        (21, 21)
         """
         return merge_default(
             self._source,
@@ -169,7 +223,35 @@ class PhononMode:
         return self.read()
 
     def frequencies(self) -> np.ndarray:
-        """Read the phonon frequencies as a numpy array."""
+        """Read the phonon frequencies as a numpy array.
+
+        Returns
+        -------
+        np.ndarray
+            The eigenvalues of the dynamical matrix as complex numbers in eV. An
+            imaginary part marks an unstable mode.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.phonon.mode.frequencies().shape
+        (21,)
+
+        The three modes that translate the crystal have zero frequency, and none of
+        the others is imaginary
+
+        >>> frequencies = calculation.phonon.mode.frequencies()
+        >>> int(np.count_nonzero(frequencies == 0))
+        3
+        >>> bool(np.all(frequencies.imag == 0))
+        True
+        """
         return merge_default(
             self._source,
             self._quantity_name,

@@ -741,6 +741,24 @@ def test_to_view_without_symmetry_has_no_crystal_symmetry(raw_data):
     assert structure.to_view().crystal_symmetry is None
 
 
+def test_to_view_of_multiple_steps_has_no_crystal_symmetry(raw_data):
+    # The symmetry analysis describes a single step, so it raises for a trajectory.
+    # Visualizing a trajectory is a legitimate thing to do, so the viewer gets no
+    # crystal symmetry rather than the exception.
+    pytest.importorskip("spglib")
+    raw_structure = raw_data.structure("SrTiO3")
+    raw_structure.positions = _repeat_first_axis(raw_structure.positions)
+    raw_structure.cell.lattice_vectors = _repeat_first_axis(
+        raw_structure.cell.lattice_vectors
+    )
+    structure = make_structure(raw_structure)
+    assert structure[:].to_view().crystal_symmetry is None
+
+
+def _repeat_first_axis(array, number_steps=2):
+    return np.array(number_steps * [np.array(array)])
+
+
 _SYMMETRY_METHODS = (
     "equivalent_atoms",
     "wyckoff_positions",

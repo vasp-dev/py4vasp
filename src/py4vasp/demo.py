@@ -7,6 +7,7 @@ import h5py
 
 from py4vasp import _demo, exception, raw
 from py4vasp._calculation import Calculation
+from py4vasp._demo import showcase
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_WAVEFILE
 from py4vasp._raw.write import write
 
@@ -24,20 +25,40 @@ def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
         is given the generated data will be stored in a subdirectory of the given path.
     selection
         Optional choice of which data is generated. If not provided or None some default
-        data is generated that is suitable for most examples.
+        data is generated that is suitable for most examples. The alternatives describe
+        other kinds of material: "collinear" and "noncollinear" a magnet resolved by two
+        spin channels or by three spin axes, "metal" a system with states at the Fermi
+        energy, "surface" a slab with vacuum on both sides, "spin_texture" a slice of
+        the Brillouin zone, and "perovskite" a structure paired with its symmetry. Note
+        that a selection other than the default contains only the quantities its kind of
+        material illustrates.
 
     Returns
     -------
     -
         A calculation that accesses the generated data.
     """
+    generator = _find_generator(selection)
     path = _create_path_for_data(path, selection)
     filename = path / DEFAULT_FILE
     wavefilename = path / DEFAULT_WAVEFILE
     with h5py.File(filename, "w") as h5f:
         with h5py.File(wavefilename, "w") as wavef:
-            _generate_calculation_data(h5f, selection, waveh5f=wavef)
+            _write_calculation_data(generator, h5f, waveh5f=wavef)
     return Calculation.from_path(path)
+
+
+def _find_generator(selection):
+    # resolved before any directory is made, so an invalid selection leaves nothing behind
+    generator = _DATA_GENERATORS.get(selection)
+    if generator is None:
+        available = ", ".join(key for key in _DATA_GENERATORS if key)
+        raise exception.IncorrectUsage(
+            f"The selection '{selection}' is not recognized. "
+            f"Available selections are: {available}. "
+            "If no selection is given, some default data is generated."
+        )
+    return generator
 
 
 def _create_path_for_data(path, selection):
@@ -51,39 +72,44 @@ def _create_path_for_data(path, selection):
     return path
 
 
-def _generate_calculation_data(h5f, selection, waveh5f=None):
-    generator = _DATA_GENERATORS.get(selection)
-    if generator is not None:
-        version = raw.Version(major=99, minor=99, patch=99)
-        write(h5f, version)
-        if waveh5f is not None:
-            # the wavefile carries its own version because py4vasp checks the version
-            # requirement of a source against the file that source is read from
-            write(waveh5f, version)
-        generator(h5f, waveh5f=waveh5f)
-    else:
-        available = ", ".join(filter(None, key) for key in _DATA_GENERATORS.keys())
-        raise exception.IncorrectUsage(
-            f"The selection '{selection}' is not recognized. "
-            f"Available selections are: {available}. "
-            "If no selection is given, some default data is generated."
-        )
+def _write_calculation_data(generator, h5f, waveh5f=None):
+    version = raw.Version(major=99, minor=99, patch=99)
+    write(h5f, version)
+    if waveh5f is not None:
+        # the wavefile carries its own version because py4vasp checks the version
+        # requirement of a source against the file that source is read from
+        write(waveh5f, version)
+    generator(h5f, waveh5f=waveh5f)
 
 
 def _generate_default_data(h5f, waveh5f=None):
-    write(h5f, _demo.band.multiple_bands("with_projectors"))
-    write(h5f, _demo.dos.Sr2TiO4("with_projectors"))
-    write(h5f, _demo.energy.relax(randomize=True))
-    write(h5f, _demo.force.Sr2TiO4(randomize=True))
-    write(h5f, _demo.stress.Sr2TiO4(randomize=True))
-    write(h5f, _demo.structure.Sr2TiO4())
-    write(h5f, _demo.symmetry.CoO())
+    # The first write to a path is the one that lands, so the order matters wherever two
+    # quantities share a field. The structure comes first because nearly every quantity
+    # links one and would otherwise decide it: Force, Stress and Velocity slice the
+    # structure with their own steps, so all four have to describe one trajectory.
+    write(h5f, showcase.structure.Sr2TiO4())
+    # Band and Dos share results/electron_dos/efermi, because a calculation has a single
+    # Fermi energy. Both take it from the same band model, so they agree on it.
+    write(h5f, showcase.dos.Sr2TiO4("with_projectors"))
+    write(h5f, showcase.band.Sr2TiO4("with_projectors"))
+    write(h5f, showcase.energy.relax())
+    write(h5f, showcase.bandgap.Sr2TiO4())
+    write(h5f, showcase.pair_correlation.Sr2TiO4())
+    write(h5f, showcase.force.Sr2TiO4())
+    write(h5f, showcase.stress.Sr2TiO4())
+    write(h5f, showcase.symmetry.Sr2TiO4())
     write(h5f, _demo.system.Sr2TiO4())
-    write(h5f, _demo.phonon.band.Sr2TiO4())
-    write(h5f, _demo.dielectric_function.electron())
-    write(h5f, _demo.velocity.Sr2TiO4())
-    write(h5f, _demo.band.line_mode("no_labels"), selection="kpoints_opt")
-    write(h5f, _demo.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
+    write(h5f, showcase.phonon.band_Sr2TiO4())
+    write(h5f, showcase.phonon.dos_Sr2TiO4())
+    write(h5f, showcase.phonon.mode_Sr2TiO4())
+    write(h5f, showcase.dielectric_function.electron())
+    write(h5f, showcase.velocity.Sr2TiO4())
+    write(h5f, showcase.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
+    write(
+        h5f,
+        showcase.band.Sr2TiO4("no_projectors", "no_labels"),
+        selection="kpoints_opt",
+    )
     write(h5f, _demo.current_density.current_density("all"), selection="nmr")
     write(h5f, _demo.exciton.density.Sr2TiO4())
     if waveh5f is not None:
@@ -95,15 +121,15 @@ def _generate_default_data(h5f, waveh5f=None):
 
 
 def _generate_collinear_data(h5f, waveh5f=None):
-    write(h5f, _demo.band.spin_polarized_bands("with_projectors"))
-    write(h5f, _demo.dos.Fe3O4("with_projectors"))
-    write(h5f, _demo.local_moment.local_moment("collinear"))
+    write(h5f, showcase.local_moment.Fe3O4())  # writes the structure both others link
+    write(h5f, showcase.dos.Fe3O4("with_projectors"))
+    write(h5f, showcase.band.Fe3O4("with_projectors"))
 
 
 def _generate_noncollinear_data(h5f, waveh5f=None):
-    write(h5f, _demo.band.noncollinear_bands("with_projectors"))
-    write(h5f, _demo.dos.Ba2PbO4("noncollinear"))
-    write(h5f, _demo.local_moment.local_moment("orbital_moments"))
+    write(h5f, showcase.local_moment.Fe3O4("noncollinear"))
+    write(h5f, showcase.dos.Fe3O4("with_projectors", "noncollinear"))
+    write(h5f, showcase.band.Fe3O4("with_projectors", magnetism="noncollinear"))
     if waveh5f is not None:
         write(waveh5f, _demo.density.Fe3O4("noncollinear"))
         write(waveh5f, _demo.density.Fe3O4("noncollinear"), selection="tau")
@@ -113,6 +139,27 @@ def _generate_noncollinear_data(h5f, waveh5f=None):
 def _generate_spin_texture_data(h5f, waveh5f=None):
     write(h5f, _demo.band.spin_texture("x~y"))
     write(h5f, _demo.band.spin_texture("x~z"), selection="kpoints_opt")
+
+
+def _generate_metal_data(h5f, waveh5f=None):
+    # copper, whose density of states carries states at the Fermi energy where every
+    # other selection has either a gap or only one spin channel there
+    write(h5f, showcase.structure.Cu())
+    write(h5f, showcase.dos.Cu("with_projectors"))
+    write(h5f, showcase.band.Cu("with_projectors"))
+
+
+def _generate_surface_data(h5f, waveh5f=None):
+    # a graphite slab with vacuum above and below, the kind of cell a surface property
+    # needs: py4vasp refuses to place a scanning tip above a bulk crystal
+    write(h5f, showcase.structure.Graphite())
+    write(h5f, showcase.partial_density.Graphite())
+    # the work function links the band gap of the surface, so it writes both
+    write(h5f, showcase.workfunction.Graphite())
+    if waveh5f is not None:
+        # the Bader basins a partial charge is integrated in come from the density, so
+        # the two have to describe the same crystal on the same grid
+        write(waveh5f, showcase.density.Graphite())
 
 
 def _generate_perovskite_data(h5f, waveh5f=None):
@@ -129,5 +176,7 @@ _DATA_GENERATORS = {
     "collinear": _generate_collinear_data,
     "noncollinear": _generate_noncollinear_data,
     "spin_texture": _generate_spin_texture_data,
+    "metal": _generate_metal_data,
+    "surface": _generate_surface_data,
     "perovskite": _generate_perovskite_data,
 }

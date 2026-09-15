@@ -135,6 +135,35 @@ class PhononDos(graph.Mixin):
     properties by substitution of specific atoms. Additionally, the atom-specific
     projection allows for the identification of localized modes or vibrations associated
     with specific atomic species.
+
+    Examples
+    --------
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    use your own data if you have run VASP.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    Plot the total density of states
+
+    >>> calculation.phonon.dos.plot()
+    Graph(series=[Series(x=array([...]), y=array([...]), label='total', ...)], ...)
+
+    Add the contribution of the individual elements to see which of them vibrates at
+    which frequency
+
+    >>> calculation.phonon.dos.plot("Sr, Ti, O")
+    Graph(series=[Series(..., label='total', ...), Series(..., label='Sr', ...),
+          Series(..., label='Ti', ...), Series(..., label='O', ...)], ...)
+
+    A summary of the mesh the density of states is evaluated on is printed by
+
+    >>> print(calculation.phonon.dos)
+    phonon DOS:
+        [0.00, 20.90] mesh with 301 points
+        21 modes
+        Sr2TiO4
     """
 
     def __init__(self, source, quantity_name: str = "phonon_dos"):
@@ -185,6 +214,33 @@ class PhononDos(graph.Mixin):
             Contains the energies at which the phonon DOS was computed. The total
             DOS is returned and any possible projected DOS selected by the *selection*
             argument.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Without a selection you obtain the energies and the total density of states
+
+        >>> calculation.phonon.dos.read()
+        {{'energies': array([...]), 'total': array([...])}}
+
+        Select an element to add its contribution
+
+        >>> sorted(calculation.phonon.dos.read("Sr"))
+        ['Sr', 'energies', 'total']
+
+        The projections add up to the total, so the share of one element is a fraction
+        of it. Strontium is the heaviest atom of this crystal, so it carries most of
+        the low-frequency modes
+
+        >>> dos = calculation.phonon.dos.read("Sr")
+        >>> bool(dos["Sr"][:50].sum() > 0.5 * dos["total"][:50].sum())
+        True
         """
         return merge_default(
             self._source,
@@ -211,6 +267,24 @@ class PhononDos(graph.Mixin):
         Graph
             The graph contains the total DOS. If a selection is given, in addition the
             projected DOS is shown.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.phonon.dos.to_graph()
+        Graph(series=[Series(x=array([...]), y=array([...]), label='total', ...)],
+              xlabel='ω (THz)', ...)
+
+        Project onto a single atom and a single direction
+
+        >>> calculation.phonon.dos.to_graph("1(z)")
+        Graph(series=[Series(..., label='total', ...), Series(..., label='Sr_1_z', ...)], ...)
         """
         return merge_graphs(
             self._source,
@@ -221,7 +295,21 @@ class PhononDos(graph.Mixin):
         )
 
     def selections(self, selection=None) -> dict:
-        """Return atom and direction selections available for projection."""
+        """Return atom and direction selections available for projection.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> calculation.phonon.dos.selections()
+        {'atom': ['Sr', 'Ti', 'O', '1', '2', '3', '4', '5', '6', '7'],
+         'direction': ['x', 'y', 'z']}
+        """
         return merge_default(
             self._source,
             self._quantity_name,

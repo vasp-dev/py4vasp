@@ -7,6 +7,7 @@ import pytest
 
 from py4vasp._util.convert import (
     Fraction,
+    math_to_unicode,
     text_to_string,
     to_camelcase,
     to_complex,
@@ -69,3 +70,22 @@ def test_Fraction(number, expected, string, latex):
     assert fraction.value == expected
     assert str(fraction) == string
     assert fraction.latex() == latex
+
+
+@pytest.mark.parametrize(
+    "label, expected",
+    [
+        (r"$\Gamma$", "Γ"),
+        (r"$\Sigma$", "Σ"),
+        (r"$\alpha$", "α"),
+        ("X", "X"),  # a label without math is passed through
+        (r"M|$\Gamma$", "M|Γ"),  # the corner of a discontinuous path
+        (r"$[\frac{1}{2} 0 0]$", "[1/2 0 0]"),  # generated for unlabeled k points
+        (r"$[0 0 0]$", "[0 0 0]"),
+        (r"$\overline{\Gamma}$", "Γ\u0305"),  # the surface Brillouin zone
+        (r"$\bar{K}$", "K\u0305"),
+        (r"$\sqrt{2}$", r"\sqrt{2}"),  # unknown commands lose only the math delimiters
+    ],
+)
+def test_math_to_unicode(label, expected):
+    assert math_to_unicode(label) == expected

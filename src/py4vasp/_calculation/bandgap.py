@@ -7,7 +7,6 @@ import typing
 import numpy as np
 
 from py4vasp import exception, raw
-from py4vasp._calculation import slice_
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
@@ -18,7 +17,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.models import BandgapModel
 from py4vasp._third_party import graph
-from py4vasp._util import convert, documentation, select
+from py4vasp._util import convert, select
 
 
 class _Gap(typing.NamedTuple):
@@ -283,7 +282,6 @@ Fermi energy:    {fermi_energy}"""
 
 
 @quantity("bandgap")
-@documentation.format(examples=slice_.examples("bandgap"))
 class Bandgap(graph.Mixin):
     """This class describes the band extrema during the relaxation or MD simulation.
 
@@ -300,7 +298,30 @@ class Bandgap(graph.Mixin):
     for both spins as well as ignoring the spin. This simplifies comparison to
     experimental data, where the transitions either conserve the spin or not.
 
-    {examples}
+    Examples
+    --------
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    use your own data if you have run VASP.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    Without a selection you obtain the band extrema of the final step
+
+    >>> round(calculation.bandgap.fundamental(), 3)
+    np.float64(2.6)
+
+    The [] operator selects the steps of the trajectory, so this is the gap of the
+    first step, where the crystal is still distorted
+
+    >>> round(calculation.bandgap[0].fundamental(), 3)
+    np.float64(2.1)
+
+    A summary of every band extremum of the selected step is printed by
+
+    >>> print(calculation.bandgap)
+    Band structure...
     """
 
     def __init__(self, source, quantity_name: str = "bandgap", steps=None):
@@ -321,7 +342,6 @@ class Bandgap(graph.Mixin):
     def _handler_factory(self, raw_data):
         return BandgapHandler.from_data(raw_data, steps=self._steps)
 
-    @documentation.format(examples=slice_.examples("bandgap", "read"))
     def read(self, selection: str | None = None) -> dict:
         """Read the bandgap data from a VASP relaxation or MD trajectory.
 
@@ -331,7 +351,24 @@ class Bandgap(graph.Mixin):
             Contains the fundamental and direct gap as well as the coordinates of the
             k points where the relevant points in the band structure are.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Without a selection you obtain the band extrema of the final step
+
+        >>> calculation.bandgap.read()
+        {'fundamental': ..., 'valence_band_maximum': ..., 'kpoint_VBM': array([0., 0., 0.]), ...}
+
+        Use the [] operator to read more than the final step
+
+        >>> calculation.bandgap[:].read()["fundamental"].shape
+        (12,)
         """
         return merge_default(
             self._source,
@@ -345,7 +382,6 @@ class Bandgap(graph.Mixin):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
-    @documentation.format(examples=slice_.examples("bandgap", "fundamental"))
     def fundamental(self, selection: str | None = None) -> np.ndarray:
         """Return the fundamental bandgap.
 
@@ -357,7 +393,25 @@ class Bandgap(graph.Mixin):
         np.ndarray
             The value of the bandgap for all selected steps.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The example data describes an indirect semiconductor whose gap opens as the
+        crystal relaxes, so the final step reports the widest gap
+
+        >>> round(calculation.bandgap.fundamental(), 3)
+        np.float64(2.6)
+
+        Use the [] operator to obtain the gap of an earlier step
+
+        >>> round(calculation.bandgap[0].fundamental(), 3)
+        np.float64(2.1)
         """
         return merge_default(
             self._source,
@@ -367,7 +421,6 @@ class Bandgap(graph.Mixin):
             BandgapHandler.fundamental,
         )
 
-    @documentation.format(examples=slice_.examples("bandgap", "direct"))
     def direct(self, selection: str | None = None) -> np.ndarray:
         """Return the direct bandgap.
 
@@ -379,7 +432,20 @@ class Bandgap(graph.Mixin):
         np.ndarray
             The value of the bandgap for all selected steps.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The direct gap exceeds the fundamental one whenever the band extrema lie at
+        different k points, as they do here
+
+        >>> round(calculation.bandgap.direct(), 3)
+        np.float64(4.9)
         """
         return merge_default(
             self._source,
@@ -389,7 +455,6 @@ class Bandgap(graph.Mixin):
             BandgapHandler.direct,
         )
 
-    @documentation.format(examples=slice_.examples("bandgap", "valence_band_maximum"))
     def valence_band_maximum(self, selection: str | None = None) -> np.ndarray:
         """Return the valence band maximum.
 
@@ -398,7 +463,19 @@ class Bandgap(graph.Mixin):
         np.ndarray
             The value of the valence band maximum for all selected steps.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The valence band maximum of the example data is the zero of its energy axis
+
+        >>> round(calculation.bandgap.valence_band_maximum(), 3)
+        np.float64(0.0)
         """
         return merge_default(
             self._source,
@@ -408,9 +485,6 @@ class Bandgap(graph.Mixin):
             BandgapHandler.valence_band_maximum,
         )
 
-    @documentation.format(
-        examples=slice_.examples("bandgap", "conduction_band_minimum")
-    )
     def conduction_band_minimum(self, selection: str | None = None) -> np.ndarray:
         """Return the conduction band minimum.
 
@@ -419,7 +493,19 @@ class Bandgap(graph.Mixin):
         np.ndarray
             The value of the conduction band minimum for all selected steps.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The conduction band minimum sits a gap above the valence band maximum
+
+        >>> round(calculation.bandgap.conduction_band_minimum(), 3)
+        np.float64(2.6)
         """
         return merge_default(
             self._source,
@@ -429,7 +515,6 @@ class Bandgap(graph.Mixin):
             BandgapHandler.conduction_band_minimum,
         )
 
-    @documentation.format(examples=slice_.examples("bandgap", "to_graph"))
     def to_graph(self, selection="fundamental, direct") -> graph.Graph:
         """Plot the direct and fundamental bandgap along the trajectory.
 
@@ -446,7 +531,25 @@ class Bandgap(graph.Mixin):
             Figure with the ionic step on the x axis and the value of the bandgap on
             the y axis.
 
-        {examples}
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Plotting the whole trajectory shows the gap converging as the crystal relaxes
+
+        >>> calculation.bandgap[:].to_graph()
+        Graph(series=[Series(x=array([...]), y=array([...]), label='fundamental', ...),
+              Series(x=array([...]), y=array([...]), label='direct', ...)], ...)
+
+        Select a single gap to plot it on its own
+
+        >>> calculation.bandgap[:].to_graph("fundamental")
+        Graph(series=[Series(..., label='fundamental', ...)], ...)
         """
         return merge_graphs(
             self._source,

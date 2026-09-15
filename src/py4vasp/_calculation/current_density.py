@@ -153,9 +153,8 @@ class CurrentDensity:
     --------
 
     First, we create some example data that you can follow along. Please define a
-    variable `path` with the path to a directory that exists and does not contain any
-    VASP calculation data. Alternatively, you can use your own data if you have run
-    VASP and construct `calculation` from it.
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    you can use your own data if you have run VASP and construct `calculation` from it.
 
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path)
@@ -176,7 +175,7 @@ class CurrentDensity:
     For your own postprocessing, you can read the current density data into a Python dict:
 
     >>> calculation.current_density.read("nmr")
-    {'structure': {...}, 'current_x': array([[[[...]]]],  ...), 'current_y': array([[[[...]]]], ...), 'current_z': array([[[[...]]]],  ...)}
+    {'structure': {...}, 'current_x': array([[[[...]]]]...), 'current_y': array([[[[...]]]]...), 'current_z': array([[[[...]]]]...)}
 
     You can inspect possible choices with:
 

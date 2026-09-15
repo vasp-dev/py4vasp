@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import fractions
 import re
+import unicodedata
 
 import numpy as np
 
@@ -84,6 +85,52 @@ def to_camelcase(string: str, uppercase_first_letter: bool = True) -> str:
         return re.sub(r"(?:_|^)(.)", lambda m: m.group(1).upper(), string)
     else:
         return string[0].lower() + to_camelcase(string)[1:]
+
+
+# VASP labels the k points of a band structure with LaTeX, e.g. "$\Gamma$", and py4vasp
+# writes the same markup for the points a KPOINTS file leaves unnamed. Plotly hands
+# "$...$" to MathJax, but JupyterLab exposes MathJax in a shape plotly.js cannot use, so a
+# single such label makes the whole figure fail to render, and the browser behind
+# `to_image` has no MathJax at all and prints the markup verbatim. Unicode says the same
+# thing in every backend.
+_MATH_MODE = re.compile(r"\$(.+?)\$")
+_FRACTION = re.compile(r"\\frac\{([^{}]*)\}\{([^{}]*)\}")
+_OVERLINE = re.compile(r"\\(?:overline|bar)\{([^{}]*)\}")
+_COMMAND = re.compile(r"\\([A-Za-z]+)")
+_COMBINING_OVERLINE = "\u0305"
+
+
+def math_to_unicode(text: str) -> str:
+    r"""Replace inline LaTeX math by the equivalent Unicode characters.
+
+    Commands without a Unicode equivalent are passed through unchanged, so an unusual
+    label degrades to slightly odd text instead of a figure that does not render.
+
+    Examples
+    --------
+    >>> math_to_unicode(r"$\Gamma$")
+    'Γ'
+    >>> math_to_unicode(r"M|$\Gamma$")
+    'M|Γ'
+    >>> math_to_unicode(r"$[\frac{1}{2} 0 0]$")
+    '[1/2 0 0]'
+    """
+    return _MATH_MODE.sub(lambda match: _convert_math(match.group(1)), text)
+
+
+def _convert_math(formula: str) -> str:
+    formula = _FRACTION.sub(r"\1/\2", formula)
+    formula = _OVERLINE.sub(rf"\1{_COMBINING_OVERLINE}", formula)
+    return _COMMAND.sub(_replace_command, formula)
+
+
+def _replace_command(match: re.Match) -> str:
+    # every Greek letter is named after the LaTeX command producing it
+    case = "CAPITAL" if match.group(1)[0].isupper() else "SMALL"
+    try:
+        return unicodedata.lookup(f"GREEK {case} LETTER {match.group(1).upper()}")
+    except KeyError:
+        return match.group(0)
 
 
 class Fraction:

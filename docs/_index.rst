@@ -133,6 +133,30 @@ Quick start
 
 .. _Jupyter: https://jupyter.org/
 
+.. rubric:: Trying py4vasp without a VASP calculation
+
+If you do not have a VASP calculation at hand, *py4vasp* generates example data for you,
+so that everything below has something to run on
+
+>>> from py4vasp import demo
+>>> calculation = demo.calculation("example")
+
+This writes a small, deterministic calculation into the directory *example*, which must
+not exist yet, and returns a calculation that reads it. The default data describes an
+insulator relaxing onto its equilibrium structure. Pass a selection for a different kind
+of material -- ``"collinear"`` and ``"noncollinear"`` for a magnet, ``"metal"`` for a
+system with states at the Fermi energy, ``"surface"`` for a slab, ``"spin_texture"``, or
+``"perovskite"``. A selection is written into a subdirectory named after it, so a
+calculation created that way is reopened with
+``Calculation.from_path("example/metal")``.
+
+To see which quantities a calculation actually contains, ask it
+
+>>> calculation.selections(only_available=True)
+
+The examples in the documentation of the individual quantities all build their data this
+way, so each of them can be copied and run as it stands.
+
 The user interface of *py4vasp* is optimized for usage inside a Jupyter_ environment
 (Jupyter notebook or Jupyter lab), though it can be used in regular Python scripts
 as well. To give you an illustrative example of what *py4vasp* can do, we assume

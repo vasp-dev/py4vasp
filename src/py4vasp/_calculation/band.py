@@ -315,10 +315,9 @@ class Band(graph.Mixin):
 
     Examples
     --------
-    First, we create some example data do that you can follow along. Please define a
-    variable `path` with the path to a directory that exists and does not contain any
-    VASP calculation data. Alternatively, you can use your own data if you have run
-    VASP and construct `calculation` from it.
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    you can use your own data if you have run VASP and construct `calculation` from it.
 
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path)
@@ -333,7 +332,8 @@ class Band(graph.Mixin):
     For your own postprocessing, you can read the band data into a Python dictionary
 
     >>> calculation.band.read()
-    {'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+    {'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': np.float64(1.3), 'bands': array(...),
         'occupations': array(...)}
 
     These methods take additional selections, if you used VASP with :tag:`LORBIT`.
@@ -403,10 +403,10 @@ class Band(graph.Mixin):
         you want to use the electronic eigenvalues and occupations to compute integrals
         over the Brillouin zone.
 
-        We create some example data do that you can follow along. Please define a
-        variable `path` with the path to a directory that exists and does not contain any
-        VASP calculation data. Alternatively, you can use your own data if you have run
-        VASP and construct `calculation` from it.
+        We create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, you can use your own data if you have run VASP and construct
+        `calculation` from it.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
@@ -436,25 +436,29 @@ class Band(graph.Mixin):
         a Python dictionary
 
         >>> calculation.band.read()
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': np.float64(1.3), 'bands': array(...),
             'occupations': array(...)}}
 
         Select the p orbitals of the first atom in the POSCAR file:
 
         >>> calculation.band.read(selection="1(p)")
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': np.float64(1.3), 'bands': array(...),
             'occupations': array(...), 'Sr_1_p': array(...)}}
 
         Select the d orbitals of Sr and Ti:
 
         >>> calculation.band.read("d(Sr, Ti)")
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': np.float64(1.3), 'bands': array(...),
             'occupations': array(...), 'Sr_d': array(...), 'Ti_d': array(...)}}
 
         For collinear calculations, the spin channels are treated separately
 
         >>> collinear_calculation.band.read()
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': ..., 'bands_up': array(...),
             'bands_down': array(...), 'occupations_up': array(...),
             'occupations_down': array(...)}}
 
@@ -462,7 +466,8 @@ class Band(graph.Mixin):
         of the first three atoms combined
 
         >>> collinear_calculation.band.read("up(1:3)")
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands_up': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': ..., 'bands_up': array(...),
             'bands_down': array(...), 'occupations_up': array(...),
             'occupations_down': array(...), '1:3_up': array(...)}}
 
@@ -470,21 +475,24 @@ class Band(graph.Mixin):
         as for the nonpolarized case
 
         >>> noncollinear_calculation.band.read()
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...)}}
 
         If you want to investigate the spin projection of the bands, you can select
         particular spin components. Here, we select the x and z components of the spin
 
         >>> noncollinear_calculation.band.read("sigma_x, sigma_z")
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': ..., 'bands': array(...),
             'occupations': array(...), 'sigma_x': array(...), 'sigma_z': array(...),
             'is_spin_projection': ['sigma_x', 'sigma_z']}}
 
         Add the contribution of three d orbitals
 
         >>> calculation.band.read("dxy + dxz + dyz")
-        {{'kpoint_distances': array(...), 'fermi_energy': ..., 'bands': array(...),
+        {{'kpoint_distances': array(...), 'kpoint_labels': [...],
+            'fermi_energy': np.float64(1.3), 'bands': array(...),
             'occupations': array(...), 'dxy + dxz + dyz': array(...)}}
 
         Read the density of states generated by the '''k'''-point mesh in the KPOINTS_OPT
@@ -521,10 +529,10 @@ class Band(graph.Mixin):
         of the band on reference orbitals. The maximum width is adjustable with an
         argument.
 
-        We create some example data do that you can follow along. Please define a
-        variable `path` with the path to a directory that exists and does not contain any
-        VASP calculation data. Alternatively, you can use your own data if you have run
-        VASP and construct `calculation` from it.
+        We create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, you can use your own data if you have run VASP and construct
+        `calculation` from it.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
@@ -623,10 +631,10 @@ class Band(graph.Mixin):
     def to_frame(self, selection=None, fermi_energy=None):
         """Read the data into a DataFrame.
 
-        We create some example data do that you can follow along. Please define a
-        variable `path` with the path to a directory that exists and does not contain any
-        VASP calculation data. Alternatively, you can use your own data if you have run
-        VASP and construct `calculation` from it.
+        We create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, you can use your own data if you have run VASP and construct
+        `calculation` from it.
 
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
@@ -653,52 +661,52 @@ class Band(graph.Mixin):
         Get the band structure of all bands without projections
 
         >>> calculation.band.to_frame()
-           kpoint_distances  bands  occupations
+           kpoint_distances kpoint_labels  bands  occupations
         0  ...
 
         Select the p orbitals of the first atom in the POSCAR file:
 
         >>> calculation.band.to_frame(selection="1(p)")
-           kpoint_distances  bands  occupations  Sr_1_p
+           kpoint_distances kpoint_labels  bands  occupations  Sr_1_p
         0  ...
 
         Select the d orbitals of Sr and Ti:
 
         >>> calculation.band.to_frame("d(Sr, Ti)")
-           kpoint_distances  bands  occupations  Sr_d  Ti_d
+           kpoint_distances kpoint_labels  bands  occupations  Sr_d  Ti_d
         0  ...
 
         For collinear calculations, the spin channels are treated separately
 
         >>> collinear_calculation.band.to_frame()
-           kpoint_distances  bands_up  bands_down  occupations_up  occupations_down
+           kpoint_distances kpoint_labels  ...  occupations_up  occupations_down
         0  ...
 
         You can also select particular spin channels, for example the spin-up contribution
         of the first three atoms combined
 
         >>> collinear_calculation.band.to_frame("up(1:3)")
-           kpoint_distances  bands_up  ...  occupations_down  1:3_up
+           kpoint_distances kpoint_labels  ...  occupations_down  1:3_up
         0  ...
 
         For noncollinear calculations, the resulting dictionary has the same structure
         as for the nonpolarized case
 
         >>> noncollinear_calculation.band.to_frame()
-           kpoint_distances  bands  occupations
+           kpoint_distances kpoint_labels  bands  occupations
         0  ...
 
         If you want to investigate the spin projection of the bands, you can select
         particular spin components. Here, we select the x and z components of the spin
 
         >>> noncollinear_calculation.band.to_frame("sigma_x, sigma_z")
-           kpoint_distances  bands  occupations  sigma_x  sigma_z
+           kpoint_distances kpoint_labels  bands  occupations  sigma_x  sigma_z
         0  ...
 
         Add the contribution of three d orbitals
 
         >>> calculation.band.to_frame("dxy + dxz + dyz")
-           kpoint_distances  bands  occupations  dxy + dxz + dyz
+           kpoint_distances kpoint_labels  bands  occupations  dxy + dxz + dyz
         0  ...
         """
         return merge_default(
@@ -727,7 +735,7 @@ class Band(graph.Mixin):
         at each **k** point. You can select which components of the spin are shown
         and which bands are included. You can also select particular atoms and orbitals.
 
-        Let us generate some example data do that you can follow along. Please define a
+        Let us generate some example data so that you can follow along. Please define a
         variable `path` with the path to a directory that does not exist yet.
         Alternatively, you can use your own data if you have run VASP with an
         appropriate k-point mesh.

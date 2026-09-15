@@ -305,8 +305,8 @@ class Symmetry:
     Examples
     --------
     First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not contain any VASP
-    calculation data. Alternatively, use your own data if you have run VASP.
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    use your own data if you have run VASP.
 
     >>> from py4vasp import demo
     >>> calculation = demo.calculation(path)
@@ -314,12 +314,12 @@ class Symmetry:
     Read the symmetry operations into a Python dictionary for further processing
 
     >>> calculation.symmetry.read()
-    {'rotations': array(...), ..., 'isym': 2, 'spin_flips': array(...)}
+    {'rotations': array(...), ..., 'isym': 2}
 
     Check whether the crystal is centrosymmetric
 
     >>> calculation.symmetry.has_inversion_symmetry()
-    False
+    True
     """
 
     def __init__(self, source, quantity_name: str = "symmetry"):
@@ -361,7 +361,10 @@ class Symmetry:
         Read the symmetry operations into a Python dictionary
 
         >>> calculation.symmetry.read()
-        {'rotations': array(...), ..., 'isym': 2, 'spin_flips': array(...)}
+        {'rotations': array(...), ..., 'isym': 2}
+
+        A spin-polarized calculation adds the spin flip of every operation; the example
+        data describes a nonmagnetic crystal, so the key is absent here.
         """
         return merge_default(
             self._source,
@@ -393,7 +396,7 @@ class Symmetry:
         >>> calculation = demo.calculation(path)
 
         >>> calculation.symmetry.space_group()
-        SpaceGroup(number=216, international_symbol='F-43m', point_group='-43m', crystal_system='cubic', is_symmorphic=True)
+        SpaceGroup(number=139, international_symbol='I4/mmm', point_group='4/mmm', crystal_system='tetragonal', is_symmorphic=True)
         """
         return merge_default(
             self._source,
@@ -418,7 +421,7 @@ class Symmetry:
         >>> calculation = demo.calculation(path)
 
         >>> calculation.symmetry.has_inversion_symmetry()
-        False
+        True
         """
         return merge_default(
             self._source,
@@ -442,7 +445,7 @@ class Symmetry:
         >>> calculation = demo.calculation(path)
 
         >>> calculation.symmetry.point_group_schoenflies()
-        'Td'
+        'D4h'
         """
         return merge_default(
             self._source,
@@ -467,7 +470,7 @@ class Symmetry:
         >>> calculation = demo.calculation(path)
 
         >>> calculation.symmetry.bravais_lattice()
-        'cF'
+        'tI'
         """
         return merge_default(
             self._source,
@@ -492,7 +495,7 @@ class Symmetry:
         >>> calculation = demo.calculation(path)
 
         >>> calculation.symmetry.pearson_symbol()
-        'cF8'
+        'tI14'
         """
         return merge_default(
             self._source,

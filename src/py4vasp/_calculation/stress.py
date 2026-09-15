@@ -61,10 +61,12 @@ in kB   {stress_to_string(stress)}
             self._raw_stress.structure, steps=self._steps
         )
         return {
+            # the structure comes first, as it does for the forces and the velocities:
+            # it is the context the stress is reported in, and the documented order
+            "structure": structure.to_dict(),
             "stress": slice_steps(
                 np.array(self._raw_stress.stress), self._steps, default_ndim=2
             ),
-            "structure": structure.to_dict(),
         }
 
     def to_database(self) -> dict:
@@ -137,7 +139,7 @@ class Stress:
     To select the results for all steps, you don't specify the array boundaries.
 
     >>> calculation.stress[:].number_steps()
-    4
+    12
 
     You can also select specific steps or a subset of steps as follows
 
@@ -234,7 +236,11 @@ class Stress:
         the stress.
 
         >>> calculation.stress.read()
-        {'structure': {...}, 'stress': array([[...]])}
+        {'structure': {...},
+         'stress': array([[0., 0., 0.], [0., 0., 0.], [0., 0., 0.]])}
+
+        The stress of the last step vanishes because the example data describes a
+        relaxation that converged onto the equilibrium cell.
 
         To select the results for all steps, you don't specify the array boundaries.
         Notice that in this case the stress contains an additional dimension for the
@@ -246,7 +252,7 @@ class Stress:
         You can also select specific steps or a subset of steps as follows
 
         >>> calculation.stress[1].read()
-            {'structure': {...}, 'stress': array([[...]])}
+        {'structure': {...}, 'stress': array([[...]])}
         >>> calculation.stress[0:2].read()
         {'structure': {...}, 'stress': array([[[...]]])}
         """

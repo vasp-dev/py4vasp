@@ -168,14 +168,20 @@ class StructureHandler:
         """Assemble the crystal and atom symmetry for the viewer (best effort).
 
         Returns ``None`` when the symmetry cannot be determined, e.g. VASP did not
-        write the symmetry (pre-6.6) or the optional ``spglib`` dependency that the
-        space group and Wyckoff analysis rely on is not installed.
+        write the symmetry (pre-6.6), the optional ``spglib`` dependency that the
+        space group and Wyckoff analysis rely on is not installed, or more than one
+        step is selected, because a trajectory has one symmetry per step.
         """
         try:
             space_group = SymmetryHandler.from_data(self._raw_symmetry()).space_group()
             wyckoff = self.wyckoff_positions()
             equivalent_atoms = self.equivalent_atoms()
-        except (exception.NoData, exception.ModuleNotInstalled, exception.DataMismatch):
+        except (
+            exception.NoData,
+            exception.ModuleNotInstalled,
+            exception.DataMismatch,
+            exception.NotImplemented,
+        ):
             return None
         return view.CrystalSymmetry(
             space_group=space_group.number,
@@ -736,7 +742,7 @@ class Structure(view.Mixin):
     To select the results for all steps, you don't specify the array boundaries.
 
     >>> calculation.structure[:].number_steps()
-    4
+    12
 
     You can also select specific {step}s or a subset of {step}s as follows
 

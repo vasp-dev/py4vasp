@@ -117,6 +117,17 @@ include = ["/src/py4vasp", "/tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "packages"]
+# seekpath reads the spglib dataset through an interface spglib deprecated, and
+# _report_warnings_of_seekpath relays what it catches rather than swallowing it, so the
+# deprecation surfaces once per call and is attributed to a py4vasp line. Which message
+# appears depends on the spglib version: the oldest one we support warns about the dict
+# interface, newer ones about the error handling. Neither is actionable from here, and
+# a hundred of them buries anything that is, so a warning left in the output means
+# something.
+filterwarnings = [
+    "ignore:dict interface:DeprecationWarning",
+    "ignore:Set OLD_ERROR_HANDLING:DeprecationWarning",
+]
 
 [tool.isort]
 profile = "black"

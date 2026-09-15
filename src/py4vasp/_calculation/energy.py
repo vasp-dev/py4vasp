@@ -26,9 +26,8 @@ selection : str or None
     String specifying the labels of the energy to be read. If no energy is selected
     this will default to selecting {default}. Separate distinct labels by commas or
     whitespace. You can add or subtract different contributions e.g. `TOTEN + EKIN`.
-    For a complete list of all possible selections, please use
-
-    >>> calculation.energy.selections()
+    For a complete list of all possible selections, please use the
+    :meth:`~py4vasp._calculation.energy.Energy.selections` method.
 """
 
 
@@ -304,7 +303,32 @@ class Energy(graph.Mixin):
     atoms is changes. Finally, monitoring the total energy can reveal insights
     about the stability of the thermostat.
 
-    {examples}
+    Examples
+    --------
+    Let us create some example data so that we can illustrate how to use this class.
+    Of course you can also use your own VASP calculation data if you have it available.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    Plotting the energy along the trajectory shows how the relaxation converges. Note
+    the [] operator: without it you address the final step only.
+
+    >>> calculation.energy[:].plot()
+    Graph(series=[Series(x=array(...), y=array(...), label='TOTEN', ...)],
+        ..., ylabel='Energy (eV)', ...)
+
+    For your own postprocessing, you can read the energies into a Python dictionary
+
+    >>> calculation.energy.read()
+    {{'free energy    TOTEN': np.float64(-42.5),
+        'energy without entropy': np.float64(-42.482),
+        'energy(sigma->0)': np.float64(-42.491)}}
+
+    You can inspect which energies the calculation provides with
+
+    >>> calculation.energy.selections()
+    {{'energy': ['default', 'afqmc'], 'component': [...]}}
     """
 
     def __init__(self, source, quantity_name: str = "energy", steps=None):
@@ -342,7 +366,27 @@ class Energy(graph.Mixin):
             Contains the exact labels corresponding to the selection and the
             associated energies for every selected ionic step.
 
-        {examples}
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Without a selection you obtain every energy of the final step
+
+        >>> calculation.energy.read()
+        {{'free energy    TOTEN': np.float64(-42.5),
+            'energy without entropy': np.float64(-42.482),
+            'energy(sigma->0)': np.float64(-42.491)}}
+
+        Select particular energies by their label
+
+        >>> calculation.energy.read("TOTEN, ENOENT")
+        {{'TOTEN': np.float64(-42.5), 'ENOENT': np.float64(-42.482)}}
+
+        Use the [] operator to read more than the final step
+
+        >>> calculation.energy[:].read("TOTEN")
+        {{'TOTEN': array(...)}}
         """
         return merge_default(
             self._source,
@@ -372,7 +416,22 @@ class Energy(graph.Mixin):
         Graph
             figure containing the selected energies for every selected ionic step.
 
-        {examples}
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Plot how the total energy converges along the relaxation
+
+        >>> calculation.energy[:].to_graph()
+        Graph(series=[Series(x=array(...), y=array(...), label='TOTEN', ...)],
+            ..., ylabel='Energy (eV)', ...)
+
+        Compare several energies by selecting them
+
+        >>> graph = calculation.energy[:].to_graph("TOTEN, ENOENT")
+        >>> [series.label for series in graph.series]
+        ['TOTEN', 'ENOENT']
         """
         return merge_graphs(
             self._source,
@@ -400,7 +459,27 @@ class Energy(graph.Mixin):
             When only a single step is inquired, result is a float otherwise an array.
             If you select multiple quantities a tuple of them is returned.
 
-        {examples}
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Without a selection you obtain the total energy of the final step
+
+        >>> calculation.energy.to_numpy()
+        array(-42.5)
+
+        Use the [] operator to obtain more than the final step
+
+        >>> calculation.energy[:].to_numpy()
+        array([-42.15..., ..., -42.5...])
+        >>> calculation.energy[5].to_numpy()
+        array(-42.49656846)
+
+        Selecting several energies returns one value per selection
+
+        >>> calculation.energy.to_numpy("TOTEN, ENOENT")
+        array([-42.5  , -42.482])
         """
         return merge_default(
             self._source,
@@ -417,6 +496,13 @@ class Energy(graph.Mixin):
         -------
         -
             Dictionary containing available selection options with their possible values.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+        >>> calculation.energy.selections()
+        {'energy': ['default', 'afqmc'], 'component': [...]}
         """
         from py4vasp._raw import definition as raw_module
 
