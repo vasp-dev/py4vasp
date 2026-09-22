@@ -8,6 +8,8 @@ from unittest.mock import mock_open, patch
 import pytest
 
 from py4vasp import Calculation, _calculation, control, demo, exception
+from py4vasp._calculation.energy import Energy
+from py4vasp._calculation.structure import Structure
 
 
 @patch("py4vasp.raw.access", autospec=True)
@@ -43,19 +45,29 @@ def test_creation_from_file(mock_access):
     mock_access.assert_not_called()
 
 
+def _read_quantity_from_file(constructor, file_name):
+    """Trigger a read so that we can inspect which file py4vasp opens."""
+    instance = constructor(file_name)
+    # Calculation dispatches to its quantities, the quantity classes read directly
+    return getattr(instance, "structure", instance).read()
+
+
 @pytest.mark.parametrize("subdirectory", ["subdirectory", "nested/subdirectory"])
+@pytest.mark.parametrize(
+    "constructor", [Calculation.from_file, Structure.from_file, Energy.from_file]
+)
 @patch("h5py.File", side_effect=FileNotFoundError)
-def test_reading_file_in_subdirectory(mock_file, subdirectory, tmp_path, monkeypatch):
+def test_reading_file_in_subdirectory(
+    mock_file, constructor, subdirectory, tmp_path, monkeypatch
+):
     # the directory of the file must not be prepended a second time when py4vasp
     # joins the path of the calculation with the name of the file
     monkeypatch.chdir(tmp_path)
     directory = tmp_path / subdirectory
     directory.mkdir(parents=True)
     expected_file = directory / "backup.h5"
-    expected_file.touch()
-    calc = Calculation.from_file(f"{subdirectory}/backup.h5")
     with pytest.raises(exception.FileAccessError):
-        calc.structure.read()
+        _read_quantity_from_file(constructor, f"{subdirectory}/backup.h5")
     assert Path(mock_file.call_args.args[0]) == expected_file
 
 

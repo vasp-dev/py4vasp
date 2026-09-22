@@ -65,7 +65,7 @@ def quantity(name, group=None):
         def from_file(klass, file_name):
             """Create dispatcher that reads from a specific HDF5 file."""
             resolved = pathlib.Path(file_name).expanduser().resolve()
-            return klass(source=FileSource(resolved.parent, file=file_name))
+            return klass(source=FileSource(resolved.parent, file=resolved.name))
 
         cls.from_path = from_path
         cls.from_file = from_file
