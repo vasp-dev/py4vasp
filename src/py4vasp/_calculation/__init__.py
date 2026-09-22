@@ -188,9 +188,10 @@ instead of the constructor Calculation()."""
         >>> calculation = Calculation.from_file("path/to/file/backup.h5")
         """
         calc = cls(_internal=True)
-        calc._path = pathlib.Path(file_name).expanduser().resolve().parent
-        calc._file = file_name
-        calc._source = FileSource(calc._path, file=file_name)
+        file_path = pathlib.Path(file_name).expanduser().resolve()
+        calc._path = file_path.parent
+        calc._file = file_path.name
+        calc._source = FileSource(calc._path, file=calc._file)
         return calc
 
     @classmethod

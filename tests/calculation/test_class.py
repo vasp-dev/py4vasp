@@ -43,6 +43,22 @@ def test_creation_from_file(mock_access):
     mock_access.assert_not_called()
 
 
+@pytest.mark.parametrize("subdirectory", ["subdirectory", "nested/subdirectory"])
+@patch("h5py.File", side_effect=FileNotFoundError)
+def test_reading_file_in_subdirectory(mock_file, subdirectory, tmp_path, monkeypatch):
+    # the directory of the file must not be prepended a second time when py4vasp
+    # joins the path of the calculation with the name of the file
+    monkeypatch.chdir(tmp_path)
+    directory = tmp_path / subdirectory
+    directory.mkdir(parents=True)
+    expected_file = directory / "backup.h5"
+    expected_file.touch()
+    calc = Calculation.from_file(f"{subdirectory}/backup.h5")
+    with pytest.raises(exception.FileAccessError):
+        calc.structure.read()
+    assert Path(mock_file.call_args.args[0]) == expected_file
+
+
 @patch("py4vasp.raw.access", autospec=True)
 def test_creation_from_archive(mock_access):
     # note: in pytest __file__ defaults to absolute path

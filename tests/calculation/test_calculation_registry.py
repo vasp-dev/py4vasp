@@ -69,7 +69,8 @@ class TestCalculationStoresSource:
     def test_from_file_source_file_is_forwarded(self, tmp_path):
         file = tmp_path / "vaspout.h5"
         calc = Calculation.from_file(file)
-        assert calc._source._file == file
+        # only the name, because the directory is already part of the source path
+        assert calc._source._file == "vaspout.h5"
 
     def test_path_property_still_works_after_from_path(self, tmp_path):
         calc = Calculation.from_path(tmp_path)
