@@ -519,8 +519,11 @@ class Force:
 class ForceConstant:
     """The force constants of the material.
 
-    The force constant describes the second derivative of the total energy with respect
-    to the displacement of ions. It is an important quantity for the phonon spectrum."""
+    VASP stores the derivative of the force with respect to the displacement of the
+    ions, which is the negative of the second derivative of the total energy. The
+    calculation class reports the second derivative instead, see
+    :py:class:`~py4vasp._calculation.force_constant.ForceConstant` for the sign
+    convention. It is an important quantity for the phonon spectrum."""
 
     structure: Structure
     "Structural information about the system to inform about the atoms the force constants relate to."
