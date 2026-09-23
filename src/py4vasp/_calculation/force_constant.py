@@ -24,8 +24,10 @@ class ForceConstantHandler:
     def __init__(self, raw_force_constant: raw.ForceConstant):
         self._raw_force_constant = raw_force_constant
         # VASP stores the derivative of the force ∂F/∂u, which is the negative of the
-        # Hessian ∂²E/∂u∂u that py4vasp reports everywhere
-        self._force_constants = -np.array(raw_force_constant.force_constants[:])
+        # Hessian ∂²E/∂u∂u that py4vasp reports everywhere. Symmetrize here as well, so
+        # that all methods of this class work on the same matrix.
+        force_constants = -np.array(raw_force_constant.force_constants[:])
+        self._force_constants = 0.5 * (force_constants + force_constants.T)
 
     @classmethod
     def from_data(cls, raw_force_constant: raw.ForceConstant) -> "ForceConstantHandler":
@@ -34,12 +36,14 @@ class ForceConstantHandler:
     def __str__(self) -> str:
         structure = StructureHandler.from_data(self._raw_force_constant.structure)
         number_ions = structure.number_atoms()
-        force_constants = 0.5 * (self._force_constants + self._force_constants.T)
         if check.is_none(self._raw_force_constant.selective_dynamics):
             selective_dynamics = np.ones((number_ions, 3), dtype=np.bool_)
         else:
             selective_dynamics = self._raw_force_constant.selective_dynamics[:]
-        return str(_StringFormatter(number_ions, force_constants, selective_dynamics))
+        formatter = _StringFormatter(
+            number_ions, self._force_constants, selective_dynamics
+        )
+        return str(formatter)
 
     def to_dict(self) -> dict:
         """Read structure information and force constants into a dictionary.

@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import types
 
 import numpy as np
@@ -129,6 +130,19 @@ def test_eigenvectors(Sr2TiO4, Assert):
         sign_actual = np.sign(actual.flatten()[np.argmax(np.abs(actual))])
         sign_expected = np.sign(expected.flatten()[np.argmax(np.abs(expected))])
         Assert.allclose(sign_actual * actual, sign_expected * expected)
+
+
+def test_force_constants_are_symmetrized(raw_data, Assert):
+    # the Hessian is symmetric by construction, VASP may deviate from it by numerical
+    # noise, and read, print and eigenvectors must not each make their own choice
+    raw_force_constant = raw_data.force_constant("Sr2TiO4 all atoms")
+    asymmetric = np.array(raw_force_constant.force_constants)
+    asymmetric[0, 1] += 1.0
+    raw_force_constant = dataclasses.replace(
+        raw_force_constant, force_constants=asymmetric
+    )
+    actual = ForceConstantHandler.from_data(raw_force_constant).to_dict()
+    Assert.allclose(actual["force_constants"], -0.5 * (asymmetric + asymmetric.T))
 
 
 def test_eigenvectors_diagonalize_reported_force_constants(Sr2TiO4, Assert):
