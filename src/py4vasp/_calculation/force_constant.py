@@ -23,6 +23,11 @@ class ForceConstantHandler:
 
     def __init__(self, raw_force_constant: raw.ForceConstant):
         self._raw_force_constant = raw_force_constant
+        # VASP stores the derivative of the force ∂F/∂u, which is the negative of the
+        # Hessian ∂²E/∂u∂u that py4vasp reports everywhere. Symmetrize here as well, so
+        # that all methods of this class work on the same matrix.
+        force_constants = -np.array(raw_force_constant.force_constants[:])
+        self._force_constants = 0.5 * (force_constants + force_constants.T)
 
     @classmethod
     def from_data(cls, raw_force_constant: raw.ForceConstant) -> "ForceConstantHandler":
@@ -31,16 +36,20 @@ class ForceConstantHandler:
     def __str__(self) -> str:
         structure = StructureHandler.from_data(self._raw_force_constant.structure)
         number_ions = structure.number_atoms()
-        force_constants = self._raw_force_constant.force_constants[:]
-        force_constants = 0.5 * (force_constants + force_constants.T)
         if check.is_none(self._raw_force_constant.selective_dynamics):
             selective_dynamics = np.ones((number_ions, 3), dtype=np.bool_)
         else:
             selective_dynamics = self._raw_force_constant.selective_dynamics[:]
-        return str(_StringFormatter(number_ions, force_constants, selective_dynamics))
+        formatter = _StringFormatter(
+            number_ions, self._force_constants, selective_dynamics
+        )
+        return str(formatter)
 
     def to_dict(self) -> dict:
         """Read structure information and force constants into a dictionary.
+
+        The force constants are the second derivatives of the energy in eV/Å², i.e.
+        the negative of the array VASP stores.
 
         Returns
         -------
@@ -50,7 +59,7 @@ class ForceConstantHandler:
         structure = StructureHandler.from_data(self._raw_force_constant.structure)
         result = {
             "structure": structure.to_dict(),
-            "force_constants": self._raw_force_constant.force_constants[:],
+            "force_constants": self._force_constants,
         }
         if not check.is_none(self._raw_force_constant.selective_dynamics):
             result["selective_dynamics"] = self._raw_force_constant.selective_dynamics[
@@ -59,13 +68,24 @@ class ForceConstantHandler:
         return result
 
     def eigenvectors(self):
-        """Compute the eigenvectors of the force constant matrix."""
+        """Compute the eigenvectors of the force constant matrix.
+
+        The eigenvectors are the ones of the force constants themselves; the masses of
+        the atoms are not taken into account, so these are not the normal modes of the
+        system. Use :py:meth:`read` and diagonalize the resulting array yourself if you
+        need the corresponding eigenvalues.
+
+        Returns
+        -------
+        np.ndarray
+            The eigenvectors in the order of ascending eigenvalue. The first index
+            selects the eigenvector, the second one the atom, and the third one the
+            direction. Atoms frozen by selective dynamics have zero displacement.
+        """
         return self._diagonalize()[1]
 
     def _diagonalize(self):
-        eigenvalues, eigenvectors = np.linalg.eigh(
-            -self._raw_force_constant.force_constants
-        )
+        eigenvalues, eigenvectors = np.linalg.eigh(self._force_constants)
         eigenvectors = eigenvectors.T
         if check.is_none(self._raw_force_constant.selective_dynamics):
             return eigenvalues, eigenvectors.reshape(len(eigenvectors), -1, 3)
@@ -142,6 +162,19 @@ class ForceConstant:
     dispersion). Phonon calculations involve the computation of these force constants.
     Keep in mind that they are the second derivative at the equilibrium position so
     a careful relaxation is required to eliminate the first derivative (i.e. forces).
+
+    py4vasp uses the Hessian Φ = ∂²E/∂u∂u throughout, the convention shared by the
+    phonon literature and by codes such as phonopy. VASP stores the derivative of the
+    force ∂F/∂u = -Φ, so the array in the HDF5 file has the opposite sign of the one
+    py4vasp reports. The force constants are in eV/Å² and are symmetrized, because Φ
+    is symmetric by construction.
+
+    If you displaced all atoms of a dynamically stable structure, Φ is positive
+    semidefinite: no eigenvalue is negative and three of them vanish, because moving
+    the whole system does not change its energy. Use this as a check of your
+    calculation, but note that it does not apply if you freeze some atoms with
+    selective dynamics, because then the translation of the whole system is not
+    contained in the force constants.
     """
 
     def __init__(self, source, quantity_name: str = "force_constant"):
@@ -197,8 +230,10 @@ class ForceConstant:
         """Read structure information and force constants into a dictionary.
 
         The structural information is added to inform about which atoms are included
-        in the array. The force constants array contains the second derivatives with
-        respect to atomic displacement for all atoms and directions.
+        in the array. The force constants array contains the second derivatives of the
+        energy with respect to atomic displacement for all atoms and directions in
+        eV/Å². Note that this is the negative of the array VASP stores, see the class
+        documentation for the sign convention.
 
         Returns
         -------
@@ -218,7 +253,20 @@ class ForceConstant:
         return self.read()
 
     def eigenvectors(self):
-        """Compute the eigenvectors of the force constant matrix."""
+        """Compute the eigenvectors of the force constant matrix.
+
+        The eigenvectors are the ones of the force constants themselves; the masses of
+        the atoms are not taken into account, so these are not the normal modes of the
+        system. Use :py:meth:`read` and diagonalize the resulting array yourself if you
+        need the corresponding eigenvalues.
+
+        Returns
+        -------
+        np.ndarray
+            The eigenvectors in the order of ascending eigenvalue. The first index
+            selects the eigenvector, the second one the atom, and the third one the
+            direction. Atoms frozen by selective dynamics have zero displacement.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
