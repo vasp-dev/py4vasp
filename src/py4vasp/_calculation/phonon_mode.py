@@ -25,8 +25,10 @@ from py4vasp._util import select
 # 1 amu = 1.66053907e-27 kg and 1 Å = 1e-10 m. VASP reports the frequency of a mode as
 # the energy ħω, so ħ/ω = ħ²/(ħω) converts it to the square of a normal coordinate.
 _HBAR_SQUARED = 0.004180159279779  # eV amu Å²
-# Below this energy a mode carries no meaningful scale: it is the numerical zero of
-# a translation, far under any vibration of a crystal (1e-5 eV is 0.08 cm⁻¹).
+# Default below which a mode carries no meaningful scale: the numerical zero of a
+# translation, far under any vibration of a crystal (1e-5 eV is 0.08 cm⁻¹). VASP does
+# not report the translations as exactly zero, and how far above zero they come out
+# depends on the calculation, which is why displace takes this as a parameter.
 _MINIMUM_FREQUENCY = 1e-5  # eV
 
 
@@ -101,7 +103,13 @@ class PhononModeHandler:
             [self._undo_mass_weighting(vector, masses) for vector in eigenvectors]
         )
 
-    def displace(self, selection=None, amplitude=1.0, masses=None):
+    def displace(
+        self,
+        selection=None,
+        amplitude=1.0,
+        masses=None,
+        minimum_frequency=_MINIMUM_FREQUENCY,
+    ):
         """Displace the structure along one or several phonon modes.
 
         Parameters
@@ -116,6 +124,8 @@ class PhononModeHandler:
         masses : Sequence[float] | None
             The mass of every atom in atomic mass units. Defaults to the standard
             atomic weight of the element.
+        minimum_frequency : float
+            The frequency ħω in eV below which a mode counts as a translation.
 
         Returns
         -------
@@ -125,7 +135,7 @@ class PhononModeHandler:
             using the selected modes as keys.
         """
         masses = self._masses(masses)
-        modes = self._select_modes(selection)
+        modes = self._select_modes(selection, minimum_frequency)
         structures = {
             label: self._displace_single_mode(index, amplitude, masses)
             for label, index in modes
@@ -163,21 +173,22 @@ class PhononModeHandler:
         normal_coordinate = np.sqrt(np.sum(masses * displacement**2))
         return displacement / normal_coordinate
 
-    def _select_modes(self, selection):
+    def _select_modes(self, selection, minimum_frequency):
+        self._raise_error_if_frequency_is_negative(minimum_frequency)
         if selection is None:
-            return list(self._modes_with_frequency())
+            return list(self._modes_with_frequency(minimum_frequency))
         tree = select.Tree.from_selection(selection)
-        return [self._single_mode(sel) for sel in tree.selections()]
+        return [self._single_mode(sel, minimum_frequency) for sel in tree.selections()]
 
-    def _modes_with_frequency(self):
+    def _modes_with_frequency(self, minimum_frequency):
         for index, frequency in enumerate(np.abs(self.frequencies())):
-            if frequency > _MINIMUM_FREQUENCY:
+            if frequency > minimum_frequency:
                 yield str(index + 1), index
 
-    def _single_mode(self, selection):
+    def _single_mode(self, selection, minimum_frequency):
         label = self._label_of_mode(selection)
         index = self._index_of_mode(label)
-        self._raise_error_if_mode_has_no_frequency(label, index)
+        self._raise_error_if_mode_has_no_frequency(label, index, minimum_frequency)
         return label, index
 
     def _label_of_mode(self, selection) -> str:
@@ -205,15 +216,28 @@ class PhononModeHandler:
             raise exception.IncorrectUsage(message)
         return number - 1
 
-    def _raise_error_if_mode_has_no_frequency(self, label, index):
-        if np.abs(self.frequencies()[index]) > _MINIMUM_FREQUENCY:
+    def _raise_error_if_frequency_is_negative(self, minimum_frequency):
+        if minimum_frequency >= 0:
+            return
+        message = (
+            f"The minimum frequency {minimum_frequency} is negative, but it is "
+            "compared to the magnitude of the frequency of a mode, which never is. "
+            "Please pass the energy ħω in eV under which you consider a mode to be a "
+            "translation of the crystal, or 0 to accept every mode VASP did not report "
+            "as exactly zero."
+        )
+        raise exception.IncorrectUsage(message)
+
+    def _raise_error_if_mode_has_no_frequency(self, label, index, minimum_frequency):
+        if np.abs(self.frequencies()[index]) > minimum_frequency:
             return
         message = (
             f"The phonon mode {label} has a frequency of zero, so moving the atoms "
             "along it does not change the energy of the system and the amplitude "
             "has no scale to refer to. The modes of zero frequency translate the "
             "whole crystal; if you want a mode of small but nonzero frequency "
-            "instead, keep in mind that the displacement grows like 1/sqrt(ħω)."
+            "instead, lower minimum_frequency and keep in mind that the displacement "
+            "grows like 1/sqrt(ħω)."
         )
         raise exception.IncorrectUsage(message)
 
@@ -479,7 +503,13 @@ class PhononMode:
             PhononModeHandler.frequencies,
         )
 
-    def displace(self, selection=None, amplitude=1.0, masses=None):
+    def displace(
+        self,
+        selection=None,
+        amplitude=1.0,
+        masses=None,
+        minimum_frequency=_MINIMUM_FREQUENCY,
+    ):
         """Displace the atoms of the structure along one or several phonon modes.
 
         Use this to set up a frozen-phonon calculation: displace the structure, write
@@ -508,6 +538,15 @@ class PhononMode:
             POTCAR if you overwrote it, e.g. to replace hydrogen by deuterium; it must
             be the mass VASP used, because that is the one the eigenvectors are
             weighted with.
+        minimum_frequency : float
+            The frequency ħω in eV under which py4vasp considers a mode to translate
+            the crystal rather than vibrate it. Such a mode stores no energy, so the
+            amplitude has nothing to refer to and the displacement grows without bound;
+            py4vasp skips these modes if you did not select any and reports an error if
+            you did. VASP writes the translations with a small numerical frequency
+            rather than exactly zero, and how small depends on the calculation, so
+            raise this if translations slip through (they show up as every atom moving
+            by the same large distance) and lower it to reach a genuinely soft mode.
 
         Returns
         -------
@@ -562,7 +601,19 @@ class PhononMode:
 
         The first three modes of this example translate the whole crystal, which costs
         no energy, so there is no amplitude that corresponds to an energy of ħω and
-        py4vasp reports an error if you select one of them.
+        py4vasp reports an error if you select one of them. Leaving the selection out
+        skips them instead
+
+        >>> sorted(calculation.phonon.mode.displace(amplitude=0.5), key=int)[:3]
+        ['4', '5', '6']
+
+        VASP reports the translations with a small numerical frequency rather than
+        exactly zero. If some of them slip through, raise `minimum_frequency` until
+        they do not; it is the energy ħω in eV under which a mode counts as one
+
+        >>> modes = calculation.phonon.mode.displace(amplitude=0.5, minimum_frequency=0.014)
+        >>> sorted(modes, key=int)[:3]
+        ['5', '6', '7']
         """
         result = merge_default(
             self._source,
@@ -574,6 +625,7 @@ class PhononMode:
             # when the user made one and would otherwise shift the positional arguments
             amplitude=amplitude,
             masses=masses,
+            minimum_frequency=minimum_frequency,
         )
         return _wrap_structures(result)
 

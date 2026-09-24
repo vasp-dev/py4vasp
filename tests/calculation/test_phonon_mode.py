@@ -330,6 +330,34 @@ def test_displace_raises_error_for_frequency_below_the_threshold(mode_handler):
         almost_acoustic.displace("4", 0.5)
 
 
+def test_minimum_frequency_decides_which_modes_are_translations(mode_handler, Assert):
+    # how far above zero VASP puts the translations depends on the calculation, so the
+    # user has to be able to move the threshold in either direction
+    frequency = np.abs(mode_handler.ref.frequencies[3])
+    almost_acoustic = _mode_with_frequency(mode_handler, complex(1e-4, 0.0))
+    with pytest.raises(exception.IncorrectUsage):
+        almost_acoustic.displace("4", 0.5, minimum_frequency=1e-3)
+    displaced = almost_acoustic.displace("4", 0.5, minimum_frequency=1e-5)
+    assert len(get_displacement(mode_handler, displaced)) == 7
+    # raising the threshold above a mode also removes it from an empty selection
+    assert "4" in mode_handler.displace(amplitude=0.5, minimum_frequency=frequency / 2)
+    assert "4" not in mode_handler.displace(amplitude=0.5, minimum_frequency=frequency)
+
+
+def test_displace_raises_error_for_negative_minimum_frequency(mode_handler):
+    # the threshold is compared to the magnitude of the frequency, so a negative value
+    # would let a mode of zero frequency through and displace the atoms by infinity
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode_handler.displace("4", 0.5, minimum_frequency=-1.0)
+    assert "-1.0" in str(error.value)
+
+
+def test_public_displace_passes_the_minimum_frequency_on(phonon_mode):
+    frequency = np.abs(phonon_mode.ref.frequencies[3])
+    assert "4" in phonon_mode.displace(amplitude=0.5, minimum_frequency=frequency / 2)
+    assert "4" not in phonon_mode.displace(amplitude=0.5, minimum_frequency=frequency)
+
+
 @pytest.mark.parametrize("selection", ("0", "22", "100", "x"))
 def test_displace_raises_error_for_mode_out_of_range(mode_handler, selection):
     with pytest.raises(exception.IncorrectUsage) as error:
