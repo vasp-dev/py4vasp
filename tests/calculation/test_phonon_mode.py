@@ -353,6 +353,14 @@ def test_displace_raises_error_if_masses_do_not_match_the_atoms(mode_handler):
     assert "2" in str(error.value) and "7" in str(error.value)
 
 
+def test_displace_raises_error_if_masses_are_not_numbers(mode_handler):
+    # a dictionary of element to mass is a plausible guess and would otherwise be
+    # reported as a single mass rather than as the wrong kind of input
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode_handler.displace("4", 0.5, masses={"Sr": 87.62, "Ti": 47.867, "O": 15.999})
+    assert "numbers" in str(error.value)
+
+
 @pytest.mark.parametrize("wrong_mass", (0.0, -1.0))
 def test_displace_raises_error_for_nonpositive_mass(mode_handler, wrong_mass):
     # dividing by the square root of the mass would fill the structure with nan

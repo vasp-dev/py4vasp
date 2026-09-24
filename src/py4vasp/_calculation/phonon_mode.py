@@ -232,6 +232,13 @@ class PhononModeHandler:
         if masses is None:
             return mass_table.of(structure._stoichiometry().elements())
         masses = np.atleast_1d(masses).ravel()
+        if not np.issubdtype(masses.dtype, np.number):
+            message = (
+                "The masses must be a sequence of numbers, one per atom, but you "
+                f"provided {type(masses.item(0)).__name__ if masses.size == 1 else 'a sequence'} "
+                "that py4vasp cannot read as numbers."
+            )
+            raise exception.IncorrectUsage(message)
         number_atoms = structure.number_atoms()
         if len(masses) != number_atoms:
             message = (
