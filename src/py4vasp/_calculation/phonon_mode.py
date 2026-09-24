@@ -27,11 +27,13 @@ from py4vasp._util import select
 # 1 amu = 1.66053907e-27 kg and 1 Å = 1e-10 m. VASP reports the frequency of a mode as
 # the energy ħω, so ħ/ω = ħ²/(ħω) converts it to the square of a normal coordinate.
 _HBAR_SQUARED = 0.004180159279779  # eV amu Å²
-# Default below which a mode carries no meaningful scale: the numerical zero of a
-# translation, far under any vibration of a crystal (1e-5 eV is 0.08 cm⁻¹). VASP does
-# not report the translations as exactly zero, and how far above zero they come out
-# depends on the calculation, which is why displace takes this as a parameter.
-_MINIMUM_FREQUENCY = 1e-5  # eV
+# Default below which a mode carries no meaningful scale. VASP does not report the
+# translations as exactly zero and how far above zero they come out depends on the
+# calculation — a BaTiO3 linear response run puts them at 1.3e-4 eV — so the default
+# sits above that while staying far under any vibration of a crystal: 1e-3 eV is
+# 8 cm⁻¹, where the soft mode of that same BaTiO3 is 200 cm⁻¹. A calculation with a
+# genuinely softer mode lowers it, which is why displace takes it as a parameter.
+_MINIMUM_FREQUENCY = 1e-3  # eV
 # VASP reports the frequency of a mode as the energy ħω in eV, whereas a phonon
 # dispersion is conventionally drawn in THz.
 _EV_TO_THZ = 241.798934781
@@ -673,10 +675,8 @@ class PhononMode(view.Mixin):
             :py:meth:`print` labels it, so the modes count from 1. Separate several
             modes by commas, e.g. "1, 2". If you do not select any mode, py4vasp
             displaces along every mode whose frequency exceeds `minimum_frequency`,
-            which is meant to leave out the modes that translate the whole crystal
-            because they have no energy scale. VASP does not report those as exactly
-            zero, so check that the default is above them for your calculation — see
-            `minimum_frequency`.
+            which leaves out the modes that translate the whole crystal because they
+            have no energy scale.
         amplitude : float
             How far to displace the structure along the mode. The unit is the one in
             which the harmonic energy of the mode is its own ħω, so an amplitude of 1
@@ -698,9 +698,9 @@ class PhononMode(view.Mixin):
             rather than exactly zero, and how small depends on the calculation, so
             raise this if translations slip through (they show up as every atom moving
             by the same large distance) and lower it to reach a genuinely soft mode.
-            How far above zero they come out depends on the calculation: the
-            translations of a BaTiO3 linear response run sit at 1.3e-4 eV, well above
-            the default, so that calculation needs a larger value.
+            The default of 1e-3 eV is 8 cm⁻¹, above the 1.3e-4 eV at which a BaTiO3
+            linear response run puts its translations and far below its soft mode at
+            200 cm⁻¹.
 
         Returns
         -------
