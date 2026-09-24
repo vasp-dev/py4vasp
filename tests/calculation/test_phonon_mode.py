@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import types
 
 import h5py
@@ -12,6 +13,7 @@ from py4vasp._calculation.phonon_mode import PhononMode, PhononModeHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._demo.phonon import mode as phonon_mode_demo
 from py4vasp._raw.models import PhononModeModel
+from py4vasp._util import masses
 
 
 @pytest.fixture
@@ -103,6 +105,70 @@ def test_print_writes_to_stdout(phonon_mode, capsys):
 
 def test_selections(phonon_mode):
     assert phonon_mode.selections() == {"phonon_mode": ["default"]}
+
+
+@pytest.fixture
+def translation_mode(raw_data):
+    """A phonon mode whose first eigenvector moves every atom by the same amount.
+
+    VASP weights the eigenvectors with the square root of the mass, so translating the
+    whole crystal along x does not give every atom the same eigenvector but one that is
+    proportional to sqrt(mass). Undoing that weighting has to bring back the uniform
+    displacement, which is what makes this pattern a useful reference.
+    """
+    raw_mode = raw_data.phonon_mode("default")
+    number_modes = len(raw_mode.eigenvectors)
+    elements = Structure.from_data(raw_mode.structure).read()["elements"]
+    mass = masses.of(elements)
+    translation = np.zeros((len(mass), 3))
+    translation[:, 0] = np.sqrt(mass / np.sum(mass))
+    eigenvectors = np.eye(number_modes)
+    eigenvectors[0] = translation.flatten()
+    raw_mode = dataclasses.replace(raw_mode, eigenvectors=eigenvectors)
+    mode = PhononModeHandler.from_data(raw_mode)
+    mode.ref = types.SimpleNamespace()
+    mode.ref.masses = mass
+    mode.ref.uniform_displacement = 1 / np.sqrt(np.sum(mass))
+    mode.ref.eigenvectors = eigenvectors
+    return mode
+
+
+def test_displacements_undo_the_mass_weighting(translation_mode, Assert):
+    actual = translation_mode.displacements()[0]
+    expected = np.zeros_like(actual)
+    expected[:, 0] = translation_mode.ref.uniform_displacement
+    Assert.allclose(actual, expected)
+
+
+def test_displacements_are_normalized_to_unit_normal_coordinate(
+    translation_mode, Assert
+):
+    # the normal coordinate Q^2 = sum_i m_i u_i^2 is what sets the energy of a mode, so
+    # every pattern is scaled to Q = 1 and displace only multiplies the physical scale
+    displacements = translation_mode.displacements()
+    mass = translation_mode.ref.masses[:, np.newaxis]
+    normal_coordinate = np.sum(mass * displacements**2, axis=(1, 2))
+    Assert.allclose(normal_coordinate, np.ones(len(displacements)))
+
+
+def test_displacements_read_both_eigenvector_shapes(translation_mode, Assert):
+    # VASP writes the eigenvectors as (mode, atom, direction) whereas the demo data
+    # flattens the two trailing axes; both describe the same displacement
+    flat = translation_mode.ref.eigenvectors
+    raw_mode = dataclasses.replace(
+        translation_mode._raw_phonon_mode,
+        eigenvectors=flat.reshape(len(flat), -1, 3),
+    )
+    nested = PhononModeHandler.from_data(raw_mode)
+    Assert.allclose(nested.displacements(), translation_mode.displacements())
+
+
+def test_displacements_accept_custom_masses(translation_mode, Assert):
+    # with all masses equal to one, undoing the weighting leaves the eigenvectors
+    number_atoms = len(translation_mode.ref.masses)
+    actual = translation_mode.displacements(masses=np.ones(number_atoms))
+    expected = translation_mode.ref.eigenvectors.reshape(-1, number_atoms, 3)
+    Assert.allclose(actual, expected)
 
 
 def test_factory_methods(raw_data, check_factory_methods):

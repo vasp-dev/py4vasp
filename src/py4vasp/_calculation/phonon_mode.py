@@ -14,6 +14,7 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import PhononModeModel
 from py4vasp._util import check, convert
+from py4vasp._util import masses as mass_table
 
 
 class PhononModeHandler:
@@ -64,6 +65,46 @@ class PhononModeHandler:
     def frequencies(self) -> np.ndarray:
         """Read the phonon frequencies as a numpy array."""
         return convert.to_complex(self._raw_phonon_mode.frequencies[:])
+
+    def displacements(self, masses=None) -> np.ndarray:
+        """Undo the mass weighting of the eigenvectors.
+
+        Parameters
+        ----------
+        masses : Sequence[float] | None
+            The mass of every atom in atomic mass units. Defaults to the standard
+            atomic weight of the element.
+
+        Returns
+        -------
+        np.ndarray
+            How far every atom moves along every direction for every mode. Each pattern
+            is scaled to a normal coordinate of 1, i.e. the sum of m u² over all atoms
+            and directions is 1.
+        """
+        masses = self._masses(masses)[:, np.newaxis]
+        # VASP reports the eigenvectors of the dynamical matrix, which is the force
+        # constant matrix divided by the masses, so the displacement of an atom is the
+        # eigenvector divided by the square root of its mass
+        displacements = self._eigenvectors() / np.sqrt(masses)
+        # VASP normalizes the eigenvectors, so this is a no-op on its output; it makes
+        # the normal coordinate exactly 1 for any other input, too
+        normal_coordinate = np.sqrt(np.sum(masses * displacements**2, axis=(1, 2)))
+        return displacements / normal_coordinate[:, np.newaxis, np.newaxis]
+
+    def _eigenvectors(self) -> np.ndarray:
+        """The eigenvectors shaped (mode, atom, direction).
+
+        VASP uses that shape, the demo data flattens the two trailing axes, and both
+        list the three directions of an atom next to each other.
+        """
+        eigenvectors = np.array(self._raw_phonon_mode.eigenvectors[:])
+        return eigenvectors.reshape(len(eigenvectors), -1, 3)
+
+    def _masses(self, masses) -> np.ndarray:
+        if masses is not None:
+            return np.array(masses)
+        return mass_table.of(self._structure()._stoichiometry().elements())
 
     def _structure(self) -> StructureHandler:
         return StructureHandler.from_data(self._raw_phonon_mode.structure)
