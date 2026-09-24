@@ -903,6 +903,11 @@ class Group:
         self._source = source
         self._quantities = quantities
 
+    def __dir__(self):
+        # the quantities are resolved in __getattr__, so Tab completion only finds
+        # them if they are named here
+        return sorted(self._quantities)
+
     def __getattr__(self, name):
         if name.startswith("_"):
             raise AttributeError(name)

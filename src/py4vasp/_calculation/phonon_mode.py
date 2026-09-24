@@ -424,6 +424,11 @@ class PhononMode(view.Mixin):
     Low-frequency modes correspond to long-wavelength vibrations, while
     high-frequency modes involve more localized atomic motion.
 
+    See Also
+    --------
+    py4vasp._calculation.phonon_band.PhononBand :
+        Plots the frequencies of these modes along a path through the Brillouin zone.
+
     Examples
     --------
     First, we create some example data so that you can follow along. Please define a
@@ -546,10 +551,10 @@ class PhononMode(view.Mixin):
         ['eigenvectors', 'frequencies', 'structure']
 
         The eigenvectors give the displacement of every atom along every direction,
-        one row per mode
+        one entry per mode
 
         >>> calculation.phonon.mode.read()["eigenvectors"].shape
-        (21, 21)
+        (21, 7, 3)
 
         These are the eigenvectors of the dynamical matrix, which is the force constant
         matrix divided by the masses, so every atom enters weighted with the square root
@@ -557,7 +562,7 @@ class PhononMode(view.Mixin):
         acoustic mode translates the whole crystal, moving every atom equally far, and
         yet its eigenvector is largest for the heaviest atom
 
-        >>> acoustic = calculation.phonon.mode.read()["eigenvectors"][0].reshape(-1, 3)
+        >>> acoustic = calculation.phonon.mode.read()["eigenvectors"][0]
         >>> int(np.argmax(np.linalg.norm(acoustic, axis=1)))
         0
 
@@ -667,8 +672,11 @@ class PhononMode(view.Mixin):
             Which modes to displace along. Select a mode by the number with which
             :py:meth:`print` labels it, so the modes count from 1. Separate several
             modes by commas, e.g. "1, 2". If you do not select any mode, py4vasp
-            displaces along every mode that has a frequency; the modes that translate
-            the whole crystal are skipped because they have no energy scale.
+            displaces along every mode whose frequency exceeds `minimum_frequency`,
+            which is meant to leave out the modes that translate the whole crystal
+            because they have no energy scale. VASP does not report those as exactly
+            zero, so check that the default is above them for your calculation — see
+            `minimum_frequency`.
         amplitude : float
             How far to displace the structure along the mode. The unit is the one in
             which the harmonic energy of the mode is its own ħω, so an amplitude of 1
@@ -690,6 +698,9 @@ class PhononMode(view.Mixin):
             rather than exactly zero, and how small depends on the calculation, so
             raise this if translations slip through (they show up as every atom moving
             by the same large distance) and lower it to reach a genuinely soft mode.
+            How far above zero they come out depends on the calculation: the
+            translations of a BaTiO3 linear response run sit at 1.3e-4 eV, well above
+            the default, so that calculation needs a larger value.
 
         Returns
         -------
@@ -780,7 +791,8 @@ class PhononMode(view.Mixin):
         animates how far the atoms actually move. Every pattern is scaled to a normal
         coordinate of 1 and the viewer adjusts the amplitude of the animation itself.
 
-        Animating a mode requires the VASP Viewer; NGLView cannot show it.
+        Animating a mode requires the VASP Viewer, which VASP distributes separately;
+        NGLView cannot show it and says so.
 
         Parameters
         ----------
@@ -789,9 +801,17 @@ class PhononMode(view.Mixin):
             labels it, so the modes count from 1. Separate several modes by commas, e.g.
             "1, 2"; the viewer then offers exactly those. If you do not select any mode,
             py4vasp shows all of them, including the ones that translate the crystal.
+
+            A calculation that evaluated the modes along a path stores them under
+            "dispersion", which you select the same way: "dispersion" shows all of its
+            modes and "dispersion(4)" the fourth one at every **q** point. Use
+            :py:meth:`selections` to see which of the two your calculation contains.
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
-            along each direction.
+            along each direction. A mode away from the zone centre moves the atoms out
+            of phase from one cell to the next, so pass a supercell to see that wave;
+            in a single cell every cell moves alike and the animation looks like a
+            mode of the zone centre.
         masses : Sequence[float] | None
             The mass of every atom in atomic mass units. By default py4vasp uses the
             standard atomic weight of the element. Set this to the POMASS of your
@@ -834,6 +854,14 @@ class PhononMode(view.Mixin):
         (1, 1, 7, 3)
         >>> calculation.phonon.mode.plot("4, 5").phonon.eigenvectors.shape
         (1, 2, 7, 3)
+
+        The modes of a dispersion are selected the same way, with the **q** point as
+        the leading dimension. Replicate the cell to watch the wave run through it
+
+        >>> calculation.phonon.mode.plot("dispersion").phonon.eigenvectors.shape
+        (164, 21, 7, 3)
+        >>> calculation.phonon.mode.plot("dispersion(4)", supercell=2).phonon.eigenvectors.shape
+        (164, 1, 7, 3)
         """
         return merge_default(
             self._source,

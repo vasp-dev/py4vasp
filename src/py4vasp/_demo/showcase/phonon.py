@@ -266,7 +266,8 @@ def _displacements():
     structure along.
     """
     patterns = np.concatenate((_rigid_translations(), _optical_patterns()))
-    return _orthonormalize(patterns).reshape(NUMBER_MODES, NUMBER_MODES)
+    # VASP lists the three directions of an atom next to each other
+    return _orthonormalize(patterns).reshape(NUMBER_MODES, NUMBER_ATOMS, 3)
 
 
 def _rigid_translations():

@@ -979,6 +979,16 @@ class TestGroup:
         assert isinstance(group.fake, _FakeDispatcher)
         assert isinstance(group.fake2, _FakeDispatcher2)
 
+    def test_tab_completion_lists_the_quantities(self):
+        # the quickstart tells the user to hit Tab, and a group resolves its members
+        # in __getattr__, so dir has to name them explicitly
+        source = DataSource({"value": 1})
+        group = Group(source, {"fake": _FakeDispatcher, "fake2": _FakeDispatcher2})
+        assert [name for name in dir(group) if not name.startswith("_")] == [
+            "fake",
+            "fake2",
+        ]
+
     def test_unknown_attribute_raises_attribute_error(self):
         source = DataSource({"value": 1})
         group = Group(source, {"fake": _FakeDispatcher})

@@ -119,6 +119,12 @@ class PhononBand(graph.Mixin):
     Brillouin zone offer insights into the material's anharmonicity and thermal
     conductivity. Furthermore, phonons with imaginary frequencies indicate the presence
     of a structural instability.
+
+    See Also
+    --------
+    py4vasp._calculation.phonon_mode.PhononMode :
+        Animates the modes behind these branches. Select its "dispersion" source to
+        watch how the atoms move at a particular **q** point of this path.
     """
 
     def __init__(self, source, quantity_name: str = "phonon_band"):

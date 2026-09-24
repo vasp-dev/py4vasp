@@ -12,7 +12,7 @@ def Sr2TiO4():
     return raw.PhononMode(
         structure=_demo.structure.Sr2TiO4(),
         frequencies=frequencies.view(np.float64).reshape(-1, 2),
-        eigenvectors=_make_unitary_matrix(_demo.NUMBER_MODES),
+        eigenvectors=_make_unitary_matrix(_demo.NUMBER_MODES),  # (mode, atom, xyz)
     )
 
 
@@ -52,7 +52,9 @@ def _primitive_structure():
 
 
 def _make_unitary_matrix(n, seed=None):
+    # VASP lists the three directions of an atom next to each other, so the modes are
+    # shaped (mode, atom, direction) rather than flattened
     rng = np.random.default_rng(seed)
     matrix = rng.standard_normal((n, n))
     unitary_matrix, _ = np.linalg.qr(matrix)
-    return raw.VaspData(unitary_matrix)
+    return raw.VaspData(unitary_matrix.reshape(n, _demo.NUMBER_ATOMS, _demo.AXES))
