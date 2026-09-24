@@ -413,7 +413,7 @@ Atoms # atomic
             lattice, positions = _symmetrize_in_cell(
                 lattice, positions, numbers, symprec
             )
-        return _raw_structure(lattice, positions, elements)
+        return raw_structure_from_parts(lattice, positions, elements)
 
     def generate_kpath(
         self, number_points=40, time_reversal=True, symprec=_SYMPREC
@@ -2032,8 +2032,12 @@ def _symmetrize_in_cell(lattice, positions, numbers, symprec):
     return new_lattice, new_positions
 
 
-def _raw_structure(lattice_vectors, positions, elements):
-    """Assemble a single-frame raw.Structure from lattice, positions, and elements."""
+def raw_structure_from_parts(lattice_vectors, positions, elements):
+    """Assemble a single-frame raw.Structure from lattice, positions, and elements.
+
+    Every array is copied, so the result does not reference the HDF5 file a quantity
+    was read from and remains valid after py4vasp closed that file.
+    """
     return raw.Structure(
         stoichiometry=_stoichiometry.raw_stoichiometry_from_elements(elements),
         cell=raw.Cell(np.array(lattice_vectors), scale=raw.VaspData(1.0)),

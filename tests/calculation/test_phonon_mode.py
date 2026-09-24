@@ -316,6 +316,17 @@ def test_displace_raises_error_for_unknown_element(raw_data):
     assert "Xx" in str(error.value)
 
 
+def test_displace_returns_a_structure(phonon_mode, Assert):
+    displaced = phonon_mode.displace(mode=3, amplitude=0.5)
+    assert isinstance(displaced, Structure)
+    expected = PhononModeHandler.from_data(phonon_mode.ref.raw_data).displace(3, 0.5)
+    Assert.allclose(displaced.positions(), expected.positions)
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_mode("Sr2TiO4")
-    check_factory_methods(PhononMode, data, skip_methods=["selections"])
+    # mode 0 translates the crystal, which has no energy to set the amplitude by
+    parameters = {"displace": {"mode": 3, "amplitude": 0.5}}
+    check_factory_methods(
+        PhononMode, data, parameters=parameters, skip_methods=["selections"]
+    )

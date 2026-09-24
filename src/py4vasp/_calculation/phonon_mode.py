@@ -1,7 +1,5 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import dataclasses
-
 import numpy as np
 
 from py4vasp import exception, raw
@@ -13,7 +11,11 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
-from py4vasp._calculation.structure import StructureHandler
+from py4vasp._calculation.structure import (
+    Structure,
+    StructureHandler,
+    raw_structure_from_parts,
+)
 from py4vasp._raw.models import PhononModeModel
 from py4vasp._util import check, convert
 from py4vasp._util import masses as mass_table
@@ -124,9 +126,14 @@ class PhononModeHandler:
         normal_coordinate = amplitude * np.sqrt(2 * _HBAR_SQUARED / frequency)
         displacement = normal_coordinate * self.displacements(masses)[mode]
         structure = self._structure()
-        inverse_lattice = np.linalg.inv(structure.lattice_vectors())
+        lattice_vectors = structure.lattice_vectors()
+        inverse_lattice = np.linalg.inv(lattice_vectors)
         positions = structure.positions() + displacement @ inverse_lattice
-        return dataclasses.replace(self._raw_phonon_mode.structure, positions=positions)
+        # the raw structure must not reference the HDF5 file, because py4vasp closes it
+        # as soon as the displacement is computed
+        return raw_structure_from_parts(
+            lattice_vectors, positions, structure._stoichiometry().elements()
+        )
 
     def _frequency_of_mode(self, mode) -> float:
         frequencies = self.frequencies()
@@ -368,6 +375,79 @@ class PhononMode:
             self._handler_factory,
             PhononModeHandler.frequencies,
         )
+
+    def displace(self, mode, amplitude, masses=None) -> Structure:
+        """Displace the atoms of the structure along one of the phonon modes.
+
+        Use this to set up a frozen-phonon calculation: displace the structure, write
+        the result with :py:meth:`~py4vasp._calculation.structure.Structure.to_POSCAR`
+        and run VASP on it. Do not build the displacement from the eigenvectors
+        yourself; they are weighted with the square root of the mass of the atom (see
+        :py:meth:`read`) and this method undoes that weighting for you.
+
+        Parameters
+        ----------
+        mode : int
+            Index of the mode in the order in which :py:meth:`frequencies` reports it.
+            Negative indices count from the end, so -1 selects the last mode.
+        amplitude : float
+            How far to displace the structure along the mode. The unit is the one in
+            which the harmonic energy of the mode is its own ħω, so an amplitude of 1
+            excites the mode by that energy and one of 2 by four times as much.
+            A negative amplitude moves the atoms to the other side of the equilibrium,
+            which is what the double well of an unstable mode requires.
+        masses : Sequence[float] | None
+            The mass of every atom in atomic mass units. By default py4vasp uses the
+            standard atomic weight of the element. Set this to the POMASS of your
+            POTCAR if you overwrote it, e.g. to replace hydrogen by deuterium; it must
+            be the mass VASP used, because that is the one the eigenvectors are
+            weighted with.
+
+        Returns
+        -------
+        Structure
+            The equilibrium structure with every atom moved along the mode.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Displacing the structure along a mode gives you a new structure, which behaves
+        like any other one, so `displaced.to_POSCAR()` writes the input of the next
+        calculation
+
+        >>> displaced = calculation.phonon.mode.displace(mode=3, amplitude=0.5)
+        >>> displaced.read()["elements"]
+        ['Sr', 'Sr', 'Ti', 'O', 'O', 'O', 'O']
+
+        The atoms move away from their equilibrium position by the amount the amplitude
+        sets; a frozen-phonon scan repeats this for a few amplitudes of both signs
+
+        >>> equilibrium = calculation.structure.cartesian_positions()
+        >>> shift = displaced.cartesian_positions() - equilibrium
+        >>> round(float(np.max(np.linalg.norm(shift, axis=1))), 3)
+        0.029
+
+        The first three modes of this example translate the whole crystal, which costs
+        no energy, so there is no amplitude that corresponds to an energy of ħω and
+        py4vasp reports an error if you select one of them.
+        """
+        raw_structure = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononModeHandler.displace,
+            mode,
+            amplitude,
+            masses,
+        )
+        return Structure.from_data(raw_structure)
 
     def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
