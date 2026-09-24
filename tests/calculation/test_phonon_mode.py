@@ -20,7 +20,7 @@ from py4vasp._calculation.structure import Structure
 from py4vasp._demo import showcase
 from py4vasp._demo.phonon import mode as phonon_mode_demo
 from py4vasp._raw.models import PhononModeModel
-from py4vasp._util import masses
+from py4vasp._util import convert, masses
 
 
 @pytest.fixture
@@ -199,6 +199,48 @@ def get_displacement(handler, raw_structure):
 def get_normal_coordinate(handler, displacement):
     """The mass-weighted amplitude Q = sqrt(sum_i m_i u_i²) in Å sqrt(amu)."""
     return np.sqrt(np.sum(handler.ref.masses[:, np.newaxis] * displacement**2))
+
+
+@pytest.fixture
+def dispersion_mode(raw_data):
+    raw_mode = raw_data.phonon_mode("dispersion")
+    mode = PhononMode.from_data(raw_mode)
+    mode.ref = types.SimpleNamespace()
+    mode.ref.raw_data = raw_mode
+    mode.ref.structure = Structure.from_data(raw_mode.structure)
+    mode.ref.frequencies_THz = np.array(raw_mode.frequencies)
+    mode.ref.eigenvectors = convert.to_complex(np.array(raw_mode.eigenvectors))
+    mode.ref.qpoints = np.array(raw_mode.qpoints.coordinates)
+    return mode
+
+
+def test_dispersion_frequencies_are_energies(dispersion_mode, Assert):
+    # VASP reports a dispersion in THz and marks an unstable mode with a negative
+    # frequency, where the modes of the zone centre are complex energies in eV
+    in_THz = dispersion_mode.ref.frequencies_THz
+    actual = dispersion_mode.frequencies()
+    assert actual.shape == in_THz.shape
+    Assert.allclose(np.abs(actual) * _EV_TO_THZ, np.abs(in_THz))
+    assert np.all(actual.imag[in_THz < 0] > 0)
+    assert np.all(actual.imag[in_THz > 0] == 0)
+
+
+def test_dispersion_read(dispersion_mode, Assert):
+    actual = dispersion_mode.read()
+    Assert.same_structure(actual["structure"], dispersion_mode.ref.structure.read())
+    Assert.allclose(actual["frequencies"], dispersion_mode.frequencies())
+    Assert.allclose(actual["eigenvectors"], dispersion_mode.ref.eigenvectors)
+    Assert.allclose(actual["qpoints"], dispersion_mode.ref.qpoints)
+
+
+def test_dispersion_print(dispersion_mode, format_):
+    actual, _ = format_(dispersion_mode)
+    reference = """\
+phonon dispersion:
+    20 q-points
+    21 modes
+    Sr2TiO4"""
+    assert actual == {"text/plain": reference}
 
 
 def test_to_view(mode_handler, Assert):

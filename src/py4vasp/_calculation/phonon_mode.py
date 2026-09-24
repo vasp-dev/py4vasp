@@ -47,6 +47,8 @@ class PhononModeHandler:
         return cls(raw_phonon_mode)
 
     def __str__(self) -> str:
+        if self._has_qpoints():
+            return self._summary_of_dispersion()
         phonon_frequencies = "\n".join(
             self._frequency_to_string(index, frequency)
             for index, frequency in enumerate(self.frequencies())
@@ -57,12 +59,25 @@ class PhononModeHandler:
 {phonon_frequencies}
 """
 
+    def _summary_of_dispersion(self) -> str:
+        # listing every mode of every q point would run to thousands of lines, so
+        # report the extent of the data the way the phonon band does
+        number_qpoints, number_modes = np.shape(self._raw_phonon_mode.frequencies)
+        return f"""phonon dispersion:
+    {number_qpoints} q-points
+    {number_modes} modes
+    {self._structure()._stoichiometry()}"""
+
     def to_dict(self) -> dict:
-        return {
+        result = {
             "structure": self._structure().to_dict(),
             "frequencies": self.frequencies(),
             "eigenvectors": self._raw_phonon_mode.eigenvectors[:],
         }
+        if self._has_qpoints():
+            result["eigenvectors"] = self._eigenvectors()
+            result["qpoints"] = np.array(self._raw_phonon_mode.qpoints.coordinates[:])
+        return result
 
     def to_database(self) -> dict:
         frequencies = (
@@ -83,7 +98,19 @@ class PhononModeHandler:
 
     def frequencies(self) -> np.ndarray:
         """Read the phonon frequencies as a numpy array."""
+        if self._has_qpoints():
+            return self._energies_of_dispersion()
         return convert.to_complex(self._raw_phonon_mode.frequencies[:])
+
+    def _energies_of_dispersion(self) -> np.ndarray:
+        # a dispersion stores a real frequency in THz, where an unstable mode is
+        # negative; both sources report the energy ħω as a complex number in eV
+        frequencies = np.array(self._raw_phonon_mode.frequencies[:]) / _EV_TO_THZ
+        return np.where(frequencies < 0, -1j * frequencies, frequencies + 0j)
+
+    def _has_qpoints(self) -> bool:
+        """Whether the modes are resolved along a path instead of at the zone centre."""
+        return not check.is_none(self._raw_phonon_mode.qpoints)
 
     def displacements(self, masses=None) -> np.ndarray:
         """Undo the mass weighting of the eigenvectors.
@@ -294,6 +321,9 @@ class PhononModeHandler:
         list the three directions of an atom next to each other.
         """
         eigenvectors = np.array(self._raw_phonon_mode.eigenvectors[:])
+        if self._has_qpoints():
+            # VASP stores the complex eigenvectors of a dispersion as pairs of reals
+            return convert.to_complex(eigenvectors)
         number_atoms = self._structure().number_atoms()
         return eigenvectors.reshape(len(eigenvectors), number_atoms, 3)
 
@@ -449,7 +479,7 @@ class PhononMode(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read structure data and properties of the phonon mode into a dictionary.
 
         The frequency and eigenvector describe with how atoms move under the influence
@@ -500,27 +530,45 @@ class PhononMode(view.Mixin):
 
         Rather than doing this yourself, use :py:meth:`displace`, which undoes the
         weighting and returns the displaced structure.
+
+        Selecting the dispersion reads the modes VASP evaluates along a path instead.
+        They come with the **q** point at which each one is defined, so every array has
+        that as its leading dimension
+
+        >>> dispersion = calculation.phonon.mode.read("dispersion")
+        >>> dispersion["frequencies"].shape
+        (164, 21)
+        >>> dispersion["qpoints"].shape
+        (164, 3)
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononModeHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
-    def frequencies(self) -> np.ndarray:
+    def frequencies(self, selection: str | None = None) -> np.ndarray:
         """Read the phonon frequencies as a numpy array.
+
+        Parameters
+        ----------
+        selection : str | None
+            Which modes VASP computed to read. Defaults to the modes of a linear
+            response calculation at the zone centre; pass "dispersion" for the ones
+            evaluated along a path.
 
         Returns
         -------
         np.ndarray
             The eigenvalues of the dynamical matrix as complex numbers in eV. An
-            imaginary part marks an unstable mode.
+            imaginary part marks an unstable mode. The dispersion adds the **q** point
+            as a leading dimension.
 
         Examples
         --------
@@ -543,11 +591,16 @@ class PhononMode(view.Mixin):
         3
         >>> bool(np.all(frequencies.imag == 0))
         True
+
+        The frequencies of a dispersion carry a **q** point as their first dimension
+
+        >>> calculation.phonon.mode.frequencies("dispersion").shape
+        (164, 21)
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononModeHandler.frequencies,
         )
