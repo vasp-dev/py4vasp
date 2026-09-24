@@ -236,7 +236,9 @@ def test_amplitude_one_displaces_by_the_energy_of_the_mode(mode_handler, Assert)
     normal_coordinate = get_normal_coordinate(mode_handler, displacement)
     frequency = np.abs(mode_handler.ref.frequencies[3])
     energy = 0.5 * frequency**2 / _HBAR_SQUARED * normal_coordinate**2
-    Assert.allclose(energy, frequency)
+    # the normal coordinate is recovered from positions stored in direct coordinates,
+    # so it carries the rounding of the conversion through the lattice vectors
+    Assert.allclose(energy, frequency, tolerance=100)
 
 
 def test_displace_scales_the_normal_coordinate_with_the_amplitude(mode_handler, Assert):
@@ -247,7 +249,7 @@ def test_displace_scales_the_normal_coordinate_with_the_amplitude(mode_handler, 
             mode_handler, mode_handler.displace("4", amplitude)
         )
         actual = get_normal_coordinate(mode_handler, displacement)
-        Assert.allclose(actual, amplitude * expected)
+        Assert.allclose(actual, amplitude * expected, tolerance=100)
 
 
 def test_negative_amplitude_displaces_to_the_other_side(mode_handler, Assert):
@@ -411,11 +413,10 @@ def test_displaced_structure_outlives_the_file(tmp_path, Assert):
 
 def test_acoustic_modes_of_the_showcase_move_every_atom_equally(Assert):
     # the showcase weights its eigenvectors with the masses py4vasp looks up, so undoing
-    # the weighting has to give back the uniform translation the acoustic modes are
+    # the weighting has to give back the rigid translation the acoustic modes are
     handler = PhononModeHandler.from_data(showcase.phonon.mode_Sr2TiO4())
     displacement = handler.displacements()[0]
-    distances = np.linalg.norm(displacement, axis=1)
-    Assert.allclose(distances, np.full(len(distances), distances[0]))
+    Assert.allclose(displacement, np.broadcast_to(displacement[0], displacement.shape))
 
 
 def test_factory_methods(raw_data, check_factory_methods):

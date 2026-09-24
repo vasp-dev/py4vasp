@@ -70,8 +70,8 @@ def _single_element(element):
         return TABLE[element]
     except KeyError as error:
         message = (
-            f"py4vasp does not know the mass of the element {element!r}. Please check "
-            "that the elements of the structure are set correctly; VASP does not write "
-            "them to the HDF5 file if the POTCAR is missing."
+            f"py4vasp does not know the mass of the element {element!r}. Only the "
+            "chemical symbols of the periodic table are known, so please check that "
+            "the structure names its elements the way VASP does."
         )
         raise exception.IncorrectUsage(message) from error

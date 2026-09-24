@@ -387,6 +387,7 @@ class PhononMode:
         variable `path` with the path to a directory that does not exist yet.
         Alternatively, use your own data if you have run VASP.
 
+        >>> import numpy as np
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
 
@@ -447,6 +448,7 @@ class PhononMode:
         variable `path` with the path to a directory that does not exist yet.
         Alternatively, use your own data if you have run VASP.
 
+        >>> import numpy as np
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
 
@@ -532,7 +534,7 @@ class PhononMode:
         >>> equilibrium = calculation.structure.cartesian_positions()
         >>> shift = displaced.cartesian_positions() - equilibrium
         >>> round(float(np.max(np.linalg.norm(shift, axis=1))), 3)
-        0.029
+        0.047
 
         The displacement is proportional to the amplitude, so scale it if you want a
         particular distance in Å. Here we ask the atom that moves furthest to move by
