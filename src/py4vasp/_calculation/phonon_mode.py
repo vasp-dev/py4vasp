@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
+
 import numpy as np
 
 from py4vasp import raw
@@ -15,6 +17,11 @@ from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import PhononModeModel
 from py4vasp._util import check, convert
 from py4vasp._util import masses as mass_table
+
+# ħ² in the units the displacement is expressed in, from ħ = 6.582119569e-16 eV s,
+# 1 amu = 1.66053907e-27 kg and 1 Å = 1e-10 m. VASP reports the frequency of a mode as
+# the energy ħω, so ħ/ω = ħ²/(ħω) converts it to the square of a normal coordinate.
+_HBAR_SQUARED = 0.004180159279779  # eV amu Å²
 
 
 class PhononModeHandler:
@@ -91,6 +98,35 @@ class PhononModeHandler:
         # the normal coordinate exactly 1 for any other input, too
         normal_coordinate = np.sqrt(np.sum(masses * displacements**2, axis=(1, 2)))
         return displacements / normal_coordinate[:, np.newaxis, np.newaxis]
+
+    def displace(self, mode, amplitude, masses=None) -> raw.Structure:
+        """Displace the structure along one of the phonon modes.
+
+        Parameters
+        ----------
+        mode : int
+            Index of the mode in the order :py:meth:`frequencies` reports them.
+        amplitude : float
+            The normal coordinate of the displacement in units of the one at which the
+            harmonic energy ½ω²Q² of the mode equals ħω.
+        masses : Sequence[float] | None
+            The mass of every atom in atomic mass units. Defaults to the standard
+            atomic weight of the element.
+
+        Returns
+        -------
+        raw.Structure
+            The equilibrium structure with every atom moved along the mode.
+        """
+        # ½ω²Q² = ħω is solved by Q = sqrt(2ħ/ω); the sign of the frequency does not
+        # enter the energy, so an unstable mode uses the magnitude of its imaginary one
+        frequency = np.abs(self.frequencies()[mode])
+        normal_coordinate = amplitude * np.sqrt(2 * _HBAR_SQUARED / frequency)
+        displacement = normal_coordinate * self.displacements(masses)[mode]
+        structure = self._structure()
+        inverse_lattice = np.linalg.inv(structure.lattice_vectors())
+        positions = structure.positions() + displacement @ inverse_lattice
+        return dataclasses.replace(self._raw_phonon_mode.structure, positions=positions)
 
     def _eigenvectors(self) -> np.ndarray:
         """The eigenvectors shaped (mode, atom, direction).

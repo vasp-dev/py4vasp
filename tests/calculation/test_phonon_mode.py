@@ -171,6 +171,110 @@ def test_displacements_accept_custom_masses(translation_mode, Assert):
     Assert.allclose(actual, expected)
 
 
+# ħ² expressed in the units the displacement uses, from ħ = 6.582119569e-16 eV s,
+# 1 amu = 1.66053907e-27 kg and 1 Å = 1e-10 m
+HBAR_SQUARED = 0.004180159279779  # eV amu Å²
+
+
+@pytest.fixture
+def mode_handler(raw_data):
+    raw_mode = raw_data.phonon_mode("default")
+    handler = PhononModeHandler.from_data(raw_mode)
+    handler.ref = types.SimpleNamespace()
+    handler.ref.structure = Structure.from_data(raw_mode.structure)
+    handler.ref.masses = masses.of(handler.ref.structure.read()["elements"])
+    handler.ref.frequencies = raw_mode.frequencies.flatten().view(np.complex128)
+    handler.ref.raw_mode = raw_mode
+    return handler
+
+
+def get_displacement(handler, raw_structure):
+    """How far every atom moved from the equilibrium structure in Å."""
+    displaced = Structure.from_data(raw_structure)
+    return displaced.cartesian_positions() - handler.ref.structure.cartesian_positions()
+
+
+def get_normal_coordinate(handler, displacement):
+    """The mass-weighted amplitude Q = sqrt(sum_i m_i u_i²) in Å sqrt(amu)."""
+    return np.sqrt(np.sum(handler.ref.masses[:, np.newaxis] * displacement**2))
+
+
+def test_displace_without_amplitude_keeps_the_structure(mode_handler, Assert):
+    actual = Structure.from_data(mode_handler.displace(mode=3, amplitude=0.0))
+    Assert.same_structure(actual.read(), mode_handler.ref.structure.read())
+
+
+def test_displace_keeps_cell_and_elements(mode_handler, Assert):
+    actual = Structure.from_data(mode_handler.displace(mode=3, amplitude=0.5)).read()
+    expected = mode_handler.ref.structure.read()
+    Assert.allclose(actual["lattice_vectors"], expected["lattice_vectors"])
+    assert actual["elements"] == expected["elements"]
+
+
+def test_displace_follows_the_displacement_pattern(mode_handler, Assert):
+    mode, amplitude = 3, 0.5
+    actual = get_displacement(mode_handler, mode_handler.displace(mode, amplitude))
+    pattern = mode_handler.displacements()[mode]
+    # displace stores the positions in direct coordinates, so comparing the Cartesian
+    # displacement means converting back and forth through the lattice vectors
+    Assert.allclose(
+        actual / get_normal_coordinate(mode_handler, actual), pattern, tolerance=100
+    )
+
+
+def test_amplitude_one_displaces_by_the_energy_of_the_mode(mode_handler, Assert):
+    # the amplitude is the normal coordinate in units where 1 puts the harmonic energy
+    # ½ω²Q² of the mode at ħω, so that a frozen-phonon scan is a scan in units of ħω
+    mode = 3
+    displacement = get_displacement(mode_handler, mode_handler.displace(mode, 1.0))
+    normal_coordinate = get_normal_coordinate(mode_handler, displacement)
+    frequency = np.abs(mode_handler.ref.frequencies[mode])
+    energy = 0.5 * frequency**2 / HBAR_SQUARED * normal_coordinate**2
+    Assert.allclose(energy, frequency)
+
+
+def test_displace_scales_the_normal_coordinate_with_the_amplitude(mode_handler, Assert):
+    mode = 3
+    frequency = np.abs(mode_handler.ref.frequencies[mode])
+    expected = np.sqrt(2 * HBAR_SQUARED / frequency)
+    for amplitude in (0.25, 1.0, 2.0):
+        displacement = get_displacement(
+            mode_handler, mode_handler.displace(mode, amplitude)
+        )
+        actual = get_normal_coordinate(mode_handler, displacement)
+        Assert.allclose(actual, amplitude * expected)
+
+
+def test_negative_amplitude_displaces_to_the_other_side(mode_handler, Assert):
+    # a frozen-phonon scan needs both sides of the minimum, in particular for the double
+    # well an unstable mode produces
+    forward = get_displacement(mode_handler, mode_handler.displace(5, 0.7))
+    backward = get_displacement(mode_handler, mode_handler.displace(5, -0.7))
+    Assert.allclose(backward, -forward)
+
+
+def test_displace_uses_the_magnitude_of_an_imaginary_frequency(mode_handler, Assert):
+    # an unstable mode lowers the energy, so ½ω²Q² is negative; taking the magnitude of
+    # the frequency makes the amplitude of the soft mode the one a frozen-phonon scan
+    # of a stable mode of the same magnitude would use
+    frequency = np.abs(mode_handler.ref.frequencies[3])
+    stable = _mode_with_frequency(mode_handler, complex(frequency, 0.0))
+    unstable = _mode_with_frequency(mode_handler, complex(0.0, frequency))
+    expected = get_displacement(mode_handler, stable.displace(3, 0.5))
+    actual = get_displacement(mode_handler, unstable.displace(3, 0.5))
+    Assert.allclose(actual, expected)
+
+
+def _mode_with_frequency(mode_handler, frequency):
+    frequencies = np.array(mode_handler.ref.frequencies)
+    frequencies[3] = frequency
+    raw_mode = dataclasses.replace(
+        mode_handler.ref.raw_mode,
+        frequencies=frequencies.view(np.float64).reshape(-1, 2),
+    )
+    return PhononModeHandler.from_data(raw_mode)
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_mode("Sr2TiO4")
     check_factory_methods(PhononMode, data, skip_methods=["selections"])
