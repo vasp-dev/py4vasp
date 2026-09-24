@@ -607,6 +607,18 @@ schema.add(
     frequencies=f"{group}/eigenvalues",
     eigenvectors=f"{group}/eigenvectors",
 )
+# The same modes resolved along a path. VASP reports them in a different unit and on the
+# primitive cell, which is why they need a source of their own; the datasets are the ones
+# the phonon band reads as well.
+schema.add(
+    raw.PhononMode,
+    name="dispersion",
+    required=raw.Version(6, 4),
+    structure=Link("structure", "phonon"),
+    frequencies="results/phonons/frequencies",
+    eigenvectors="results/phonons/eigenvectors",
+    qpoints=Link("kpoint", "phonon"),
+)
 #
 group = "results/linear_response"
 schema.add(

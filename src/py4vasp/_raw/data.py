@@ -688,6 +688,8 @@ class PhononMode:
     "The phonon frequency of all the modes."
     eigenvectors: VaspData
     "The displacement patterns associated with the phonon modes."
+    qpoints: Kpoint = NONE()
+    "The **q** points at which the modes are evaluated, absent at the zone centre."
 
 
 @dataclasses.dataclass

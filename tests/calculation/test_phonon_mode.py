@@ -110,7 +110,7 @@ def test_print_writes_to_stdout(phonon_mode, capsys):
 
 
 def test_selections(phonon_mode):
-    assert phonon_mode.selections() == {"phonon_mode": ["default"]}
+    assert phonon_mode.selections() == {"phonon_mode": ["default", "dispersion"]}
 
 
 @pytest.fixture
