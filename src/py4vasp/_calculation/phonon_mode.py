@@ -19,11 +19,15 @@ from py4vasp._calculation.structure import (
 from py4vasp._raw.models import PhononModeModel
 from py4vasp._util import check, convert
 from py4vasp._util import masses as mass_table
+from py4vasp._util import select
 
 # ħ² in the units the displacement is expressed in, from ħ = 6.582119569e-16 eV s,
 # 1 amu = 1.66053907e-27 kg and 1 Å = 1e-10 m. VASP reports the frequency of a mode as
 # the energy ħω, so ħ/ω = ħ²/(ħω) converts it to the square of a normal coordinate.
 _HBAR_SQUARED = 0.004180159279779  # eV amu Å²
+# Below this energy a mode carries no meaningful scale: it is the numerical zero of
+# a translation, far under any vibration of a crystal (1e-5 eV is 0.08 cm⁻¹).
+_MINIMUM_FREQUENCY = 1e-5  # eV
 
 
 class PhononModeHandler:
@@ -91,23 +95,21 @@ class PhononModeHandler:
             is scaled to a normal coordinate of 1, i.e. the sum of m u² over all atoms
             and directions is 1.
         """
-        masses = self._masses(masses)[:, np.newaxis]
-        # VASP reports the eigenvectors of the dynamical matrix, which is the force
-        # constant matrix divided by the masses, so the displacement of an atom is the
-        # eigenvector divided by the square root of its mass
-        displacements = self._eigenvectors() / np.sqrt(masses)
-        # VASP normalizes the eigenvectors, so this is a no-op on its output; it makes
-        # the normal coordinate exactly 1 for any other input, too
-        normal_coordinate = np.sqrt(np.sum(masses * displacements**2, axis=(1, 2)))
-        return displacements / normal_coordinate[:, np.newaxis, np.newaxis]
+        masses = self._masses(masses)
+        eigenvectors = self._eigenvectors()
+        return np.array(
+            [self._undo_mass_weighting(vector, masses) for vector in eigenvectors]
+        )
 
-    def displace(self, mode, amplitude, masses=None) -> raw.Structure:
-        """Displace the structure along one of the phonon modes.
+    def displace(self, selection=None, amplitude=1.0, masses=None):
+        """Displace the structure along one or several phonon modes.
 
         Parameters
         ----------
-        mode : int
-            Index of the mode in the order :py:meth:`frequencies` reports them.
+        selection : str | None
+            Which modes to displace along, by the number with which :py:meth:`print`
+            labels them, i.e. counting from 1. Separate several modes by commas. If you
+            do not select any, py4vasp displaces along every mode that has a frequency.
         amplitude : float
             The normal coordinate of the displacement in units of the one at which the
             harmonic energy ½ω²Q² of the mode equals ħω.
@@ -117,45 +119,103 @@ class PhononModeHandler:
 
         Returns
         -------
-        raw.Structure
-            The equilibrium structure with every atom moved along the mode.
+        raw.Structure | dict
+            The equilibrium structure with every atom moved along the mode. If you
+            select more than one mode, the structures are returned in a dictionary
+            using the selected modes as keys.
         """
+        masses = self._masses(masses)
+        modes = self._select_modes(selection)
+        structures = {
+            label: self._displace_single_mode(index, amplitude, masses)
+            for label, index in modes
+        }
+        if selection is not None and len(structures) == 1:
+            return next(iter(structures.values()))
+        return structures
+
+    def _displace_single_mode(self, index, amplitude, masses) -> raw.Structure:
         # ½ω²Q² = ħω is solved by Q = sqrt(2ħ/ω); the sign of the frequency does not
         # enter the energy, so an unstable mode uses the magnitude of its imaginary one
-        frequency = self._frequency_of_mode(mode)
+        frequency = np.abs(self.frequencies()[index])
         normal_coordinate = amplitude * np.sqrt(2 * _HBAR_SQUARED / frequency)
-        displacement = normal_coordinate * self.displacements(masses)[mode]
+        pattern = self._undo_mass_weighting(self._eigenvectors()[index], masses)
         structure = self._structure()
         lattice_vectors = structure.lattice_vectors()
         inverse_lattice = np.linalg.inv(lattice_vectors)
-        positions = structure.positions() + displacement @ inverse_lattice
+        positions = (
+            structure.positions() + normal_coordinate * pattern @ inverse_lattice
+        )
         # the raw structure must not reference the HDF5 file, because py4vasp closes it
         # as soon as the displacement is computed
         return raw_structure_from_parts(
             lattice_vectors, positions, structure._stoichiometry().elements()
         )
 
-    def _frequency_of_mode(self, mode) -> float:
-        frequencies = self.frequencies()
-        number_modes = len(frequencies)
-        if not -number_modes <= mode < number_modes:
+    def _undo_mass_weighting(self, eigenvector, masses) -> np.ndarray:
+        # VASP reports the eigenvectors of the dynamical matrix, which is the force
+        # constant matrix divided by the masses, so the displacement of an atom is the
+        # eigenvector divided by the square root of its mass
+        masses = masses[:, np.newaxis]
+        displacement = eigenvector / np.sqrt(masses)
+        # VASP normalizes the eigenvectors, so this is a no-op on its output; it makes
+        # the normal coordinate exactly 1 for any other input, too
+        normal_coordinate = np.sqrt(np.sum(masses * displacement**2))
+        return displacement / normal_coordinate
+
+    def _select_modes(self, selection):
+        if selection is None:
+            return list(self._modes_with_frequency())
+        tree = select.Tree.from_selection(selection)
+        return [self._single_mode(sel) for sel in tree.selections()]
+
+    def _modes_with_frequency(self):
+        for index, frequency in enumerate(np.abs(self.frequencies())):
+            if frequency > _MINIMUM_FREQUENCY:
+                yield str(index + 1), index
+
+    def _single_mode(self, selection):
+        label = self._label_of_mode(selection)
+        index = self._index_of_mode(label)
+        self._raise_error_if_mode_has_no_frequency(label, index)
+        return label, index
+
+    def _label_of_mode(self, selection) -> str:
+        if len(selection) == 1 and isinstance(selection[0], str):
+            return selection[0]
+        message = (
+            f"py4vasp cannot displace the structure along '{select.selections_to_string([list(selection)])}' "
+            "because it does not describe a single mode. Ranges like '1:3' and "
+            "combinations like '1 + 2' are not implemented; please select the modes "
+            "one by one, e.g. '1, 2, 3'."
+        )
+        raise exception.IncorrectUsage(message)
+
+    def _index_of_mode(self, label) -> int:
+        number_modes = len(self.frequencies())
+        try:
+            number = int(label)
+        except ValueError:
+            number = 0
+        if not 1 <= number <= number_modes:
             message = (
-                f"There is no phonon mode {mode} because the structure has "
-                f"{number_modes} modes. Please select one from {-number_modes} to "
-                f"{number_modes - 1}."
+                f"'{label}' is not a phonon mode of this structure. Please select a "
+                f"mode by the number print labels it with, from 1 to {number_modes}."
             )
             raise exception.IncorrectUsage(message)
-        frequency = np.abs(frequencies[mode])
-        if frequency == 0:
-            message = (
-                f"The phonon mode {mode} has a frequency of zero, so moving the atoms "
-                "along it does not change the energy of the system and the amplitude "
-                "has no scale to refer to. The modes of zero frequency translate the "
-                "whole crystal; if you want a mode of small but nonzero frequency "
-                "instead, keep in mind that the displacement grows like 1/sqrt(ħω)."
-            )
-            raise exception.IncorrectUsage(message)
-        return frequency
+        return number - 1
+
+    def _raise_error_if_mode_has_no_frequency(self, label, index):
+        if np.abs(self.frequencies()[index]) > _MINIMUM_FREQUENCY:
+            return
+        message = (
+            f"The phonon mode {label} has a frequency of zero, so moving the atoms "
+            "along it does not change the energy of the system and the amplitude "
+            "has no scale to refer to. The modes of zero frequency translate the "
+            "whole crystal; if you want a mode of small but nonzero frequency "
+            "instead, keep in mind that the displacement grows like 1/sqrt(ħω)."
+        )
+        raise exception.IncorrectUsage(message)
 
     def _eigenvectors(self) -> np.ndarray:
         """The eigenvectors shaped (mode, atom, direction).
@@ -164,19 +224,27 @@ class PhononModeHandler:
         list the three directions of an atom next to each other.
         """
         eigenvectors = np.array(self._raw_phonon_mode.eigenvectors[:])
-        return eigenvectors.reshape(len(eigenvectors), -1, 3)
+        number_atoms = self._structure().number_atoms()
+        return eigenvectors.reshape(len(eigenvectors), number_atoms, 3)
 
     def _masses(self, masses) -> np.ndarray:
         structure = self._structure()
         if masses is None:
             return mass_table.of(structure._stoichiometry().elements())
-        masses = np.atleast_1d(masses)
+        masses = np.atleast_1d(masses).ravel()
         number_atoms = structure.number_atoms()
-        if masses.shape != (number_atoms,):
+        if len(masses) != number_atoms:
             message = (
-                f"You provided {masses.size} masses but the structure contains "
+                f"You provided {len(masses)} masses but the structure contains "
                 f"{number_atoms} atoms. Please pass one mass per atom in the order in "
                 "which the structure lists them."
+            )
+            raise exception.IncorrectUsage(message)
+        if not np.all(masses > 0):
+            message = (
+                "All masses must be positive numbers because the displacement of an "
+                f"atom is its eigenvector divided by the square root of its mass; you "
+                f"provided {list(masses)}."
             )
             raise exception.IncorrectUsage(message)
         return masses
@@ -402,8 +470,8 @@ class PhononMode:
             PhononModeHandler.frequencies,
         )
 
-    def displace(self, mode, amplitude, masses=None) -> Structure:
-        """Displace the atoms of the structure along one of the phonon modes.
+    def displace(self, selection=None, amplitude=1.0, masses=None):
+        """Displace the atoms of the structure along one or several phonon modes.
 
         Use this to set up a frozen-phonon calculation: displace the structure, write
         the result with :py:meth:`~py4vasp._calculation.structure.Structure.to_POSCAR`
@@ -413,14 +481,17 @@ class PhononMode:
 
         Parameters
         ----------
-        mode : int
-            Index of the mode in the order in which :py:meth:`frequencies` reports it.
-            Negative indices count from the end, so -1 selects the last mode.
+        selection : str | None
+            Which modes to displace along. Select a mode by the number with which
+            :py:meth:`print` labels it, so the modes count from 1. Separate several
+            modes by commas, e.g. "1, 2". If you do not select any mode, py4vasp
+            displaces along every mode that has a frequency; the modes that translate
+            the whole crystal are skipped because they have no energy scale.
         amplitude : float
             How far to displace the structure along the mode. The unit is the one in
             which the harmonic energy of the mode is its own ħω, so an amplitude of 1
-            excites the mode by that energy and one of 2 by four times as much.
-            A negative amplitude moves the atoms to the other side of the equilibrium,
+            excites the mode by that energy and one of 2 by four times as much. A
+            negative amplitude moves the atoms to the other side of the equilibrium,
             which is what the double well of an unstable mode requires.
         masses : Sequence[float] | None
             The mass of every atom in atomic mass units. By default py4vasp uses the
@@ -431,8 +502,10 @@ class PhononMode:
 
         Returns
         -------
-        Structure
-            The equilibrium structure with every atom moved along the mode.
+        Structure | dict[str, Structure]
+            The equilibrium structure with every atom moved along the mode. Selecting
+            more than one mode returns the structures in a dictionary with the selected
+            modes as keys.
 
         Examples
         --------
@@ -440,40 +513,60 @@ class PhononMode:
         variable `path` with the path to a directory that does not exist yet.
         Alternatively, use your own data if you have run VASP.
 
+        >>> import numpy as np
         >>> from py4vasp import demo
         >>> calculation = demo.calculation(path)
 
-        Displacing the structure along a mode gives you a new structure, which behaves
-        like any other one, so `displaced.to_POSCAR()` writes the input of the next
-        calculation
+        Printing the modes tells you which number to select; here we take the fourth
+        one, the lowest that does not merely translate the crystal. The result behaves
+        like any other structure, so `displaced.to_POSCAR()` writes the input of the
+        next calculation
 
-        >>> displaced = calculation.phonon.mode.displace(mode=3, amplitude=0.5)
+        >>> displaced = calculation.phonon.mode.displace("4", amplitude=0.5)
         >>> displaced.read()["elements"]
         ['Sr', 'Sr', 'Ti', 'O', 'O', 'O', 'O']
 
         The atoms move away from their equilibrium position by the amount the amplitude
-        sets; a frozen-phonon scan repeats this for a few amplitudes of both signs
+        sets. Check how far that is before you spend time on a calculation
 
         >>> equilibrium = calculation.structure.cartesian_positions()
         >>> shift = displaced.cartesian_positions() - equilibrium
         >>> round(float(np.max(np.linalg.norm(shift, axis=1))), 3)
         0.029
 
+        The displacement is proportional to the amplitude, so scale it if you want a
+        particular distance in Å. Here we ask the atom that moves furthest to move by
+        0.05 Å
+
+        >>> scale = 0.05 / np.max(np.linalg.norm(shift, axis=1))
+        >>> rescaled = calculation.phonon.mode.displace("4", amplitude=0.5 * scale)
+        >>> shift = rescaled.cartesian_positions() - equilibrium
+        >>> round(float(np.max(np.linalg.norm(shift, axis=1))), 3)
+        0.05
+
+        A frozen-phonon scan needs both sides of the minimum, and selecting several
+        modes at once gives you a dictionary of structures
+
+        >>> both_sides = calculation.phonon.mode.displace("4, 5", amplitude=-0.5)
+        >>> sorted(both_sides)
+        ['4', '5']
+
         The first three modes of this example translate the whole crystal, which costs
         no energy, so there is no amplitude that corresponds to an energy of ħω and
         py4vasp reports an error if you select one of them.
         """
-        raw_structure = merge_default(
+        result = merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononModeHandler.displace,
-            mode,
-            amplitude,
-            masses,
+            # keyword arguments, because the dispatcher only passes the selection on
+            # when the user made one and would otherwise shift the positional arguments
+            amplitude=amplitude,
+            masses=masses,
         )
-        return Structure.from_data(raw_structure)
+        return _wrap_structures(result)
 
     def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""
@@ -483,3 +576,10 @@ class PhononMode:
             PhononModeHandler.from_data,
             PhononModeHandler.to_database,
         )
+
+
+def _wrap_structures(result):
+    """Turn the raw structures the handler produced into Structure instances."""
+    if isinstance(result, dict):
+        return {key: _wrap_structures(value) for key, value in result.items()}
+    return Structure.from_data(result)
