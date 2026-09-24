@@ -11,6 +11,7 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
+from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.structure import (
     Structure,
     StructureHandler,
@@ -128,11 +129,7 @@ class PhononModeHandler:
             is scaled to a normal coordinate of 1, i.e. the sum of m u² over all atoms
             and directions is 1.
         """
-        masses = self._masses(masses)
-        eigenvectors = self._eigenvectors()
-        return np.array(
-            [self._undo_mass_weighting(vector, masses) for vector in eigenvectors]
-        )
+        return self._undo_mass_weighting(self._eigenvectors(), self._masses(masses))
 
     def displace(
         self,
@@ -165,6 +162,7 @@ class PhononModeHandler:
             select more than one mode, the structures are returned in a dictionary
             using the selected modes as keys.
         """
+        self._raise_error_if_modes_are_resolved_by_qpoint()
         masses = self._masses(masses)
         modes = self._select_modes(selection, minimum_frequency)
         structures = {
@@ -185,17 +183,35 @@ class PhononModeHandler:
         # the viewer animates the displacement of an atom, so it needs the eigenvectors
         # of the force constants and not the mass weighted ones VASP reports
         indices = self._indices_of_modes(selection)
-        displacements = self.displacements(masses)[indices]
-        frequencies = self._frequencies_in_THz()[indices]
+        displacements = self._per_qpoint(self.displacements(masses))
+        frequencies = self._per_qpoint(self._frequencies_in_THz())
         return view.PhononDispersion(
-            eigenvectors=displacements[np.newaxis],
-            frequencies=frequencies[np.newaxis],
-            # a linear response calculation describes the modes of the zone centre
-            qpoints=np.zeros((1, 3)),
+            eigenvectors=displacements[:, indices],
+            frequencies=frequencies[:, indices],
+            qpoints=self._qpoint_coordinates(),
             supercell_matrix=np.eye(3),
             primitive_index=np.arange(self._structure().number_atoms()),
-            path_labels=[[0, "\u0393"]],
+            path_labels=self._path_labels(),
         )
+
+    def _per_qpoint(self, array) -> np.ndarray:
+        """Add the leading q axis the viewer expects to the modes of the zone centre."""
+        return array if self._has_qpoints() else array[np.newaxis]
+
+    def _qpoint_coordinates(self) -> np.ndarray:
+        if not self._has_qpoints():
+            # a linear response calculation describes the modes of the zone centre
+            return np.zeros((1, 3))
+        return np.array(self._raw_phonon_mode.qpoints.coordinates[:])
+
+    def _path_labels(self):
+        if not self._has_qpoints():
+            return [[0, "\u0393"]]
+        labels = Kpoint.from_data(self._raw_phonon_mode.qpoints).labels()
+        if labels is None:
+            return None
+        path_labels = [[index, label] for index, label in enumerate(labels) if label]
+        return path_labels or None
 
     def _frequencies_in_THz(self) -> np.ndarray:
         # the viewer plots a real frequency and an unstable mode belongs below zero,
@@ -224,15 +240,19 @@ class PhononModeHandler:
             lattice_vectors, positions, structure._stoichiometry().elements()
         )
 
-    def _undo_mass_weighting(self, eigenvector, masses) -> np.ndarray:
+    def _undo_mass_weighting(self, eigenvectors, masses) -> np.ndarray:
         # VASP reports the eigenvectors of the dynamical matrix, which is the force
         # constant matrix divided by the masses, so the displacement of an atom is the
-        # eigenvector divided by the square root of its mass
+        # eigenvector divided by the square root of its mass. The two trailing axes are
+        # the atom and the direction; whatever comes before them is a mode or a q point
         masses = masses[:, np.newaxis]
-        displacement = eigenvector / np.sqrt(masses)
+        displacement = eigenvectors / np.sqrt(masses)
         # VASP normalizes the eigenvectors, so this is a no-op on its output; it makes
-        # the normal coordinate exactly 1 for any other input, too
-        normal_coordinate = np.sqrt(np.sum(masses * displacement**2))
+        # the normal coordinate exactly 1 for any other input, too. A mode at a finite
+        # q point is complex, which is why the magnitude enters rather than the square
+        normal_coordinate = np.sqrt(
+            np.sum(masses * np.abs(displacement) ** 2, axis=(-2, -1), keepdims=True)
+        )
         return displacement / normal_coordinate
 
     def _select_modes(self, selection, minimum_frequency):
@@ -246,7 +266,7 @@ class PhononModeHandler:
         # an animation needs no energy scale, so every mode can be shown, including the
         # ones that merely translate the crystal
         if selection is None:
-            return np.arange(len(self.frequencies()))
+            return np.arange(self._number_modes())
         labels = self._labels_of_selection(selection)
         return np.array([self._index_of_mode(label) for label in labels])
 
@@ -275,8 +295,12 @@ class PhononModeHandler:
         )
         raise exception.IncorrectUsage(message)
 
+    def _number_modes(self) -> int:
+        # a dispersion reports the modes of every q point, so they are the last axis
+        return np.shape(self.frequencies())[-1]
+
     def _index_of_mode(self, label) -> int:
-        number_modes = len(self.frequencies())
+        number_modes = self._number_modes()
         try:
             number = int(label)
         except ValueError:
@@ -288,6 +312,19 @@ class PhononModeHandler:
             )
             raise exception.IncorrectUsage(message)
         return number - 1
+
+    def _raise_error_if_modes_are_resolved_by_qpoint(self):
+        if not self._has_qpoints():
+            return
+        message = (
+            "py4vasp cannot displace the structure along the modes of a phonon "
+            "dispersion. Only a mode at the zone centre displaces the unit cell; at "
+            "any other q point the atoms move out of phase from one cell to the next, "
+            "which requires a supercell commensurate with that q point. Use `plot` to "
+            "look at these modes, or leave the selection out to displace along the "
+            "modes a linear response calculation reports."
+        )
+        raise exception.NotImplemented(message)
 
     def _raise_error_if_frequency_is_negative(self, minimum_frequency):
         if minimum_frequency >= 0:

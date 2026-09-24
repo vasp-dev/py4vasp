@@ -10,6 +10,7 @@ import pytest
 
 import py4vasp
 from py4vasp import exception, raw
+from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.phonon_mode import (
     _EV_TO_THZ,
     _HBAR_SQUARED,
@@ -241,6 +242,52 @@ phonon dispersion:
     21 modes
     Sr2TiO4"""
     assert actual == {"text/plain": reference}
+
+
+def test_dispersion_to_view(dispersion_mode, Assert):
+    view = dispersion_mode.plot("dispersion")
+    Assert.same_structure_view(view, dispersion_mode.ref.structure.plot())
+    phonon = view.phonon
+    number_qpoints, number_modes = dispersion_mode.ref.frequencies_THz.shape
+    number_atoms = len(dispersion_mode.ref.structure.read()["elements"])
+    assert np.shape(phonon.eigenvectors) == (
+        number_qpoints,
+        number_modes,
+        number_atoms,
+        3,
+    )
+    Assert.allclose(phonon.qpoints, dispersion_mode.ref.qpoints)
+    Assert.allclose(phonon.frequencies, dispersion_mode.ref.frequencies_THz)
+    Assert.allclose(phonon.supercell_matrix, np.eye(3))
+    Assert.allclose(phonon.primitive_index, np.arange(number_atoms))
+    labels = Kpoint.from_data(dispersion_mode.ref.raw_data.qpoints).labels()
+    expected = [[index, label] for index, label in enumerate(labels) if label] or None
+    assert phonon.path_labels == expected
+
+
+def test_dispersion_to_view_selects_the_mode(dispersion_mode, Assert):
+    # the modes are counted per q point, so the selection must not pick up the number
+    # of q points as the number of modes
+    phonon = dispersion_mode.plot("dispersion(4)").phonon
+    number_qpoints = len(dispersion_mode.ref.qpoints)
+    number_atoms = len(dispersion_mode.ref.structure.read()["elements"])
+    assert np.shape(phonon.eigenvectors) == (number_qpoints, 1, number_atoms, 3)
+    Assert.allclose(phonon.frequencies, dispersion_mode.ref.frequencies_THz[:, [3]])
+
+
+def test_dispersion_to_view_normalizes_every_mode(dispersion_mode, Assert):
+    # a complex eigenvector has to be scaled by its magnitude, mode by mode
+    phonon = dispersion_mode.plot("dispersion").phonon
+    elements = dispersion_mode.ref.structure.read()["elements"]
+    mass = masses.of(elements)[:, np.newaxis]
+    displacements = np.array(phonon.eigenvectors)
+    normal_coordinate = np.sum(mass * np.abs(displacements) ** 2, axis=(-2, -1))
+    Assert.allclose(normal_coordinate, np.ones_like(normal_coordinate))
+
+
+def test_displace_raises_error_for_a_dispersion(dispersion_mode):
+    with pytest.raises(exception.NotImplemented, match="dispersion"):
+        dispersion_mode.displace("dispersion(4)")
 
 
 def test_to_view(mode_handler, Assert):
