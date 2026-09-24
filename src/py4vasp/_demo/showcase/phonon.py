@@ -76,7 +76,20 @@ def band_Sr2TiO4() -> raw.PhononBand:
         eigenvectors=_demo.wrap_data(
             np.take_along_axis(eigenvectors, _expand(order), axis=1)
         ),
-        primitive_positions=_demo.wrap_data(structure.ideal_positions()),
+    )
+
+
+def primitive_structure_Sr2TiO4() -> raw.Structure:
+    """The cell the phonon modes are defined on.
+
+    A calculation that only postprocesses the force constants writes this structure
+    and none of the trajectory a relaxation produces, which is why it is a source of
+    the structure in its own right.
+    """
+    return raw.Structure(
+        stoichiometry=_demo.stoichiometry.Sr2TiO4(has_ion_types=True),
+        cell=kpoint.line_mode().cell,
+        positions=_demo.wrap_data(structure.ideal_positions()),
     )
 
 

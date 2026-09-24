@@ -1070,19 +1070,19 @@ class TestDataAvailable:
         assert not data_available(source, "density")
 
     def test_optional_field_enforced_by_name(self, raw_data):
-        band = raw_data.phonon_band("default")
-        band.primitive_positions = raw.VaspData(None)
-        source = DataSource(band)
+        mode = raw_data.phonon_mode("dispersion")
+        mode.qpoints = raw.VaspData(None)
+        source = DataSource(mode)
         # an optional field is ignored unless its name is explicitly enforced
-        assert data_available(source, "phonon_band")
+        assert data_available(source, "phonon_mode", selection="dispersion")
         assert not data_available(
-            source, "phonon_band", enforce_optional=["primitive_positions"]
+            source, "phonon_mode", selection="dispersion", enforce_optional=["qpoints"]
         )
 
     def test_optional_present_when_enforced_by_name(self, raw_data):
-        source = DataSource(raw_data.phonon_band("default"))
+        source = DataSource(raw_data.phonon_mode("dispersion"))
         assert data_available(
-            source, "phonon_band", enforce_optional=["primitive_positions"]
+            source, "phonon_mode", selection="dispersion", enforce_optional=["qpoints"]
         )
 
     def test_linked_optional_enforced_by_name(self, raw_data):
