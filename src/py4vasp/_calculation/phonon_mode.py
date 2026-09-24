@@ -148,19 +148,21 @@ class PhononModeHandler:
             return next(iter(structures.values()))
         return structures
 
-    def to_view(self, supercell=None, masses=None) -> view.View:
+    def to_view(self, selection=None, supercell=None, masses=None) -> view.View:
         """Visualize the modes as an animation of the crystal."""
         viewer = self._structure().to_view(supercell)
-        viewer.phonon = self._phonon_dispersion(masses)
+        viewer.phonon = self._phonon_dispersion(selection, masses)
         return viewer
 
-    def _phonon_dispersion(self, masses) -> view.PhononDispersion:
+    def _phonon_dispersion(self, selection, masses) -> view.PhononDispersion:
         # the viewer animates the displacement of an atom, so it needs the eigenvectors
         # of the force constants and not the mass weighted ones VASP reports
-        displacements = self.displacements(masses)
+        indices = self._indices_of_modes(selection)
+        displacements = self.displacements(masses)[indices]
+        frequencies = self._frequencies_in_THz()[indices]
         return view.PhononDispersion(
             eigenvectors=displacements[np.newaxis],
-            frequencies=self._frequencies_in_THz()[np.newaxis],
+            frequencies=frequencies[np.newaxis],
             # a linear response calculation describes the modes of the zone centre
             qpoints=np.zeros((1, 3)),
             supercell_matrix=np.eye(3),
@@ -210,16 +212,27 @@ class PhononModeHandler:
         self._raise_error_if_frequency_is_negative(minimum_frequency)
         if selection is None:
             return list(self._modes_with_frequency(minimum_frequency))
+        labels = self._labels_of_selection(selection)
+        return [self._single_mode(label, minimum_frequency) for label in labels]
+
+    def _indices_of_modes(self, selection) -> np.ndarray:
+        # an animation needs no energy scale, so every mode can be shown, including the
+        # ones that merely translate the crystal
+        if selection is None:
+            return np.arange(len(self.frequencies()))
+        labels = self._labels_of_selection(selection)
+        return np.array([self._index_of_mode(label) for label in labels])
+
+    def _labels_of_selection(self, selection):
         tree = select.Tree.from_selection(selection)
-        return [self._single_mode(sel, minimum_frequency) for sel in tree.selections()]
+        return [self._label_of_mode(sel) for sel in tree.selections()]
 
     def _modes_with_frequency(self, minimum_frequency):
         for index, frequency in enumerate(np.abs(self.frequencies())):
             if frequency > minimum_frequency:
                 yield str(index + 1), index
 
-    def _single_mode(self, selection, minimum_frequency):
-        label = self._label_of_mode(selection)
+    def _single_mode(self, label, minimum_frequency):
         index = self._index_of_mode(label)
         self._raise_error_if_mode_has_no_frequency(label, index, minimum_frequency)
         return label, index
@@ -228,7 +241,7 @@ class PhononModeHandler:
         if len(selection) == 1 and isinstance(selection[0], str):
             return selection[0]
         message = (
-            f"py4vasp cannot displace the structure along '{select.selections_to_string([list(selection)])}' "
+            f"py4vasp cannot select '{select.selections_to_string([list(selection)])}' "
             "because it does not describe a single mode. Ranges like '1:3' and "
             "combinations like '1 + 2' are not implemented; please select the modes "
             "one by one, e.g. '1, 2, 3'."
@@ -665,7 +678,7 @@ class PhononMode(view.Mixin):
         )
         return _wrap_structures(result)
 
-    def to_view(self, supercell=None, masses=None) -> view.View:
+    def to_view(self, selection=None, supercell=None, masses=None) -> view.View:
         """Visualize the modes as an animation of the vibrating crystal.
 
         VASP reports the eigenvectors of the dynamical matrix, which are weighted with
@@ -677,6 +690,11 @@ class PhononMode(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Which modes to show. Select a mode by the number with which :py:meth:`print`
+            labels it, so the modes count from 1. Separate several modes by commas, e.g.
+            "1, 2"; the viewer then offers exactly those. If you do not select any mode,
+            py4vasp shows all of them, including the ones that translate the crystal.
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
@@ -690,7 +708,7 @@ class PhononMode(view.Mixin):
         Returns
         -------
         View
-            The crystal with every mode it can vibrate in.
+            The crystal with the modes it can vibrate in.
 
         Examples
         --------
@@ -714,11 +732,19 @@ class PhononMode(view.Mixin):
 
         >>> round(float(view.phonon.frequencies[0, 3]), 1)
         3.2
+
+        Selecting a mode narrows the animation down to it, so you do not have to find
+        it in the viewer. Pass several modes to compare them
+
+        >>> calculation.phonon.mode.plot("4").phonon.eigenvectors.shape
+        (1, 1, 7, 3)
+        >>> calculation.phonon.mode.plot("4, 5").phonon.eigenvectors.shape
+        (1, 2, 7, 3)
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PhononModeHandler.to_view,
             supercell=supercell,

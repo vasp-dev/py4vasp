@@ -247,6 +247,48 @@ def test_to_view_supercell(mode_handler, Assert):
     Assert.same_structure_view(view, mode_handler.ref.structure.plot(supercell=2))
 
 
+def test_to_view_selects_a_single_mode(mode_handler, Assert):
+    phonon = mode_handler.to_view("4").phonon
+    expected = mode_handler.displacements()[3]
+    Assert.allclose(phonon.eigenvectors, expected[np.newaxis, np.newaxis])
+    expected_frequency = mode_handler._frequencies_in_THz()[3]
+    Assert.allclose(phonon.frequencies, [[expected_frequency]])
+
+
+def test_to_view_selects_several_modes(mode_handler, Assert):
+    phonon = mode_handler.to_view("4, 6").phonon
+    expected = mode_handler.displacements()[[3, 5]]
+    Assert.allclose(phonon.eigenvectors, expected[np.newaxis])
+    expected_frequencies = mode_handler._frequencies_in_THz()[[3, 5]]
+    Assert.allclose(phonon.frequencies, expected_frequencies[np.newaxis])
+
+
+def test_to_view_without_selection_shows_every_mode(mode_handler, Assert):
+    # unlike a displacement, an animation needs no energy scale, so the modes that
+    # translate the crystal are shown like any other
+    phonon = mode_handler.to_view().phonon
+    number_modes = len(mode_handler.ref.frequencies)
+    assert np.shape(phonon.eigenvectors)[1] == number_modes
+
+
+@pytest.mark.parametrize("selection", ["1:2", "1 + 2"])
+def test_to_view_raises_error_for_ranges_and_operations(mode_handler, selection):
+    with pytest.raises(exception.IncorrectUsage, match="single mode"):
+        mode_handler.to_view(selection)
+
+
+def test_to_view_raises_error_for_mode_outside_the_range(mode_handler):
+    number_modes = len(mode_handler.ref.frequencies)
+    with pytest.raises(exception.IncorrectUsage, match="not a phonon mode"):
+        mode_handler.to_view(str(number_modes + 1))
+
+
+def test_public_to_view_selects_the_mode(phonon_mode, Assert):
+    number_atoms = len(phonon_mode.ref.structure.read()["elements"])
+    view = phonon_mode.plot("4")
+    assert np.shape(view.phonon.eigenvectors) == (1, 1, number_atoms, 3)
+
+
 def test_plot_is_alias_of_to_view(phonon_mode, Assert):
     Assert.same_structure_view(phonon_mode.plot(), phonon_mode.to_view())
 
