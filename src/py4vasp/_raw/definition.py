@@ -730,6 +730,14 @@ schema.add(
     idipol="input/incar/IDIPOL",
     ldipol="input/incar/LDIPOL",
 )
+schema.add(
+    raw.Structure,
+    name="phonon",
+    required=raw.Version(6, 4),
+    cell=Link("cell", "phonon"),
+    stoichiometry=Link("stoichiometry", "phonon"),
+    positions="results/phonons/primitive/position_ions",
+)
 schema.add(raw.Structure, name="poscar", file="POSCAR", data_factory=read.structure)
 #
 schema.add(

@@ -675,7 +675,7 @@ def test_print_writes_to_stdout(Sr2TiO4, capsys):
 
 def test_selections(Sr2TiO4):
     assert Sr2TiO4.selections() == {
-        "structure": ["default", "final", "exciton", "poscar"]
+        "structure": ["default", "final", "exciton", "phonon", "poscar"]
     }
 
 

@@ -29,6 +29,16 @@ def test_write_selection(tmp_path, raw_data, Assert):
         Assert.same_raw_structure(raw_structure, structure)
 
 
+def test_write_phonon_structure(tmp_path, raw_data, Assert):
+    filename = tmp_path / DEFAULT_FILE
+    raw_structure = raw_data.structure("Sr2TiO4")
+    with h5py.File(filename, "w") as h5f:
+        write(h5f, raw.Version(99, 99, 99))
+        write(h5f, raw_structure, selection="phonon")
+    with raw.access("structure", path=tmp_path, selection="phonon") as structure:
+        Assert.same_raw_structure(raw_structure, structure)
+
+
 def test_write_encodes_unicode_strings(tmp_path):
     # h5py cannot serialize numpy unicode arrays (dtype kind "U"); the writer must encode
     # them as byte strings, matching how VASP stores strings (e.g. effective_coulomb's
