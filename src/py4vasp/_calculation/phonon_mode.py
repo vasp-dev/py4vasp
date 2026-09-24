@@ -4,7 +4,7 @@ import dataclasses
 
 import numpy as np
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
@@ -120,13 +120,35 @@ class PhononModeHandler:
         """
         # ½ω²Q² = ħω is solved by Q = sqrt(2ħ/ω); the sign of the frequency does not
         # enter the energy, so an unstable mode uses the magnitude of its imaginary one
-        frequency = np.abs(self.frequencies()[mode])
+        frequency = self._frequency_of_mode(mode)
         normal_coordinate = amplitude * np.sqrt(2 * _HBAR_SQUARED / frequency)
         displacement = normal_coordinate * self.displacements(masses)[mode]
         structure = self._structure()
         inverse_lattice = np.linalg.inv(structure.lattice_vectors())
         positions = structure.positions() + displacement @ inverse_lattice
         return dataclasses.replace(self._raw_phonon_mode.structure, positions=positions)
+
+    def _frequency_of_mode(self, mode) -> float:
+        frequencies = self.frequencies()
+        number_modes = len(frequencies)
+        if not -number_modes <= mode < number_modes:
+            message = (
+                f"There is no phonon mode {mode} because the structure has "
+                f"{number_modes} modes. Please select one from {-number_modes} to "
+                f"{number_modes - 1}."
+            )
+            raise exception.IncorrectUsage(message)
+        frequency = np.abs(frequencies[mode])
+        if frequency == 0:
+            message = (
+                f"The phonon mode {mode} has a frequency of zero, so moving the atoms "
+                "along it does not change the energy of the system and the amplitude "
+                "has no scale to refer to. The modes of zero frequency translate the "
+                "whole crystal; if you want a mode of small but nonzero frequency "
+                "instead, keep in mind that the displacement grows like 1/sqrt(ħω)."
+            )
+            raise exception.IncorrectUsage(message)
+        return frequency
 
     def _eigenvectors(self) -> np.ndarray:
         """The eigenvectors shaped (mode, atom, direction).
@@ -138,9 +160,19 @@ class PhononModeHandler:
         return eigenvectors.reshape(len(eigenvectors), -1, 3)
 
     def _masses(self, masses) -> np.ndarray:
-        if masses is not None:
-            return np.array(masses)
-        return mass_table.of(self._structure()._stoichiometry().elements())
+        structure = self._structure()
+        if masses is None:
+            return mass_table.of(structure._stoichiometry().elements())
+        masses = np.atleast_1d(masses)
+        number_atoms = structure.number_atoms()
+        if masses.shape != (number_atoms,):
+            message = (
+                f"You provided {masses.size} masses but the structure contains "
+                f"{number_atoms} atoms. Please pass one mass per atom in the order in "
+                "which the structure lists them."
+            )
+            raise exception.IncorrectUsage(message)
+        return masses
 
     def _structure(self) -> StructureHandler:
         return StructureHandler.from_data(self._raw_phonon_mode.structure)

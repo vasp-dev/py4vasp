@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 import py4vasp
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation.phonon_mode import PhononMode, PhononModeHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._demo.phonon import mode as phonon_mode_demo
@@ -273,6 +273,47 @@ def _mode_with_frequency(mode_handler, frequency):
         frequencies=frequencies.view(np.float64).reshape(-1, 2),
     )
     return PhononModeHandler.from_data(raw_mode)
+
+
+def test_displace_raises_error_for_mode_without_frequency(mode_handler):
+    # a mode of zero frequency translates the crystal, which costs no energy, so there
+    # is no amplitude at which the energy of the mode is ħω
+    acoustic = _mode_with_frequency(mode_handler, complex(0.0, 0.0))
+    with pytest.raises(exception.IncorrectUsage) as error:
+        acoustic.displace(3, 0.5)
+    assert "3" in str(error.value)
+
+
+@pytest.mark.parametrize("mode", (21, -22, 100))
+def test_displace_raises_error_for_mode_out_of_range(mode_handler, mode):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode_handler.displace(mode, 0.5)
+    assert str(mode) in str(error.value)
+
+
+def test_displace_accepts_negative_mode_index(mode_handler, Assert):
+    expected = mode_handler.displace(20, 0.5)
+    Assert.allclose(mode_handler.displace(-1, 0.5).positions, expected.positions)
+
+
+def test_displace_raises_error_if_masses_do_not_match_the_atoms(mode_handler):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode_handler.displace(3, 0.5, masses=[1.0, 2.0])
+    assert "2" in str(error.value) and "7" in str(error.value)
+
+
+def test_displace_raises_error_for_unknown_element(raw_data):
+    raw_mode = raw_data.phonon_mode("default")
+    structure = dataclasses.replace(
+        raw_mode.structure,
+        stoichiometry=raw.Stoichiometry(number_ion_types=[7], ion_types=["Xx"]),
+    )
+    mode = PhononModeHandler.from_data(
+        dataclasses.replace(raw_mode, structure=structure)
+    )
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode.displace(3, 0.5)
+    assert "Xx" in str(error.value)
 
 
 def test_factory_methods(raw_data, check_factory_methods):
