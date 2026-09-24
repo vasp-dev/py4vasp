@@ -75,9 +75,12 @@ class PhononModeHandler:
             "frequencies": self.frequencies(),
             "eigenvectors": self._raw_phonon_mode.eigenvectors[:],
         }
-        if self._has_qpoints():
-            result["eigenvectors"] = self._eigenvectors()
-            result["qpoints"] = np.array(self._raw_phonon_mode.qpoints.coordinates[:])
+        if not self._has_qpoints():
+            return result
+        # the eigenvectors of a dispersion are complex, stored as pairs of reals, and
+        # every mode belongs to the q point VASP evaluated it at
+        result["eigenvectors"] = convert.to_complex(np.array(result["eigenvectors"]))
+        result["qpoints"] = np.array(self._raw_phonon_mode.qpoints.coordinates[:])
         return result
 
     def to_database(self) -> dict:
@@ -125,9 +128,10 @@ class PhononModeHandler:
         Returns
         -------
         np.ndarray
-            How far every atom moves along every direction for every mode. Each pattern
-            is scaled to a normal coordinate of 1, i.e. the sum of m u² over all atoms
-            and directions is 1.
+            How far every atom moves along every direction for every mode, with the
+            **q** point as a leading dimension for a dispersion. Each pattern is scaled
+            to a normal coordinate of 1, i.e. the sum of m |u|² over all atoms and
+            directions is 1.
         """
         return self._undo_mass_weighting(self._eigenvectors(), self._masses(masses))
 

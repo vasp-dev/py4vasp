@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 import py4vasp
-from py4vasp import exception, raw
+from py4vasp import _demo, exception, raw
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.phonon_mode import (
     _EV_TO_THZ,
@@ -283,6 +283,14 @@ def test_dispersion_to_view_normalizes_every_mode(dispersion_mode, Assert):
     displacements = np.array(phonon.eigenvectors)
     normal_coordinate = np.sum(mass * np.abs(displacements) ** 2, axis=(-2, -1))
     Assert.allclose(normal_coordinate, np.ones_like(normal_coordinate))
+
+
+def test_dispersion_without_labels_has_no_path_labels(raw_data):
+    # a KPOINTS file need not name the high symmetry points of the path
+    raw_mode = raw_data.phonon_mode("dispersion")
+    raw_mode.qpoints = _demo.kpoint.line_mode("explicit", "no_labels")
+    mode = PhononMode.from_data(raw_mode)
+    assert mode.plot("dispersion").phonon.path_labels is None
 
 
 def test_displace_raises_error_for_a_dispersion(dispersion_mode):
