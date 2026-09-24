@@ -17,6 +17,7 @@ from py4vasp._calculation.structure import (
     raw_structure_from_parts,
 )
 from py4vasp._raw.models import PhononModeModel
+from py4vasp._third_party import view
 from py4vasp._util import check, convert
 from py4vasp._util import masses as mass_table
 from py4vasp._util import select
@@ -30,6 +31,9 @@ _HBAR_SQUARED = 0.004180159279779  # eV amu Å²
 # not report the translations as exactly zero, and how far above zero they come out
 # depends on the calculation, which is why displace takes this as a parameter.
 _MINIMUM_FREQUENCY = 1e-5  # eV
+# VASP reports the frequency of a mode as the energy ħω in eV, whereas a phonon
+# dispersion is conventionally drawn in THz.
+_EV_TO_THZ = 241.798934781
 
 
 class PhononModeHandler:
@@ -143,6 +147,35 @@ class PhononModeHandler:
         if selection is not None and len(structures) == 1:
             return next(iter(structures.values()))
         return structures
+
+    def to_view(self, supercell=None, masses=None) -> view.View:
+        """Visualize the modes as an animation of the crystal."""
+        viewer = self._structure().to_view(supercell)
+        viewer.phonon = self._phonon_dispersion(masses)
+        return viewer
+
+    def _phonon_dispersion(self, masses) -> view.PhononDispersion:
+        # the viewer animates the displacement of an atom, so it needs the eigenvectors
+        # of the force constants and not the mass weighted ones VASP reports
+        displacements = self.displacements(masses)
+        return view.PhononDispersion(
+            eigenvectors=displacements[np.newaxis],
+            frequencies=self._frequencies_in_THz()[np.newaxis],
+            # a linear response calculation describes the modes of the zone centre
+            qpoints=np.zeros((1, 3)),
+            supercell_matrix=np.eye(3),
+            primitive_index=np.arange(self._structure().number_atoms()),
+            path_labels=[[0, "\u0393"]],
+        )
+
+    def _frequencies_in_THz(self) -> np.ndarray:
+        # the viewer plots a real frequency and an unstable mode belongs below zero,
+        # where VASP reports it as an imaginary energy
+        frequencies = self.frequencies()
+        signed = np.where(
+            frequencies.imag != 0, -np.abs(frequencies.imag), frequencies.real
+        )
+        return signed * _EV_TO_THZ
 
     def _displace_single_mode(self, index, amplitude, masses) -> raw.Structure:
         # ½ω²Q² = ħω is solved by Q = sqrt(2ħ/ω); the sign of the frequency does not
@@ -290,16 +323,15 @@ class PhononModeHandler:
             label = f"{index + 1:4} f/i"
         frequency = np.abs(frequency)
         freq_meV = f"{frequency * 1000:12.6f} meV"
-        eV_to_THz = 241.798934781
-        freq_THz = f"{frequency * eV_to_THz:11.6f} THz"
-        freq_2PiTHz = f"{2 * np.pi * frequency * eV_to_THz:12.6f} 2PiTHz"
+        freq_THz = f"{frequency * _EV_TO_THZ:11.6f} THz"
+        freq_2PiTHz = f"{2 * np.pi * frequency * _EV_TO_THZ:12.6f} 2PiTHz"
         eV_to_cm1 = 8065.610420
         freq_cm1 = f"{frequency * eV_to_cm1:12.6f} cm-1"
         return f"{label}= {freq_THz} {freq_2PiTHz}{freq_cm1} {freq_meV}"
 
 
 @quantity("mode", group="phonon")
-class PhononMode:
+class PhononMode(view.Mixin):
     """Describes a collective vibration of atoms in a crystal.
 
     A phonon mode represents a specific way in which atoms in a solid oscillate
@@ -382,7 +414,11 @@ class PhononMode:
         >>> calculation = demo.calculation(path)
 
         >>> calculation.phonon.mode.selections()
-        {'phonon_mode': ['default']}
+        {'phonon_mode': ['default', 'dispersion']}
+
+        The default modes are the ones a linear response calculation reports at the
+        zone centre. "dispersion" selects the modes VASP evaluates along a path when it
+        postprocesses the force constants.
         """
         from py4vasp._raw import definition as raw_module
 
@@ -628,6 +664,66 @@ class PhononMode:
             minimum_frequency=minimum_frequency,
         )
         return _wrap_structures(result)
+
+    def to_view(self, supercell=None, masses=None) -> view.View:
+        """Visualize the modes as an animation of the vibrating crystal.
+
+        VASP reports the eigenvectors of the dynamical matrix, which are weighted with
+        the square root of the mass. py4vasp undoes that weighting, so the viewer
+        animates how far the atoms actually move. Every pattern is scaled to a normal
+        coordinate of 1 and the viewer adjusts the amplitude of the animation itself.
+
+        Animating a mode requires the VASP Viewer; NGLView cannot show it.
+
+        Parameters
+        ----------
+        supercell : int or np.ndarray
+            If present the structure is replicated the specified number of times
+            along each direction.
+        masses : Sequence[float] | None
+            The mass of every atom in atomic mass units. By default py4vasp uses the
+            standard atomic weight of the element. Set this to the POMASS of your
+            POTCAR if you overwrote it, e.g. to replace hydrogen by deuterium; it must
+            be the mass VASP used, because that is the one the eigenvectors are
+            weighted with.
+
+        Returns
+        -------
+        View
+            The crystal with every mode it can vibrate in.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The view contains every mode of the crystal and the viewer lets you pick the
+        one you want to watch
+
+        >>> view = calculation.phonon.mode.plot()
+        >>> view.phonon.eigenvectors.shape
+        (1, 21, 7, 3)
+
+        The frequencies label the modes in the same unit the dispersion is drawn with,
+        namely THz. An unstable mode has a negative frequency here, because that is how
+        such a mode is conventionally plotted
+
+        >>> round(float(view.phonon.frequencies[0, 3]), 1)
+        3.2
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            PhononModeHandler.to_view,
+            supercell=supercell,
+            masses=masses,
+        )
 
     def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""

@@ -11,6 +11,7 @@ import pytest
 import py4vasp
 from py4vasp import exception, raw
 from py4vasp._calculation.phonon_mode import (
+    _EV_TO_THZ,
     _HBAR_SQUARED,
     PhononMode,
     PhononModeHandler,
@@ -198,6 +199,56 @@ def get_displacement(handler, raw_structure):
 def get_normal_coordinate(handler, displacement):
     """The mass-weighted amplitude Q = sqrt(sum_i m_i u_i²) in Å sqrt(amu)."""
     return np.sqrt(np.sum(handler.ref.masses[:, np.newaxis] * displacement**2))
+
+
+def test_to_view(mode_handler, Assert):
+    view = mode_handler.to_view()
+    Assert.same_structure_view(view, mode_handler.ref.structure.plot())
+    phonon = view.phonon
+    Assert.allclose(phonon.eigenvectors, mode_handler.displacements()[np.newaxis])
+    Assert.allclose(phonon.qpoints, np.zeros((1, 3)))
+    Assert.allclose(phonon.supercell_matrix, np.eye(3))
+    number_atoms = len(mode_handler.ref.masses)
+    Assert.allclose(phonon.primitive_index, np.arange(number_atoms))
+    assert phonon.path_labels == [[0, "\u0393"]]
+
+
+def test_to_view_reports_the_frequency_in_THz(mode_handler, Assert):
+    # the viewer draws a real frequency and puts an unstable mode below zero, where
+    # VASP reports it as an imaginary energy
+    frequencies = mode_handler.ref.frequencies
+    expected = np.where(
+        frequencies.imag != 0, -np.abs(frequencies.imag), frequencies.real
+    )
+    phonon = mode_handler.to_view().phonon
+    Assert.allclose(phonon.frequencies, expected[np.newaxis] * _EV_TO_THZ)
+
+
+def test_to_view_undoes_the_mass_weighting(translation_mode, Assert):
+    # the viewer knows no masses, so passing VASP's eigenvectors would animate a rigid
+    # translation as if the heavy atoms moved further than the light ones
+    phonon = translation_mode.to_view().phonon
+    translation = np.array(phonon.eigenvectors)[0, 0]
+    number_atoms = len(translation_mode.ref.masses)
+    expected = np.zeros((number_atoms, 3))
+    expected[:, 0] = translation_mode.ref.uniform_displacement
+    Assert.allclose(translation, expected)
+
+
+def test_to_view_accepts_custom_masses(translation_mode, Assert):
+    number_atoms = len(translation_mode.ref.masses)
+    phonon = translation_mode.to_view(masses=np.ones(number_atoms)).phonon
+    expected = translation_mode.ref.eigenvectors.reshape(-1, number_atoms, 3)
+    Assert.allclose(np.array(phonon.eigenvectors)[0], expected)
+
+
+def test_to_view_supercell(mode_handler, Assert):
+    view = mode_handler.to_view(supercell=2)
+    Assert.same_structure_view(view, mode_handler.ref.structure.plot(supercell=2))
+
+
+def test_plot_is_alias_of_to_view(phonon_mode, Assert):
+    Assert.same_structure_view(phonon_mode.plot(), phonon_mode.to_view())
 
 
 def test_conversion_constant_is_hbar_squared(Assert):
