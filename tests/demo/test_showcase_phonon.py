@@ -205,14 +205,36 @@ def test_mode_displacements_are_normalized(raw_mode, Assert):
     Assert.allclose(np.sum(eigenvectors**2, axis=1), np.ones(NUMBER_MODES))
 
 
-def test_mode_displacements_carry_the_share_of_their_mode(raw_mode, Assert):
-    # the displacement pattern of a mode has to distribute the mode over the atoms the
-    # same way the projected density of states does
+def test_mode_displacements_are_an_orthonormal_basis(raw_mode, Assert):
+    # the eigenvectors of a dynamical matrix are orthogonal; a user who checks the
+    # example data before trusting a displacement has to find that they are
     eigenvectors = np.array(raw_mode.eigenvectors)
-    per_atom = np.sum(
-        eigenvectors.reshape(NUMBER_MODES, phonon.NUMBER_ATOMS, 3) ** 2, axis=2
-    )
-    Assert.allclose(per_atom, phonon.mode_weights())
+    Assert.allclose(eigenvectors @ eigenvectors.T, np.eye(NUMBER_MODES))
+
+
+def test_acoustic_modes_translate_the_crystal(raw_mode, Assert):
+    # VASP weights the eigenvectors with the square root of the mass, so a translation
+    # moves every atom equally far only after that weighting is undone
+    displacements = _undo_mass_weighting(raw_mode)
+    for mode, direction in enumerate("xyz"):
+        expected = np.zeros((phonon.NUMBER_ATOMS, 3))
+        expected[:, mode] = displacements[mode, 0, mode]
+        Assert.allclose(displacements[mode], expected)
+
+
+def test_optical_modes_conserve_the_center_of_mass(raw_mode, Assert):
+    # a mode that moved the crystal as a whole would mix in a translation, which shows
+    # up as a spurious drift of the structure a user displaces
+    displacements = _undo_mass_weighting(raw_mode)[phonon.NUMBER_ACOUSTIC :]
+    masses = np.array(phonon.MASSES)
+    center_of_mass = np.einsum("a,mad->md", masses, displacements) / np.sum(masses)
+    Assert.allclose(center_of_mass, np.zeros_like(center_of_mass))
+
+
+def _undo_mass_weighting(raw_mode):
+    eigenvectors = np.array(raw_mode.eigenvectors)
+    eigenvectors = eigenvectors.reshape(NUMBER_MODES, phonon.NUMBER_ATOMS, 3)
+    return eigenvectors / np.sqrt(phonon.MASSES)[:, np.newaxis]
 
 
 def test_mode_describes_the_relaxed_structure(raw_mode, Assert):

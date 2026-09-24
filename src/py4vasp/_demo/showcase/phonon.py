@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import _demo, raw
 from py4vasp._demo import showcase
 from py4vasp._demo.showcase import electronic_structure, kpoint, structure
+from py4vasp._util import masses
 
 NUMBER_ATOMS = 7
 NUMBER_MODES = 3 * NUMBER_ATOMS
@@ -15,8 +16,9 @@ SOUND_VELOCITY = 22.0  # THz per unit of the reduced q vector, the slope at Gamm
 # Atomic masses of the atoms of Sr2TiO4 in the order the structure lists them. They
 # decide how the displacement of a mode is shared between the atoms: VASP reports
 # mass-weighted displacements, so a heavy atom carries a large share of a mode that
-# moves every atom by the same amount.
-MASSES = (87.62, 87.62, 47.87, 16.00, 16.00, 16.00, 16.00)
+# moves every atom by the same amount. Taking them from the table py4vasp uses to undo
+# that weighting keeps the acoustic modes of the showcase exact translations.
+MASSES = masses.of(("Sr", "Sr", "Ti", "O", "O", "O", "O"))
 # Exponents of the softness 1/sqrt(mass) that the optical branches sweep through. The
 # lowest optical modes vibrate the heavy sublattice and the highest ones are the oxygen
 # stretching modes, so the share moves from the cations to the anions with frequency.
@@ -236,14 +238,45 @@ def mode_Sr2TiO4() -> raw.PhononMode:
 def _displacements():
     """Real displacement pattern of every zone-centre mode, shape ``(mode, mode)``.
 
-    A mode at Gamma is real, so the pattern is the real part of the one the dispersion
-    carries, rescaled so that every atom keeps the share :func:`mode_weights` gives it.
-    The trailing axis runs over the three directions of every atom in turn, as VASP
-    flattens them.
+    A mode at Gamma is real, and the patterns form an orthonormal basis, because that
+    is what the eigenvectors of a dynamical matrix are. The three acoustic ones
+    translate the whole crystal along the three axes: every atom moves equally far, so
+    the mass-weighted eigenvector VASP reports is proportional to the square root of
+    the mass. The optical ones are orthogonalized against those and against one
+    another, which conserves the centre of mass — the check anybody performs on a
+    frozen-phonon displacement before spending time on it. The trailing axis runs over
+    the three directions of every atom in turn, as VASP flattens them.
+
+    Orthogonalizing costs the exact correspondence with :func:`mode_weights` that the
+    dispersion keeps; the share of each atom moves by a few percent. Being a genuine
+    eigenbasis matters more here, because these patterns are what a user displaces a
+    structure along.
     """
-    mode = np.arange(NUMBER_MODES)[:, np.newaxis, np.newaxis]
+    patterns = np.concatenate((_rigid_translations(), _optical_patterns()))
+    return _orthonormalize(patterns).reshape(NUMBER_MODES, NUMBER_MODES)
+
+
+def _rigid_translations():
+    """Mass-weighted translation of the whole crystal along each of the three axes."""
+    translations = np.zeros((NUMBER_ACOUSTIC, NUMBER_ATOMS, 3))
+    for direction in range(NUMBER_ACOUSTIC):
+        translations[direction, :, direction] = np.sqrt(MASSES)
+    return translations
+
+
+def _optical_patterns():
+    """A deterministic set of patterns for the modes that are not translations."""
+    mode = np.arange(NUMBER_ACOUSTIC, NUMBER_MODES)[:, np.newaxis, np.newaxis]
     atom = np.arange(NUMBER_ATOMS)[np.newaxis, :, np.newaxis]
     axis = np.arange(3)[np.newaxis, np.newaxis, :]
-    pattern = np.cos(np.pi * (mode + 1) * (3 * atom + axis) / NUMBER_MODES)
-    scale = np.sqrt(mode_weights() / np.sum(pattern**2, axis=-1))
-    return (pattern * scale[:, :, np.newaxis]).reshape(NUMBER_MODES, NUMBER_MODES)
+    return np.cos(np.pi * (mode + 1) * (3 * atom + axis) / NUMBER_MODES)
+
+
+def _orthonormalize(patterns):
+    """Gram-Schmidt the patterns in the order given, keeping the first ones intact."""
+    flat = patterns.reshape(len(patterns), -1)
+    orthonormal, upper_triangular = np.linalg.qr(flat.T)
+    # QR fixes the basis only up to a sign per vector; taking the sign of the diagonal
+    # keeps every pattern pointing the way the input did
+    orthonormal = orthonormal * np.sign(np.diag(upper_triangular))
+    return orthonormal.T.reshape(patterns.shape)

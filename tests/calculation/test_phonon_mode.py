@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
+import shutil
 import types
 
 import h5py
@@ -7,11 +9,17 @@ import numpy as np
 import pytest
 
 import py4vasp
-from py4vasp import raw
-from py4vasp._calculation.phonon_mode import PhononMode, PhononModeHandler
+from py4vasp import exception, raw
+from py4vasp._calculation.phonon_mode import (
+    _HBAR_SQUARED,
+    PhononMode,
+    PhononModeHandler,
+)
 from py4vasp._calculation.structure import Structure
+from py4vasp._demo import showcase
 from py4vasp._demo.phonon import mode as phonon_mode_demo
 from py4vasp._raw.models import PhononModeModel
+from py4vasp._util import masses
 
 
 @pytest.fixture
@@ -105,6 +113,351 @@ def test_selections(phonon_mode):
     assert phonon_mode.selections() == {"phonon_mode": ["default"]}
 
 
+@pytest.fixture
+def translation_mode(raw_data):
+    """A phonon mode whose first eigenvector moves every atom by the same amount.
+
+    VASP weights the eigenvectors with the square root of the mass, so translating the
+    whole crystal along x does not give every atom the same eigenvector but one that is
+    proportional to sqrt(mass). Undoing that weighting has to bring back the uniform
+    displacement, which is what makes this pattern a useful reference.
+    """
+    raw_mode = raw_data.phonon_mode("default")
+    number_modes = len(raw_mode.eigenvectors)
+    elements = Structure.from_data(raw_mode.structure).read()["elements"]
+    mass = masses.of(elements)
+    translation = np.zeros((len(mass), 3))
+    translation[:, 0] = np.sqrt(mass / np.sum(mass))
+    eigenvectors = np.eye(number_modes)
+    eigenvectors[0] = translation.flatten()
+    raw_mode = dataclasses.replace(raw_mode, eigenvectors=eigenvectors)
+    mode = PhononModeHandler.from_data(raw_mode)
+    mode.ref = types.SimpleNamespace()
+    mode.ref.masses = mass
+    mode.ref.uniform_displacement = 1 / np.sqrt(np.sum(mass))
+    mode.ref.eigenvectors = eigenvectors
+    return mode
+
+
+def test_displacements_undo_the_mass_weighting(translation_mode, Assert):
+    actual = translation_mode.displacements()[0]
+    expected = np.zeros_like(actual)
+    expected[:, 0] = translation_mode.ref.uniform_displacement
+    Assert.allclose(actual, expected)
+
+
+def test_displacements_are_normalized_to_unit_normal_coordinate(
+    translation_mode, Assert
+):
+    # the normal coordinate Q^2 = sum_i m_i u_i^2 is what sets the energy of a mode, so
+    # every pattern is scaled to Q = 1 and displace only multiplies the physical scale
+    displacements = translation_mode.displacements()
+    mass = translation_mode.ref.masses[:, np.newaxis]
+    normal_coordinate = np.sum(mass * displacements**2, axis=(1, 2))
+    Assert.allclose(normal_coordinate, np.ones(len(displacements)))
+
+
+def test_displacements_read_both_eigenvector_shapes(translation_mode, Assert):
+    # VASP writes the eigenvectors as (mode, atom, direction) whereas the demo data
+    # flattens the two trailing axes; both describe the same displacement
+    flat = translation_mode.ref.eigenvectors
+    raw_mode = dataclasses.replace(
+        translation_mode._raw_phonon_mode,
+        eigenvectors=flat.reshape(len(flat), -1, 3),
+    )
+    nested = PhononModeHandler.from_data(raw_mode)
+    Assert.allclose(nested.displacements(), translation_mode.displacements())
+
+
+def test_displacements_accept_custom_masses(translation_mode, Assert):
+    # with all masses equal to one, undoing the weighting leaves the eigenvectors
+    number_atoms = len(translation_mode.ref.masses)
+    actual = translation_mode.displacements(masses=np.ones(number_atoms))
+    expected = translation_mode.ref.eigenvectors.reshape(-1, number_atoms, 3)
+    Assert.allclose(actual, expected)
+
+
+@pytest.fixture
+def mode_handler(raw_data):
+    raw_mode = raw_data.phonon_mode("default")
+    handler = PhononModeHandler.from_data(raw_mode)
+    handler.ref = types.SimpleNamespace()
+    handler.ref.structure = Structure.from_data(raw_mode.structure)
+    handler.ref.masses = masses.of(handler.ref.structure.read()["elements"])
+    handler.ref.frequencies = raw_mode.frequencies.flatten().view(np.complex128)
+    handler.ref.raw_mode = raw_mode
+    return handler
+
+
+def get_displacement(handler, raw_structure):
+    """How far every atom moved from the equilibrium structure in Å."""
+    displaced = Structure.from_data(raw_structure)
+    return displaced.cartesian_positions() - handler.ref.structure.cartesian_positions()
+
+
+def get_normal_coordinate(handler, displacement):
+    """The mass-weighted amplitude Q = sqrt(sum_i m_i u_i²) in Å sqrt(amu)."""
+    return np.sqrt(np.sum(handler.ref.masses[:, np.newaxis] * displacement**2))
+
+
+def test_conversion_constant_is_hbar_squared(Assert):
+    # CODATA: ħ = 1.054571817646e-34 J s, 1 eV = 1.602176634e-19 J,
+    # 1 amu = 1.66053906892e-27 kg, 1 Å = 1e-10 m
+    expected = 1.054571817646e-34**2 / (1.602176634e-19 * 1.66053906892e-27 * 1e-20)
+    Assert.allclose(_HBAR_SQUARED, expected, tolerance=100)
+
+
+def test_displace_without_amplitude_keeps_the_structure(mode_handler, Assert):
+    actual = Structure.from_data(mode_handler.displace("4", amplitude=0.0))
+    Assert.same_structure(actual.read(), mode_handler.ref.structure.read())
+
+
+def test_displace_keeps_cell_and_elements(mode_handler, Assert):
+    actual = Structure.from_data(mode_handler.displace("4", amplitude=0.5)).read()
+    expected = mode_handler.ref.structure.read()
+    Assert.allclose(actual["lattice_vectors"], expected["lattice_vectors"])
+    assert actual["elements"] == expected["elements"]
+
+
+def test_displace_follows_the_displacement_pattern(mode_handler, Assert):
+    actual = get_displacement(mode_handler, mode_handler.displace("4", amplitude=0.5))
+    pattern = mode_handler.displacements()[3]
+    # displace stores the positions in direct coordinates, so comparing the Cartesian
+    # displacement means converting back and forth through the lattice vectors
+    Assert.allclose(
+        actual / get_normal_coordinate(mode_handler, actual), pattern, tolerance=100
+    )
+
+
+def test_amplitude_one_displaces_by_the_energy_of_the_mode(mode_handler, Assert):
+    # the amplitude is the normal coordinate in units where 1 puts the harmonic energy
+    # ½ω²Q² of the mode at ħω, so that a frozen-phonon scan is a scan in units of ħω
+    displacement = get_displacement(mode_handler, mode_handler.displace("4"))
+    normal_coordinate = get_normal_coordinate(mode_handler, displacement)
+    frequency = np.abs(mode_handler.ref.frequencies[3])
+    energy = 0.5 * frequency**2 / _HBAR_SQUARED * normal_coordinate**2
+    # the normal coordinate is recovered from positions stored in direct coordinates,
+    # so it carries the rounding of the conversion through the lattice vectors
+    Assert.allclose(energy, frequency, tolerance=100)
+
+
+def test_displace_scales_the_normal_coordinate_with_the_amplitude(mode_handler, Assert):
+    frequency = np.abs(mode_handler.ref.frequencies[3])
+    expected = np.sqrt(2 * _HBAR_SQUARED / frequency)
+    for amplitude in (0.25, 1.0, 2.0):
+        displacement = get_displacement(
+            mode_handler, mode_handler.displace("4", amplitude)
+        )
+        actual = get_normal_coordinate(mode_handler, displacement)
+        Assert.allclose(actual, amplitude * expected, tolerance=100)
+
+
+def test_negative_amplitude_displaces_to_the_other_side(mode_handler, Assert):
+    # a frozen-phonon scan needs both sides of the minimum, in particular for the double
+    # well an unstable mode produces
+    forward = get_displacement(mode_handler, mode_handler.displace("6", 0.7))
+    backward = get_displacement(mode_handler, mode_handler.displace("6", -0.7))
+    Assert.allclose(backward, -forward)
+
+
+def test_displace_uses_the_magnitude_of_an_imaginary_frequency(mode_handler, Assert):
+    # an unstable mode lowers the energy, so ½ω²Q² is negative; taking the magnitude of
+    # the frequency makes the amplitude of the soft mode the one a frozen-phonon scan
+    # of a stable mode of the same magnitude would use
+    frequency = np.abs(mode_handler.ref.frequencies[3])
+    stable = _mode_with_frequency(mode_handler, complex(frequency, 0.0))
+    unstable = _mode_with_frequency(mode_handler, complex(0.0, frequency))
+    expected = get_displacement(mode_handler, stable.displace("4", 0.5))
+    actual = get_displacement(mode_handler, unstable.displace("4", 0.5))
+    Assert.allclose(actual, expected)
+
+
+def _mode_with_frequency(mode_handler, frequency):
+    frequencies = np.array(mode_handler.ref.frequencies)
+    frequencies[3] = frequency
+    raw_mode = dataclasses.replace(
+        mode_handler.ref.raw_mode,
+        frequencies=frequencies.view(np.float64).reshape(-1, 2),
+    )
+    return PhononModeHandler.from_data(raw_mode)
+
+
+def test_displace_normalizes_the_eigenvector(mode_handler, Assert):
+    # VASP normalizes its eigenvectors, so the amplitude may not depend on the length
+    # of the eigenvector even if some other source of the data leaves it unnormalized
+    eigenvectors = np.array(mode_handler.ref.raw_mode.eigenvectors)
+    eigenvectors[3] *= 3.0
+    stretched = PhononModeHandler.from_data(
+        dataclasses.replace(mode_handler.ref.raw_mode, eigenvectors=eigenvectors)
+    )
+    actual = get_displacement(mode_handler, stretched.displace("4", 0.5))
+    expected = get_displacement(mode_handler, mode_handler.displace("4", 0.5))
+    Assert.allclose(actual, expected)
+
+
+def test_displace_selects_several_modes(mode_handler, Assert):
+    actual = mode_handler.displace("4, 6", amplitude=0.5)
+    assert sorted(actual) == ["4", "6"]
+    for label in actual:
+        expected = mode_handler.displace(label, amplitude=0.5)
+        Assert.allclose(actual[label].positions, expected.positions)
+
+
+def test_displace_without_selection_takes_every_mode_with_a_frequency(mode_handler):
+    # the modes that translate the crystal have no energy scale, so they are skipped
+    # instead of raising an error when the user did not select a particular mode
+    actual = mode_handler.displace(amplitude=0.5)
+    number_modes = len(mode_handler.ref.frequencies)
+    assert sorted(actual, key=int) == [str(mode + 1) for mode in range(number_modes)]
+    acoustic = _mode_with_frequency(mode_handler, complex(0.0, 0.0))
+    assert "4" not in acoustic.displace(amplitude=0.5)
+
+
+def test_displace_raises_error_for_mode_without_frequency(mode_handler):
+    # a mode of zero frequency translates the crystal, which costs no energy, so there
+    # is no amplitude at which the energy of the mode is ħω
+    acoustic = _mode_with_frequency(mode_handler, complex(0.0, 0.0))
+    with pytest.raises(exception.IncorrectUsage) as error:
+        acoustic.displace("4", 0.5)
+    assert "4" in str(error.value)
+
+
+def test_displace_raises_error_for_frequency_below_the_threshold(mode_handler):
+    # VASP reports the translations with a small numerical frequency rather than zero,
+    # which would otherwise displace the atoms by an arbitrarily large distance
+    almost_acoustic = _mode_with_frequency(mode_handler, complex(1e-9, 0.0))
+    with pytest.raises(exception.IncorrectUsage):
+        almost_acoustic.displace("4", 0.5)
+
+
+def test_minimum_frequency_decides_which_modes_are_translations(mode_handler, Assert):
+    # how far above zero VASP puts the translations depends on the calculation, so the
+    # user has to be able to move the threshold in either direction
+    frequency = np.abs(mode_handler.ref.frequencies[3])
+    almost_acoustic = _mode_with_frequency(mode_handler, complex(1e-4, 0.0))
+    with pytest.raises(exception.IncorrectUsage):
+        almost_acoustic.displace("4", 0.5, minimum_frequency=1e-3)
+    displaced = almost_acoustic.displace("4", 0.5, minimum_frequency=1e-5)
+    assert len(get_displacement(mode_handler, displaced)) == 7
+    # raising the threshold above a mode also removes it from an empty selection
+    assert "4" in mode_handler.displace(amplitude=0.5, minimum_frequency=frequency / 2)
+    assert "4" not in mode_handler.displace(amplitude=0.5, minimum_frequency=frequency)
+
+
+def test_displace_raises_error_for_negative_minimum_frequency(mode_handler):
+    # the threshold is compared to the magnitude of the frequency, so a negative value
+    # would let a mode of zero frequency through and displace the atoms by infinity
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode_handler.displace("4", 0.5, minimum_frequency=-1.0)
+    assert "-1.0" in str(error.value)
+
+
+def test_public_displace_passes_the_minimum_frequency_on(phonon_mode):
+    frequency = np.abs(phonon_mode.ref.frequencies[3])
+    assert "4" in phonon_mode.displace(amplitude=0.5, minimum_frequency=frequency / 2)
+    assert "4" not in phonon_mode.displace(amplitude=0.5, minimum_frequency=frequency)
+
+
+@pytest.mark.parametrize("selection", ("0", "22", "100", "x"))
+def test_displace_raises_error_for_mode_out_of_range(mode_handler, selection):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode_handler.displace(selection, 0.5)
+    assert selection in str(error.value)
+    assert "1 to 21" in str(error.value)
+
+
+@pytest.mark.parametrize("selection", ("1:3", "1 + 2"))
+def test_displace_raises_error_for_ranges_and_operations(mode_handler, selection):
+    # both are valid py4vasp selection syntax, so the error has to say that displace
+    # does not implement them rather than that they are not modes
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode_handler.displace(selection, 0.5)
+    assert "one by one" in str(error.value)
+
+
+def test_displace_raises_error_if_masses_do_not_match_the_atoms(mode_handler):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode_handler.displace("4", 0.5, masses=[1.0, 2.0])
+    assert "2" in str(error.value) and "7" in str(error.value)
+
+
+def test_displace_raises_error_if_masses_are_not_numbers(mode_handler):
+    # a dictionary of element to mass is a plausible guess and would otherwise be
+    # reported as a single mass rather than as the wrong kind of input
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode_handler.displace("4", 0.5, masses={"Sr": 87.62, "Ti": 47.867, "O": 15.999})
+    assert "numbers" in str(error.value)
+
+
+@pytest.mark.parametrize("wrong_mass", (0.0, -1.0))
+def test_displace_raises_error_for_nonpositive_mass(mode_handler, wrong_mass):
+    # dividing by the square root of the mass would fill the structure with nan
+    masses_ = np.ones(7)
+    masses_[2] = wrong_mass
+    with pytest.raises(exception.IncorrectUsage):
+        mode_handler.displace("4", 0.5, masses=masses_)
+
+
+def test_displace_raises_error_for_unknown_element(raw_data):
+    raw_mode = raw_data.phonon_mode("default")
+    structure = dataclasses.replace(
+        raw_mode.structure,
+        stoichiometry=raw.Stoichiometry(number_ion_types=[7], ion_types=["Xx"]),
+    )
+    mode = PhononModeHandler.from_data(
+        dataclasses.replace(raw_mode, structure=structure)
+    )
+    with pytest.raises(exception.IncorrectUsage) as error:
+        mode.displace("4", 0.5)
+    assert "Xx" in str(error.value)
+
+
+def test_displace_returns_a_structure(phonon_mode, Assert):
+    displaced = phonon_mode.displace("4", amplitude=0.5)
+    assert isinstance(displaced, Structure)
+    expected = PhononModeHandler.from_data(phonon_mode.ref.raw_data).displace("4", 0.5)
+    Assert.allclose(displaced.positions(), expected.positions)
+
+
+def test_displace_returns_dictionary_of_structures(phonon_mode):
+    actual = phonon_mode.displace("4, 6", amplitude=0.5)
+    assert sorted(actual) == ["4", "6"]
+    assert all(isinstance(structure, Structure) for structure in actual.values())
+
+
+def test_displace_passes_the_masses_on(phonon_mode, Assert):
+    # the public class has to forward the masses; with all of them equal the atoms move
+    # differently than with the standard atomic weights
+    default_ = phonon_mode.displace("4", amplitude=0.5)
+    custom = phonon_mode.displace("4", amplitude=0.5, masses=np.ones(7))
+    assert not np.allclose(default_.positions(), custom.positions())
+    handler = PhononModeHandler.from_data(phonon_mode.ref.raw_data)
+    expected = handler.displace("4", 0.5, masses=np.ones(7))
+    Assert.allclose(custom.positions(), expected.positions)
+
+
+def test_displaced_structure_outlives_the_file(tmp_path, Assert):
+    # the raw structure must not reference the HDF5 file, because py4vasp closes it as
+    # soon as displace returns; reading it afterwards would raise a low-level error
+    path = tmp_path / "calculation"
+    calculation = py4vasp.demo.calculation(path)
+    displaced = calculation.phonon.mode.displace("4", amplitude=0.5)
+    shutil.rmtree(path)
+    assert len(displaced.read()["elements"]) == 7
+    assert "Sr" in displaced.to_POSCAR()
+
+
+def test_acoustic_modes_of_the_showcase_move_every_atom_equally(Assert):
+    # the showcase weights its eigenvectors with the masses py4vasp looks up, so undoing
+    # the weighting has to give back the rigid translation the acoustic modes are
+    handler = PhononModeHandler.from_data(showcase.phonon.mode_Sr2TiO4())
+    displacement = handler.displacements()[0]
+    Assert.allclose(displacement, np.broadcast_to(displacement[0], displacement.shape))
+
+
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.phonon_mode("Sr2TiO4")
-    check_factory_methods(PhononMode, data, skip_methods=["selections"])
+    parameters = {"displace": {"selection": "4", "amplitude": 0.5}}
+    check_factory_methods(
+        PhononMode, data, parameters=parameters, skip_methods=["selections"]
+    )
