@@ -11,6 +11,7 @@ import py4vasp
 from py4vasp import exception, raw
 from py4vasp._calculation.phonon_mode import PhononMode, PhononModeHandler
 from py4vasp._calculation.structure import Structure
+from py4vasp._demo import showcase
 from py4vasp._demo.phonon import mode as phonon_mode_demo
 from py4vasp._raw.models import PhononModeModel
 from py4vasp._util import masses
@@ -321,6 +322,15 @@ def test_displace_returns_a_structure(phonon_mode, Assert):
     assert isinstance(displaced, Structure)
     expected = PhononModeHandler.from_data(phonon_mode.ref.raw_data).displace(3, 0.5)
     Assert.allclose(displaced.positions(), expected.positions)
+
+
+def test_acoustic_modes_of_the_showcase_move_every_atom_equally(Assert):
+    # the showcase weights its eigenvectors with the masses py4vasp looks up, so undoing
+    # the weighting has to give back the uniform translation the acoustic modes are
+    handler = PhononModeHandler.from_data(showcase.phonon.mode_Sr2TiO4())
+    displacement = handler.displacements()[0]
+    distances = np.linalg.norm(displacement, axis=1)
+    Assert.allclose(distances, np.full(len(distances), distances[0]))
 
 
 def test_factory_methods(raw_data, check_factory_methods):

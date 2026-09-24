@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import _demo, raw
 from py4vasp._demo import showcase
 from py4vasp._demo.showcase import electronic_structure, kpoint, structure
+from py4vasp._util import masses
 
 NUMBER_ATOMS = 7
 NUMBER_MODES = 3 * NUMBER_ATOMS
@@ -15,8 +16,9 @@ SOUND_VELOCITY = 22.0  # THz per unit of the reduced q vector, the slope at Gamm
 # Atomic masses of the atoms of Sr2TiO4 in the order the structure lists them. They
 # decide how the displacement of a mode is shared between the atoms: VASP reports
 # mass-weighted displacements, so a heavy atom carries a large share of a mode that
-# moves every atom by the same amount.
-MASSES = (87.62, 87.62, 47.87, 16.00, 16.00, 16.00, 16.00)
+# moves every atom by the same amount. Taking them from the table py4vasp uses to undo
+# that weighting keeps the acoustic modes of the showcase exact translations.
+MASSES = masses.of(("Sr", "Sr", "Ti", "O", "O", "O", "O"))
 # Exponents of the softness 1/sqrt(mass) that the optical branches sweep through. The
 # lowest optical modes vibrate the heavy sublattice and the highest ones are the oxygen
 # stretching modes, so the share moves from the cations to the anions with frequency.

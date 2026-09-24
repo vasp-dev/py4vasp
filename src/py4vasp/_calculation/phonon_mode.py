@@ -231,6 +231,11 @@ class PhononMode:
     A mode marked "f/i" instead of "f" has an imaginary frequency and describes a
     displacement that lowers the energy, so the structure is not at a minimum. The
     example data is stable and has none.
+
+    Note that the eigenvectors VASP reports are the ones of the dynamical matrix, so
+    they are weighted with the square root of the mass of the atom and are *not* the
+    pattern in which the atoms move. Use :py:meth:`displace` to obtain a structure
+    displaced along a mode; it undoes the weighting for you.
     """
 
     def __init__(self, source, quantity_name: str = "phonon_mode"):
@@ -325,6 +330,27 @@ class PhononMode:
 
         >>> calculation.phonon.mode.read()["eigenvectors"].shape
         (21, 21)
+
+        These are the eigenvectors of the dynamical matrix, which is the force constant
+        matrix divided by the masses, so every atom enters weighted with the square root
+        of its mass. They are therefore not the pattern in which the atoms move: an
+        acoustic mode translates the whole crystal, moving every atom equally far, and
+        yet its eigenvector is largest for the heaviest atom
+
+        >>> acoustic = calculation.phonon.mode.read()["eigenvectors"][0].reshape(-1, 3)
+        >>> int(np.argmax(np.linalg.norm(acoustic, axis=1)))
+        0
+
+        Dividing by the square root of the mass recovers the displacement, which is the
+        same for every atom of that mode
+
+        >>> mass = np.array([87.62, 87.62, 47.867, 15.999, 15.999, 15.999, 15.999])
+        >>> distance = np.linalg.norm(acoustic, axis=1) / np.sqrt(mass)
+        >>> bool(np.allclose(distance, distance[0]))
+        True
+
+        Rather than doing this yourself, use :py:meth:`displace`, which undoes the
+        weighting and returns the displaced structure.
         """
         return merge_default(
             self._source,
