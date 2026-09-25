@@ -148,9 +148,11 @@ class PhononDos(graph.Mixin):
     projection allows for the identification of localized modes or vibrations associated
     with specific atomic species.
 
-    The energy mesh is reported in eV and the density of states per eV, so that the
-    integral counts the modes of the cell. Plots and the printed summary use meV,
-    which is the range a crystal vibrates in.
+    :py:meth:`read` reports the energy mesh in eV and the density of states per eV, so
+    that the integral counts the modes of the cell. Everything drawn or exported from
+    the graph -- :py:meth:`plot`, ``to_plotly``, ``to_frame``, ``to_csv`` -- uses meV
+    instead, which is the range a crystal vibrates in, as does the printed summary. A
+    csv written from this quantity is therefore in meV even though ``read`` gave you eV.
 
     Examples
     --------

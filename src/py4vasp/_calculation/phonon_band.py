@@ -126,8 +126,10 @@ class PhononBand(graph.Mixin):
     The phonon band structure includes the dispersion relations of phonons, which reveal
     how vibrational frequencies vary with direction in the crystal lattice. The presence
     of band gaps or band crossings indicates the material's ability to conduct or
-    insulate heat. py4vasp reports every branch as the energy ħω in eV and draws it
-    in meV. Additionally, the branches near the high-symmetry points in the
+    insulate heat. :py:meth:`read` reports every branch as the energy ħω in eV, while
+    everything drawn or exported from the graph -- :py:meth:`plot`, ``to_plotly``,
+    ``to_frame``, ``to_csv`` -- uses meV, so a csv written from this quantity is in meV
+    even though ``read`` gave you eV. Additionally, the branches near the
     Brillouin zone offer insights into the material's anharmonicity and thermal
     conductivity. Furthermore, phonons with imaginary frequencies indicate the presence
     of a structural instability.

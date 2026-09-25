@@ -538,7 +538,9 @@ class PhononMode(view.Mixin):
         -------
         dict
             Structural information, the phonon frequencies as the complex energy ħω in
-            eV, and the eigenvectors.
+            eV, and the eigenvectors. An unstable mode is purely imaginary, so use
+            ``np.abs`` rather than ``np.real`` to drop the complex dtype -- the real
+            part of such a mode is zero.
 
         Examples
         --------
@@ -618,6 +620,12 @@ class PhononMode(view.Mixin):
             The eigenvalues of the dynamical matrix as complex numbers in eV. An
             imaginary part marks an unstable mode. The dispersion adds the **q** point
             as a leading dimension.
+
+            Take ``np.abs`` and not ``np.real`` if you want to drop the complex dtype:
+            an unstable mode is *purely* imaginary, so its real part is zero and taking
+            it silently turns the mode you were looking for into a mode of zero
+            frequency. :py:class:`~py4vasp._calculation.phonon_band.PhononBand` uses
+            the opposite convention and reports such a mode as a negative real energy.
 
         Examples
         --------
