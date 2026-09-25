@@ -188,8 +188,8 @@ class PhononBand(graph.Mixin):
         VASP reports the branches in THz; py4vasp converts them to an energy so that
         every quantity speaks the same unit. An unstable mode comes back as a negative
         energy, which is how its branch is conventionally drawn. The same modes are
-        available from :py:attr:`~py4vasp.Calculation.phonon.mode`, which reports an
-        unstable mode as an imaginary energy instead.
+        available from :py:class:`~py4vasp._calculation.phonon_mode.PhononMode`, which
+        reports an unstable mode as an imaginary energy instead.
 
         Examples
         --------
