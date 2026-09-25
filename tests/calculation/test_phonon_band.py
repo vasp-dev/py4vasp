@@ -21,7 +21,8 @@ def phonon_band(raw_data):
     band.ref = types.SimpleNamespace()
     # VASP reports the branches in THz; py4vasp converts them to an energy in eV
     band.ref.bands = raw_band.dispersion.eigenvalues / convert.EV_TO_THZ
-    band.ref.plotted = raw_band.dispersion.eigenvalues
+    # the graph is drawn in meV, where a phonon spectrum reads naturally
+    band.ref.plotted = band.ref.bands * convert.EV_TO_MEV
     band.ref.modes = convert.to_complex(raw_band.eigenvectors)
     raw_qpoints = raw_band.dispersion.kpoints
     band.ref.qpoints = Kpoint.from_data(raw_qpoints)
@@ -62,7 +63,7 @@ def test_read_reports_an_unstable_mode_as_a_negative_energy(raw_data, Assert):
 
 def test_plot(phonon_band, Assert):
     graph = phonon_band.plot()
-    assert graph.ylabel == "ω (THz)"
+    assert graph.ylabel == "ω (meV)"
     assert len(graph.series) == 1
     assert graph.series[0].weight is None
     Assert.allclose(graph.series[0].x, phonon_band.ref.qpoints.distances())

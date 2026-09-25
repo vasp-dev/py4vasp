@@ -55,9 +55,13 @@ class PhononBandHandler:
         )
 
     def to_graph(self, selection=None, width=1.0) -> graph.Graph:
+        # the dispersion draws VASP's THz branches; a phonon spectrum is a few tens of
+        # meV wide, so eV would compress every tick into three leading zeros
         projections = self._projections(selection, width)
         g = self._dispersion().plot(projections)
-        g.ylabel = "ω (THz)"
+        for series in g.series:
+            series.y = self._energies(series.y) * convert.EV_TO_MEV
+        g.ylabel = "ω (meV)"
         return g
 
     def selections(self) -> dict:
