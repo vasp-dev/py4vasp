@@ -64,12 +64,14 @@ def test_phonon_dos_read_projection(phonon_dos, Assert):
 
 
 def test_phonon_dos_plot(phonon_dos, Assert):
+    # a phonon spectrum occupies the first hundred meV, so the axis is drawn in meV
+    # even though read() reports the same numbers in eV
     graph = phonon_dos.plot()
-    assert graph.xlabel == "ω (THz)"
-    assert graph.ylabel == "DOS (1/THz)"
+    assert graph.xlabel == "ω (meV)"
+    assert graph.ylabel == "DOS (1/meV)"
     assert len(graph.series) == 1
-    Assert.allclose(graph.series[0].x, phonon_dos.ref.energies)
-    Assert.allclose(graph.series[0].y, phonon_dos.ref.total_dos)
+    Assert.allclose(graph.series[0].x, phonon_dos.ref.energies * convert.EV_TO_MEV)
+    Assert.allclose(graph.series[0].y, phonon_dos.ref.total_dos / convert.EV_TO_MEV)
 
 
 def test_phonon_dos_plot_selection(phonon_dos, Assert):
@@ -84,7 +86,7 @@ def test_phonon_dos_plot_selection(phonon_dos, Assert):
 
 def check_series(series, reference, label, Assert):
     assert series.label == label
-    Assert.allclose(series.y, reference)
+    Assert.allclose(series.y, reference / convert.EV_TO_MEV)
 
 
 @patch.object(PhononDos, "to_graph")
@@ -121,7 +123,7 @@ def test_phonon_dos_print(phonon_dos, format_):
     actual, _ = format_(phonon_dos)
     reference = """\
 phonon DOS:
-    [0.00, 5.00] mesh with 50 points
+    [0.00, 20.68] meV mesh with 50 points
     21 modes
     Sr2TiO4"""
     assert actual == {"text/plain": reference}

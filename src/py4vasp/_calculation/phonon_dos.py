@@ -32,10 +32,10 @@ class PhononDosHandler:
         return cls(raw_phonon_dos)
 
     def __str__(self) -> str:
-        energies = self._raw_phonon_dos.energies
+        energies = self._energies() * convert.EV_TO_MEV
         stoichiometry = self._stoichiometry()
         return f"""phonon DOS:
-    [{energies[0]:0.2f}, {energies[-1]:0.2f}] mesh with {len(energies)} points
+    [{energies[0]:0.2f}, {energies[-1]:0.2f}] meV mesh with {len(energies)} points
     {3 * stoichiometry.number_atoms()} modes
     {stoichiometry}"""
 
@@ -80,11 +80,13 @@ class PhononDosHandler:
         return dos * convert.EV_TO_THZ
 
     def to_graph(self, selection=None) -> graph.Graph:
+        # a phonon spectrum is a few tens of meV wide, so eV would compress the axis
+        # into three leading zeros; the density follows the axis to stay normalized
         data = self.to_dict(selection)
         return graph.Graph(
             series=list(_series(data)),
-            xlabel="ω (THz)",
-            ylabel="DOS (1/THz)",
+            xlabel="ω (meV)",
+            ylabel="DOS (1/meV)",
         )
 
     def selections(self) -> dict:
@@ -171,7 +173,7 @@ class PhononDos(graph.Mixin):
 
     >>> print(calculation.phonon.dos)
     phonon DOS:
-        [0.00, 20.90] mesh with 301 points
+        [0.00, 86.44] meV mesh with 301 points
         21 modes
         Sr2TiO4
     """
@@ -289,7 +291,7 @@ class PhononDos(graph.Mixin):
 
         >>> calculation.phonon.dos.to_graph()
         Graph(series=[Series(x=array([...]), y=array([...]), label='total', ...)],
-              xlabel='ω (THz)', ...)
+              xlabel='ω (meV)', ...)
 
         Project onto a single atom and a single direction
 
@@ -339,8 +341,8 @@ class PhononDos(graph.Mixin):
 
 
 def _series(data):
-    energies = data["energies"]
+    energies = data["energies"] * convert.EV_TO_MEV
     for name, dos in data.items():
         if name == "energies":
             continue
-        yield graph.Series(energies, dos, name)
+        yield graph.Series(energies, dos / convert.EV_TO_MEV, name)
