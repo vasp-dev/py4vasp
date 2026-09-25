@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import pathlib
 
+import numpy as np
+
 from py4vasp import raw
 from py4vasp._calculation import phonon
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
@@ -16,7 +18,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.models import PhononDosModel
 from py4vasp._third_party import graph
-from py4vasp._util import check, documentation, index, select
+from py4vasp._util import check, convert, documentation, index, select
 
 
 class PhononDosHandler:
@@ -49,28 +51,33 @@ class PhononDosHandler:
         Returns
         -------
         dict
-            Contains the energies at which the phonon DOS was computed. The total
+            Contains the energies in eV at which the phonon DOS was computed. The total
             DOS is returned and any possible projected DOS selected by the *selection*
             argument.
         """
         return {
-            "energies": self._raw_phonon_dos.energies[:],
-            "total": self._raw_phonon_dos.dos[:],
+            "energies": self._energies(),
+            "total": self._density(self._raw_phonon_dos.dos[:]),
             **self._read_data(selection),
         }
 
     def to_database(self) -> dict:
-        energy_min = (
-            float(self._raw_phonon_dos.energies[0])
-            if not check.is_none(self._raw_phonon_dos.energies)
-            else None
+        energies = self._raw_phonon_dos.energies
+        if check.is_none(energies):
+            return PhononDosModel(energy_min=None, energy_max=None)
+        return PhononDosModel(
+            energy_min=float(self._energies()[0]),
+            energy_max=float(self._energies()[-1]),
         )
-        energy_max = (
-            float(self._raw_phonon_dos.energies[-1])
-            if not check.is_none(self._raw_phonon_dos.energies)
-            else None
-        )
-        return PhononDosModel(energy_min=energy_min, energy_max=energy_max)
+
+    def _energies(self) -> np.ndarray:
+        # VASP evaluates the density of states on a mesh in THz
+        return self._raw_phonon_dos.energies[:] / convert.EV_TO_THZ
+
+    def _density(self, dos) -> np.ndarray:
+        # the density is per unit of energy, so it scales with the inverse of the mesh
+        # and the number of modes the density of states integrates to is preserved
+        return dos * convert.EV_TO_THZ
 
     def to_graph(self, selection=None) -> graph.Graph:
         data = self.to_dict(selection)
@@ -98,7 +105,10 @@ class PhononDosHandler:
             maps, self._raw_phonon_dos.projections, use_number_labels=True
         )
         tree = select.Tree.from_selection(selection)
-        return {selector.label(sel): selector[sel] for sel in tree.selections()}
+        return {
+            selector.label(sel): self._density(selector[sel])
+            for sel in tree.selections()
+        }
 
     def _init_atom_dict(self) -> dict:
         return {

@@ -836,9 +836,9 @@ class PhononDosModel(_DatabaseModel):
     """Data class for storing phonon density of states data in the database."""
 
     energy_min: Optional[float] = None
-    """The minimum energy at which the phonon density of states was evaluated, in THz."""
+    """The minimum energy at which the phonon density of states was evaluated, in eV."""
     energy_max: Optional[float] = None
-    """The maximum energy at which the phonon density of states was evaluated, in THz."""
+    """The maximum energy at which the phonon density of states was evaluated, in eV."""
 
 
 @dataclass
