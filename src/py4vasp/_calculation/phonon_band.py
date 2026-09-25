@@ -43,15 +43,15 @@ class PhononBandHandler:
         return {
             "qpoint_distances": dispersion["kpoint_distances"],
             "qpoint_labels": dispersion.get("kpoint_labels"),
-            "bands": dispersion["eigenvalues"],
+            "bands": self._energies(dispersion["eigenvalues"]),
             "modes": self._modes(),
         }
 
     def to_database(self) -> PhononBandModel:
         dispersion = self._dispersion().to_database()
         return PhononBandModel(
-            eigenvalue_min=dispersion.eigenvalue_min,
-            eigenvalue_max=dispersion.eigenvalue_max,
+            eigenvalue_min=self._energies(dispersion.eigenvalue_min),
+            eigenvalue_max=self._energies(dispersion.eigenvalue_max),
         )
 
     def to_graph(self, selection=None, width=1.0) -> graph.Graph:
@@ -72,6 +72,13 @@ class PhononBandHandler:
 
     def _stoichiometry(self) -> StoichiometryHandler:
         return StoichiometryHandler.from_data(self._raw_phonon_band.stoichiometry)
+
+    def _energies(self, frequencies):
+        # VASP reports the branches in THz. The conversion belongs here and not in
+        # DispersionHandler, which the electronic band shares and which is already eV.
+        # An unstable mode stays negative so that its branch is drawn below zero;
+        # PhononMode reports the same mode as an imaginary energy instead.
+        return frequencies / convert.EV_TO_THZ
 
     def _modes(self) -> np.ndarray:
         return convert.to_complex(self._raw_phonon_band.eigenvectors[:])

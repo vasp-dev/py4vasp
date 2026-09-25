@@ -19,7 +19,9 @@ def phonon_band(raw_data):
     raw_band = raw_data.phonon_band("default")
     band = PhononBand.from_data(raw_band)
     band.ref = types.SimpleNamespace()
-    band.ref.bands = raw_band.dispersion.eigenvalues
+    # VASP reports the branches in THz; py4vasp converts them to an energy in eV
+    band.ref.bands = raw_band.dispersion.eigenvalues / convert.EV_TO_THZ
+    band.ref.plotted = raw_band.dispersion.eigenvalues
     band.ref.modes = convert.to_complex(raw_band.eigenvectors)
     raw_qpoints = raw_band.dispersion.kpoints
     band.ref.qpoints = Kpoint.from_data(raw_qpoints)
@@ -45,13 +47,26 @@ def test_read(phonon_band, Assert):
     Assert.allclose(band["modes"], phonon_band.ref.modes)
 
 
+def test_read_reports_an_unstable_mode_as_a_negative_energy(raw_data, Assert):
+    # VASP marks an unstable mode with a negative frequency; phonon.band keeps that
+    # convention so the branch can be drawn below zero, where phonon.mode instead
+    # reports the same mode as an imaginary energy
+    raw_band = raw_data.phonon_band("default")
+    eigenvalues = np.array(raw_band.dispersion.eigenvalues)
+    eigenvalues[0, 0] = -12.0
+    raw_band.dispersion.eigenvalues = eigenvalues
+    bands = PhononBand.from_data(raw_band).read()["bands"]
+    assert not np.iscomplexobj(bands)
+    Assert.allclose(bands[0, 0], -12.0 / convert.EV_TO_THZ)
+
+
 def test_plot(phonon_band, Assert):
     graph = phonon_band.plot()
     assert graph.ylabel == "ω (THz)"
     assert len(graph.series) == 1
     assert graph.series[0].weight is None
     Assert.allclose(graph.series[0].x, phonon_band.ref.qpoints.distances())
-    Assert.allclose(graph.series[0].y, phonon_band.ref.bands.T)
+    Assert.allclose(graph.series[0].y, phonon_band.ref.plotted.T)
     check_ticks(graph, phonon_band.ref.qpoints, Assert)
     assert tuple(graph.xticks.values()) == (r"$\Gamma$", "", r"M|$\Gamma$", "Y", "M")
 
@@ -80,7 +95,7 @@ class FatbandChecker:
         self.distances = ref.qpoints.distances()
         self.projections = ref.Sr, ref.Ti_x, ref.y_45, ref.z, ref.Sr - ref.Ti_x
         self.labels = "Sr", "Ti_1_x", "4:5_y", "z", "Sr - Ti_x"
-        self.bands = ref.bands
+        self.bands = ref.plotted
         self.Assert = Assert
 
     def verify(self, graph, weight):
@@ -142,8 +157,8 @@ def test_to_database(phonon_band):
     dispersion = DispersionHandler.from_data(
         phonon_band.ref.raw_data.dispersion
     ).to_database()
-    assert db_data.eigenvalue_min == dispersion.eigenvalue_min
-    assert db_data.eigenvalue_max == dispersion.eigenvalue_max
+    assert db_data.eigenvalue_min == dispersion.eigenvalue_min / convert.EV_TO_THZ
+    assert db_data.eigenvalue_max == dispersion.eigenvalue_max / convert.EV_TO_THZ
 
 
 def test_print_writes_to_stdout(phonon_band, capsys):

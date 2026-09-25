@@ -848,9 +848,9 @@ class PhononBandModel(_DatabaseModel):
     The dispersion (phonon frequencies) is folded into this model."""
 
     eigenvalue_min: Optional[float] = None
-    """The minimum phonon frequency across all modes and q-points, in THz."""
+    """The minimum phonon energy across all modes and q-points, in eV."""
     eigenvalue_max: Optional[float] = None
-    """The maximum phonon frequency across all modes and q-points, in THz."""
+    """The maximum phonon energy across all modes and q-points, in eV."""
 
 
 @dataclass
