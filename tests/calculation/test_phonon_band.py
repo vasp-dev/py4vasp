@@ -10,6 +10,7 @@ from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.phonon_band import PhononBand, PhononBandHandler
+from py4vasp._calculation.phonon_mode import PhononMode
 from py4vasp._raw.models import PhononBandModel
 from py4vasp._util import convert
 
@@ -160,6 +161,19 @@ def test_to_database(phonon_band):
     ).to_database()
     assert db_data.eigenvalue_min == dispersion.eigenvalue_min / convert.EV_TO_THZ
     assert db_data.eigenvalue_max == dispersion.eigenvalue_max / convert.EV_TO_THZ
+
+
+def test_band_and_mode_agree_on_the_same_dataset(raw_data, Assert):
+    # phonon.band and phonon.mode("dispersion") read the very same HDF5 dataset. They
+    # represent an unstable mode differently -- negative here, imaginary there -- but
+    # the magnitude has to be one energy, which it was not while one of them was in THz.
+    raw_mode = raw_data.phonon_mode("dispersion")
+    raw_band = raw_data.phonon_band("default")
+    raw_band.dispersion.eigenvalues = np.array(raw_mode.frequencies)
+    bands = PhononBand.from_data(raw_band).read()["bands"]
+    frequencies = PhononMode.from_data(raw_mode).frequencies()
+    assert np.any(bands < 0)  # the fixture must exercise an unstable mode
+    Assert.allclose(np.abs(bands), np.abs(frequencies))
 
 
 def test_print_writes_to_stdout(phonon_band, capsys):
