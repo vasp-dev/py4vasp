@@ -256,7 +256,8 @@ def test_dispersion_to_view(dispersion_mode, Assert):
         3,
     )
     Assert.allclose(phonon.qpoints, dispersion_mode.ref.qpoints)
-    Assert.allclose(phonon.frequencies, dispersion_mode.ref.frequencies_THz)
+    expected = dispersion_mode.ref.frequencies_THz / convert.EV_TO_THZ
+    Assert.allclose(phonon.frequencies, expected)
     Assert.allclose(phonon.supercell_matrix, np.eye(3))
     Assert.allclose(phonon.primitive_index, np.arange(number_atoms))
     labels = Kpoint.from_data(dispersion_mode.ref.raw_data.qpoints).labels()
@@ -271,7 +272,8 @@ def test_dispersion_to_view_selects_the_mode(dispersion_mode, Assert):
     number_qpoints = len(dispersion_mode.ref.qpoints)
     number_atoms = len(dispersion_mode.ref.structure.read()["elements"])
     assert np.shape(phonon.eigenvectors) == (number_qpoints, 1, number_atoms, 3)
-    Assert.allclose(phonon.frequencies, dispersion_mode.ref.frequencies_THz[:, [3]])
+    expected = dispersion_mode.ref.frequencies_THz[:, [3]] / convert.EV_TO_THZ
+    Assert.allclose(phonon.frequencies, expected)
 
 
 def test_dispersion_to_view_normalizes_every_mode(dispersion_mode, Assert):
@@ -309,15 +311,15 @@ def test_to_view(mode_handler, Assert):
     assert phonon.path_labels == [[0, "\u0393"]]
 
 
-def test_to_view_reports_the_frequency_in_THz(mode_handler, Assert):
+def test_to_view_reports_the_frequency_in_eV(mode_handler, Assert):
     # the viewer draws a real frequency and puts an unstable mode below zero, where
-    # VASP reports it as an imaginary energy
+    # VASP reports it as an imaginary energy; the magnitude is the energy in eV
     frequencies = mode_handler.ref.frequencies
     expected = np.where(
         frequencies.imag != 0, -np.abs(frequencies.imag), frequencies.real
     )
     phonon = mode_handler.to_view().phonon
-    Assert.allclose(phonon.frequencies, expected[np.newaxis] * convert.EV_TO_THZ)
+    Assert.allclose(phonon.frequencies, expected[np.newaxis])
 
 
 def test_to_view_undoes_the_mass_weighting(translation_mode, Assert):
@@ -347,7 +349,7 @@ def test_to_view_selects_a_single_mode(mode_handler, Assert):
     phonon = mode_handler.to_view("4").phonon
     expected = mode_handler.displacements()[3]
     Assert.allclose(phonon.eigenvectors, expected[np.newaxis, np.newaxis])
-    expected_frequency = mode_handler._frequencies_in_THz()[3]
+    expected_frequency = mode_handler._signed_frequencies()[3]
     Assert.allclose(phonon.frequencies, [[expected_frequency]])
 
 
@@ -355,7 +357,7 @@ def test_to_view_selects_several_modes(mode_handler, Assert):
     phonon = mode_handler.to_view("4, 6").phonon
     expected = mode_handler.displacements()[[3, 5]]
     Assert.allclose(phonon.eigenvectors, expected[np.newaxis])
-    expected_frequencies = mode_handler._frequencies_in_THz()[[3, 5]]
+    expected_frequencies = mode_handler._signed_frequencies()[[3, 5]]
     Assert.allclose(phonon.frequencies, expected_frequencies[np.newaxis])
 
 

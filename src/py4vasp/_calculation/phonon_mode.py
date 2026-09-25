@@ -187,7 +187,7 @@ class PhononModeHandler:
         # of the force constants and not the mass weighted ones VASP reports
         indices = self._indices_of_modes(selection)
         displacements = self._per_qpoint(self.displacements(masses))
-        frequencies = self._per_qpoint(self._frequencies_in_THz())
+        frequencies = self._per_qpoint(self._signed_frequencies())
         return view.PhononDispersion(
             eigenvectors=displacements[:, indices],
             frequencies=frequencies[:, indices],
@@ -216,14 +216,13 @@ class PhononModeHandler:
         path_labels = [[index, label] for index, label in enumerate(labels) if label]
         return path_labels or None
 
-    def _frequencies_in_THz(self) -> np.ndarray:
+    def _signed_frequencies(self) -> np.ndarray:
         # the viewer plots a real frequency and an unstable mode belongs below zero,
-        # where VASP reports it as an imaginary energy
+        # where VASP reports it as an imaginary energy; the magnitude stays in eV
         frequencies = self.frequencies()
-        signed = np.where(
+        return np.where(
             frequencies.imag != 0, -np.abs(frequencies.imag), frequencies.real
         )
-        return signed * convert.EV_TO_THZ
 
     def _displace_single_mode(self, index, amplitude, masses) -> raw.Structure:
         # ½ω²Q² = ħω is solved by Q = sqrt(2ħ/ω); the sign of the frequency does not
@@ -836,12 +835,12 @@ class PhononMode(view.Mixin):
         >>> view.phonon.eigenvectors.shape
         (1, 21, 7, 3)
 
-        The frequencies label the modes in the same unit the dispersion is drawn with,
-        namely THz. An unstable mode has a negative frequency here, because that is how
-        such a mode is conventionally plotted
+        The frequencies label the modes with their energy ħω in eV. An unstable mode
+        is negative here, because that is how such a mode is conventionally plotted,
+        whereas :py:meth:`frequencies` reports it as an imaginary energy
 
-        >>> round(float(view.phonon.frequencies[0, 3]), 1)
-        3.2
+        >>> round(float(view.phonon.frequencies[0, 3]), 4)
+        0.0132
 
         Selecting a mode narrows the animation down to it, so you do not have to find
         it in the viewer. Pass several modes to compare them

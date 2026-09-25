@@ -858,9 +858,9 @@ class PhononModeModel(_DatabaseModel):
     """Data class for storing phonon mode data in the database."""
 
     frequencies_real_max: Optional[float] = None
-    """The maximum real frequency across all phonon modes and q-points, in THz."""
+    """The maximum real energy across all phonon modes and q-points, in eV."""
     frequencies_imag_max: Optional[float] = None
-    """The maximum imaginary frequency across all phonon modes and q-points, in THz."""
+    """The maximum imaginary energy across all phonon modes and q-points, in eV."""
 
 
 @dataclass

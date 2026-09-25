@@ -193,7 +193,8 @@ class PhononDispersion:
     """Complex eigenvectors of the primitive cell. Expected shape is
     (number of q-points, number of bands, number of primitive atoms, 3)."""
     frequencies: npt.ArrayLike
-    """Phonon frequencies. Expected shape is (number of q-points, number of bands)."""
+    """Phonon energies ħω in eV, where an unstable mode is negative so that its branch
+    is drawn below zero. Expected shape is (number of q-points, number of bands)."""
     qpoints: npt.ArrayLike
     """**q** points along the path in fractional coordinates of the primitive
     reciprocal lattice. Expected shape is (number of q-points, 3)."""
