@@ -148,6 +148,10 @@ class PhononDos(graph.Mixin):
     projection allows for the identification of localized modes or vibrations associated
     with specific atomic species.
 
+    The energy mesh is reported in eV and the density of states per eV, so that the
+    integral counts the modes of the cell. Plots and the printed summary use meV,
+    which is the range a crystal vibrates in.
+
     Examples
     --------
     First, we create some example data so that you can follow along. Please define a
@@ -223,9 +227,9 @@ class PhononDos(graph.Mixin):
         Returns
         -------
         dict
-            Contains the energies at which the phonon DOS was computed. The total
-            DOS is returned and any possible projected DOS selected by the *selection*
-            argument.
+            Contains the energies in eV at which the phonon DOS was computed and the
+            density of states per eV. The total DOS is returned and any possible
+            projected DOS selected by the *selection* argument.
 
         Examples
         --------
@@ -277,8 +281,9 @@ class PhononDos(graph.Mixin):
         Returns
         -------
         Graph
-            The graph contains the total DOS. If a selection is given, in addition the
-            projected DOS is shown.
+            The graph contains the total DOS, drawn in meV where :py:meth:`read`
+            reports eV. If a selection is given, in addition the projected DOS is
+            shown.
 
         Examples
         --------

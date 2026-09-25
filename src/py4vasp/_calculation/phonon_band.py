@@ -126,7 +126,8 @@ class PhononBand(graph.Mixin):
     The phonon band structure includes the dispersion relations of phonons, which reveal
     how vibrational frequencies vary with direction in the crystal lattice. The presence
     of band gaps or band crossings indicates the material's ability to conduct or
-    insulate heat. Additionally, the branches near the high-symmetry points in the
+    insulate heat. py4vasp reports every branch as the energy ħω in eV and draws it
+    in meV. Additionally, the branches near the high-symmetry points in the
     Brillouin zone offer insights into the material's anharmonicity and thermal
     conductivity. Furthermore, phonons with imaginary frequencies indicate the presence
     of a structural instability.
@@ -179,7 +180,37 @@ class PhononBand(graph.Mixin):
         -------
         dict
             Contains the **q**-point path for plotting phonon band structures and
-            the phonon bands. In addition the phonon modes are returned.
+            the phonon bands as the energy ħω in eV. In addition the phonon modes
+            are returned.
+
+        Notes
+        -----
+        VASP reports the branches in THz; py4vasp converts them to an energy so that
+        every quantity speaks the same unit. An unstable mode comes back as a negative
+        energy, which is how its branch is conventionally drawn. The same modes are
+        available from :py:attr:`~py4vasp.Calculation.phonon.mode`, which reports an
+        unstable mode as an imaginary energy instead.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The bands are resolved by **q** point and by mode
+
+        >>> band = calculation.phonon.band.read()
+        >>> band["bands"].shape
+        (164, 21)
+
+        A crystal of oxides vibrates within the first hundred meV, so the energies are
+        small numbers when expressed in eV
+
+        >>> round(float(band["bands"].max()), 3)
+        0.08
         """
         return merge_default(
             self._source,
@@ -206,9 +237,30 @@ class PhononBand(graph.Mixin):
         Returns
         -------
         Graph
-            Contains the phonon band structure for all the **q** points. If a
-            selection is provided, the width of the bands is adjusted according to
+            Contains the phonon band structure for all the **q** points, drawn in meV.
+            If a selection is provided, the width of the bands is adjusted according to
             the projection.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The graph is drawn in meV, where a phonon spectrum reads naturally, whereas
+        :py:meth:`read` reports the same energies in eV
+
+        >>> calculation.phonon.band.to_graph()
+        Graph(series=[Series(..., label='bands', ...)], ..., ylabel='ω (meV)', ...)
+
+        Widen a branch by how much the selected atoms contribute to it
+
+        >>> calculation.phonon.band.to_graph("Sr, Ti, O")
+        Graph(series=[Series(..., label='Sr', ...), Series(..., label='Ti', ...),
+              Series(..., label='O', ...)], ...)
         """
         return merge_graphs(
             self._source,

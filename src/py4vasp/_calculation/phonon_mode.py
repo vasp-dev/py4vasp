@@ -421,10 +421,15 @@ class PhononMode(view.Mixin):
     Low-frequency modes correspond to long-wavelength vibrations, while
     high-frequency modes involve more localized atomic motion.
 
+    Every frequency this class reports is the energy ħω in eV, as a complex number so
+    that an unstable mode can come back as an imaginary energy. The printed table adds
+    the units a phonon calculation is conventionally quoted in.
+
     See Also
     --------
     py4vasp._calculation.phonon_band.PhononBand :
-        Plots the frequencies of these modes along a path through the Brillouin zone.
+        Plots the frequencies of these modes along a path through the Brillouin zone,
+        where an unstable mode is drawn as a negative energy instead.
 
     Examples
     --------
@@ -532,7 +537,8 @@ class PhononMode(view.Mixin):
         Returns
         -------
         dict
-            Structural information, phonon frequencies and eigenvectors.
+            Structural information, the phonon frequencies as the complex energy ħω in
+            eV, and the eigenvectors.
 
         Examples
         --------
