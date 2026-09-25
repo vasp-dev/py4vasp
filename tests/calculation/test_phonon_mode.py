@@ -12,7 +12,6 @@ import py4vasp
 from py4vasp import _demo, exception, raw
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.phonon_mode import (
-    _EV_TO_THZ,
     _HBAR_SQUARED,
     PhononMode,
     PhononModeHandler,
@@ -221,7 +220,7 @@ def test_dispersion_frequencies_are_energies(dispersion_mode, Assert):
     in_THz = dispersion_mode.ref.frequencies_THz
     actual = dispersion_mode.frequencies()
     assert actual.shape == in_THz.shape
-    Assert.allclose(np.abs(actual) * _EV_TO_THZ, np.abs(in_THz))
+    Assert.allclose(np.abs(actual) * convert.EV_TO_THZ, np.abs(in_THz))
     assert np.all(actual.imag[in_THz < 0] > 0)
     assert np.all(actual.imag[in_THz > 0] == 0)
 
@@ -318,7 +317,7 @@ def test_to_view_reports_the_frequency_in_THz(mode_handler, Assert):
         frequencies.imag != 0, -np.abs(frequencies.imag), frequencies.real
     )
     phonon = mode_handler.to_view().phonon
-    Assert.allclose(phonon.frequencies, expected[np.newaxis] * _EV_TO_THZ)
+    Assert.allclose(phonon.frequencies, expected[np.newaxis] * convert.EV_TO_THZ)
 
 
 def test_to_view_undoes_the_mass_weighting(translation_mode, Assert):

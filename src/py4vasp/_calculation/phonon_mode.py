@@ -34,9 +34,6 @@ _HBAR_SQUARED = 0.004180159279779  # eV amu Å²
 # 8 cm⁻¹, where the soft mode of that same BaTiO3 is 200 cm⁻¹. A calculation with a
 # genuinely softer mode lowers it, which is why displace takes it as a parameter.
 _MINIMUM_FREQUENCY = 1e-3  # eV
-# VASP reports the frequency of a mode as the energy ħω in eV, whereas a phonon
-# dispersion is conventionally drawn in THz.
-_EV_TO_THZ = 241.798934781
 
 
 class PhononModeHandler:
@@ -111,7 +108,7 @@ class PhononModeHandler:
     def _energies_of_dispersion(self) -> np.ndarray:
         # a dispersion stores a real frequency in THz, where an unstable mode is
         # negative; both sources report the energy ħω as a complex number in eV
-        frequencies = np.array(self._raw_phonon_mode.frequencies[:]) / _EV_TO_THZ
+        frequencies = np.array(self._raw_phonon_mode.frequencies[:]) / convert.EV_TO_THZ
         return np.where(frequencies < 0, -1j * frequencies, frequencies + 0j)
 
     def _has_qpoints(self) -> bool:
@@ -226,7 +223,7 @@ class PhononModeHandler:
         signed = np.where(
             frequencies.imag != 0, -np.abs(frequencies.imag), frequencies.real
         )
-        return signed * _EV_TO_THZ
+        return signed * convert.EV_TO_THZ
 
     def _displace_single_mode(self, index, amplitude, masses) -> raw.Structure:
         # ½ω²Q² = ħω is solved by Q = sqrt(2ħ/ω); the sign of the frequency does not
@@ -408,11 +405,10 @@ class PhononModeHandler:
         else:
             label = f"{index + 1:4} f/i"
         frequency = np.abs(frequency)
-        freq_meV = f"{frequency * 1000:12.6f} meV"
-        freq_THz = f"{frequency * _EV_TO_THZ:11.6f} THz"
-        freq_2PiTHz = f"{2 * np.pi * frequency * _EV_TO_THZ:12.6f} 2PiTHz"
-        eV_to_cm1 = 8065.610420
-        freq_cm1 = f"{frequency * eV_to_cm1:12.6f} cm-1"
+        freq_meV = f"{frequency * convert.EV_TO_MEV:12.6f} meV"
+        freq_THz = f"{frequency * convert.EV_TO_THZ:11.6f} THz"
+        freq_2PiTHz = f"{2 * np.pi * frequency * convert.EV_TO_THZ:12.6f} 2PiTHz"
+        freq_cm1 = f"{frequency * convert.EV_TO_CM1:12.6f} cm-1"
         return f"{label}= {freq_THz} {freq_2PiTHz}{freq_cm1} {freq_meV}"
 
 
