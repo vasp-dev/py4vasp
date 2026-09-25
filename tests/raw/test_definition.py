@@ -28,6 +28,29 @@ def test_structure_links_symmetry():
         assert symmetry.quantity == "symmetry"
 
 
+def test_structure_has_phonon_source():
+    # A dispersion run writes no other structure to the file, so the primitive cell of
+    # the phonon calculation is a source of the structure in its own right.
+    from py4vasp._raw.schema import Link
+
+    source = schema.sources["structure"]["phonon"].data
+    assert source.cell == Link("cell", "phonon")
+    assert source.stoichiometry == Link("stoichiometry", "phonon")
+    assert source.positions == "results/phonons/primitive/position_ions"
+
+
+def test_phonon_mode_has_dispersion_source():
+    # A dispersion reports the same quantity as a linear response calculation, only
+    # resolved along a path instead of at the zone centre.
+    from py4vasp._raw.schema import Link
+
+    source = schema.sources["phonon_mode"]["dispersion"].data
+    assert source.structure == Link("structure", "phonon")
+    assert source.frequencies == "results/phonons/frequencies"
+    assert source.eigenvectors == "results/phonons/eigenvectors"
+    assert source.qpoints == Link("kpoint", "phonon")
+
+
 def test_get_schema(complex_schema):
     mock_schema, _ = complex_schema
     with patch("py4vasp._raw.definition.schema", mock_schema):

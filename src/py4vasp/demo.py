@@ -100,6 +100,9 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, showcase.symmetry.Sr2TiO4())
     write(h5f, _demo.system.Sr2TiO4())
     write(h5f, showcase.phonon.band_Sr2TiO4())
+    # the cell the modes of the dispersion are defined on; a real calculation writes
+    # either this or the trajectory above, never both
+    write(h5f, showcase.phonon.primitive_structure_Sr2TiO4(), selection="phonon")
     write(h5f, showcase.phonon.dos_Sr2TiO4())
     write(h5f, showcase.phonon.mode_Sr2TiO4())
     write(h5f, showcase.dielectric_function.electron())

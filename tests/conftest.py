@@ -350,6 +350,8 @@ class RawDataFactory:
 
     @staticmethod
     def phonon_mode(selection):
+        if selection == "dispersion":
+            return _demo.phonon.mode.dispersion()
         return _demo.phonon.mode.Sr2TiO4()
 
     @staticmethod

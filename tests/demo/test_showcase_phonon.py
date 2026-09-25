@@ -200,15 +200,17 @@ def test_mode_frequencies_match_the_dispersion_at_gamma(mode_frequencies, raw_ba
 
 
 def test_mode_displacements_are_normalized(raw_mode, Assert):
+    # VASP lists the three directions of an atom next to each other, so a user who
+    # reshapes the example data the way their own output is shaped has to succeed
     eigenvectors = np.array(raw_mode.eigenvectors)
-    assert eigenvectors.shape == (NUMBER_MODES, NUMBER_MODES)
-    Assert.allclose(np.sum(eigenvectors**2, axis=1), np.ones(NUMBER_MODES))
+    assert eigenvectors.shape == (NUMBER_MODES, phonon.NUMBER_ATOMS, 3)
+    Assert.allclose(np.sum(eigenvectors**2, axis=(1, 2)), np.ones(NUMBER_MODES))
 
 
 def test_mode_displacements_are_an_orthonormal_basis(raw_mode, Assert):
     # the eigenvectors of a dynamical matrix are orthogonal; a user who checks the
     # example data before trusting a displacement has to find that they are
-    eigenvectors = np.array(raw_mode.eigenvectors)
+    eigenvectors = np.array(raw_mode.eigenvectors).reshape(NUMBER_MODES, -1)
     Assert.allclose(eigenvectors @ eigenvectors.T, np.eye(NUMBER_MODES))
 
 

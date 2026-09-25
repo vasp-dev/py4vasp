@@ -9,8 +9,10 @@ import numpy as np
 import pytest
 
 import py4vasp
-from py4vasp import exception, raw
+from py4vasp import _demo, exception, raw
+from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.phonon_mode import (
+    _EV_TO_THZ,
     _HBAR_SQUARED,
     PhononMode,
     PhononModeHandler,
@@ -19,7 +21,7 @@ from py4vasp._calculation.structure import Structure
 from py4vasp._demo import showcase
 from py4vasp._demo.phonon import mode as phonon_mode_demo
 from py4vasp._raw.models import PhononModeModel
-from py4vasp._util import masses
+from py4vasp._util import convert, masses
 
 
 @pytest.fixture
@@ -110,7 +112,7 @@ def test_print_writes_to_stdout(phonon_mode, capsys):
 
 
 def test_selections(phonon_mode):
-    assert phonon_mode.selections() == {"phonon_mode": ["default"]}
+    assert phonon_mode.selections() == {"phonon_mode": ["default", "dispersion"]}
 
 
 @pytest.fixture
@@ -198,6 +200,194 @@ def get_displacement(handler, raw_structure):
 def get_normal_coordinate(handler, displacement):
     """The mass-weighted amplitude Q = sqrt(sum_i m_i u_i²) in Å sqrt(amu)."""
     return np.sqrt(np.sum(handler.ref.masses[:, np.newaxis] * displacement**2))
+
+
+@pytest.fixture
+def dispersion_mode(raw_data):
+    raw_mode = raw_data.phonon_mode("dispersion")
+    mode = PhononMode.from_data(raw_mode)
+    mode.ref = types.SimpleNamespace()
+    mode.ref.raw_data = raw_mode
+    mode.ref.structure = Structure.from_data(raw_mode.structure)
+    mode.ref.frequencies_THz = np.array(raw_mode.frequencies)
+    mode.ref.eigenvectors = convert.to_complex(np.array(raw_mode.eigenvectors))
+    mode.ref.qpoints = np.array(raw_mode.qpoints.coordinates)
+    return mode
+
+
+def test_dispersion_frequencies_are_energies(dispersion_mode, Assert):
+    # VASP reports a dispersion in THz and marks an unstable mode with a negative
+    # frequency, where the modes of the zone centre are complex energies in eV
+    in_THz = dispersion_mode.ref.frequencies_THz
+    actual = dispersion_mode.frequencies()
+    assert actual.shape == in_THz.shape
+    Assert.allclose(np.abs(actual) * _EV_TO_THZ, np.abs(in_THz))
+    assert np.all(actual.imag[in_THz < 0] > 0)
+    assert np.all(actual.imag[in_THz > 0] == 0)
+
+
+def test_dispersion_read(dispersion_mode, Assert):
+    actual = dispersion_mode.read()
+    Assert.same_structure(actual["structure"], dispersion_mode.ref.structure.read())
+    Assert.allclose(actual["frequencies"], dispersion_mode.frequencies())
+    Assert.allclose(actual["eigenvectors"], dispersion_mode.ref.eigenvectors)
+    Assert.allclose(actual["qpoints"], dispersion_mode.ref.qpoints)
+
+
+def test_dispersion_print(dispersion_mode, format_):
+    actual, _ = format_(dispersion_mode)
+    reference = """\
+phonon dispersion:
+    20 q-points
+    21 modes
+    Sr2TiO4"""
+    assert actual == {"text/plain": reference}
+
+
+def test_dispersion_to_view(dispersion_mode, Assert):
+    view = dispersion_mode.plot("dispersion")
+    Assert.same_structure_view(view, dispersion_mode.ref.structure.plot())
+    phonon = view.phonon
+    number_qpoints, number_modes = dispersion_mode.ref.frequencies_THz.shape
+    number_atoms = len(dispersion_mode.ref.structure.read()["elements"])
+    assert np.shape(phonon.eigenvectors) == (
+        number_qpoints,
+        number_modes,
+        number_atoms,
+        3,
+    )
+    Assert.allclose(phonon.qpoints, dispersion_mode.ref.qpoints)
+    Assert.allclose(phonon.frequencies, dispersion_mode.ref.frequencies_THz)
+    Assert.allclose(phonon.supercell_matrix, np.eye(3))
+    Assert.allclose(phonon.primitive_index, np.arange(number_atoms))
+    labels = Kpoint.from_data(dispersion_mode.ref.raw_data.qpoints).labels()
+    expected = [[index, label] for index, label in enumerate(labels) if label] or None
+    assert phonon.path_labels == expected
+
+
+def test_dispersion_to_view_selects_the_mode(dispersion_mode, Assert):
+    # the modes are counted per q point, so the selection must not pick up the number
+    # of q points as the number of modes
+    phonon = dispersion_mode.plot("dispersion(4)").phonon
+    number_qpoints = len(dispersion_mode.ref.qpoints)
+    number_atoms = len(dispersion_mode.ref.structure.read()["elements"])
+    assert np.shape(phonon.eigenvectors) == (number_qpoints, 1, number_atoms, 3)
+    Assert.allclose(phonon.frequencies, dispersion_mode.ref.frequencies_THz[:, [3]])
+
+
+def test_dispersion_to_view_normalizes_every_mode(dispersion_mode, Assert):
+    # a complex eigenvector has to be scaled by its magnitude, mode by mode
+    phonon = dispersion_mode.plot("dispersion").phonon
+    elements = dispersion_mode.ref.structure.read()["elements"]
+    mass = masses.of(elements)[:, np.newaxis]
+    displacements = np.array(phonon.eigenvectors)
+    normal_coordinate = np.sum(mass * np.abs(displacements) ** 2, axis=(-2, -1))
+    Assert.allclose(normal_coordinate, np.ones_like(normal_coordinate))
+
+
+def test_dispersion_without_labels_has_no_path_labels(raw_data):
+    # a KPOINTS file need not name the high symmetry points of the path
+    raw_mode = raw_data.phonon_mode("dispersion")
+    raw_mode.qpoints = _demo.kpoint.line_mode("explicit", "no_labels")
+    mode = PhononMode.from_data(raw_mode)
+    assert mode.plot("dispersion").phonon.path_labels is None
+
+
+def test_displace_raises_error_for_a_dispersion(dispersion_mode):
+    with pytest.raises(exception.NotImplemented, match="dispersion"):
+        dispersion_mode.displace("dispersion(4)")
+
+
+def test_to_view(mode_handler, Assert):
+    view = mode_handler.to_view()
+    Assert.same_structure_view(view, mode_handler.ref.structure.plot())
+    phonon = view.phonon
+    Assert.allclose(phonon.eigenvectors, mode_handler.displacements()[np.newaxis])
+    Assert.allclose(phonon.qpoints, np.zeros((1, 3)))
+    Assert.allclose(phonon.supercell_matrix, np.eye(3))
+    number_atoms = len(mode_handler.ref.masses)
+    Assert.allclose(phonon.primitive_index, np.arange(number_atoms))
+    assert phonon.path_labels == [[0, "\u0393"]]
+
+
+def test_to_view_reports_the_frequency_in_THz(mode_handler, Assert):
+    # the viewer draws a real frequency and puts an unstable mode below zero, where
+    # VASP reports it as an imaginary energy
+    frequencies = mode_handler.ref.frequencies
+    expected = np.where(
+        frequencies.imag != 0, -np.abs(frequencies.imag), frequencies.real
+    )
+    phonon = mode_handler.to_view().phonon
+    Assert.allclose(phonon.frequencies, expected[np.newaxis] * _EV_TO_THZ)
+
+
+def test_to_view_undoes_the_mass_weighting(translation_mode, Assert):
+    # the viewer knows no masses, so passing VASP's eigenvectors would animate a rigid
+    # translation as if the heavy atoms moved further than the light ones
+    phonon = translation_mode.to_view().phonon
+    translation = np.array(phonon.eigenvectors)[0, 0]
+    number_atoms = len(translation_mode.ref.masses)
+    expected = np.zeros((number_atoms, 3))
+    expected[:, 0] = translation_mode.ref.uniform_displacement
+    Assert.allclose(translation, expected)
+
+
+def test_to_view_accepts_custom_masses(translation_mode, Assert):
+    number_atoms = len(translation_mode.ref.masses)
+    phonon = translation_mode.to_view(masses=np.ones(number_atoms)).phonon
+    expected = translation_mode.ref.eigenvectors.reshape(-1, number_atoms, 3)
+    Assert.allclose(np.array(phonon.eigenvectors)[0], expected)
+
+
+def test_to_view_supercell(mode_handler, Assert):
+    view = mode_handler.to_view(supercell=2)
+    Assert.same_structure_view(view, mode_handler.ref.structure.plot(supercell=2))
+
+
+def test_to_view_selects_a_single_mode(mode_handler, Assert):
+    phonon = mode_handler.to_view("4").phonon
+    expected = mode_handler.displacements()[3]
+    Assert.allclose(phonon.eigenvectors, expected[np.newaxis, np.newaxis])
+    expected_frequency = mode_handler._frequencies_in_THz()[3]
+    Assert.allclose(phonon.frequencies, [[expected_frequency]])
+
+
+def test_to_view_selects_several_modes(mode_handler, Assert):
+    phonon = mode_handler.to_view("4, 6").phonon
+    expected = mode_handler.displacements()[[3, 5]]
+    Assert.allclose(phonon.eigenvectors, expected[np.newaxis])
+    expected_frequencies = mode_handler._frequencies_in_THz()[[3, 5]]
+    Assert.allclose(phonon.frequencies, expected_frequencies[np.newaxis])
+
+
+def test_to_view_without_selection_shows_every_mode(mode_handler, Assert):
+    # unlike a displacement, an animation needs no energy scale, so the modes that
+    # translate the crystal are shown like any other
+    phonon = mode_handler.to_view().phonon
+    number_modes = len(mode_handler.ref.frequencies)
+    assert np.shape(phonon.eigenvectors)[1] == number_modes
+
+
+@pytest.mark.parametrize("selection", ["1:2", "1 + 2"])
+def test_to_view_raises_error_for_ranges_and_operations(mode_handler, selection):
+    with pytest.raises(exception.IncorrectUsage, match="single mode"):
+        mode_handler.to_view(selection)
+
+
+def test_to_view_raises_error_for_mode_outside_the_range(mode_handler):
+    number_modes = len(mode_handler.ref.frequencies)
+    with pytest.raises(exception.IncorrectUsage, match="not a phonon mode"):
+        mode_handler.to_view(str(number_modes + 1))
+
+
+def test_public_to_view_selects_the_mode(phonon_mode, Assert):
+    number_atoms = len(phonon_mode.ref.structure.read()["elements"])
+    view = phonon_mode.plot("4")
+    assert np.shape(view.phonon.eigenvectors) == (1, 1, number_atoms, 3)
+
+
+def test_plot_is_alias_of_to_view(phonon_mode, Assert):
+    Assert.same_structure_view(phonon_mode.plot(), phonon_mode.to_view())
 
 
 def test_conversion_constant_is_hbar_squared(Assert):

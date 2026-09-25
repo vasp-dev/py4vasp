@@ -29,6 +29,34 @@ def test_write_selection(tmp_path, raw_data, Assert):
         Assert.same_raw_structure(raw_structure, structure)
 
 
+def test_write_phonon_structure(tmp_path, raw_data, Assert):
+    filename = tmp_path / DEFAULT_FILE
+    raw_structure = raw_data.structure("Sr2TiO4")
+    with h5py.File(filename, "w") as h5f:
+        write(h5f, raw.Version(99, 99, 99))
+        write(h5f, raw_structure, selection="phonon")
+    with raw.access("structure", path=tmp_path, selection="phonon") as structure:
+        Assert.same_raw_structure(raw_structure, structure)
+
+
+def test_write_phonon_mode_dispersion(tmp_path, raw_data, Assert):
+    filename = tmp_path / DEFAULT_FILE
+    raw_mode = raw_data.phonon_mode("dispersion")
+    with h5py.File(filename, "w") as h5f:
+        write(h5f, raw.Version(99, 99, 99))
+        write(h5f, raw_mode, selection="dispersion")
+    with raw.access("phonon_mode", path=tmp_path, selection="dispersion") as mode:
+        Assert.allclose(mode.frequencies, raw_mode.frequencies)
+        Assert.allclose(mode.eigenvectors, raw_mode.eigenvectors)
+        Assert.allclose(mode.qpoints.coordinates, raw_mode.qpoints.coordinates)
+        Assert.same_raw_structure(mode.structure, raw_mode.structure)
+
+
+def test_phonon_mode_of_linear_response_has_no_qpoints(raw_data):
+    # the zone centre is implied, so VASP stores no q point for these modes
+    assert raw_data.phonon_mode("default").qpoints.is_none()
+
+
 def test_write_encodes_unicode_strings(tmp_path):
     # h5py cannot serialize numpy unicode arrays (dtype kind "U"); the writer must encode
     # them as byte strings, matching how VASP stores strings (e.g. effective_coulomb's

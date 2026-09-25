@@ -588,7 +588,6 @@ schema.add(
     dispersion=Link("dispersion", "phonon"),
     stoichiometry=Link("stoichiometry", "phonon"),
     eigenvectors=f"{group}/eigenvectors",
-    primitive_positions=f"{group}/primitive/position_ions",
 )
 schema.add(
     raw.PhononDos,
@@ -606,6 +605,18 @@ schema.add(
     structure=Link("structure", "default"),
     frequencies=f"{group}/eigenvalues",
     eigenvectors=f"{group}/eigenvectors",
+)
+# The same modes resolved along a path. VASP reports them in a different unit and on the
+# primitive cell, which is why they need a source of their own; the datasets are the ones
+# the phonon band reads as well.
+schema.add(
+    raw.PhononMode,
+    name="dispersion",
+    required=raw.Version(6, 4),
+    structure=Link("structure", "phonon"),
+    frequencies="results/phonons/frequencies",
+    eigenvectors="results/phonons/eigenvectors",
+    qpoints=Link("kpoint", "phonon"),
 )
 #
 group = "results/linear_response"
@@ -729,6 +740,14 @@ schema.add(
     positions="results/supercell/position_ions",
     idipol="input/incar/IDIPOL",
     ldipol="input/incar/LDIPOL",
+)
+schema.add(
+    raw.Structure,
+    name="phonon",
+    required=raw.Version(6, 4),
+    cell=Link("cell", "phonon"),
+    stoichiometry=Link("stoichiometry", "phonon"),
+    positions="results/phonons/primitive/position_ions",
 )
 schema.add(raw.Structure, name="poscar", file="POSCAR", data_factory=read.structure)
 #
