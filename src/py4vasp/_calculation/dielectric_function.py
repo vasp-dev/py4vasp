@@ -294,16 +294,42 @@ class DielectricFunction(graph.Mixin):
     field. The dielectric function is essential in understanding optical properties,
     such as refractive index and absorption.
 
-    There are many different ways to compute dielectric functions with VASP. This
-    class provides a common interface to all of them. You can pass a `selection`
-    argument to any of the methods of this class to select which dielectric function
-    you are interested in. Please make sure the INCAR file you use is compatible
-    with the setup.
+    There are many different ways to compute dielectric functions with VASP. This class
+    provides a common interface to all of them. Every method takes a *selection*, and
+    that selection does two different things. It chooses **which** dielectric function
+    to use -- ``selections()["dielectric_function"]`` lists them, and your INCAR file
+    decides which of them your calculation actually contains. It also chooses **which
+    part** of the 3x3 tensor you want. The matrix is symmetric, so there are six
+    distinct components (xx, yy, zz, xy, xz, yz) besides their average, *isotropic*.
 
-    The 3x3 matrix is symmetric so for the plotting routines, py4vasp uses only the
-    six distinct components (xx, yy, zz, xy, xz, yz). The default is the isotropic
-    dielectric function but you can also select specific components by providing
-    one of the six components as selection.
+    Reading without a direction gives you the complete tensor, so you can do your own
+    algebra with it. Reading with one gives you a single complex spectrum, so that the
+    isotropic average does not have to be assembled by hand at the call site. Plotting
+    defaults to *isotropic* and draws the real and the imaginary part.
+
+    Examples
+    --------
+    First, we create some example data so that you can follow along. Please define a
+    variable `path` with the path to a directory that does not exist yet. Alternatively,
+    use your own data if you have run VASP.
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation(path)
+
+    The `selections` routine reports both kinds of selection at once
+
+    >>> calculation.dielectric_function.selections()
+    {'dielectric_function': [...], 'components': ['density', 'current'],
+     'directions': ['isotropic', 'xx', 'yy', 'zz', 'xy', 'xz', 'yz'],
+     'complex': ['real', 'Re', 'imag', 'Im']}
+
+    A summary of the mesh the dielectric function is evaluated on is printed by
+
+    >>> print(calculation.dielectric_function)
+    dielectric function:
+        energies: [0.00, 12.00] 301 points
+        components: density, current
+        directions: isotropic, xx, yy, zz, xy, yz, xz
     """
 
     def __init__(self, source, quantity_name: str = "dielectric_function"):
@@ -336,6 +362,40 @@ class DielectricFunction(graph.Mixin):
             Contains the energies at which the dielectric function was evaluated and
             either the dielectric tensor (3x3 matrix) at these energies or, if you
             selected directions, one complex spectrum per direction.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Without a selection you obtain the complete tensor
+
+        >>> dielectric = calculation.dielectric_function.read()
+        >>> dielectric["dielectric_function"].shape
+        (3, 3, 301)
+
+        Select a direction to reduce that tensor to a single complex spectrum
+
+        >>> isotropic = calculation.dielectric_function.read("isotropic")
+        >>> sorted(isotropic)
+        ['energies', 'isotropic']
+
+        The isotropic average is the mean of the diagonal, so you do not have to take
+        it yourself
+
+        >>> import numpy as np
+        >>> tensor = dielectric["dielectric_function"]
+        >>> bool(np.allclose(isotropic["isotropic"], np.trace(tensor) / 3))
+        True
+
+        Ask for several directions at once and each comes back under its own key
+
+        >>> sorted(calculation.dielectric_function.read("xx, yy, zz"))
+        ['energies', 'xx', 'yy', 'zz']
         """
         return merge_default(
             self._source,
@@ -365,6 +425,32 @@ class DielectricFunction(graph.Mixin):
         Graph
             figure containing the dielectric function for the selected
             directions and components.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Without a selection the isotropic average is drawn, real and imaginary part
+
+        >>> calculation.dielectric_function.to_graph()
+        Graph(series=[Series(..., label='Re_density', ...), Series(..., label='Im_density', ...)],
+              xlabel='Energy (eV)', ...)
+
+        Select directions to compare the components of the tensor with each other
+
+        >>> calculation.dielectric_function.to_graph("xx, zz")
+        Graph(series=[Series(..., label='Re_density_xx', ...), Series(..., label='Im_density_xx', ...),
+              Series(..., label='Re_density_zz', ...), Series(..., label='Im_density_zz', ...)], ...)
+
+        Restrict the plot to one part of the complex spectrum
+
+        >>> calculation.dielectric_function.to_graph("imag")
+        Graph(series=[Series(..., label='Im_density', ...)], ...)
         """
         return merge_graphs(
             self._source,
@@ -377,9 +463,25 @@ class DielectricFunction(graph.Mixin):
     def selections(self, selection: str | None = None) -> dict:
         """Return the sources, components, directions, and complex values to select from.
 
-        The ``dielectric_function`` entry lists the sources, which is what
-        :py:meth:`read` selects between. The remaining entries are the parts of the
-        tensor :py:meth:`to_graph` draws.
+        The ``dielectric_function`` entry lists the sources, which is which dielectric
+        function VASP computed. The remaining entries are the parts of the tensor; both
+        :py:meth:`read` and :py:meth:`to_graph` accept them.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        >>> selections = calculation.dielectric_function.selections()
+        >>> selections["directions"]
+        ['isotropic', 'xx', 'yy', 'zz', 'xy', 'xz', 'yz']
+
+        A dielectric function evaluated at finite **q** is a scalar, so it reports no
+        directions at all and asking for one raises an error.
         """
         return merge_default(
             self._source,
