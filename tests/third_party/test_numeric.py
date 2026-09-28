@@ -5,7 +5,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import interpolate
+from py4vasp import exception, interpolate
 from py4vasp._third_party import numeric
 
 
@@ -87,3 +87,84 @@ def test_interpolate_with_function_higher_dimensions(Assert):
     y_out = numeric.interpolate_with_function(gaussian, x_in, y_in, x_out)
     Assert.allclose(y_out, y_in)
     Assert.allclose(y_out, y_in)
+
+
+# a mesh wide and fine enough that the trapezoidal rule resolves either line shape; the
+# Lorentzian needs the width because its tails decay only algebraically
+OFFSETS = np.linspace(-500, 500, 2_000_001)
+FWHM = 1.5
+
+
+@pytest.fixture(params=["Gaussian", "Lorentzian"])
+def line_shape_class(request):
+    # resolved when the test runs rather than when it is collected, so a missing class
+    # fails this test instead of the whole module
+    return getattr(numeric, request.param)
+
+
+@pytest.fixture
+def line_shape(line_shape_class):
+    return line_shape_class(fwhm=FWHM)
+
+
+# How much of a unit-area line actually lies on OFFSETS, from the antiderivative of each
+# shape. The Gaussian is one to machine precision; the Lorentzian is measurably less,
+# because its tails decay only as 1/x^2 and no finite mesh holds all of its weight.
+_MASS_ON_MESH = {
+    "Gaussian": 1.0,
+    "Lorentzian": 2 / np.pi * np.arctan(OFFSETS[-1] / (0.5 * FWHM)),
+}
+
+
+def test_line_shape_is_normalized_to_unit_area(line_shape, Assert):
+    mass = np.trapezoid(line_shape.profile(OFFSETS), OFFSETS)
+    Assert.allclose(mass, _MASS_ON_MESH[type(line_shape).__name__])
+
+
+def test_fwhm_is_the_width_at_half_maximum(line_shape, Assert):
+    # the assertion that makes the name of the parameter true
+    Assert.allclose(line_shape.profile(0.5 * FWHM), 0.5 * line_shape.profile(0.0))
+
+
+def test_line_shape_keeps_the_shape_of_the_offsets(line_shape):
+    assert line_shape.profile(np.zeros((4, 3))).shape == (4, 3)
+
+
+def test_gaussian_accepts_sigma_or_fwhm(Assert):
+    sigma = FWHM / (2 * np.sqrt(2 * np.log(2)))
+    Assert.allclose(
+        numeric.Gaussian(sigma=sigma).profile(OFFSETS),
+        numeric.Gaussian(fwhm=FWHM).profile(OFFSETS),
+    )
+    Assert.allclose(numeric.Gaussian(fwhm=FWHM).sigma, sigma)
+    Assert.allclose(numeric.Gaussian(sigma=sigma).fwhm, FWHM)
+
+
+def test_lorentzian_accepts_gamma_or_fwhm(Assert):
+    # gamma is the half width at half maximum, the parameter of 1 / (x - x0 + i gamma)
+    Assert.allclose(
+        numeric.Lorentzian(gamma=0.5 * FWHM).profile(OFFSETS),
+        numeric.Lorentzian(fwhm=FWHM).profile(OFFSETS),
+    )
+    Assert.allclose(numeric.Lorentzian(fwhm=FWHM).gamma, 0.5 * FWHM)
+    Assert.allclose(numeric.Lorentzian(gamma=0.5 * FWHM).fwhm, FWHM)
+
+
+def test_line_shape_takes_exactly_one_width(line_shape_class):
+    alias = "sigma" if line_shape_class is numeric.Gaussian else "gamma"
+    with pytest.raises(exception.IncorrectUsage):
+        line_shape_class()
+    with pytest.raises(exception.IncorrectUsage):
+        line_shape_class(**{"fwhm": FWHM, alias: 0.5 * FWHM})
+
+
+@pytest.mark.parametrize("width", [0.0, -1.0, np.array([1.0, -1.0])])
+def test_line_shape_rejects_a_width_that_is_not_positive(line_shape_class, width):
+    with pytest.raises(exception.IncorrectUsage):
+        line_shape_class(fwhm=width)
+
+
+def test_line_shape_must_be_given_by_keyword(line_shape_class):
+    # a bare number cannot say whether it is a FWHM or a standard deviation
+    with pytest.raises(TypeError):
+        line_shape_class(FWHM)
