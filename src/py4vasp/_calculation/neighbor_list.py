@@ -254,6 +254,19 @@ class NeighborList:
     Given a cutoff radius, this class determines every pair of atoms that is
     closer than the cutoff, taking the periodic boundary conditions into account.
     The relevant data (cell, atom types, positions) is taken from the structure.
+
+    Reach for this whenever you need an interatomic distance. It replicates the cell
+    along the directions a neighbor could come from, measured by the perpendicular width
+    of the cell rather than the length of the lattice vectors, so it stays correct for
+    the tilted cells where ``d - np.rint(d)`` quietly reports the wrong atom.
+
+    See Also
+    --------
+    py4vasp._calculation.structure.Structure :
+        The positions and the cell this neighbor list is derived from.
+    py4vasp._calculation.pair_correlation.PairCorrelation :
+        The same distances as a histogram averaged over a trajectory, rather than pair
+        by pair for one step.
     """
 
     # is_available checks the structure, which is where the data actually lives.

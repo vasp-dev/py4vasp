@@ -307,6 +307,14 @@ class DielectricFunction(graph.Mixin):
     isotropic average does not have to be assembled by hand at the call site. Plotting
     defaults to *isotropic* and draws the real and the imaginary part.
 
+    See Also
+    --------
+    py4vasp._calculation.optics.Optics :
+        Transmission, absorption, reflectivity and the perceived color, all derived from
+        this dielectric function and selected the same way.
+    py4vasp._calculation.dielectric_tensor.DielectricTensor :
+        The macroscopic tensor in the static limit, rather than its frequency dependence.
+
     Examples
     --------
     First, we create some example data so that you can follow along. Please define a

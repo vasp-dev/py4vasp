@@ -314,6 +314,12 @@ class Optics(graph.Mixin):
     >>> calculation.optics.selections()
     {'optics': [...], 'components': ['transmission', 'absorption', 'reflectivity'],
         'directions': ['isotropic', 'xx', 'yy', 'zz', 'xy', 'xz', 'yz']}
+
+    See Also
+    --------
+    py4vasp._calculation.dielectric_function.DielectricFunction :
+        The complex ε these coefficients are computed from, with the same choice of
+        source and direction.
     """
 
     # is_available checks the dielectric function, where the data actually lives.
