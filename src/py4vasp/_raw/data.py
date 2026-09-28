@@ -264,9 +264,9 @@ class Dos:
     a reference e.g. the Fermi energy is desired."""
 
     energies: VaspData
-    "Energy E at which the Dos is evaluated."
+    "Frequency at which the Dos is evaluated, in THz as VASP stores it."
     dos: VaspData
-    "Dos at the energies D(E)."
+    "Dos at those frequencies D(ω), per THz as VASP stores it."
     fermi_energy: float
     "Fermi energy obtained by VASP."
     projectors: Projector = NONE()
@@ -652,7 +652,7 @@ class PhononBand:
     zone. Includes the stoichiometry to map atoms onto specific modes."""
 
     dispersion: Dispersion
-    "The **q** points and the eigenvalues."
+    "The **q** points and the eigenvalues, in THz as VASP stores them."
     stoichiometry: Stoichiometry
     "The atom types in the crystal."
     eigenvectors: VaspData
@@ -683,7 +683,9 @@ class PhononMode:
     structure: Structure
     "The underlying structure in which the phonon mode is present."
     frequencies: VaspData
-    "The phonon frequency of all the modes."
+    """The phonon frequency of all the modes. The default source stores the energy
+    ħω in eV as a complex number, the dispersion source a real frequency in THz where
+    an unstable mode is negative; PhononMode reports both as a complex energy."""
     eigenvectors: VaspData
     "The displacement patterns associated with the phonon modes."
     qpoints: Kpoint = NONE()

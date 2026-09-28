@@ -12,7 +12,12 @@ from py4vasp._calculation.dielectric_function import (
     DielectricFunction,
     DielectricFunctionHandler,
 )
+from py4vasp._raw.definition import unique_selections
 from py4vasp._raw.models import DielectricFunctionModel
+
+# The sources read accepts. Taken from the schema rather than spelled out, so this stays
+# the same list the dispatcher checks a selection against when VASP gains a new source.
+SOURCES = list(unique_selections("dielectric_function"))
 
 
 @pytest.fixture
@@ -79,6 +84,71 @@ def check_dielectric_read(dielectric_function, Assert):
             Assert.allclose(actual["q_point"], reference.q_point)
         else:
             assert "q_point" not in actual
+
+
+def test_electronic_read_default_is_unchanged(electronic, Assert):
+    # selecting a direction must not change what a bare read returns, or every script
+    # that indexes the 3x3 tensor breaks silently
+    actual = electronic.read()
+    assert actual["dielectric_function"].shape == (3, 3, len(electronic.ref.energies))
+    Assert.allclose(actual["dielectric_function"], electronic.ref.dielectric_function)
+    Assert.allclose(actual["current_current"], electronic.ref.current_current)
+
+
+def test_electronic_read_direction(electronic, Assert):
+    check_read_direction(electronic, Assert)
+
+
+def test_ionic_read_direction(ionic, Assert):
+    check_read_direction(ionic, Assert)
+
+
+def check_read_direction(dielectric_function, Assert):
+    tensor = dielectric_function.ref.dielectric_function
+    energies = dielectric_function.ref.energies
+    for method in (dielectric_function.read, dielectric_function.to_dict):
+        isotropic_average = method("isotropic")
+        assert sorted(isotropic_average) == ["energies", "isotropic"]
+        Assert.allclose(isotropic_average["energies"], energies)
+        Assert.allclose(isotropic_average["isotropic"], isotropic(tensor))
+        for direction in ("xx", "yy", "zz", "xy", "yz", "xz"):
+            single = method(direction)
+            assert sorted(single) == ["energies", direction]
+            Assert.allclose(single[direction], get_direction(tensor, direction))
+        # several directions at once, the way the plot routine already accepts them
+        several = method("xx, yy")
+        assert sorted(several) == ["energies", "xx", "yy"]
+        Assert.allclose(several["xx"], get_direction(tensor, "xx"))
+        Assert.allclose(several["yy"], get_direction(tensor, "yy"))
+
+
+def test_read_complex_part(electronic, Assert):
+    # selections() advertises the complex entry for read as well as for plot, so every
+    # one of its values has to come back as the real spectrum of that part
+    tensor = electronic.ref.dielectric_function
+    Assert.allclose(electronic.read("Re")["Re"], isotropic(tensor).real)
+    Assert.allclose(electronic.read("real")["Re"], isotropic(tensor).real)
+    Assert.allclose(electronic.read("Im")["Im"], isotropic(tensor).imag)
+    Assert.allclose(electronic.read("imag")["Im"], isotropic(tensor).imag)
+    xx = get_direction(tensor, "xx")
+    Assert.allclose(electronic.read("xx(Re)")["Re_xx"], xx.real)
+    Assert.allclose(electronic.read("xx(Im)")["Im_xx"], xx.imag)
+
+
+def test_read_complex_part_of_a_qpoint(q_point, Assert):
+    # a dielectric function at finite q has no tensor, so the complex entry is the only
+    # thing besides the source that its selections() offers for read
+    spectrum = q_point.ref.dielectric_function
+    Assert.allclose(q_point.read("Re")["Re"], spectrum.real)
+    Assert.allclose(q_point.read("imag")["Im"], spectrum.imag)
+
+
+def test_read_direction_keeps_the_complex_value(electronic, Assert):
+    # the selector treats real and imaginary as two more choices to average over, so a
+    # spectrum that forgot to select both comes back as their mean and loses the phase
+    spectrum = electronic.read("xx")["xx"]
+    assert np.iscomplexobj(spectrum)
+    Assert.allclose(spectrum, get_direction(electronic.ref.dielectric_function, "xx"))
 
 
 @dataclasses.dataclass
@@ -312,11 +382,27 @@ def test_ionic_plot_nested(ionic, Assert):
 def test_incorrect_direction_raises_error(electronic):
     with pytest.raises(exception.IncorrectUsage):
         electronic.plot("incorrect")
+    with pytest.raises(exception.IncorrectUsage):
+        electronic.read("incorrect")
+
+
+def test_absent_component_raises_error(ionic):
+    # an ionic dielectric function has no current-current correlation, and selections()
+    # says so. Offering it anyway indexes past the component axis, which the averaging
+    # selector answers with NaN rather than an error -- silent, and wrong.
+    assert ionic.selections()["components"] == ["density"]
+    with pytest.raises(exception.IncorrectUsage):
+        ionic.read("current")
+    with pytest.raises(exception.IncorrectUsage):
+        ionic.plot("current")
 
 
 def test_component_selection_for_qpoint_raises_error(q_point):
+    # a dielectric function at finite q is a scalar, so it has no direction to select
     with pytest.raises(exception.IncorrectUsage):
         q_point.plot("xx")
+    with pytest.raises(exception.IncorrectUsage):
+        q_point.read("xx")
 
 
 def isotropic(tensor):
@@ -381,6 +467,7 @@ def check_to_image(dielectric_function, filename_argument, expected_filename):
 
 def test_electronic_selections(electronic):
     assert electronic.selections() == {
+        "dielectric_function": SOURCES,
         "components": ["density", "current"],
         "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
         "complex": ["real", "Re", "imag", "Im"],
@@ -389,6 +476,7 @@ def test_electronic_selections(electronic):
 
 def test_ionic_selections(ionic):
     assert ionic.selections() == {
+        "dielectric_function": SOURCES,
         "components": ["density"],
         "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
         "complex": ["real", "Re", "imag", "Im"],
@@ -396,7 +484,12 @@ def test_ionic_selections(ionic):
 
 
 def test_q_point_selections(q_point):
-    assert q_point.selections() == {"complex": ["real", "Re", "imag", "Im"]}
+    # a dielectric function at finite q carries no tensor, so it offers no direction to
+    # select -- but read still takes a source, which is the selection users need to find
+    assert q_point.selections() == {
+        "dielectric_function": SOURCES,
+        "complex": ["real", "Re", "imag", "Im"],
+    }
 
 
 def test_electronic_print(electronic, format_):
@@ -405,7 +498,7 @@ def test_electronic_print(electronic, format_):
 dielectric function:
     energies: [0.00, 1.00] 50 points
     components: density, current
-    directions: isotropic, xx, yy, zz, xy, yz, xz"""
+    directions: isotropic, xx, yy, zz, xy, xz, yz"""
     assert actual == {"text/plain": reference}
 
 
@@ -414,7 +507,7 @@ def test_ionic_print(ionic, format_):
     reference = f"""\
 dielectric function:
     energies: [0.00, 1.00] 50 points
-    directions: isotropic, xx, yy, zz, xy, yz, xz"""
+    directions: isotropic, xx, yy, zz, xy, xz, yz"""
     assert actual == {"text/plain": reference}
 
 

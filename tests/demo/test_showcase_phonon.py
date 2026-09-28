@@ -5,6 +5,7 @@ import pytest
 
 from py4vasp._demo import showcase
 from py4vasp._demo.showcase import phonon
+from py4vasp._util import convert
 
 NUMBER_MODES = 21  # three per atom of Sr2TiO4
 
@@ -172,7 +173,7 @@ def raw_mode():
 def mode_frequencies(raw_mode):
     """The complex frequencies VASP stores as pairs of reals, in THz."""
     complex_ev = np.array(raw_mode.frequencies).flatten().view(np.complex128)
-    return complex_ev * phonon.EV_TO_THZ
+    return complex_ev * convert.EV_TO_THZ
 
 
 def test_mode_reports_one_frequency_per_degree_of_freedom(mode_frequencies):

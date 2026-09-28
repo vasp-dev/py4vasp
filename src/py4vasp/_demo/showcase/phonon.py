@@ -8,7 +8,7 @@ from py4vasp import _demo, raw
 from py4vasp._demo import showcase
 from py4vasp._demo.showcase import electronic_structure, kpoint, structure
 from py4vasp._third_party import numeric
-from py4vasp._util import masses
+from py4vasp._util import convert, masses
 
 NUMBER_ATOMS = 7
 NUMBER_MODES = 3 * NUMBER_ATOMS
@@ -25,9 +25,6 @@ MASSES = masses.of(("Sr", "Sr", "Ti", "O", "O", "O", "O"))
 # stretching modes, so the share moves from the cations to the anions with frequency.
 OPTICAL_EXPONENTS = (-6.0, 6.0)
 BROADENING = 0.25  # THz, wide enough to sample smoothly and narrow enough to resolve
-# VASP stores the eigenvalues of the dynamical matrix as energies, so the showcase
-# converts its frequencies; py4vasp prints them back in THz with the same factor.
-EV_TO_THZ = 241.798934781
 ENERGY_MARGIN = 1.5  # THz of empty axis above the highest branch
 # Frequency in THz that every optical branch reaches at the zone centre. Sr2TiO4 has
 # eighteen of them, spread over the range an oxide occupies; the heavier the atoms
@@ -235,7 +232,7 @@ def mode_Sr2TiO4() -> raw.PhononMode:
     branches come out at exactly zero: they translate the whole crystal, which costs no
     energy. None of them is imaginary, which is what marks a structure as stable.
     """
-    at_gamma = branch_frequencies(np.zeros((1, 3)))[0] / EV_TO_THZ
+    at_gamma = branch_frequencies(np.zeros((1, 3)))[0] / convert.EV_TO_THZ
     # VASP stores the eigenvalues of the dynamical matrix as complex numbers so that an
     # unstable mode can be reported as an imaginary frequency
     complex_frequencies = at_gamma.astype(np.complex128)

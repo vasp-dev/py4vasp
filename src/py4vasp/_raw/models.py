@@ -836,9 +836,9 @@ class PhononDosModel(_DatabaseModel):
     """Data class for storing phonon density of states data in the database."""
 
     energy_min: Optional[float] = None
-    """The minimum energy at which the phonon density of states was evaluated, in THz."""
+    """The minimum energy at which the phonon density of states was evaluated, in eV."""
     energy_max: Optional[float] = None
-    """The maximum energy at which the phonon density of states was evaluated, in THz."""
+    """The maximum energy at which the phonon density of states was evaluated, in eV."""
 
 
 @dataclass
@@ -848,9 +848,9 @@ class PhononBandModel(_DatabaseModel):
     The dispersion (phonon frequencies) is folded into this model."""
 
     eigenvalue_min: Optional[float] = None
-    """The minimum phonon frequency across all modes and q-points, in THz."""
+    """The minimum phonon energy across all modes and q-points, in eV."""
     eigenvalue_max: Optional[float] = None
-    """The maximum phonon frequency across all modes and q-points, in THz."""
+    """The maximum phonon energy across all modes and q-points, in eV."""
 
 
 @dataclass
@@ -858,9 +858,9 @@ class PhononModeModel(_DatabaseModel):
     """Data class for storing phonon mode data in the database."""
 
     frequencies_real_max: Optional[float] = None
-    """The maximum real frequency across all phonon modes and q-points, in THz."""
+    """The maximum real energy across all phonon modes and q-points, in eV."""
     frequencies_imag_max: Optional[float] = None
-    """The maximum imaginary frequency across all phonon modes and q-points, in THz."""
+    """The maximum imaginary energy across all phonon modes and q-points, in eV."""
 
 
 @dataclass

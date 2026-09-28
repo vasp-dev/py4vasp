@@ -209,6 +209,12 @@ you could have calculated with VASP. If you have an interactive session you can 
 only the ones that you computed with VASP will give you any meaningful
 result.
 
+That list is alphabetical, which only helps once you know what a quantity is called.
+If you instead arrived with a question -- how far apart are these atoms, how do I
+average a tensor over its directions, how do I put several calculations in one figure,
+how do I watch a phonon mode move -- the *Common tasks* section of :data:`py4vasp.calculation`
+answers each one with the call that does it.
+
 Not everything you may want is a quantity VASP wrote down. If you have a set of peaks --
 phonon modes and their infrared or Raman activity, optical transitions and their
 strength, eigenvalues and their weight -- and you want the spectrum an experiment would
