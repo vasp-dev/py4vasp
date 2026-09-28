@@ -98,6 +98,16 @@ class _LineShape:
             "The two describe the same line, so giving both cannot be resolved."
         )
 
+    def _with_mesh_axis(self):
+        """The same shape with its width carrying one more trailing axis.
+
+        :func:`broaden` lays the peaks out along the second to last axis and the mesh
+        along the last one. A width given per peak has the shape of the positions, so it
+        needs the mesh axis before it lines up with the offsets it is evaluated at.
+        """
+        width = np.asarray(getattr(self, self._alias))[..., np.newaxis]
+        return type(self)(**{self._alias: width})
+
     def _raise_error_if_width_is_not_positive(self):
         if np.all(np.asarray(self.fwhm) > 0):
             return
@@ -271,7 +281,9 @@ def broaden(mesh, positions, weights=None, *, shape):
     mesh = np.atleast_1d(mesh)
     positions = np.atleast_1d(np.asarray(positions, dtype=np.float64))
     weights = np.broadcast_to(1.0 if weights is None else weights, positions.shape)
-    # the mesh becomes an axis of its own in front of the peaks, so that the width of
-    # the shape broadcasts against the peaks the way the weights do
-    offsets = mesh[:, np.newaxis] - positions[..., np.newaxis, :]
-    return np.einsum("...mp,...p->...m", shape.profile(offsets), weights)
+    # the peaks go on the second to last axis and the mesh on the last one. Putting the
+    # mesh in front instead would right-align the width against the mesh rather than
+    # against the peaks, so a width meant per band would land on the wrong axis.
+    offsets = mesh - positions[..., np.newaxis]
+    profile = shape._with_mesh_axis().profile(offsets)
+    return np.einsum("...pm,...p->...m", profile, weights)

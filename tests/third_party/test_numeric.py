@@ -262,3 +262,47 @@ def test_broaden_width_controls_the_peak_height():
     sharp = numeric.broaden(MESH, [0.0], shape=numeric.Gaussian(fwhm=0.05))
     broad = numeric.broaden(MESH, [0.0], shape=numeric.Gaussian(fwhm=0.5))
     assert sharp.max() > broad.max()
+
+
+def broaden_band_by_band(mesh, positions, widths, shape_class):
+    """Reference: one call per band, which is what the single call must reproduce."""
+    widths = np.broadcast_to(widths, positions.shape)
+    return np.array(
+        [
+            numeric.broaden(mesh, band, shape=shape_class(fwhm=width))
+            for band, width in zip(positions, widths)
+        ]
+    )
+
+
+def test_broaden_gives_every_band_its_own_width(Assert):
+    # the width has to broadcast against the positions, which is what makes "one
+    # spectrum per band, each with its own width" a single call
+    positions = np.random.rand(4, 20)
+    widths = np.array([[0.2], [0.4], [0.8], [1.6]])
+    Assert.allclose(
+        numeric.broaden(MESH, positions, shape=numeric.Lorentzian(fwhm=widths)),
+        broaden_band_by_band(MESH, positions, widths, numeric.Lorentzian),
+    )
+
+
+def test_broaden_gives_every_peak_of_every_band_its_own_width(Assert):
+    positions = np.random.rand(4, 20)
+    widths = 0.1 + np.random.rand(4, 20)
+    Assert.allclose(
+        numeric.broaden(MESH, positions, shape=numeric.Gaussian(fwhm=widths)),
+        broaden_band_by_band(MESH, positions, widths, numeric.Gaussian),
+    )
+
+
+def test_broaden_never_spreads_a_width_along_the_mesh(Assert):
+    # regression: the mesh used to sit between the leading axes and the peaks, so a
+    # width meant per band was applied per mesh point instead -- silently, and without
+    # any error, whenever the mesh happened to be as long as the leading axis
+    mesh = np.linspace(-5, 5, 4)
+    positions = np.tile([0.0, 1.0], (4, 1))
+    widths = np.array([[0.2], [0.4], [0.8], [1.6]])
+    Assert.allclose(
+        numeric.broaden(mesh, positions, shape=numeric.Gaussian(fwhm=widths)),
+        broaden_band_by_band(mesh, positions, widths, numeric.Gaussian),
+    )
