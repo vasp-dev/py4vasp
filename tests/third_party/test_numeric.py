@@ -232,14 +232,33 @@ def test_broaden_accepts_one_width_per_position(Assert):
     Assert.allclose(spectrum, sum(separate))
 
 
-def test_broaden_reproduces_the_demo_helper(Assert):
-    # pins the numbers the demo data is built from while showcase.broaden still exists
-    from py4vasp._demo import showcase
-
+def test_broaden_matches_an_explicit_gaussian_sum(Assert):
+    # the closed form written out by hand, which is what the demo data was built with
+    # before this helper existed; it pins the numbers independently of the shapes
     levels = np.array([-1.5, 0.0, 2.25])
     weights = np.array([0.5, 1.0, 1.5])
     sigma = 0.15
+    distance = (MESH[:, np.newaxis] - levels) / sigma
+    expected = np.exp(-0.5 * distance**2) @ weights / (sigma * np.sqrt(2 * np.pi))
     Assert.allclose(
         numeric.broaden(MESH, levels, weights, shape=numeric.Gaussian(sigma=sigma)),
-        showcase.broaden(MESH, levels, weights, width=sigma),
+        expected,
     )
+
+
+def test_broaden_peaks_at_the_position(Assert):
+    # migrated from the demo helper this replaces
+    position = 1.5
+    spectrum = numeric.broaden(MESH, [position], shape=numeric.Gaussian(fwhm=FWHM))
+    spacing = MESH[1] - MESH[0]
+    assert spectrum.shape == MESH.shape
+    assert np.all(spectrum >= 0)
+    assert abs(MESH[np.argmax(spectrum)] - position) < spacing
+
+
+def test_broaden_width_controls_the_peak_height():
+    # migrated from the demo helper this replaces; unit area means a narrower line has
+    # to be taller
+    sharp = numeric.broaden(MESH, [0.0], shape=numeric.Gaussian(fwhm=0.05))
+    broad = numeric.broaden(MESH, [0.0], shape=numeric.Gaussian(fwhm=0.5))
+    assert sharp.max() > broad.max()

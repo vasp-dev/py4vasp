@@ -5,6 +5,7 @@ import numpy as np
 from py4vasp import _demo, raw
 from py4vasp._demo import showcase
 from py4vasp._demo.showcase import electronic_structure, kpoint
+from py4vasp._third_party import numeric
 
 SPIN_DEGENERACY = 2  # electrons per band without spin polarization
 ENERGY_MARGIN = 1.5  # eV of empty axis beyond the outermost eigenvalue
@@ -62,11 +63,10 @@ def _broadened_bands(
     # dividing by the number of k points turns the sum over the mesh into an average, so
     # every band holds exactly electrons_per_band electrons per unit cell
     weight = electrons_per_band / len(eigenvalues)
-    return np.array(
-        [
-            showcase.broaden(energies, band, weights=weight, width=width)
-            for band in eigenvalues.T
-        ]
+    # the eigenvalues arrive shaped (kpoint, band) and broaden reduces the last axis, so
+    # transposing them turns one call into one spectrum per band
+    return numeric.broaden(
+        energies, eigenvalues.T, weight, shape=numeric.Gaussian(sigma=width)
     )
 
 

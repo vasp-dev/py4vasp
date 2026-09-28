@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import _demo, raw
 from py4vasp._demo import showcase
 from py4vasp._demo.showcase import electronic_structure, kpoint, structure
+from py4vasp._third_party import numeric
 from py4vasp._util import masses
 
 NUMBER_ATOMS = 7
@@ -215,13 +216,11 @@ def _spectrum():
     )
     # dividing by the number of q points turns the sum over the mesh into an average, so
     # the spectrum integrates to the number of modes of a single cell
-    per_mode = np.array(
-        [
-            showcase.broaden(
-                energies, branch, weights=1 / len(qpoints), width=BROADENING
-            )
-            for branch in by_branch.T
-        ]
+    per_mode = numeric.broaden(
+        energies,
+        by_branch.T,
+        1 / len(qpoints),
+        shape=numeric.Gaussian(sigma=BROADENING),
     )
     projections = np.einsum("mad,me->ade", _weight_per_axis(), per_mode)
     energies.setflags(write=False)
