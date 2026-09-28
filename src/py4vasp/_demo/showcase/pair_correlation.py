@@ -10,6 +10,7 @@ import numpy as np
 from py4vasp import _demo, raw
 from py4vasp._demo import showcase
 from py4vasp._demo.showcase import cell, grid, structure
+from py4vasp._third_party import numeric
 from py4vasp._util import convert
 
 MAX_DISTANCE = 8.0  # Angstrom, far enough to show the crystal settling around one
@@ -148,7 +149,9 @@ def _step(distances, positions, lattice_vectors, elements, ion_types):
 def _correlate(distances, pairs, volume, number_first, number_second):
     """Broaden the given shells into g(r) normalized to a uniform neighbour density."""
     shells = pairs[np.isfinite(pairs) & (pairs > 1e-8)]
-    neighbours_per_distance = showcase.broaden(distances, shells, width=WIDTH)
+    neighbours_per_distance = numeric.broaden(
+        distances, shells, shape=numeric.Gaussian(sigma=WIDTH)
+    )
     # dividing by the neighbours a uniform density would put in the shell at r makes the
     # curve approach one; the origin has no shell around it, so it is set to zero
     density = number_second / volume

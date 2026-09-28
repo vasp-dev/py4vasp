@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 import py4vasp
-from py4vasp import _calculation, demo
+from py4vasp import _calculation, broadening, demo
 from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calculation attributes
     band,
     bandgap,
@@ -34,6 +34,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     velocity,
     workfunction,
 )
+from py4vasp._third_party import numeric as _numeric
 from py4vasp._util import color as _util_color
 from py4vasp._util import import_
 
@@ -184,6 +185,26 @@ def get_util_examples():
     "example", get_util_examples(), ids=lambda example: example.name
 )
 def test_util(example: doctest.DocTest):
+    optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+    runner = doctest.DocTestRunner(optionflags=optionflags)
+    result = runner.run(example)
+    assert result.failed == 0
+    assert result.attempted > 0
+
+
+def get_broadening_examples():
+    # the public module only re-exports; the classes and the function are defined in
+    # _third_party.numeric, so both have to be searched to reach every example
+    examples = find_examples(broadening) + find_examples(_numeric)
+    return [example for example in examples if interesting_example(example)]
+
+
+@pytest.mark.parametrize(
+    "example", get_broadening_examples(), ids=lambda example: example.name
+)
+def test_broadening(example: doctest.DocTest):
+    # deliberately no importorskip: broadening is pure numpy and must run on the core
+    # installation, unlike the interpolation routines that share its module
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     result = runner.run(example)

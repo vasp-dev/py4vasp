@@ -215,6 +215,11 @@ average a tensor over its directions, how do I put several calculations in one f
 how do I watch a phonon mode move -- the *Common tasks* section of :data:`py4vasp.calculation`
 answers each one with the call that does it.
 
+Not everything you may want is a quantity VASP wrote down. If you have a set of peaks --
+phonon modes and their infrared or Raman activity, optical transitions and their
+strength, eigenvalues and their weight -- and you want the spectrum an experiment would
+measure, :py:mod:`py4vasp.broadening` gives every peak a width and adds them up.
+
 .. _tutorials: https://www.vasp.at/tutorials/latest
 
 If you want to experience more features of *py4vasp*, we highly recommend taking
@@ -247,6 +252,7 @@ reinstall *py4vasp*.
    calculation
    Calculation
    plot
+   broadening
    exception
 
 

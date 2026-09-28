@@ -120,7 +120,15 @@ def _select(name, options, kind):
 
 
 def _gaussian(wavelengths, mu, tau_left, tau_right):
-    """Piecewise Gaussian used to approximate the color matching functions."""
+    """Piecewise Gaussian used to approximate the color matching functions.
+
+    Deliberately not :class:`py4vasp.broadening.Gaussian`, although it looks like one.
+    This is the analytic fit of Wyman, Sloan, and Shirley to a tabulated function, not a
+    line shape put on a peak: it is asymmetric, it is normalized to unit height rather
+    than unit area, and ``tau`` is an inverse width. The published amplitudes below
+    reproduce the tabulated functions only with exactly these conventions -- one of them
+    is even negative, so this is not a sum of weighted peaks at all.
+    """
     tau = np.where(wavelengths < mu, tau_left, tau_right)
     return np.exp(-(tau**2) * (wavelengths - mu) ** 2 / 2)
 

@@ -1,11 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 
-from py4vasp import interpolate
+from py4vasp import exception, interpolate
 from py4vasp._third_party import numeric
 
 
@@ -87,3 +88,333 @@ def test_interpolate_with_function_higher_dimensions(Assert):
     y_out = numeric.interpolate_with_function(gaussian, x_in, y_in, x_out)
     Assert.allclose(y_out, y_in)
     Assert.allclose(y_out, y_in)
+
+
+# a mesh wide and fine enough that the trapezoidal rule resolves either line shape; the
+# Lorentzian needs the width because its tails decay only algebraically
+LIMIT = 500.0
+FWHM = 1.5
+
+
+@pytest.fixture(scope="module")
+def offsets():
+    # built lazily and shared: it is 16 MB and only the line-shape tests need it
+    return np.linspace(-LIMIT, LIMIT, 2_000_001)
+
+
+@pytest.fixture(params=["Gaussian", "Lorentzian"])
+def line_shape_class(request):
+    # resolved when the test runs rather than when it is collected, so a missing class
+    # fails this test instead of the whole module
+    return getattr(numeric, request.param)
+
+
+@pytest.fixture
+def line_shape(line_shape_class):
+    return line_shape_class(fwhm=FWHM)
+
+
+# How much of a unit-area line actually lies on the mesh, from the antiderivative of
+# shape. The Gaussian is one to machine precision; the Lorentzian is measurably less,
+# because its tails decay only as 1/x^2 and no finite mesh holds all of its weight.
+_MASS_ON_MESH = {
+    "Gaussian": 1.0,
+    "Lorentzian": 2 / np.pi * np.arctan(LIMIT / (0.5 * FWHM)),
+}
+
+
+def test_line_shape_is_normalized_to_unit_area(line_shape, offsets, Assert):
+    mass = np.trapezoid(line_shape.profile(offsets), offsets)
+    Assert.allclose(mass, _MASS_ON_MESH[type(line_shape).__name__])
+
+
+def test_fwhm_is_the_width_at_half_maximum(line_shape, Assert):
+    # the assertion that makes the name of the parameter true
+    Assert.allclose(line_shape.profile(0.5 * FWHM), 0.5 * line_shape.profile(0.0))
+
+
+def test_line_shape_keeps_the_shape_of_the_offsets(line_shape):
+    assert line_shape.profile(np.zeros((4, 3))).shape == (4, 3)
+
+
+def test_gaussian_accepts_sigma_or_fwhm(offsets, Assert):
+    sigma = FWHM / (2 * np.sqrt(2 * np.log(2)))
+    Assert.allclose(
+        numeric.Gaussian(sigma=sigma).profile(offsets),
+        numeric.Gaussian(fwhm=FWHM).profile(offsets),
+    )
+    Assert.allclose(numeric.Gaussian(fwhm=FWHM).sigma, sigma)
+    Assert.allclose(numeric.Gaussian(sigma=sigma).fwhm, FWHM)
+
+
+def test_lorentzian_accepts_gamma_or_fwhm(offsets, Assert):
+    # gamma is the half width at half maximum, the parameter of 1 / (x - x0 + i gamma)
+    Assert.allclose(
+        numeric.Lorentzian(gamma=0.5 * FWHM).profile(offsets),
+        numeric.Lorentzian(fwhm=FWHM).profile(offsets),
+    )
+    Assert.allclose(numeric.Lorentzian(fwhm=FWHM).gamma, 0.5 * FWHM)
+    Assert.allclose(numeric.Lorentzian(gamma=0.5 * FWHM).fwhm, FWHM)
+
+
+def test_line_shape_takes_exactly_one_width(line_shape_class):
+    alias = "sigma" if line_shape_class is numeric.Gaussian else "gamma"
+    with pytest.raises(exception.IncorrectUsage):
+        line_shape_class()
+    with pytest.raises(exception.IncorrectUsage):
+        line_shape_class(**{"fwhm": FWHM, alias: 0.5 * FWHM})
+
+
+@pytest.mark.parametrize("width", [0.0, -1.0, np.array([1.0, -1.0])])
+def test_line_shape_rejects_a_width_that_is_not_positive(line_shape_class, width):
+    with pytest.raises(exception.IncorrectUsage):
+        line_shape_class(fwhm=width)
+
+
+def test_line_shape_must_be_given_by_keyword(line_shape_class):
+    # a bare number cannot say whether it is a FWHM or a standard deviation
+    with pytest.raises(TypeError):
+        line_shape_class(FWHM)
+
+
+MESH = np.linspace(-10, 10, 2001)
+
+
+def test_broaden_conserves_the_total_weight(Assert):
+    positions = np.array([-2.0, 0.5, 3.0])
+    weights = np.array([1.0, 2.5, 0.5])
+    spectrum = numeric.broaden(
+        MESH, positions, weights, shape=numeric.Gaussian(fwhm=FWHM)
+    )
+    Assert.allclose(np.trapezoid(spectrum, MESH), np.sum(weights))
+
+
+def test_broaden_defaults_to_one_per_position(Assert):
+    positions = np.array([-2.0, 0.5, 3.0])
+    shape = numeric.Gaussian(fwhm=FWHM)
+    Assert.allclose(
+        numeric.broaden(MESH, positions, shape=shape),
+        numeric.broaden(MESH, positions, np.ones(3), shape=shape),
+    )
+
+
+def test_broaden_broadcasts_scalar_weights(Assert):
+    positions = np.array([-2.0, 0.5, 3.0])
+    shape = numeric.Gaussian(fwhm=FWHM)
+    Assert.allclose(
+        numeric.broaden(MESH, positions, 0.25, shape=shape),
+        0.25 * numeric.broaden(MESH, positions, shape=shape),
+    )
+
+
+def test_broaden_reduces_only_the_last_axis(Assert):
+    positions = np.random.rand(3, 2, 5)
+    shape = numeric.Lorentzian(fwhm=FWHM)
+    spectrum = numeric.broaden(MESH, positions, shape=shape)
+    assert spectrum.shape == (3, 2, len(MESH))
+    for i in range(3):
+        for j in range(2):
+            Assert.allclose(
+                spectrum[i, j], numeric.broaden(MESH, positions[i, j], shape=shape)
+            )
+
+
+def test_broaden_is_the_sum_of_its_peaks(Assert):
+    positions = np.array([-2.0, 0.5])
+    shape = numeric.Lorentzian(fwhm=FWHM)
+    separate = [numeric.broaden(MESH, position, shape=shape) for position in positions]
+    Assert.allclose(numeric.broaden(MESH, positions, shape=shape), sum(separate))
+
+
+def test_broaden_accepts_one_width_per_position(Assert):
+    # a spectral function broadens every peak with its own |Im Sigma|, so the width has
+    # to broadcast against the positions rather than be a single number
+    positions = np.array([-2.0, 0.5])
+    widths = np.array([0.5, 2.0])
+    spectrum = numeric.broaden(MESH, positions, shape=numeric.Lorentzian(fwhm=widths))
+    separate = [
+        numeric.broaden(MESH, position, shape=numeric.Lorentzian(fwhm=width))
+        for position, width in zip(positions, widths)
+    ]
+    Assert.allclose(spectrum, sum(separate))
+
+
+def test_broaden_matches_an_explicit_gaussian_sum(Assert):
+    # the closed form written out by hand, which is what the demo data was built with
+    # before this helper existed; it pins the numbers independently of the shapes
+    levels = np.array([-1.5, 0.0, 2.25])
+    weights = np.array([0.5, 1.0, 1.5])
+    sigma = 0.15
+    distance = (MESH[:, np.newaxis] - levels) / sigma
+    expected = np.exp(-0.5 * distance**2) @ weights / (sigma * np.sqrt(2 * np.pi))
+    Assert.allclose(
+        numeric.broaden(MESH, levels, weights, shape=numeric.Gaussian(sigma=sigma)),
+        expected,
+    )
+
+
+def test_broaden_peaks_at_the_position(Assert):
+    # migrated from the demo helper this replaces
+    position = 1.5
+    spectrum = numeric.broaden(MESH, [position], shape=numeric.Gaussian(fwhm=FWHM))
+    spacing = MESH[1] - MESH[0]
+    assert spectrum.shape == MESH.shape
+    assert np.all(spectrum >= 0)
+    assert abs(MESH[np.argmax(spectrum)] - position) < spacing
+
+
+def test_broaden_width_controls_the_peak_height():
+    # migrated from the demo helper this replaces; unit area means a narrower line has
+    # to be taller
+    sharp = numeric.broaden(MESH, [0.0], shape=numeric.Gaussian(fwhm=0.05))
+    broad = numeric.broaden(MESH, [0.0], shape=numeric.Gaussian(fwhm=0.5))
+    assert sharp.max() > broad.max()
+
+
+def broaden_band_by_band(mesh, positions, widths, shape_class):
+    """Reference: one call per band, which is what the single call must reproduce."""
+    widths = np.broadcast_to(widths, positions.shape)
+    return np.array(
+        [
+            numeric.broaden(mesh, band, shape=shape_class(fwhm=width))
+            for band, width in zip(positions, widths)
+        ]
+    )
+
+
+def test_broaden_gives_every_band_its_own_width(Assert):
+    # the width has to broadcast against the positions, which is what makes "one
+    # spectrum per band, each with its own width" a single call
+    positions = np.random.rand(4, 20)
+    widths = np.array([[0.2], [0.4], [0.8], [1.6]])
+    Assert.allclose(
+        numeric.broaden(MESH, positions, shape=numeric.Lorentzian(fwhm=widths)),
+        broaden_band_by_band(MESH, positions, widths, numeric.Lorentzian),
+    )
+
+
+def test_broaden_gives_every_peak_of_every_band_its_own_width(Assert):
+    positions = np.random.rand(4, 20)
+    widths = 0.1 + np.random.rand(4, 20)
+    Assert.allclose(
+        numeric.broaden(MESH, positions, shape=numeric.Gaussian(fwhm=widths)),
+        broaden_band_by_band(MESH, positions, widths, numeric.Gaussian),
+    )
+
+
+def test_broaden_never_spreads_a_width_along_the_mesh(Assert):
+    # regression: the mesh used to sit between the leading axes and the peaks, so a
+    # width meant per band was applied per mesh point instead -- silently, and without
+    # any error, whenever the mesh happened to be as long as the leading axis
+    mesh = np.linspace(-5, 5, 4)
+    positions = np.tile([0.0, 1.0], (4, 1))
+    widths = np.array([[0.2], [0.4], [0.8], [1.6]])
+    Assert.allclose(
+        numeric.broaden(mesh, positions, shape=numeric.Gaussian(fwhm=widths)),
+        broaden_band_by_band(mesh, positions, widths, numeric.Gaussian),
+    )
+
+
+@pytest.mark.parametrize(
+    "width", [np.inf, -np.inf, np.nan, np.array([]), 1 + 2j, "0.5", [1.0, "a"]]
+)
+def test_line_shape_rejects_a_width_that_is_not_a_positive_number(
+    line_shape_class, width
+):
+    with pytest.raises(exception.IncorrectUsage):
+        line_shape_class(fwhm=width)
+
+
+def test_line_shape_accepts_a_width_given_as_a_list(Assert):
+    # the docstring invites an array, and a list is what a user types first
+    Assert.allclose(
+        numeric.Gaussian(fwhm=[1.0, 2.0]).sigma,
+        numeric.Gaussian(fwhm=np.array([1.0, 2.0])).sigma,
+    )
+
+
+def test_missing_width_error_does_not_explain_giving_both():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        numeric.Gaussian()
+    assert "both" not in str(error.value)
+
+
+def test_negative_width_error_does_not_call_it_zero():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        numeric.Gaussian(fwhm=-1.0)
+    assert "negative" in str(error.value)
+
+
+def test_width_error_names_the_parameter_that_was_given():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        numeric.Lorentzian(gamma=-1.0)
+    assert "gamma" in str(error.value)
+
+
+def test_line_shape_cannot_be_changed_after_it_is_made(line_shape):
+    # the two width parameters are resolved once, so mutating one would desynchronize it
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        line_shape.fwhm = 2.0
+
+
+def test_broaden_rejects_a_mesh_that_is_not_one_dimensional():
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(np.zeros((10, 5)), [0.0], shape=numeric.Gaussian(fwhm=1.0))
+
+
+@pytest.mark.parametrize("shape", [None, "gaussian", numeric.Gaussian, 0.5])
+def test_broaden_rejects_something_that_is_not_a_line_shape(shape):
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(MESH, [0.0], shape=shape)
+
+
+def test_broaden_rejects_complex_positions():
+    # phonon modes are reported as complex so that an unstable one is imaginary; silently
+    # dropping the imaginary part would put that peak at the wrong place
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(MESH, [1 + 2j], shape=numeric.Gaussian(fwhm=1.0))
+
+
+def test_broaden_rejects_weights_that_do_not_match_the_positions():
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(
+            MESH, [1.0, 2.0, 3.0], [1.0, 2.0], shape=numeric.Gaussian(fwhm=1.0)
+        )
+
+
+@pytest.mark.parametrize("positions", [[[1.0, 2.0], [3.0]], "peaks", [None]])
+def test_broaden_rejects_positions_that_are_not_numbers(positions):
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(MESH, positions, shape=numeric.Gaussian(fwhm=1.0))
+
+
+def test_broaden_warns_when_the_mesh_does_not_resolve_the_width():
+    # the spectrum is quietly wrong in this case -- the peaks land between mesh points --
+    # and the most common way to get here is quoting the width in the wrong unit
+    coarse = np.linspace(0, 800, 801)
+    with pytest.warns(UserWarning, match="does not resolve"):
+        spectrum = numeric.broaden(coarse, [400.0], shape=numeric.Gaussian(fwhm=0.2))
+    # it still returns the (wrong) spectrum rather than raising, because a user may be
+    # doing something deliberate
+    assert spectrum.shape == coarse.shape
+
+
+def test_broaden_does_not_warn_when_the_mesh_resolves_the_width(recwarn):
+    fine = np.linspace(0, 800, 8001)
+    numeric.broaden(fine, [400.0], shape=numeric.Gaussian(fwhm=10.0))
+    assert [w for w in recwarn if w.category is UserWarning] == []
+
+
+def test_broaden_checks_the_narrowest_of_several_widths():
+    coarse = np.linspace(0, 800, 801)
+    widths = np.array([20.0, 0.2])
+    with pytest.warns(UserWarning, match="does not resolve"):
+        numeric.broaden(coarse, [200.0, 400.0], shape=numeric.Lorentzian(fwhm=widths))
+
+
+def test_broaden_accepts_a_mesh_of_a_single_point(Assert):
+    # there is no spacing to compare the width against
+    Assert.allclose(
+        numeric.broaden([0.0], [0.0], shape=numeric.Gaussian(fwhm=1.0)),
+        numeric.Gaussian(fwhm=1.0).profile(0.0),
+    )

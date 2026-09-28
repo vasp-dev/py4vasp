@@ -52,36 +52,6 @@ BROADENING = 0.15  # standard deviation of a Gaussian in eV
 CONVERGENCE_RATE = 0.45  # exponential decay per step of a relaxation
 
 
-def broaden(energies, levels, weights=None, width=BROADENING):
-    """Spread discrete levels into a smooth spectrum with normalized Gaussians.
-
-    Parameters
-    ----------
-    energies
-        Energy axis the spectrum is evaluated on.
-    levels
-        Discrete levels such as eigenvalues. Any shape is accepted and flattened, so
-        the eigenvalues of all k points and bands can be passed in one call.
-    weights
-        Contribution of every level, broadcast against *levels*. Defaults to one state
-        per level.
-    width
-        Standard deviation of the Gaussian in the unit of *energies*.
-
-    Returns
-    -------
-    -
-        Spectrum with the shape of *energies*. Because the Gaussians are normalized, it
-        integrates to the total weight provided the levels are inside the energy axis.
-    """
-    levels = np.asarray(levels, dtype=np.float64)
-    weights = np.ones(levels.shape) if weights is None else weights
-    weights = np.broadcast_to(weights, levels.shape)
-    distance = (np.atleast_1d(energies)[:, np.newaxis] - levels.ravel()) / width
-    normalization = width * np.sqrt(2 * np.pi)
-    return np.exp(-0.5 * distance**2) @ np.ravel(weights) / normalization
-
-
 def converge(initial, final, number_steps=NUMBER_STEPS, rate=CONVERGENCE_RATE):
     """Approach a final value exponentially, the way a relaxation converges.
 
