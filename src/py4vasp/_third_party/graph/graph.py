@@ -293,19 +293,27 @@ class Graph(Sequence):
 
         Examples
         --------
-        Overlay the density of states of several calculations. :py:meth:`label` names
-        each contribution, because otherwise every series is called "total"
+        Overlay the density of states of two calculations. :py:meth:`label` names each
+        contribution, because otherwise both series are called "total"
 
-        >>> from py4vasp import Calculation
-        >>> paths = {"coarse": "mesh_4x4x4", "dense": "mesh_8x8x8"}
-        >>> graphs = [
-        ...     Calculation.from_path(path).dos.plot().label(name)
-        ...     for name, path in paths.items()
-        ... ]
-        >>> sum(graphs[1:], graphs[0]).show()
+        >>> from py4vasp import demo
+        >>> coarse = demo.calculation(path / "mesh_4x4x4")
+        >>> dense = demo.calculation(path / "mesh_8x8x8")
+        >>> graph = coarse.dos.plot().label("coarse") + dense.dos.plot().label("dense")
+        >>> [series.label for series in graph]
+        ['coarse', 'dense']
 
-        The axis labels and the tick positions are taken from the graphs, so there is
-        nothing left to retype.
+        The axis labels and the tick positions come along with the graphs, so there is
+        nothing left to retype before showing it
+
+        >>> graph.show()
+
+        For more than two, sum them. ``sum`` needs the first graph as its start value,
+        because there is no empty graph to add the others to
+
+        >>> graphs = [coarse.dos.plot().label("coarse"), dense.dos.plot().label("dense")]
+        >>> sum(graphs[1:], graphs[0]).ylabel
+        'DOS (1/eV)'
         """
         return Graph(tuple(self) + tuple(other), **_merge_fields(self, other))
 
