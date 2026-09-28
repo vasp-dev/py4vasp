@@ -12,7 +12,12 @@ from py4vasp._calculation.dielectric_function import (
     DielectricFunction,
     DielectricFunctionHandler,
 )
+from py4vasp._raw.definition import unique_selections
 from py4vasp._raw.models import DielectricFunctionModel
+
+# The sources read accepts. Taken from the schema rather than spelled out, so this stays
+# the same list the dispatcher checks a selection against when VASP gains a new source.
+SOURCES = list(unique_selections("dielectric_function"))
 
 
 @pytest.fixture
@@ -381,6 +386,7 @@ def check_to_image(dielectric_function, filename_argument, expected_filename):
 
 def test_electronic_selections(electronic):
     assert electronic.selections() == {
+        "dielectric_function": SOURCES,
         "components": ["density", "current"],
         "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
         "complex": ["real", "Re", "imag", "Im"],
@@ -389,6 +395,7 @@ def test_electronic_selections(electronic):
 
 def test_ionic_selections(ionic):
     assert ionic.selections() == {
+        "dielectric_function": SOURCES,
         "components": ["density"],
         "directions": ["isotropic", "xx", "yy", "zz", "xy", "xz", "yz"],
         "complex": ["real", "Re", "imag", "Im"],
@@ -396,7 +403,12 @@ def test_ionic_selections(ionic):
 
 
 def test_q_point_selections(q_point):
-    assert q_point.selections() == {"complex": ["real", "Re", "imag", "Im"]}
+    # a dielectric function at finite q carries no tensor, so it offers no direction to
+    # select -- but read still takes a source, which is the selection users need to find
+    assert q_point.selections() == {
+        "dielectric_function": SOURCES,
+        "complex": ["real", "Re", "imag", "Im"],
+    }
 
 
 def test_electronic_print(electronic, format_):

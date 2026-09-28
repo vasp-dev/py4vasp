@@ -13,9 +13,14 @@ from py4vasp._calculation.dispatch import (
     merge_to_database,
     quantity,
 )
+from py4vasp._raw.definition import unique_selections as _schema_sources
 from py4vasp._raw.models import DielectricFunctionModel
 from py4vasp._third_party import graph
 from py4vasp._util import check, convert, index, select
+
+# The name of this quantity in the schema and in the dictionary selections returns, so
+# that the key naming the sources matches the attribute the user reaches them through.
+_DATA_QUANTITY = "dielectric_function"
 
 
 class DielectricFunctionHandler:
@@ -89,14 +94,18 @@ class DielectricFunctionHandler:
         )
 
     def selections(self) -> dict:
-        """Returns a dictionary of possible selections for component, direction, and complex value."""
+        """Returns the sources, components, directions, and complex values to select from."""
+        # The sources come first because they are the selection read takes; without them
+        # this method cannot answer what a user asks it, which is what to pass where.
+        sources = {_DATA_QUANTITY: list(_schema_sources(_DATA_QUANTITY))}
         complex_selections = {"complex": ["real", "Re", "imag", "Im"]}
         if not self._has_tensor_data():
-            return complex_selections
+            return {**sources, **complex_selections}
         components = (
             ["density", "current"] if self._has_current_component() else ["density"]
         )
         return {
+            **sources,
             "components": components,
             "directions": [key for key in self._init_directions_dict() if key],
             **complex_selections,
@@ -329,7 +338,12 @@ class DielectricFunction(graph.Mixin):
         )
 
     def selections(self, selection: str | None = None) -> dict:
-        """Returns a dictionary of possible selections for component, direction, and complex value."""
+        """Return the sources, components, directions, and complex values to select from.
+
+        The ``dielectric_function`` entry lists the sources, which is what
+        :py:meth:`read` selects between. The remaining entries are the parts of the
+        tensor :py:meth:`to_graph` draws.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
