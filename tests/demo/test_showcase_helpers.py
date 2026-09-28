@@ -7,11 +7,6 @@ from py4vasp import _demo
 from py4vasp._demo import showcase
 
 
-@pytest.fixture
-def energies():
-    return np.linspace(-8, 8, showcase.NUMBER_POINTS)
-
-
 def test_showcase_resolves_finer_than_the_test_data():
     # the producers in _demo are sized for fast tests; presentation data needs enough
     # points that a curve reads as a curve and a relaxation as a relaxation

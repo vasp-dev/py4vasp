@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import warnings
 from dataclasses import dataclass
 from typing import Optional
 
@@ -350,6 +351,23 @@ def _validated_weights(weights, positions):
         ) from error
 
 
+def _warn_if_the_mesh_does_not_resolve(mesh, shape):
+    if len(mesh) < 2:
+        return
+    spacing = np.max(np.abs(np.diff(mesh)))
+    width = np.min(shape.fwhm)
+    # below about 1.5 points per width the discrete sum loses several percent of the
+    # weight, and it degrades fast from there; two points leaves a margin
+    if width >= 2 * spacing:
+        return
+    message = f"""The mesh does not resolve the line shape.
+    Its spacing is {spacing:.3g} but the narrowest width is {width:.3g}, so the peaks
+    fall between the mesh points and the spectrum is wrong by however much of each line
+    the mesh happened to catch. Use a finer mesh, or check that the width is quoted in
+    the same unit as the mesh."""
+    warnings.warn(message, UserWarning)
+
+
 def broaden(mesh, positions, weights=None, *, shape):
     """Spread discrete peaks into a smooth spectrum on the given mesh.
 
@@ -388,9 +406,9 @@ def broaden(mesh, positions, weights=None, *, shape):
     -----
     The mesh has to resolve the width: a line narrower than the spacing between mesh
     points falls between them, and the spectrum is then wrong by whatever fraction of
-    each line the mesh happened to catch. Nothing can detect this from the result, so
-    keep several mesh points inside the width -- the most common way to get it wrong is
-    to quote the width in a different unit than the mesh.
+    each line the mesh happened to catch. Nothing about the result gives that away, so
+    broadening warns when fewer than two mesh points fit inside the narrowest width.
+    The usual cause is quoting the width in a different unit than the mesh.
 
     The line shapes are not truncated, so the intermediate array holds one value per
     mesh point and peak. Broadening very many peaks onto a very fine mesh is therefore
@@ -413,9 +431,20 @@ def broaden(mesh, positions, weights=None, *, shape):
     3.0
     >>> bool(wider.max() < spectrum.max())
     True
+
+    A width the mesh cannot resolve still returns a spectrum, but warns, because the
+    weight it reports is not the weight you gave it
+
+    >>> import warnings
+    >>> with warnings.catch_warnings(record=True) as caught:
+    ...     warnings.simplefilter("always")
+    ...     unresolved = broaden(energies, peaks, weights, shape=Gaussian(fwhm=0.001))
+    >>> [str(w.message).splitlines()[0] for w in caught if w.category is UserWarning]
+    ['The mesh does not resolve the line shape.']
     """
     _raise_error_if_not_a_line_shape(shape)
     mesh = _validated_mesh(mesh)
+    _warn_if_the_mesh_does_not_resolve(mesh, shape)
     positions = _validated_positions(positions)
     weights = _validated_weights(weights, positions)
     # the peaks go on the second to last axis and the mesh on the last one. Putting the

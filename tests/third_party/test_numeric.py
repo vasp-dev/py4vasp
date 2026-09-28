@@ -92,8 +92,14 @@ def test_interpolate_with_function_higher_dimensions(Assert):
 
 # a mesh wide and fine enough that the trapezoidal rule resolves either line shape; the
 # Lorentzian needs the width because its tails decay only algebraically
-OFFSETS = np.linspace(-500, 500, 2_000_001)
+LIMIT = 500.0
 FWHM = 1.5
+
+
+@pytest.fixture(scope="module")
+def offsets():
+    # built lazily and shared: it is 16 MB and only the line-shape tests need it
+    return np.linspace(-LIMIT, LIMIT, 2_000_001)
 
 
 @pytest.fixture(params=["Gaussian", "Lorentzian"])
@@ -108,17 +114,17 @@ def line_shape(line_shape_class):
     return line_shape_class(fwhm=FWHM)
 
 
-# How much of a unit-area line actually lies on OFFSETS, from the antiderivative of each
+# How much of a unit-area line actually lies on the mesh, from the antiderivative of
 # shape. The Gaussian is one to machine precision; the Lorentzian is measurably less,
 # because its tails decay only as 1/x^2 and no finite mesh holds all of its weight.
 _MASS_ON_MESH = {
     "Gaussian": 1.0,
-    "Lorentzian": 2 / np.pi * np.arctan(OFFSETS[-1] / (0.5 * FWHM)),
+    "Lorentzian": 2 / np.pi * np.arctan(LIMIT / (0.5 * FWHM)),
 }
 
 
-def test_line_shape_is_normalized_to_unit_area(line_shape, Assert):
-    mass = np.trapezoid(line_shape.profile(OFFSETS), OFFSETS)
+def test_line_shape_is_normalized_to_unit_area(line_shape, offsets, Assert):
+    mass = np.trapezoid(line_shape.profile(offsets), offsets)
     Assert.allclose(mass, _MASS_ON_MESH[type(line_shape).__name__])
 
 
@@ -131,21 +137,21 @@ def test_line_shape_keeps_the_shape_of_the_offsets(line_shape):
     assert line_shape.profile(np.zeros((4, 3))).shape == (4, 3)
 
 
-def test_gaussian_accepts_sigma_or_fwhm(Assert):
+def test_gaussian_accepts_sigma_or_fwhm(offsets, Assert):
     sigma = FWHM / (2 * np.sqrt(2 * np.log(2)))
     Assert.allclose(
-        numeric.Gaussian(sigma=sigma).profile(OFFSETS),
-        numeric.Gaussian(fwhm=FWHM).profile(OFFSETS),
+        numeric.Gaussian(sigma=sigma).profile(offsets),
+        numeric.Gaussian(fwhm=FWHM).profile(offsets),
     )
     Assert.allclose(numeric.Gaussian(fwhm=FWHM).sigma, sigma)
     Assert.allclose(numeric.Gaussian(sigma=sigma).fwhm, FWHM)
 
 
-def test_lorentzian_accepts_gamma_or_fwhm(Assert):
+def test_lorentzian_accepts_gamma_or_fwhm(offsets, Assert):
     # gamma is the half width at half maximum, the parameter of 1 / (x - x0 + i gamma)
     Assert.allclose(
-        numeric.Lorentzian(gamma=0.5 * FWHM).profile(OFFSETS),
-        numeric.Lorentzian(fwhm=FWHM).profile(OFFSETS),
+        numeric.Lorentzian(gamma=0.5 * FWHM).profile(offsets),
+        numeric.Lorentzian(fwhm=FWHM).profile(offsets),
     )
     Assert.allclose(numeric.Lorentzian(fwhm=FWHM).gamma, 0.5 * FWHM)
     Assert.allclose(numeric.Lorentzian(gamma=0.5 * FWHM).fwhm, FWHM)
@@ -380,3 +386,35 @@ def test_broaden_rejects_weights_that_do_not_match_the_positions():
 def test_broaden_rejects_positions_that_are_not_numbers(positions):
     with pytest.raises(exception.IncorrectUsage):
         numeric.broaden(MESH, positions, shape=numeric.Gaussian(fwhm=1.0))
+
+
+def test_broaden_warns_when_the_mesh_does_not_resolve_the_width():
+    # the spectrum is quietly wrong in this case -- the peaks land between mesh points --
+    # and the most common way to get here is quoting the width in the wrong unit
+    coarse = np.linspace(0, 800, 801)
+    with pytest.warns(UserWarning, match="does not resolve"):
+        spectrum = numeric.broaden(coarse, [400.0], shape=numeric.Gaussian(fwhm=0.2))
+    # it still returns the (wrong) spectrum rather than raising, because a user may be
+    # doing something deliberate
+    assert spectrum.shape == coarse.shape
+
+
+def test_broaden_does_not_warn_when_the_mesh_resolves_the_width(recwarn):
+    fine = np.linspace(0, 800, 8001)
+    numeric.broaden(fine, [400.0], shape=numeric.Gaussian(fwhm=10.0))
+    assert [w for w in recwarn if w.category is UserWarning] == []
+
+
+def test_broaden_checks_the_narrowest_of_several_widths():
+    coarse = np.linspace(0, 800, 801)
+    widths = np.array([20.0, 0.2])
+    with pytest.warns(UserWarning, match="does not resolve"):
+        numeric.broaden(coarse, [200.0, 400.0], shape=numeric.Lorentzian(fwhm=widths))
+
+
+def test_broaden_accepts_a_mesh_of_a_single_point(Assert):
+    # there is no spacing to compare the width against
+    Assert.allclose(
+        numeric.broaden([0.0], [0.0], shape=numeric.Gaussian(fwhm=1.0)),
+        numeric.Gaussian(fwhm=1.0).profile(0.0),
+    )
