@@ -268,6 +268,45 @@ class Graph(Sequence):
                 raise exception.IncorrectUsage(message)
 
     def __add__(self, other):
+        """Combine two graphs into one, so that several calculations share a figure.
+
+        This is how you overlay the same quantity from a convergence study: read each
+        calculation, plot it, label it, and sum the graphs. The series of both graphs
+        are concatenated and every other field is reconciled -- a field that only one
+        graph sets is taken over, and one that both set has to agree.
+
+        Parameters
+        ----------
+        other : Graph
+            The graph whose series are appended to the ones of this graph.
+
+        Returns
+        -------
+        Graph
+            A new graph with the series of both. The original graphs are unchanged.
+
+        Raises
+        ------
+        py4vasp.exception.IncorrectUsage
+            If the two graphs disagree on a field they both set, for example because
+            they plot different quantities and therefore carry a different ylabel.
+
+        Examples
+        --------
+        Overlay the density of states of several calculations. :py:meth:`label` names
+        each contribution, because otherwise every series is called "total"
+
+        >>> from py4vasp import Calculation
+        >>> paths = {"coarse": "mesh_4x4x4", "dense": "mesh_8x8x8"}
+        >>> graphs = [
+        ...     Calculation.from_path(path).dos.plot().label(name)
+        ...     for name, path in paths.items()
+        ... ]
+        >>> sum(graphs[1:], graphs[0]).show()
+
+        The axis labels and the tick positions are taken from the graphs, so there is
+        nothing left to retype.
+        """
         return Graph(tuple(self) + tuple(other), **_merge_fields(self, other))
 
     def __getitem__(self, index):
