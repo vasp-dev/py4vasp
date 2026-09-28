@@ -421,8 +421,10 @@ class Graph(Sequence):
 
         This modifies the graph in place *and* returns it, so that it can be chained onto
         the call that produced the graph. Because the graph is modified rather than
-        copied, labeling the same graph twice keeps only the second label -- give each
-        calculation its own graph instead of labeling one graph repeatedly.
+        copied, labeling the same graph twice compounds: a single series ends up with
+        the second label alone, several series end up with both prefixed
+        (``'second first original'``). Give each calculation its own graph rather than
+        labeling one graph repeatedly.
 
         Parameters
         ----------

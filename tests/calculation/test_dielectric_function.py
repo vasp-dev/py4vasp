@@ -498,7 +498,7 @@ def test_electronic_print(electronic, format_):
 dielectric function:
     energies: [0.00, 1.00] 50 points
     components: density, current
-    directions: isotropic, xx, yy, zz, xy, yz, xz"""
+    directions: isotropic, xx, yy, zz, xy, xz, yz"""
     assert actual == {"text/plain": reference}
 
 
@@ -507,7 +507,7 @@ def test_ionic_print(ionic, format_):
     reference = f"""\
 dielectric function:
     energies: [0.00, 1.00] 50 points
-    directions: isotropic, xx, yy, zz, xy, yz, xz"""
+    directions: isotropic, xx, yy, zz, xy, xz, yz"""
     assert actual == {"text/plain": reference}
 
 

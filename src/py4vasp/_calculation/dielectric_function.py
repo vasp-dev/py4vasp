@@ -150,7 +150,8 @@ class DielectricFunctionHandler:
 dielectric function:
     energies: [{energies[0]:0.2f}, {energies[-1]:0.2f}] {len(energies)} points"""
         if self._has_tensor_data():
-            footer = "directions: isotropic, xx, yy, zz, xy, yz, xz"
+            directions = ", ".join(key for key in self._init_directions_dict() if key)
+            footer = f"directions: {directions}"
         else:
             qpoint_label = ", ".join(
                 f"{q:0.3f}" for q in self._raw_dielectric_function.q_point
@@ -311,10 +312,12 @@ class DielectricFunction(graph.Mixin):
     part** of the 3x3 tensor you want. The matrix is symmetric, so there are six
     distinct components (xx, yy, zz, xy, xz, yz) besides their average, *isotropic*.
 
-    Reading without a direction gives you the complete tensor, so you can do your own
-    algebra with it. Reading with one gives you a single complex spectrum, so that the
-    isotropic average does not have to be assembled by hand at the call site. Plotting
-    defaults to *isotropic* and draws the real and the imaginary part.
+    Reading without any selection gives you the complete tensor, so you can do your own
+    algebra with it. Any selection of a part reduces it to one complex spectrum per
+    selected part, so that the isotropic average does not have to be assembled by hand
+    at the call site -- a component on its own reduces it too, to the isotropic average
+    of that component. Plotting defaults to *isotropic* and draws the real and the
+    imaginary part.
 
     See Also
     --------
@@ -346,7 +349,7 @@ class DielectricFunction(graph.Mixin):
     dielectric function:
         energies: [0.00, 12.00] 301 points
         components: density, current
-        directions: isotropic, xx, yy, zz, xy, yz, xz
+        directions: isotropic, xx, yy, zz, xy, xz, yz
     """
 
     def __init__(self, source, quantity_name: str = "dielectric_function"):
@@ -369,9 +372,10 @@ class DielectricFunction(graph.Mixin):
         Parameters
         ----------
         selection : str
-            Choose which dielectric function VASP computed and, for one with tensor
-            data, which directions of it to reduce to. Without a direction you get the
-            whole 3x3 tensor. Use :py:meth:`selections` to see both lists.
+            Choose which dielectric function VASP computed and which part of it you
+            want: a direction, a component, the real or the imaginary part, or a
+            combination. Without any of those you get the whole 3x3 tensor.
+            Use :py:meth:`selections` to see every list.
 
         Returns
         -------
