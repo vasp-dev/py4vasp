@@ -76,6 +76,10 @@ class DielectricFunctionHandler:
     def _complex_spectrum(self, selector, choice):
         # the selector offers Re and Im as one more axis to choose from, so a spectrum
         # that leaves them unselected is averaged over the two and loses its phase
+        if self._complex_selected(choice):
+            # the user asked for one part of it, so that part is the whole answer and
+            # adding Re or Im again would put two keys on the same axis
+            return np.array(selector[choice])
         real = np.array(selector[choice + ("Re",)])
         imaginary = np.array(selector[choice + ("Im",)])
         return real + 1j * imaginary

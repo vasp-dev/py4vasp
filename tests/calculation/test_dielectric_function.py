@@ -122,6 +122,27 @@ def check_read_direction(dielectric_function, Assert):
         Assert.allclose(several["yy"], get_direction(tensor, "yy"))
 
 
+def test_read_complex_part(electronic, Assert):
+    # selections() advertises the complex entry for read as well as for plot, so every
+    # one of its values has to come back as the real spectrum of that part
+    tensor = electronic.ref.dielectric_function
+    Assert.allclose(electronic.read("Re")["Re"], isotropic(tensor).real)
+    Assert.allclose(electronic.read("real")["Re"], isotropic(tensor).real)
+    Assert.allclose(electronic.read("Im")["Im"], isotropic(tensor).imag)
+    Assert.allclose(electronic.read("imag")["Im"], isotropic(tensor).imag)
+    xx = get_direction(tensor, "xx")
+    Assert.allclose(electronic.read("xx(Re)")["Re_xx"], xx.real)
+    Assert.allclose(electronic.read("xx(Im)")["Im_xx"], xx.imag)
+
+
+def test_read_complex_part_of_a_qpoint(q_point, Assert):
+    # a dielectric function at finite q has no tensor, so the complex entry is the only
+    # thing besides the source that its selections() offers for read
+    spectrum = q_point.ref.dielectric_function
+    Assert.allclose(q_point.read("Re")["Re"], spectrum.real)
+    Assert.allclose(q_point.read("imag")["Im"], spectrum.imag)
+
+
 def test_read_direction_keeps_the_complex_value(electronic, Assert):
     # the selector treats real and imaginary as two more choices to average over, so a
     # spectrum that forgot to select both comes back as their mean and loses the phase
