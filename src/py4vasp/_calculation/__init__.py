@@ -624,8 +624,9 @@ class DefaultCalculationFactory:
     VASP output files. With the :class:`~py4vasp.Calculation` class, you can tailor
     the location of the files to your needs and both have access to the same quantities.
 
-    We demonstrate this setting up some example data in a temporary directory `path` and
-    changing to it.
+    We demonstrate this setting up some example data in a temporary directory. Please
+    define a variable `path` with the path to a directory that does not exist yet, then
+    change to it.
 
     >>> import os
     >>> from py4vasp import demo
@@ -649,6 +650,45 @@ class DefaultCalculationFactory:
 
     In the latter example, you could directly provide a path and do not need to have
     the data in the current directory.
+
+    .. rubric:: Common tasks
+
+    The quantities below are listed by name, which only helps once you know the name.
+    These are the questions people arrive with, and the call that answers each.
+
+    *How far apart are these atoms?* Use
+    :py:class:`~py4vasp._calculation.neighbor_list.NeighborList`. It takes the periodic
+    images into account and measures the perpendicular width of the cell, so it stays
+    correct for the tilted cells where the minimum-image convention ``d - np.rint(d)``
+    silently does not
+
+    >>> calculation.neighbor_list.selections()
+    ['Sr~Sr', 'Sr~Ti', 'Sr~O', 'Ti~Sr', 'Ti~Ti', 'Ti~O', 'O~Sr', 'O~Ti', 'O~O']
+
+    Each of these is a selection for ``read(selection, cutoff=...)``, which returns the
+    distance, the distance vector and the periodic image of every pair within the cutoff.
+
+    *How do I average a tensor over the directions?* Select the average instead of
+    computing it, here for the dielectric function
+
+    >>> sorted(calculation.dielectric_function.read("isotropic"))
+    ['energies', 'isotropic']
+
+    *How do I compare several calculations in one figure?* Add the graphs together.
+    :py:meth:`~py4vasp.graph.Graph.label` names each contribution, and the axis labels
+    and ticks are reconciled for you
+
+    >>> coarse = calculation.dos.plot().label("coarse mesh")
+    >>> dense = calculation.dos.plot().label("dense mesh")
+    >>> [series.label for series in coarse + dense]
+    ['coarse mesh', 'dense mesh']
+
+    *How do I watch a phonon mode move?* Let the viewer animate the eigenvector rather
+    than reading a table of frequencies
+
+    >>> view = calculation.phonon.mode.to_view()
+    >>> view.phonon.frequencies.shape
+    (1, 21)
     """
 
     def __getattr__(self, attr):

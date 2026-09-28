@@ -157,6 +157,12 @@ class PairCorrelation(graph.Mixin):
     trajectory into multiple subsets include the tag :tag:`KBLOCK` in your INCAR
     file.
 
+    See Also
+    --------
+    py4vasp._calculation.neighbor_list.NeighborList :
+        The individual pairs behind this distribution, with the distance and the
+        periodic image of each one, for a single step.
+
     Examples
     --------
     First, we create some example data so that you can follow along. Please define a

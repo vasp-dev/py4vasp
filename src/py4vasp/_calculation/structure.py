@@ -724,6 +724,12 @@ class Structure(view.Mixin):
     along the simulation. Moreover, you could take snapshots along the trajectory
     and further process them by computing more properties.
 
+    See Also
+    --------
+    py4vasp._calculation.neighbor_list.NeighborList :
+        How far apart the atoms of this structure are, with the periodic images resolved
+        for you.
+
     Examples
     --------
     Let us create some example data so that we can illustrate how to use this class.

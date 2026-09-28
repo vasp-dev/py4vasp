@@ -268,6 +268,53 @@ class Graph(Sequence):
                 raise exception.IncorrectUsage(message)
 
     def __add__(self, other):
+        """Combine two graphs into one, so that several calculations share a figure.
+
+        This is how you overlay the same quantity from a convergence study: read each
+        calculation, plot it, label it, and sum the graphs. The series of both graphs
+        are concatenated and every other field is reconciled -- a field that only one
+        graph sets is taken over, and one that both set has to agree.
+
+        Parameters
+        ----------
+        other : Graph
+            The graph whose series are appended to the ones of this graph.
+
+        Returns
+        -------
+        Graph
+            A new graph with the series of both. The original graphs are unchanged.
+
+        Raises
+        ------
+        py4vasp.exception.IncorrectUsage
+            If the two graphs disagree on a field they both set, for example because
+            they plot different quantities and therefore carry a different ylabel.
+
+        Examples
+        --------
+        Overlay the density of states of two calculations. :py:meth:`label` names each
+        contribution, because otherwise both series are called "total"
+
+        >>> from py4vasp import demo
+        >>> coarse = demo.calculation(path / "mesh_4x4x4")
+        >>> dense = demo.calculation(path / "mesh_8x8x8")
+        >>> graph = coarse.dos.plot().label("coarse") + dense.dos.plot().label("dense")
+        >>> [series.label for series in graph]
+        ['coarse', 'dense']
+
+        The axis labels and the tick positions come along with the graphs, so there is
+        nothing left to retype before showing it
+
+        >>> graph.show()
+
+        For more than two, sum them. ``sum`` needs the first graph as its start value,
+        because there is no empty graph to add the others to
+
+        >>> graphs = [coarse.dos.plot().label("coarse"), dense.dos.plot().label("dense")]
+        >>> sum(graphs[1:], graphs[0]).ylabel
+        'DOS (1/eV)'
+        """
         return Graph(tuple(self) + tuple(other), **_merge_fields(self, other))
 
     def __getitem__(self, index):
@@ -366,16 +413,28 @@ class Graph(Sequence):
         """
         self.to_plotly().show()
 
-    def label(self, new_label: str) -> None:
+    def label(self, new_label: str) -> "Graph":
         """Apply a new label to all series within.
 
         If there is only a single series, the label will replace the current one. If there
         are more than one, the new label will be prefixed to the existing ones.
 
+        This modifies the graph in place *and* returns it, so that it can be chained onto
+        the call that produced the graph. Because the graph is modified rather than
+        copied, labeling the same graph twice compounds: a single series ends up with
+        the second label alone, several series end up with both prefixed
+        (``'second first original'``). Give each calculation its own graph rather than
+        labeling one graph repeatedly.
+
         Parameters
         ----------
         new_label
             The new label added to the series.
+
+        Returns
+        -------
+        Graph
+            This graph, with every series relabeled.
 
         Examples
         --------

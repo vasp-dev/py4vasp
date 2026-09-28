@@ -175,6 +175,15 @@ class ForceConstant:
     calculation, but note that it does not apply if you freeze some atoms with
     selective dynamics, because then the translation of the whole system is not
     contained in the force constants.
+
+    See Also
+    --------
+    py4vasp._calculation.neighbor_list.NeighborList :
+        The distance between the two atoms of each element of Φ. Use it to plot how the
+        force constants decay with distance; it is correct for tilted cells, where the
+        minimum-image convention ``d - np.rint(d)`` is not.
+    py4vasp._calculation.phonon_band.PhononBand :
+        The vibrational modes these force constants determine.
     """
 
     def __init__(self, source, quantity_name: str = "force_constant"):
