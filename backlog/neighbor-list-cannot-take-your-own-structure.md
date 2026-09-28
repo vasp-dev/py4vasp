@@ -34,4 +34,6 @@ Two separable pieces of work:
    `from_data` appears in `help()` and in tab completion on every quantity, so it reads
    as public whatever its intent.
 
-Related: [quantities-without-showcase-data], [existing-api-users-do-not-find].
+Related: [quantities-without-showcase-data], and the review of the workshop tutorial
+that found these features undiscoverable, which is what prompted the branch this note
+came from.

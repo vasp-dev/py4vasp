@@ -21,6 +21,3 @@ direction.
 
 Found while adding direction selection to `read`; that change did not introduce it and
 does not widen it, because both `read` and `plot` share `_make_selector`.
-
-Related: [energy-units-across-quantities] records the other unit and convention
-inconsistencies found across quantities.
