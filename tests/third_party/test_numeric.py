@@ -168,3 +168,78 @@ def test_line_shape_must_be_given_by_keyword(line_shape_class):
     # a bare number cannot say whether it is a FWHM or a standard deviation
     with pytest.raises(TypeError):
         line_shape_class(FWHM)
+
+
+MESH = np.linspace(-10, 10, 2001)
+
+
+def test_broaden_conserves_the_total_weight(Assert):
+    positions = np.array([-2.0, 0.5, 3.0])
+    weights = np.array([1.0, 2.5, 0.5])
+    spectrum = numeric.broaden(
+        MESH, positions, weights, shape=numeric.Gaussian(fwhm=FWHM)
+    )
+    Assert.allclose(np.trapezoid(spectrum, MESH), np.sum(weights))
+
+
+def test_broaden_defaults_to_one_per_position(Assert):
+    positions = np.array([-2.0, 0.5, 3.0])
+    shape = numeric.Gaussian(fwhm=FWHM)
+    Assert.allclose(
+        numeric.broaden(MESH, positions, shape=shape),
+        numeric.broaden(MESH, positions, np.ones(3), shape=shape),
+    )
+
+
+def test_broaden_broadcasts_scalar_weights(Assert):
+    positions = np.array([-2.0, 0.5, 3.0])
+    shape = numeric.Gaussian(fwhm=FWHM)
+    Assert.allclose(
+        numeric.broaden(MESH, positions, 0.25, shape=shape),
+        0.25 * numeric.broaden(MESH, positions, shape=shape),
+    )
+
+
+def test_broaden_reduces_only_the_last_axis(Assert):
+    positions = np.random.rand(3, 2, 5)
+    shape = numeric.Lorentzian(fwhm=FWHM)
+    spectrum = numeric.broaden(MESH, positions, shape=shape)
+    assert spectrum.shape == (3, 2, len(MESH))
+    for i in range(3):
+        for j in range(2):
+            Assert.allclose(
+                spectrum[i, j], numeric.broaden(MESH, positions[i, j], shape=shape)
+            )
+
+
+def test_broaden_is_the_sum_of_its_peaks(Assert):
+    positions = np.array([-2.0, 0.5])
+    shape = numeric.Lorentzian(fwhm=FWHM)
+    separate = [numeric.broaden(MESH, position, shape=shape) for position in positions]
+    Assert.allclose(numeric.broaden(MESH, positions, shape=shape), sum(separate))
+
+
+def test_broaden_accepts_one_width_per_position(Assert):
+    # a spectral function broadens every peak with its own |Im Sigma|, so the width has
+    # to broadcast against the positions rather than be a single number
+    positions = np.array([-2.0, 0.5])
+    widths = np.array([0.5, 2.0])
+    spectrum = numeric.broaden(MESH, positions, shape=numeric.Lorentzian(fwhm=widths))
+    separate = [
+        numeric.broaden(MESH, position, shape=numeric.Lorentzian(fwhm=width))
+        for position, width in zip(positions, widths)
+    ]
+    Assert.allclose(spectrum, sum(separate))
+
+
+def test_broaden_reproduces_the_demo_helper(Assert):
+    # pins the numbers the demo data is built from while showcase.broaden still exists
+    from py4vasp._demo import showcase
+
+    levels = np.array([-1.5, 0.0, 2.25])
+    weights = np.array([0.5, 1.0, 1.5])
+    sigma = 0.15
+    Assert.allclose(
+        numeric.broaden(MESH, levels, weights, shape=numeric.Gaussian(sigma=sigma)),
+        showcase.broaden(MESH, levels, weights, width=sigma),
+    )

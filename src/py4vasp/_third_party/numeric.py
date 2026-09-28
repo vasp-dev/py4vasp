@@ -187,3 +187,51 @@ class Lorentzian(_LineShape):
             integrates to one.
         """
         return self.gamma / np.pi / (offsets**2 + self.gamma**2)
+
+
+def broaden(mesh, positions, weights=None, *, shape):
+    """Spread discrete peaks into a smooth spectrum on the given mesh.
+
+    Every position contributes one line of the given shape, scaled by its weight. The
+    shapes are normalized to unit area, so the spectrum integrates to the total weight
+    as long as the peaks are inside the mesh -- changing the width redistributes the
+    spectrum but does not change what it adds up to.
+
+    Nothing here is specific to an energy axis; the mesh, the positions and the width
+    only have to share a unit. Neighbour distances in Å broaden the same way.
+
+    Parameters
+    ----------
+    mesh
+        Positions at which the spectrum is evaluated, e.g. an energy axis.
+    positions
+        Center of every peak, such as eigenvalues or mode frequencies. Only the last
+        axis is broadened over; any leading axes are kept, so the bands of a
+        calculation can be broadened into one spectrum each in a single call.
+    weights
+        Contribution of every peak, broadcast against *positions*. Defaults to one per
+        peak.
+    shape
+        The line shape to give every peak, e.g. :class:`Gaussian` or
+        :class:`Lorentzian`. Its width may be an array that broadcasts against
+        *positions*, which gives every peak its own width.
+
+    Returns
+    -------
+    -
+        The spectrum, with the shape of *positions* except that its last axis is
+        replaced by the mesh.
+
+    Notes
+    -----
+    The line shapes are not truncated, so the intermediate array holds one value per
+    mesh point and peak. Broadening very many peaks onto a very fine mesh is therefore
+    limited by memory rather than by time.
+    """
+    mesh = np.atleast_1d(mesh)
+    positions = np.atleast_1d(np.asarray(positions, dtype=np.float64))
+    weights = np.broadcast_to(1.0 if weights is None else weights, positions.shape)
+    # the mesh becomes an axis of its own in front of the peaks, so that the width of
+    # the shape broadcasts against the peaks the way the weights do
+    offsets = mesh[:, np.newaxis] - positions[..., np.newaxis, :]
+    return np.einsum("...mp,...p->...m", shape.profile(offsets), weights)
