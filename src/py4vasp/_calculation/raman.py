@@ -9,12 +9,58 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
-from py4vasp._util import convert
+from py4vasp._util import convert, select
 
 # Modes below this energy translate or rotate the system instead of vibrating it. The
 # same threshold and the same keyword name the phonon modes use, so that the two
 # vibrational quantities drop the same modes.
 _MINIMUM_FREQUENCY = 1e-3  # eV
+_DEFAULT_OBSERVABLE = "powder"
+_DIRECTIONS = {"x": 0, "y": 1, "z": 2}
+# The observables are nonlinear functions of the Raman tensor -- a squared modulus, or a
+# ratio of two of them -- so they cannot be expressed as the weighted sums over an axis
+# that index.Selector reduces. The selection string is still parsed with select.Tree, so
+# that listing several observables works the way it does for every other quantity, but
+# the labels map to functions of the two rotational invariants instead.
+_OBSERVABLES = {
+    # 45a^2 + 7g^2 is what a powder scatters, since every orientation contributes
+    "powder": lambda isotropic, anisotropy: 45 * isotropic + 7 * anisotropy,
+    "isotropic": lambda isotropic, anisotropy: isotropic,
+    "anisotropy": lambda isotropic, anisotropy: anisotropy,
+    # what passes a polarizer parallel to the one of the laser, and perpendicular to it
+    "parallel": lambda isotropic, anisotropy: 45 * isotropic + 4 * anisotropy,
+    "perpendicular": lambda isotropic, anisotropy: 3 * anisotropy,
+    "depolarization": lambda isotropic, anisotropy: _ratio(
+        3 * anisotropy, 45 * isotropic + 4 * anisotropy
+    ),
+}
+
+
+def _ratio(numerator, denominator):
+    # a mode that does not scatter at all has no depolarization ratio, so reporting a
+    # number for it would claim knowledge the data does not contain
+    return np.divide(
+        numerator,
+        denominator,
+        out=np.full_like(numerator, np.nan),
+        where=denominator > 0,
+    )
+
+
+def _invariants(tensors):
+    """The two rotational invariants of every tensor, shape ``(mode,)`` each.
+
+    Every orientational average of a Raman tensor is built from these two numbers: the
+    mean polarizability, which survives averaging over all orientations, and the
+    anisotropy, which measures how far the tensor is from a multiple of the identity.
+    """
+    mean_polarizability = np.trace(tensors, axis1=1, axis2=2) / 3
+    difference = lambda i, j: np.abs(tensors[:, i, i] - tensors[:, j, j]) ** 2
+    off_diagonal = lambda i, j: np.abs(tensors[:, i, j]) ** 2
+    anisotropy = 0.5 * (difference(0, 1) + difference(1, 2) + difference(2, 0)) + 3 * (
+        off_diagonal(0, 1) + off_diagonal(1, 2) + off_diagonal(0, 2)
+    )
+    return np.abs(mean_polarizability) ** 2, anisotropy
 
 
 class RamanHandler:
@@ -46,6 +92,76 @@ class RamanHandler:
 
     def _raman_tensor(self):
         return convert.to_complex(np.array(self._raw_raman.raman_tensor[:]))
+
+    def activity(
+        self,
+        selection: str | None = None,
+        *,
+        laser: float = 0.0,
+        minimum_frequency: float = _MINIMUM_FREQUENCY,
+    ) -> dict:
+        """Compute how strongly every mode scatters light."""
+        data = self.to_dict(minimum_frequency)
+        index = self._index_of_laser(data["energies"], laser)
+        tensors = data["raman_tensor"][..., index]
+        self._raise_error_if_not_symmetric(tensors)
+        invariants = _invariants(tensors)
+        result = {
+            "frequencies": data["frequencies"],
+            "laser": data["energies"][index],
+        }
+        tree = select.Tree.from_selection(selection or _DEFAULT_OBSERVABLE)
+        for choice in tree.selections():
+            label = "_".join(choice)
+            result[label] = self._observable(label, tensors, invariants)
+        return result
+
+    def _observable(self, label, tensors, invariants):
+        if label in _OBSERVABLES:
+            return _OBSERVABLES[label](*invariants)
+        if len(label) == 2 and all(character in _DIRECTIONS for character in label):
+            row, column = (_DIRECTIONS[character] for character in label)
+            return np.abs(tensors[:, row, column]) ** 2
+        self._raise_error_unknown_observable(label)
+
+    def _index_of_laser(self, energies, laser):
+        self._raise_error_if_laser_outside_grid(energies, laser)
+        return int(np.argmin(np.abs(energies - laser)))
+
+    def _raise_error_if_laser_outside_grid(self, energies, laser):
+        if np.isscalar(laser) and np.min(energies) <= laser <= np.max(energies):
+            return
+        message = (
+            f"The laser energy {laser} is not a single energy within the range "
+            f"[{np.min(energies):.4g}, {np.max(energies):.4g}] eV that VASP evaluated "
+            "the Raman tensor on. Note that py4vasp expects the photon energy in eV; "
+            "if you know your laser by its wavelength, divide 1239.84 eV nm by it."
+        )
+        raise exception.IncorrectUsage(message)
+
+    def _raise_error_if_not_symmetric(self, tensors):
+        deviation = np.max(np.abs(tensors - np.swapaxes(tensors, 1, 2)))
+        if deviation <= 1e-10 * max(np.max(np.abs(tensors)), 1.0):
+            return
+        message = (
+            "The Raman tensor is not symmetric in its two directions, which every "
+            "orientational average assumes. Exchanging the polarization of the "
+            f"incoming and the scattered light changes it by {deviation:.4g}. Please "
+            "report this, because VASP is expected to write a symmetric tensor."
+        )
+        raise exception.DataMismatch(message)
+
+    def _raise_error_unknown_observable(self, label):
+        directions = ", ".join(
+            f"{row}{column}" for row in _DIRECTIONS for column in _DIRECTIONS
+        )
+        message = (
+            f"'{label}' is not an observable of the Raman tensor. Choose one of "
+            f"{', '.join(_OBSERVABLES)} to average over the orientations of a "
+            f"crystallite, or one of {directions} for a single element of the tensor "
+            "of an oriented crystal."
+        )
+        raise exception.IncorrectUsage(message)
 
     def __str__(self) -> str:
         data = self.to_dict()
@@ -209,6 +325,85 @@ class Raman:
     ) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection, minimum_frequency=minimum_frequency)
+
+    def activity(
+        self,
+        selection: str | None = None,
+        *,
+        laser: float = 0.0,
+        minimum_frequency: float = _MINIMUM_FREQUENCY,
+    ) -> dict:
+        """Compute how strongly every mode scatters light.
+
+        The Raman tensor relates the polarization of the incoming light to that of the
+        scattered light, so what you measure depends on how the crystal is oriented and
+        on which polarizations you let through. A powder averages over all orientations;
+        an oriented single crystal picks out one element of the tensor.
+
+        Parameters
+        ----------
+        selection : str | None
+            Which observable to compute, ``"powder"`` by default. Use ``"isotropic"``
+            or ``"anisotropy"`` for the two rotational invariants the averages are
+            built from, ``"parallel"`` and ``"perpendicular"`` for the light that
+            passes a polarizer aligned with the laser or crossed with it, and
+            ``"depolarization"`` for their ratio. Pass two directions such as
+            ``"xy"`` to select a single element of the tensor instead. Select several
+            at once by separating them with a comma.
+        laser : float
+            Photon energy of the laser in eV. VASP evaluates the Raman tensor on a mesh
+            of photon energies and py4vasp picks the closest one, which it reports back
+            under ``"laser"``. The default of 0 is the limit far below any electronic
+            transition, which is the ordinary non-resonant Raman experiment.
+        minimum_frequency : float
+            Modes with a frequency below this energy in eV are omitted.
+
+        Returns
+        -------
+        dict
+            The frequency of every mode in eV, the photon energy that was actually
+            used, and one entry per selected observable. A mode that does not scatter
+            has no depolarization ratio, which is reported as not-a-number.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        By default you get the activity a powder sample would show
+
+        >>> activity = calculation.raman.activity()
+        >>> sorted(activity)
+        ['frequencies', 'laser', 'powder']
+
+        The two polarizations add up to it, because a powder scatters both
+
+        >>> import numpy as np
+        >>> both = calculation.raman.activity("parallel, perpendicular")
+        >>> total = both["parallel"] + both["perpendicular"]
+        >>> bool(np.allclose(total, activity["powder"]))
+        True
+
+        Tuning the laser onto an electronic transition changes the intensities, which
+        is the resonance a Raman experiment looks for
+
+        >>> resonant = calculation.raman.activity(laser=3.0)
+        >>> bool(np.any(resonant["powder"] > activity["powder"]))
+        True
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            RamanHandler.activity,
+            laser=laser,
+            minimum_frequency=minimum_frequency,
+        )
 
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
