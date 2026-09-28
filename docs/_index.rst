@@ -241,6 +241,7 @@ reinstall *py4vasp*.
    calculation
    Calculation
    plot
+   broadening
    exception
 
 

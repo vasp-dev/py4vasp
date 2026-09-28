@@ -62,7 +62,9 @@ def _interpolate_with_function_single(function, x_in, y_in, x_out):
 # A line shape can be written down with more than one width parameter and the literature
 # uses all of them, so every shape here converts to and from the FWHM. Doing it once
 # means a standard deviation cannot reach a call site that expects a full width.
-_SIGMA_PER_FWHM = 1 / (2 * np.sqrt(2 * np.log(2)))
+# float() rather than the numpy scalar, so that a width given as a plain number stays
+# one: Gaussian(fwhm=1.0).sigma should print like Lorentzian(fwhm=1.0).gamma does
+_SIGMA_PER_FWHM = float(1 / (2 * np.sqrt(2 * np.log(2))))
 _GAMMA_PER_FWHM = 0.5
 
 
@@ -122,6 +124,16 @@ class Gaussian(_LineShape):
     sigma
         Standard deviation of the Gaussian, the width of its analytic form. Give this or
         *fwhm*, not both.
+
+    Examples
+    --------
+    Whichever width you give, the other one is available afterwards
+
+    >>> from py4vasp.broadening import Gaussian
+    >>> round(Gaussian(fwhm=1.0).sigma, 6)
+    0.424661
+    >>> round(Gaussian(sigma=1.0).fwhm, 6)
+    2.35482
     """
 
     fwhm: Optional[float] = None
@@ -165,6 +177,16 @@ class Lorentzian(_LineShape):
     gamma
         Half width at half maximum, the parameter of the analytic form
         1 / (x - x₀ + iγ). It is half of *fwhm*. Give this or *fwhm*, not both.
+
+    Examples
+    --------
+    Whichever width you give, the other one is available afterwards
+
+    >>> from py4vasp.broadening import Lorentzian
+    >>> Lorentzian(fwhm=1.0).gamma
+    0.5
+    >>> Lorentzian(gamma=2.0).fwhm
+    4.0
     """
 
     fwhm: Optional[float] = None
@@ -227,6 +249,24 @@ def broaden(mesh, positions, weights=None, *, shape):
     The line shapes are not truncated, so the intermediate array holds one value per
     mesh point and peak. Broadening very many peaks onto a very fine mesh is therefore
     limited by memory rather than by time.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from py4vasp.broadening import Gaussian, broaden
+    >>> energies = np.linspace(-5, 5, 1001)
+    >>> peaks, weights = [-1.5, 0.5], [2.0, 1.0]
+    >>> spectrum = broaden(energies, peaks, weights, shape=Gaussian(fwhm=0.4))
+    >>> round(float(np.trapezoid(spectrum, energies)), 10)
+    3.0
+
+    A wider line redistributes the spectrum but does not change what it adds up to
+
+    >>> wider = broaden(energies, peaks, weights, shape=Gaussian(fwhm=1.2))
+    >>> round(float(np.trapezoid(wider, energies)), 10)
+    3.0
+    >>> bool(wider.max() < spectrum.max())
+    True
     """
     mesh = np.atleast_1d(mesh)
     positions = np.atleast_1d(np.asarray(positions, dtype=np.float64))
