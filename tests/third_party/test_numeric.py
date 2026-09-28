@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 from unittest.mock import patch
 
 import numpy as np
@@ -306,3 +307,76 @@ def test_broaden_never_spreads_a_width_along_the_mesh(Assert):
         numeric.broaden(mesh, positions, shape=numeric.Gaussian(fwhm=widths)),
         broaden_band_by_band(mesh, positions, widths, numeric.Gaussian),
     )
+
+
+@pytest.mark.parametrize(
+    "width", [np.inf, -np.inf, np.nan, np.array([]), 1 + 2j, "0.5", [1.0, "a"]]
+)
+def test_line_shape_rejects_a_width_that_is_not_a_positive_number(
+    line_shape_class, width
+):
+    with pytest.raises(exception.IncorrectUsage):
+        line_shape_class(fwhm=width)
+
+
+def test_line_shape_accepts_a_width_given_as_a_list(Assert):
+    # the docstring invites an array, and a list is what a user types first
+    Assert.allclose(
+        numeric.Gaussian(fwhm=[1.0, 2.0]).sigma,
+        numeric.Gaussian(fwhm=np.array([1.0, 2.0])).sigma,
+    )
+
+
+def test_missing_width_error_does_not_explain_giving_both():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        numeric.Gaussian()
+    assert "both" not in str(error.value)
+
+
+def test_negative_width_error_does_not_call_it_zero():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        numeric.Gaussian(fwhm=-1.0)
+    assert "negative" in str(error.value)
+
+
+def test_width_error_names_the_parameter_that_was_given():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        numeric.Lorentzian(gamma=-1.0)
+    assert "gamma" in str(error.value)
+
+
+def test_line_shape_cannot_be_changed_after_it_is_made(line_shape):
+    # the two width parameters are resolved once, so mutating one would desynchronize it
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        line_shape.fwhm = 2.0
+
+
+def test_broaden_rejects_a_mesh_that_is_not_one_dimensional():
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(np.zeros((10, 5)), [0.0], shape=numeric.Gaussian(fwhm=1.0))
+
+
+@pytest.mark.parametrize("shape", [None, "gaussian", numeric.Gaussian, 0.5])
+def test_broaden_rejects_something_that_is_not_a_line_shape(shape):
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(MESH, [0.0], shape=shape)
+
+
+def test_broaden_rejects_complex_positions():
+    # phonon modes are reported as complex so that an unstable one is imaginary; silently
+    # dropping the imaginary part would put that peak at the wrong place
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(MESH, [1 + 2j], shape=numeric.Gaussian(fwhm=1.0))
+
+
+def test_broaden_rejects_weights_that_do_not_match_the_positions():
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(
+            MESH, [1.0, 2.0, 3.0], [1.0, 2.0], shape=numeric.Gaussian(fwhm=1.0)
+        )
+
+
+@pytest.mark.parametrize("positions", [[[1.0, 2.0], [3.0]], "peaks", [None]])
+def test_broaden_rejects_positions_that_are_not_numbers(positions):
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.broaden(MESH, positions, shape=numeric.Gaussian(fwhm=1.0))

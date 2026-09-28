@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from py4vasp import exception
 from py4vasp._util import import_
@@ -68,22 +69,67 @@ _SIGMA_PER_FWHM = float(1 / (2 * np.sqrt(2 * np.log(2))))
 _GAMMA_PER_FWHM = 0.5
 
 
+def _numeric_array(values):
+    """Return the values as an array of floats, or None if they are not numbers."""
+    try:
+        array = np.asarray(values)
+    except ValueError:
+        # a ragged nested sequence, which numpy refuses to turn into an array
+        return None
+    if array.dtype.kind not in "iuf":
+        return None
+    return array.astype(np.float64)
+
+
+def _validated_width(width, shape_name, parameter):
+    array = _numeric_array(width)
+    if array is None:
+        raise exception.IncorrectUsage(
+            f"The width of the {shape_name} has to be a number or an array of numbers, "
+            f"but '{parameter}' is {width!r}."
+        )
+    if array.size == 0:
+        raise exception.IncorrectUsage(
+            f"The width of the {shape_name} is an empty array, so there is no line to "
+            f"put on the peaks. Check where '{parameter}' comes from."
+        )
+    if not np.all(np.isfinite(array)):
+        raise exception.IncorrectUsage(
+            f"The width of the {shape_name} has to be finite, but '{parameter}' is "
+            f"{width}. An infinitely wide line carries no weight anywhere, and a width "
+            "that is not a number usually comes from an earlier division by zero."
+        )
+    if not np.all(array > 0):
+        raise exception.IncorrectUsage(
+            f"The width of the {shape_name} has to be positive everywhere, but "
+            f"'{parameter}' is {width}. A width of zero describes a delta peak, which "
+            "no mesh can represent, and a negative width describes no line at all."
+        )
+    # a plain number stays a plain number, so that the converted width prints like one
+    return array if array.ndim else float(array)
+
+
 class _LineShape:
     """Width bookkeeping shared by the normalized line shapes.
 
-    A subclass is a dataclass with two optional fields -- ``fwhm`` and the parameter its
-    analytic form is written with -- and connects them with the class attributes
-    ``_alias`` and ``_per_fwhm``. Exactly one of the two must be given; the other is
-    filled in here, so both are available afterwards whichever one the caller used.
+    A subclass is a frozen dataclass with two optional fields -- ``fwhm`` and the
+    parameter its analytic form is written with -- and connects them with the class
+    attributes ``_alias`` and ``_per_fwhm``. Exactly one of the two must be given; the
+    other is filled in here, so both are available afterwards whichever one was used.
     """
 
     def __post_init__(self):
         self._raise_error_unless_exactly_one_width_is_given()
-        if self.fwhm is None:
-            self.fwhm = getattr(self, self._alias) / self._per_fwhm
+        given = "fwhm" if self.fwhm is not None else self._alias
+        width = _validated_width(getattr(self, given), type(self).__name__, given)
+        # the instance is frozen, so the two widths can only be resolved this way; that
+        # is the point, because a later assignment would desynchronize them
+        if given == "fwhm":
+            object.__setattr__(self, "fwhm", width)
+            object.__setattr__(self, self._alias, self._per_fwhm * width)
         else:
-            setattr(self, self._alias, self._per_fwhm * self.fwhm)
-        self._raise_error_if_width_is_not_positive()
+            object.__setattr__(self, self._alias, width)
+            object.__setattr__(self, "fwhm", width / self._per_fwhm)
 
     def _raise_error_unless_exactly_one_width_is_given(self):
         given = [
@@ -91,11 +137,17 @@ class _LineShape:
         ]
         if len(given) == 1:
             return
-        problem = "you gave both" if given else "you gave neither"
+        name = type(self).__name__
+        if given:
+            raise exception.IncorrectUsage(
+                f"Please give the width of the {name} either as 'fwhm', the full width "
+                f"at half maximum, or as '{self._alias}', but not as both. The two "
+                "describe the same line, so giving both cannot be resolved."
+            )
         raise exception.IncorrectUsage(
-            f"Please specify the width of the {type(self).__name__} either as 'fwhm', "
-            f"the full width at half maximum, or as '{self._alias}', but {problem}. "
-            "The two describe the same line, so giving both cannot be resolved."
+            f"Please give the width of the {name} either as 'fwhm', the full width at "
+            f"half maximum, or as '{self._alias}'. Without one of them, {name}() does "
+            "not describe a line yet."
         )
 
     def _with_mesh_axis(self):
@@ -108,17 +160,8 @@ class _LineShape:
         width = np.asarray(getattr(self, self._alias))[..., np.newaxis]
         return type(self)(**{self._alias: width})
 
-    def _raise_error_if_width_is_not_positive(self):
-        if np.all(np.asarray(self.fwhm) > 0):
-            return
-        raise exception.IncorrectUsage(
-            f"The width of the {type(self).__name__} must be positive everywhere, but "
-            f"'fwhm' is {self.fwhm}. A width of zero describes a delta peak, which no "
-            "mesh can represent."
-        )
 
-
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class Gaussian(_LineShape):
     """A Gaussian line shape normalized to unit area.
 
@@ -146,8 +189,8 @@ class Gaussian(_LineShape):
     2.35482
     """
 
-    fwhm: Optional[float] = None
-    sigma: Optional[float] = None
+    fwhm: Optional[ArrayLike] = None
+    sigma: Optional[ArrayLike] = None
     _alias = "sigma"
     _per_fwhm = _SIGMA_PER_FWHM
 
@@ -157,20 +200,29 @@ class Gaussian(_LineShape):
         Parameters
         ----------
         offsets
-            Distance from the center of the peak, in the unit of the width.
+            Distance from the center of the peak, in the same unit as the width.
 
         Returns
         -------
         -
             The line shape with the shape of *offsets*, normalized such that it
             integrates to one.
+
+        Examples
+        --------
+        The value at half the full width is half the value at the center
+
+        >>> from py4vasp.broadening import Gaussian
+        >>> shape = Gaussian(fwhm=2.0)
+        >>> float(shape.profile(1.0) / shape.profile(0.0))
+        0.5
         """
         return np.exp(-0.5 * (offsets / self.sigma) ** 2) / (
             self.sigma * np.sqrt(2 * np.pi)
         )
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class Lorentzian(_LineShape):
     """A Lorentzian line shape normalized to unit area.
 
@@ -199,8 +251,8 @@ class Lorentzian(_LineShape):
     4.0
     """
 
-    fwhm: Optional[float] = None
-    gamma: Optional[float] = None
+    fwhm: Optional[ArrayLike] = None
+    gamma: Optional[ArrayLike] = None
     _alias = "gamma"
     _per_fwhm = _GAMMA_PER_FWHM
 
@@ -210,15 +262,92 @@ class Lorentzian(_LineShape):
         Parameters
         ----------
         offsets
-            Distance from the center of the peak, in the unit of the width.
+            Distance from the center of the peak, in the same unit as the width.
 
         Returns
         -------
         -
             The line shape with the shape of *offsets*, normalized such that it
             integrates to one.
+
+        Examples
+        --------
+        The value at half the full width is half the value at the center
+
+        >>> from py4vasp.broadening import Lorentzian
+        >>> shape = Lorentzian(fwhm=2.0)
+        >>> float(shape.profile(1.0) / shape.profile(0.0))
+        0.5
         """
         return self.gamma / np.pi / (offsets**2 + self.gamma**2)
+
+
+def _raise_error_if_not_a_line_shape(shape):
+    if isinstance(shape, _LineShape):
+        return
+    raise exception.IncorrectUsage(
+        f"The shape {shape!r} is not a line shape, so the peaks cannot be given one. "
+        "Pass an instance such as py4vasp.broadening.Gaussian(fwhm=0.1) or "
+        "py4vasp.broadening.Lorentzian(fwhm=0.1)."
+    )
+
+
+def _validated_mesh(mesh):
+    array = _numeric_array(mesh)
+    if array is None:
+        raise exception.IncorrectUsage(
+            f"The mesh has to be an array of numbers, but it is {mesh!r}."
+        )
+    array = np.atleast_1d(array)
+    if array.ndim > 1:
+        raise exception.IncorrectUsage(
+            "The mesh has to be one dimensional, because it becomes the last axis of "
+            f"the spectrum, but its shape is {array.shape}."
+        )
+    return array
+
+
+def _validated_positions(positions):
+    array = _numeric_array(positions)
+    if array is not None:
+        return np.atleast_1d(array)
+    # the complex check comes second because it needs an array to look at, and a ragged
+    # sequence cannot be made into one
+    if _is_complex(positions):
+        raise exception.IncorrectUsage(
+            "The positions of the peaks are complex. py4vasp reports an unstable phonon "
+            "mode as an imaginary frequency, for instance, so decide what such a peak "
+            "means on a real axis -- its signed real part, say -- rather than letting "
+            "the imaginary part be dropped here."
+        )
+    raise exception.IncorrectUsage(
+        "The positions of the peaks have to be an array of numbers, but they are "
+        f"{positions!r}."
+    )
+
+
+def _is_complex(values):
+    try:
+        return np.iscomplexobj(values)
+    except ValueError:
+        return False
+
+
+def _validated_weights(weights, positions):
+    array = _numeric_array(1.0 if weights is None else weights)
+    if array is None:
+        raise exception.IncorrectUsage(
+            f"The weights of the peaks have to be an array of numbers, but they are "
+            f"{weights!r}."
+        )
+    try:
+        return np.broadcast_to(array, positions.shape)
+    except ValueError as error:
+        raise exception.IncorrectUsage(
+            "There is one weight per peak, so the weights have to broadcast against "
+            f"the positions of shape {positions.shape}, but their shape is "
+            f"{array.shape}."
+        ) from error
 
 
 def broaden(mesh, positions, weights=None, *, shape):
@@ -235,7 +364,8 @@ def broaden(mesh, positions, weights=None, *, shape):
     Parameters
     ----------
     mesh
-        Positions at which the spectrum is evaluated, e.g. an energy axis.
+        Positions at which the spectrum is evaluated, e.g. an energy axis. It has to be
+        one dimensional and should resolve the width, see the notes below.
     positions
         Center of every peak, such as eigenvalues or mode frequencies. Only the last
         axis is broadened over; any leading axes are kept, so the bands of a
@@ -246,7 +376,7 @@ def broaden(mesh, positions, weights=None, *, shape):
     shape
         The line shape to give every peak, e.g. :class:`Gaussian` or
         :class:`Lorentzian`. Its width may be an array that broadcasts against
-        *positions*, which gives every peak its own width.
+        *positions*, which gives every peak, or every band, its own width.
 
     Returns
     -------
@@ -256,6 +386,12 @@ def broaden(mesh, positions, weights=None, *, shape):
 
     Notes
     -----
+    The mesh has to resolve the width: a line narrower than the spacing between mesh
+    points falls between them, and the spectrum is then wrong by whatever fraction of
+    each line the mesh happened to catch. Nothing can detect this from the result, so
+    keep several mesh points inside the width -- the most common way to get it wrong is
+    to quote the width in a different unit than the mesh.
+
     The line shapes are not truncated, so the intermediate array holds one value per
     mesh point and peak. Broadening very many peaks onto a very fine mesh is therefore
     limited by memory rather than by time.
@@ -278,9 +414,10 @@ def broaden(mesh, positions, weights=None, *, shape):
     >>> bool(wider.max() < spectrum.max())
     True
     """
-    mesh = np.atleast_1d(mesh)
-    positions = np.atleast_1d(np.asarray(positions, dtype=np.float64))
-    weights = np.broadcast_to(1.0 if weights is None else weights, positions.shape)
+    _raise_error_if_not_a_line_shape(shape)
+    mesh = _validated_mesh(mesh)
+    positions = _validated_positions(positions)
+    weights = _validated_weights(weights, positions)
     # the peaks go on the second to last axis and the mesh on the last one. Putting the
     # mesh in front instead would right-align the width against the mesh rather than
     # against the peaks, so a width meant per band would land on the wrong axis.
