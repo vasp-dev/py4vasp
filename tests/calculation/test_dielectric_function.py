@@ -86,6 +86,50 @@ def check_dielectric_read(dielectric_function, Assert):
             assert "q_point" not in actual
 
 
+def test_electronic_read_default_is_unchanged(electronic, Assert):
+    # selecting a direction must not change what a bare read returns, or every script
+    # that indexes the 3x3 tensor breaks silently
+    actual = electronic.read()
+    assert actual["dielectric_function"].shape == (3, 3, len(electronic.ref.energies))
+    Assert.allclose(actual["dielectric_function"], electronic.ref.dielectric_function)
+    Assert.allclose(actual["current_current"], electronic.ref.current_current)
+
+
+def test_electronic_read_direction(electronic, Assert):
+    check_read_direction(electronic, Assert)
+
+
+def test_ionic_read_direction(ionic, Assert):
+    check_read_direction(ionic, Assert)
+
+
+def check_read_direction(dielectric_function, Assert):
+    tensor = dielectric_function.ref.dielectric_function
+    energies = dielectric_function.ref.energies
+    for method in (dielectric_function.read, dielectric_function.to_dict):
+        isotropic_average = method("isotropic")
+        assert sorted(isotropic_average) == ["energies", "isotropic"]
+        Assert.allclose(isotropic_average["energies"], energies)
+        Assert.allclose(isotropic_average["isotropic"], isotropic(tensor))
+        for direction in ("xx", "yy", "zz", "xy", "yz", "xz"):
+            single = method(direction)
+            assert sorted(single) == ["energies", direction]
+            Assert.allclose(single[direction], get_direction(tensor, direction))
+        # several directions at once, the way the plot routine already accepts them
+        several = method("xx, yy")
+        assert sorted(several) == ["energies", "xx", "yy"]
+        Assert.allclose(several["xx"], get_direction(tensor, "xx"))
+        Assert.allclose(several["yy"], get_direction(tensor, "yy"))
+
+
+def test_read_direction_keeps_the_complex_value(electronic, Assert):
+    # the selector treats real and imaginary as two more choices to average over, so a
+    # spectrum that forgot to select both comes back as their mean and loses the phase
+    spectrum = electronic.read("xx")["xx"]
+    assert np.iscomplexobj(spectrum)
+    Assert.allclose(spectrum, get_direction(electronic.ref.dielectric_function, "xx"))
+
+
 @dataclasses.dataclass
 class Plot:
     x: np.ndarray
@@ -317,11 +361,16 @@ def test_ionic_plot_nested(ionic, Assert):
 def test_incorrect_direction_raises_error(electronic):
     with pytest.raises(exception.IncorrectUsage):
         electronic.plot("incorrect")
+    with pytest.raises(exception.IncorrectUsage):
+        electronic.read("incorrect")
 
 
 def test_component_selection_for_qpoint_raises_error(q_point):
+    # a dielectric function at finite q is a scalar, so it has no direction to select
     with pytest.raises(exception.IncorrectUsage):
         q_point.plot("xx")
+    with pytest.raises(exception.IncorrectUsage):
+        q_point.read("xx")
 
 
 def isotropic(tensor):

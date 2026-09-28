@@ -35,24 +35,53 @@ class DielectricFunctionHandler:
     ) -> "DielectricFunctionHandler":
         return cls(raw_dielectric_function)
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection=None) -> dict:
         """Read the data into a dictionary.
+
+        Without a selection the whole 3x3 tensor is returned. A selection reduces it to
+        the named directions, so that the isotropic average does not have to be taken by
+        hand at the call site.
 
         Returns
         -------
         dict
-            Contains the energies at which the dielectric function was evaluated
-            and the dielectric tensor (3x3 matrix) at these energies.
+            Contains the energies at which the dielectric function was evaluated and
+            either the dielectric tensor (3x3 matrix) or one complex spectrum per
+            selected direction.
         """
+        if not selection:
+            return self._whole_tensor()
+        return {
+            "energies": self._energies(),
+            **dict(self._selected_spectra(selection)),
+        }
+
+    def _whole_tensor(self) -> dict:
         data = convert.to_complex(
             np.array(self._raw_dielectric_function.dielectric_function)
         )
         return {
-            "energies": self._raw_dielectric_function.energies[:],
+            "energies": self._energies(),
             "dielectric_function": data,
             **self._add_current_current_if_available(),
             **self._add_q_point_if_available(),
         }
+
+    def _selected_spectra(self, selection):
+        selector = self._make_selector()
+        tree = select.Tree.from_selection(self._replace_complex_labels(selection))
+        for choice in tree.selections():
+            yield selector.label(choice), self._complex_spectrum(selector, choice)
+
+    def _complex_spectrum(self, selector, choice):
+        # the selector offers Re and Im as one more axis to choose from, so a spectrum
+        # that leaves them unselected is averaged over the two and loses its phase
+        real = np.array(selector[choice + ("Re",)])
+        imaginary = np.array(selector[choice + ("Im",)])
+        return real + 1j * imaginary
+
+    def _energies(self):
+        return self._raw_dielectric_function.energies[:]
 
     def to_database(self) -> dict:
         """Serialize dielectric function data for database storage."""
@@ -159,7 +188,7 @@ dielectric function:
         return selection.replace("imaginary", "Im").replace("imag", "Im")
 
     def _make_series(self, selection):
-        energies = self._raw_dielectric_function.energies[:]
+        energies = self._energies()
         selector = self._make_selector()
         return [
             graph.Series(
@@ -294,11 +323,19 @@ class DielectricFunction(graph.Mixin):
     def read(self, selection: str | None = None) -> dict:
         """Read the data into a dictionary.
 
+        Parameters
+        ----------
+        selection : str
+            Choose which dielectric function VASP computed and, for one with tensor
+            data, which directions of it to reduce to. Without a direction you get the
+            whole 3x3 tensor. Use :py:meth:`selections` to see both lists.
+
         Returns
         -------
         dict
-            Contains the energies at which the dielectric function was evaluated
-            and the dielectric tensor (3x3 matrix) at these energies.
+            Contains the energies at which the dielectric function was evaluated and
+            either the dielectric tensor (3x3 matrix) at these energies or, if you
+            selected directions, one complex spectrum per direction.
         """
         return merge_default(
             self._source,
