@@ -9,6 +9,15 @@ import numpy as np
 from py4vasp import exception
 from py4vasp._raw.data_wrapper import VaspData
 
+# Conversion factors for an energy in eV, the unit every py4vasp quantity reports. VASP
+# reports a vibrational frequency in THz and spectroscopy uses cm-1, so a plot or a
+# printed table converts at the point where it labels the number. These are the values
+# VASP itself uses, which is what keeps a table py4vasp prints identical to the OUTCAR
+# it came from; they deviate from CODATA in the sixth digit.
+EV_TO_THZ = 241.798934781
+EV_TO_CM1 = 8065.610420
+EV_TO_MEV = 1000
+
 
 def text_to_string(text):
     "Text can be either bytes or string"

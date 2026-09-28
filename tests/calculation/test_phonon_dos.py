@@ -8,6 +8,7 @@ import pytest
 
 from py4vasp._calculation.phonon_dos import PhononDos, PhononDosHandler
 from py4vasp._raw.models import PhononDosModel
+from py4vasp._util import convert
 
 
 @pytest.fixture
@@ -15,12 +16,15 @@ def phonon_dos(raw_data):
     raw_dos = raw_data.phonon_dos("default")
     dos = PhononDos.from_data(raw_dos)
     dos.ref = types.SimpleNamespace()
-    dos.ref.energies = raw_dos.energies
-    dos.ref.total_dos = raw_dos.dos
-    dos.ref.Sr = np.sum(raw_dos.projections[0:2], axis=(0, 1))
-    dos.ref.Ti_x = raw_dos.projections[2, 0]
-    dos.ref.y_45 = np.sum(raw_dos.projections[3:5, 1], axis=0)
-    dos.ref.z = np.sum(raw_dos.projections[:, 2], axis=0)
+    # VASP stores the mesh in THz; py4vasp reports an energy in eV, so the density of
+    # states is per eV and scales with the inverse factor to conserve its integral
+    dos.ref.energies = raw_dos.energies / convert.EV_TO_THZ
+    dos.ref.total_dos = raw_dos.dos * convert.EV_TO_THZ
+    projections = raw_dos.projections * convert.EV_TO_THZ
+    dos.ref.Sr = np.sum(projections[0:2], axis=(0, 1))
+    dos.ref.Ti_x = projections[2, 0]
+    dos.ref.y_45 = np.sum(projections[3:5, 1], axis=0)
+    dos.ref.z = np.sum(projections[:, 2], axis=0)
     dos.ref.raw_data = raw_dos
     return dos
 
@@ -30,6 +34,22 @@ def test_phonon_dos_read(phonon_dos, Assert):
     Assert.allclose(actual["energies"], phonon_dos.ref.energies)
     Assert.allclose(actual["total"], phonon_dos.ref.total_dos)
     assert "Sr" not in actual
+
+
+def test_phonon_dos_conserves_the_integral(phonon_dos, Assert, raw_data):
+    # converting the mesh to eV compresses the x axis by EV_TO_THZ, so the density of
+    # states must stretch by the same factor or the number of modes changes
+    raw_dos = raw_data.phonon_dos("default")
+    actual = phonon_dos.read()
+    spacing = np.diff(actual["energies"])[0]
+    raw_spacing = np.diff(raw_dos.energies)[0]
+    # the mesh must actually have moved off VASP's THz axis, otherwise the equality
+    # below holds for the trivial reason that nothing was converted at all
+    assert spacing < raw_spacing
+    # the integral counts modes, so it is dimensionless and cannot depend on the unit
+    Assert.allclose(
+        np.sum(actual["total"]) * spacing, np.sum(raw_dos.dos) * raw_spacing
+    )
 
 
 def test_phonon_dos_read_projection(phonon_dos, Assert):
@@ -44,12 +64,14 @@ def test_phonon_dos_read_projection(phonon_dos, Assert):
 
 
 def test_phonon_dos_plot(phonon_dos, Assert):
+    # a phonon spectrum occupies the first hundred meV, so the axis is drawn in meV
+    # even though read() reports the same numbers in eV
     graph = phonon_dos.plot()
-    assert graph.xlabel == "ω (THz)"
-    assert graph.ylabel == "DOS (1/THz)"
+    assert graph.xlabel == "ω (meV)"
+    assert graph.ylabel == "DOS (1/meV)"
     assert len(graph.series) == 1
-    Assert.allclose(graph.series[0].x, phonon_dos.ref.energies)
-    Assert.allclose(graph.series[0].y, phonon_dos.ref.total_dos)
+    Assert.allclose(graph.series[0].x, phonon_dos.ref.energies * convert.EV_TO_MEV)
+    Assert.allclose(graph.series[0].y, phonon_dos.ref.total_dos / convert.EV_TO_MEV)
 
 
 def test_phonon_dos_plot_selection(phonon_dos, Assert):
@@ -64,7 +86,7 @@ def test_phonon_dos_plot_selection(phonon_dos, Assert):
 
 def check_series(series, reference, label, Assert):
     assert series.label == label
-    Assert.allclose(series.y, reference)
+    Assert.allclose(series.y, reference / convert.EV_TO_MEV)
 
 
 @patch.object(PhononDos, "to_graph")
@@ -101,7 +123,7 @@ def test_phonon_dos_print(phonon_dos, format_):
     actual, _ = format_(phonon_dos)
     reference = """\
 phonon DOS:
-    [0.00, 5.00] mesh with 50 points
+    [0.00, 20.68] meV mesh with 50 points
     21 modes
     Sr2TiO4"""
     assert actual == {"text/plain": reference}

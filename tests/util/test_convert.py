@@ -5,6 +5,7 @@ import fractions
 import numpy as np
 import pytest
 
+from py4vasp._util import convert
 from py4vasp._util.convert import (
     Fraction,
     math_to_unicode,
@@ -89,3 +90,22 @@ def test_Fraction(number, expected, string, latex):
 )
 def test_math_to_unicode(label, expected):
     assert math_to_unicode(label) == expected
+
+
+def test_energy_conversion_factors():
+    # VASP's own values, so that a table py4vasp prints still matches the OUTCAR it
+    # came from. backlog/public-unit-constants.md tracks the CODATA discrepancy.
+    assert convert.EV_TO_THZ == 241.798934781
+    assert convert.EV_TO_CM1 == 8065.610420
+    assert convert.EV_TO_MEV == 1000
+
+
+def test_energy_conversion_factors_are_consistent():
+    # a frequency of 1 THz corresponds to 1e12 / c wavenumbers, which ties the two
+    # factors together and catches a mistyped digit in either of them. VASP's values
+    # predate the current CODATA ones, so they agree only to 8e-6 -- see
+    # backlog/public-unit-constants.md for why that spread is tolerated here.
+    speed_of_light_in_cm_per_s = 2.99792458e10
+    wavenumbers_per_THz = 1e12 / speed_of_light_in_cm_per_s
+    ratio = convert.EV_TO_CM1 / convert.EV_TO_THZ
+    assert np.isclose(ratio, wavenumbers_per_THz, rtol=1e-5)
