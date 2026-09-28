@@ -386,6 +386,17 @@ def test_incorrect_direction_raises_error(electronic):
         electronic.read("incorrect")
 
 
+def test_absent_component_raises_error(ionic):
+    # an ionic dielectric function has no current-current correlation, and selections()
+    # says so. Offering it anyway indexes past the component axis, which the averaging
+    # selector answers with NaN rather than an error -- silent, and wrong.
+    assert ionic.selections()["components"] == ["density"]
+    with pytest.raises(exception.IncorrectUsage):
+        ionic.read("current")
+    with pytest.raises(exception.IncorrectUsage):
+        ionic.plot("current")
+
+
 def test_component_selection_for_qpoint_raises_error(q_point):
     # a dielectric function at finite q is a scalar, so it has no direction to select
     with pytest.raises(exception.IncorrectUsage):

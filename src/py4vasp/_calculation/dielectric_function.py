@@ -215,6 +215,11 @@ dielectric function:
         return index.Selector(maps, self._get_data(), reduction=np.average)
 
     def _init_components_dict(self):
+        # only offer the current-current correlation when the data actually has it. The
+        # component axis has length one otherwise, so index 1 selects nothing and the
+        # averaging reduction turns an empty slice into NaN instead of an error.
+        if not self._has_current_component():
+            return {None: 0, "density": 0}
         return {None: 0, "density": 0, "current": 1}
 
     def _init_directions_dict(self):
