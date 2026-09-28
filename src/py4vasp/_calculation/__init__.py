@@ -624,8 +624,9 @@ class DefaultCalculationFactory:
     VASP output files. With the :class:`~py4vasp.Calculation` class, you can tailor
     the location of the files to your needs and both have access to the same quantities.
 
-    We demonstrate this setting up some example data in a temporary directory `path` and
-    changing to it.
+    We demonstrate this setting up some example data in a temporary directory. Please
+    define a variable `path` with the path to a directory that does not exist yet, then
+    change to it.
 
     >>> import os
     >>> from py4vasp import demo

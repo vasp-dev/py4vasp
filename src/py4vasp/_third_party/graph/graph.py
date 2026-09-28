@@ -413,16 +413,26 @@ class Graph(Sequence):
         """
         self.to_plotly().show()
 
-    def label(self, new_label: str) -> None:
+    def label(self, new_label: str) -> "Graph":
         """Apply a new label to all series within.
 
         If there is only a single series, the label will replace the current one. If there
         are more than one, the new label will be prefixed to the existing ones.
 
+        This modifies the graph in place *and* returns it, so that it can be chained onto
+        the call that produced the graph. Because the graph is modified rather than
+        copied, labeling the same graph twice keeps only the second label -- give each
+        calculation its own graph instead of labeling one graph repeatedly.
+
         Parameters
         ----------
         new_label
             The new label added to the series.
+
+        Returns
+        -------
+        Graph
+            This graph, with every series relabeled.
 
         Examples
         --------
