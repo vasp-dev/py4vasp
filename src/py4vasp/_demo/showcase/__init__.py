@@ -34,6 +34,7 @@ from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attr
     partial_density,
     phonon,
     projector,
+    raman,
     stoichiometry,
     stress,
     structure,

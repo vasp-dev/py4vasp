@@ -34,6 +34,7 @@ from py4vasp._demo import (
     polarization,
     potential,
     projector,
+    raman,
     run_info,
     runtime_data,
     stoichiometry,

@@ -667,6 +667,18 @@ schema.add(
     number_spin_projections=Length("results/projectors_kpoints_wan/par"),
 )
 #
+# VASP writes this group when the Raman tensor is computed by finite differences of the
+# susceptibility. The frequencies repeat the eigenvalues of the dynamical matrix, but as
+# magnitudes in cm^-1, so an unstable mode is indistinguishable from a stable one here.
+group = "results/linear_response/raman"
+schema.add(
+    raw.Raman,
+    required=raw.Version(6, 6),
+    frequencies=f"{group}/frequencies",
+    energies=f"{group}/energies_dielectric_function",
+    raman_tensor=f"{group}/raman_tensor",
+)
+#
 schema.add(
     raw.RuntimeData,
     vasp_version=Link("version", DEFAULT_SOURCE),

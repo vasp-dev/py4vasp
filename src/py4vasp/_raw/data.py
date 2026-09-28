@@ -761,6 +761,24 @@ class Projector:
 
 
 @dataclasses.dataclass
+class Raman:
+    """The Raman tensor of every phonon mode as a function of the photon energy.
+
+    Raman scattering measures how a vibration changes the susceptibility of a crystal.
+    VASP evaluates that derivative on a mesh of photon energies, so the data describes
+    both an ordinary spectrum at a fixed laser energy and how the response changes when
+    the laser approaches an electronic transition.
+    """
+
+    frequencies: VaspData
+    "The frequency of every phonon mode in cm^-1, always positive."
+    energies: VaspData
+    "The photon energies at which the Raman tensor is evaluated."
+    raman_tensor: VaspData
+    "The derivative of the susceptibility with respect to every mode."
+
+
+@dataclasses.dataclass
 class RunInfo:
     "Contains information about the VASP run."
 
