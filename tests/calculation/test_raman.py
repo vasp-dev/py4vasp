@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 
 from py4vasp import broadening, exception, raw
-from py4vasp._calculation.raman import Raman
+from py4vasp._calculation.raman import Raman, RamanHandler
+from py4vasp._raw.models import RamanModel
 from py4vasp._util import convert
 
 
@@ -466,3 +467,20 @@ def test_excitation_profile_rejects_a_mode_that_does_not_exist(raman):
         raman.excitation_profile(modes=[0])
     with pytest.raises(exception.IncorrectUsage):
         raman.excitation_profile(modes=[999])
+
+
+def test_to_database(raman):
+    handler = RamanHandler.from_data(raman.ref.raw)
+    model = handler.to_database()
+    assert isinstance(model, RamanModel)
+    activity = raman.activity()
+    assert model.number_modes == len(activity["frequencies"])
+    assert model.frequency_max == float(np.max(activity["frequencies"]))
+    strongest = int(np.argmax(activity["powder"]))
+    assert model.strongest_frequency == float(activity["frequencies"][strongest])
+    assert model.strongest_activity == float(activity["powder"][strongest])
+    assert model.photon_energy_max == float(np.max(raman.read()["energies"]))
+
+
+def test_to_database_dispatch(raman):
+    assert set(raman._to_database()) == {"raman"}
