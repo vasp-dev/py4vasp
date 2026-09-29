@@ -59,6 +59,19 @@ def _ratio(numerator, denominator):
     )
 
 
+def _intensity_scale(frequencies, laser, temperature):
+    """Turn an activity into an intensity, broadcasting over the laser energy.
+
+    Passing an array of laser energies gives one column per energy, which is what an
+    excitation profile needs.
+    """
+    frequencies = np.asarray(frequencies)
+    if np.ndim(laser) > 0:
+        frequencies = frequencies[:, np.newaxis]
+    scattered = _scattered_photon(frequencies, laser)
+    return _bose_factor(frequencies, temperature) * scattered**4 / frequencies
+
+
 def _bose_factor(frequencies, temperature):
     """The Stokes factor n + 1, i.e. how much a warm crystal scatters over a cold one.
 
@@ -251,15 +264,71 @@ class RamanHandler:
             selection, laser=laser, minimum_frequency=minimum_frequency
         )
         frequencies = data["frequencies"]
-        scale = (
-            _bose_factor(frequencies, temperature)
-            * _scattered_photon(frequencies, data["laser"]) ** 4
-            / frequencies
-        )
+        scale = _intensity_scale(frequencies, data["laser"], temperature)
         return {
             label: value if label in ("frequencies", "laser") else value * scale
             for label, value in data.items()
         }
+
+    def excitation_profile(
+        self,
+        selection: str | None = None,
+        *,
+        modes=None,
+        temperature: float | None = None,
+        minimum_frequency: float = _MINIMUM_FREQUENCY,
+    ) -> graph.Graph:
+        """Draw the selected observable against the energy of the laser."""
+        data = self.to_dict(minimum_frequency)
+        tensors = data["raman_tensor"]
+        self._raise_error_if_not_symmetric(tensors)
+        frequencies = data["frequencies"]
+        energies = data["energies"]
+        indices = self._selected_modes(modes, len(frequencies))
+        # the invariants carry the photon energy along as a trailing axis, so the whole
+        # profile comes out of one evaluation rather than one per point of the grid
+        invariants = _invariants(tensors)
+        if temperature is None:
+            scale, quantity = 1.0, "activity"
+        else:
+            self._raise_error_if_temperature_is_negative(temperature)
+            scale = _intensity_scale(frequencies, energies, temperature)
+            quantity = "intensity"
+        series = []
+        tree = select.Tree.from_selection(selection or _DEFAULT_OBSERVABLE)
+        for choice in tree.selections():
+            label = "_".join(choice)
+            values = self._observable(label, tensors, invariants) * scale
+            series += [
+                graph.Series(
+                    energies,
+                    values[index],
+                    f"{label} {frequencies[index] * convert.EV_TO_CM1:.0f} cm-1",
+                )
+                for index in indices
+            ]
+        return graph.Graph(
+            series=series,
+            xlabel="Laser energy (eV)",
+            ylabel=f"Raman {quantity}",
+        )
+
+    def _selected_modes(self, modes, number_modes):
+        if modes is None:
+            return range(number_modes)
+        self._raise_error_if_mode_does_not_exist(modes, number_modes)
+        return [int(mode) - 1 for mode in modes]
+
+    def _raise_error_if_mode_does_not_exist(self, modes, number_modes):
+        invalid = [mode for mode in modes if not 1 <= mode <= number_modes]
+        if not invalid:
+            return
+        message = (
+            f"The modes {invalid} do not exist. The modes are numbered the way print "
+            f"labels them, so they run from 1 to {number_modes}. Note that the modes "
+            "below minimum_frequency are left out before they are numbered."
+        )
+        raise exception.IncorrectUsage(message)
 
     def _raise_error_if_temperature_is_negative(self, temperature):
         if temperature >= 0:
@@ -661,6 +730,81 @@ class Raman(graph.Mixin):
             self._handler_factory,
             RamanHandler.intensity,
             laser=laser,
+            temperature=temperature,
+            minimum_frequency=minimum_frequency,
+        )
+
+    def excitation_profile(
+        self,
+        selection: str | None = None,
+        *,
+        modes=None,
+        temperature: float | None = None,
+        minimum_frequency: float = _MINIMUM_FREQUENCY,
+    ) -> graph.Graph:
+        """Draw the selected observable against the energy of the laser.
+
+        A Raman line does not have one strength: it grows as the laser approaches an
+        electronic transition of the material, sometimes by orders of magnitude, and
+        which line grows tells you which transition it is. VASP evaluates the Raman
+        tensor on a whole mesh of photon energies, so this profile costs no extra
+        calculation -- it is the other axis of the data you already have.
+
+        Parameters
+        ----------
+        selection : str | None
+            Which observable to draw, ``"powder"`` by default. See
+            :py:meth:`activity` for the alternatives.
+        modes : Sequence[int] | None
+            Which modes to draw, numbered the way :py:meth:`print` labels them, so
+            counting from one. Every mode by default, which is usually more curves
+            than a figure can carry; pick the few strong lines instead.
+        temperature : float | None
+            Leave this out to draw the bare activity. Give a temperature in Kelvin to
+            draw the intensity a spectrometer measures instead. No laser energy is
+            needed here, because the laser energy is the axis.
+        minimum_frequency : float
+            Modes with a frequency below this energy in eV are omitted, and the
+            remaining ones are numbered afterwards.
+
+        Returns
+        -------
+        Graph
+            One curve per mode and observable against the photon energy in eV.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Pick the modes you are interested in by the number the table gives them
+
+        >>> graph = calculation.raman.excitation_profile(modes=[1, 3])
+        >>> [series.label for series in graph.series]
+        ['powder 107 cm-1', 'powder 137 cm-1']
+        >>> graph.xlabel
+        'Laser energy (eV)'
+
+        The curve peaks where the laser meets an electronic transition, which is what
+        a resonance Raman experiment scans for
+
+        >>> import numpy as np
+        >>> series = graph.series[0]
+        >>> resonance = series.x[np.argmax(series.y)]
+        >>> bool(resonance > 0)
+        True
+        """
+        return merge_graphs(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            RamanHandler.excitation_profile,
+            modes=modes,
             temperature=temperature,
             minimum_frequency=minimum_frequency,
         )

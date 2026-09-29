@@ -407,3 +407,62 @@ def test_to_graph_at_zero_temperature_still_plots_the_intensity(raman):
 def test_to_graph_with_temperature_needs_a_laser(raman):
     with pytest.raises(exception.IncorrectUsage):
         raman.to_graph(temperature=300.0)
+
+
+def test_excitation_profile(raman, Assert):
+    graph = raman.excitation_profile()
+    frequencies = raman.read()["frequencies"]
+    assert len(graph.series) == len(frequencies)
+    assert graph.xlabel == "Laser energy (eV)"
+    assert "activity" in graph.ylabel
+    Assert.allclose(graph.series[0].x, raman.read()["energies"])
+
+
+def test_excitation_profile_matches_the_activity_at_each_laser_energy(raman, Assert):
+    energies = raman.read()["energies"]
+    graph = raman.excitation_profile()
+    for index in (0, 7, len(energies) - 1):
+        expected = raman.activity(laser=energies[index])["powder"]
+        actual = np.array([series.y[index] for series in graph.series])
+        Assert.allclose(actual, expected)
+
+
+def test_excitation_profile_labels_the_modes_by_their_wavenumber(raman):
+    graph = raman.excitation_profile()
+    wavenumbers = raman.read()["frequencies"] * convert.EV_TO_CM1
+    assert graph.series[0].label == f"powder {wavenumbers[0]:.0f} cm-1"
+
+
+def test_excitation_profile_selects_modes(raman):
+    # the modes are numbered the way print labels them, counting from one
+    graph = raman.excitation_profile(modes=[1, 3])
+    wavenumbers = raman.read()["frequencies"] * convert.EV_TO_CM1
+    labels = [series.label for series in graph.series]
+    assert labels == [
+        f"powder {wavenumbers[0]:.0f} cm-1",
+        f"powder {wavenumbers[2]:.0f} cm-1",
+    ]
+
+
+def test_excitation_profile_with_temperature(raman, Assert):
+    energies = raman.read()["energies"]
+    graph = raman.excitation_profile(modes=[2], temperature=300.0)
+    assert "intensity" in graph.ylabel
+    index = len(energies) - 1
+    expected = raman.intensity(laser=energies[index], temperature=300.0)["powder"][1]
+    Assert.allclose(graph.series[0].y[index], expected)
+
+
+def test_excitation_profile_with_several_observables(raman):
+    graph = raman.excitation_profile("parallel, perpendicular", modes=[1])
+    assert [series.label for series in graph.series] == [
+        f"parallel {raman.read()['frequencies'][0] * convert.EV_TO_CM1:.0f} cm-1",
+        f"perpendicular {raman.read()['frequencies'][0] * convert.EV_TO_CM1:.0f} cm-1",
+    ]
+
+
+def test_excitation_profile_rejects_a_mode_that_does_not_exist(raman):
+    with pytest.raises(exception.IncorrectUsage):
+        raman.excitation_profile(modes=[0])
+    with pytest.raises(exception.IncorrectUsage):
+        raman.excitation_profile(modes=[999])
