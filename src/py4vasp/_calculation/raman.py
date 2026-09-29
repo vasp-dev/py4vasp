@@ -67,6 +67,41 @@ def _ratio(numerator, denominator):
     )
 
 
+def _validated_number(value, name, hint=""):
+    """Return the value as a float, or report that the user passed something else."""
+    try:
+        # a string is rejected even when it parses, because a selection is a string in
+        # this API and silently accepting "2.33" for a number invites the confusion
+        number = np.nan if isinstance(value, str) else float(value)
+    except (TypeError, ValueError):
+        number = np.nan
+    if np.isfinite(number):
+        return number
+    message = f"{name} must be a single finite number, but {value!r} is not. {hint}"
+    raise exception.IncorrectUsage(message.strip())
+
+
+def _validated_modes(modes):
+    """Return the mode numbers as integers, or report what is wrong with them."""
+    if isinstance(modes, str) or not np.iterable(modes):
+        message = (
+            f"modes must be a sequence of mode numbers, but {modes!r} is not one. "
+            f"Pass a list even for a single mode, e.g. modes=[{modes!r}]."
+        )
+        raise exception.IncorrectUsage(message)
+    validated = []
+    for mode in modes:
+        number = _validated_number(mode, "Every entry of modes")
+        if number != int(number):
+            message = (
+                f"The mode number {mode!r} is not a whole number. The modes are "
+                "numbered the way print labels them, so they are integers."
+            )
+            raise exception.IncorrectUsage(message)
+        validated.append(int(number))
+    return validated
+
+
 def _scaled(label, value, scale):
     """Apply the intensity factors, unless the observable is a ratio they cancel from."""
     if label in ("frequencies", "laser") or label in _RATIO_OBSERVABLES:
@@ -177,9 +212,10 @@ class RamanHandler:
 
     def to_dict(self, minimum_frequency: float = _MINIMUM_FREQUENCY) -> dict:
         """Read the Raman tensor and the axes it is defined on into a dictionary."""
-        self._raise_error_if_frequency_is_negative(minimum_frequency)
+        minimum_frequency = self._validated_minimum_frequency(minimum_frequency)
         frequencies = self._frequencies()
         vibrating = frequencies > minimum_frequency
+        self._raise_error_if_no_mode_vibrates(frequencies, vibrating, minimum_frequency)
         return {
             "frequencies": frequencies[vibrating],
             "energies": np.array(self._raw_raman.energies[:]),
@@ -228,10 +264,12 @@ class RamanHandler:
 
     def _index_of_laser(self, energies, laser):
         self._raise_error_if_laser_outside_grid(energies, laser)
-        return int(np.argmin(np.abs(energies - laser)))
+        return int(np.argmin(np.abs(energies - float(laser))))
 
     def _raise_error_if_laser_outside_grid(self, energies, laser):
-        if np.isscalar(laser) and np.min(energies) <= laser <= np.max(energies):
+        hint = "Divide 1239.84 eV nm by a wavelength in nm to get the photon energy."
+        laser = _validated_number(laser, "laser", hint)
+        if np.min(energies) <= laser <= np.max(energies):
             return
         message = (
             f"The laser energy {laser} is not a single energy within the range "
@@ -274,7 +312,7 @@ class RamanHandler:
         minimum_frequency: float = _MINIMUM_FREQUENCY,
     ) -> dict:
         """Scale the activity to what a spectrometer measures."""
-        self._raise_error_if_temperature_is_negative(temperature)
+        temperature = self._validated_temperature(temperature)
         data = self.activity(
             selection, laser=laser, minimum_frequency=minimum_frequency
         )
@@ -303,7 +341,7 @@ class RamanHandler:
         if temperature is None:
             scale, quantity = 1.0, "activity"
         else:
-            self._raise_error_if_temperature_is_negative(temperature)
+            temperature = self._validated_temperature(temperature)
             scale = _intensity_scale(frequencies, energies, temperature)
             quantity = "intensity"
         series = []
@@ -328,8 +366,9 @@ class RamanHandler:
     def _selected_modes(self, modes, number_modes):
         if modes is None:
             return range(number_modes)
+        modes = _validated_modes(modes)
         self._raise_error_if_mode_does_not_exist(modes, number_modes)
-        return [int(mode) - 1 for mode in modes]
+        return [mode - 1 for mode in modes]
 
     def _raise_error_if_mode_does_not_exist(self, modes, number_modes):
         invalid = [mode for mode in modes if not 1 <= mode <= number_modes]
@@ -341,6 +380,11 @@ class RamanHandler:
             "below minimum_frequency are left out before they are numbered."
         )
         raise exception.IncorrectUsage(message)
+
+    def _validated_temperature(self, temperature):
+        temperature = _validated_number(temperature, "temperature", "It is in Kelvin.")
+        self._raise_error_if_temperature_is_negative(temperature)
+        return temperature
 
     def _raise_error_if_temperature_is_negative(self, temperature):
         if temperature >= 0:
@@ -410,7 +454,8 @@ class RamanHandler:
         raise exception.IncorrectUsage(message)
 
     def _raise_error_if_the_laser_cannot_excite_anything(self, laser):
-        if laser > 0:
+        hint = "Divide 1239.84 eV nm by a wavelength in nm to get the photon energy."
+        if _validated_number(laser, "laser", hint) > 0:
             return
         message = (
             "Plotting an intensity needs the energy of the laser, because the "
@@ -447,6 +492,26 @@ class RamanHandler:
             _mode_to_string(index, *row) for index, row in enumerate(rows, start=1)
         )
         return f"{header}\n{'-' * len(header)}\n{columns}\n{table}"
+
+    def _validated_minimum_frequency(self, minimum_frequency):
+        hint = "It is an energy in eV, so divide a value you know in cm^-1 by 8065.61."
+        minimum_frequency = _validated_number(
+            minimum_frequency, "minimum_frequency", hint
+        )
+        self._raise_error_if_frequency_is_negative(minimum_frequency)
+        return minimum_frequency
+
+    def _raise_error_if_no_mode_vibrates(self, frequencies, vibrating, minimum):
+        if np.any(vibrating):
+            return
+        highest = np.max(frequencies) if len(frequencies) else 0.0
+        message = (
+            f"No mode has a frequency above minimum_frequency={minimum}. The highest "
+            f"is {highest:.4g} eV, which is {highest * convert.EV_TO_CM1:.4g} cm^-1. "
+            "Note that minimum_frequency is an energy in eV rather than a wavenumber; "
+            "divide a value you know in cm^-1 by 8065.61."
+        )
+        raise exception.IncorrectUsage(message)
 
     def _raise_error_if_frequency_is_negative(self, minimum_frequency):
         if minimum_frequency >= 0:

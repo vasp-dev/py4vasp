@@ -511,3 +511,48 @@ def test_to_graph_refuses_to_broaden_a_ratio(raman):
         raman.to_graph("depolarization")
     with pytest.raises(exception.IncorrectUsage):
         raman.to_graph("powder, depolarization")
+
+
+def test_a_threshold_that_removes_every_mode_raises_error(raman):
+    # minimum_frequency is an energy in eV while the field quotes cm^-1, so a user
+    # typing the wavenumber they meant lands far above every mode
+    with pytest.raises(exception.IncorrectUsage):
+        raman.read(minimum_frequency=100.0)
+    with pytest.raises(exception.IncorrectUsage):
+        raman.activity(minimum_frequency=100.0)
+    with pytest.raises(exception.IncorrectUsage):
+        raman.to_graph(minimum_frequency=100.0)
+
+
+@pytest.mark.parametrize(
+    "method, kwargs",
+    [
+        ("activity", {"laser": "2.33"}),
+        ("activity", {"minimum_frequency": "a"}),
+        ("read", {"minimum_frequency": None}),
+        ("intensity", {"laser": 0.5, "temperature": "300"}),
+        ("to_graph", {"laser": "x", "temperature": 300.0}),
+        ("excitation_profile", {"temperature": "warm"}),
+    ],
+)
+def test_a_parameter_that_is_not_a_number_raises_error(raman, method, kwargs):
+    with pytest.raises(exception.IncorrectUsage):
+        getattr(raman, method)(**kwargs)
+
+
+@pytest.mark.parametrize("modes", [3, "1,3", [1.5], [None]])
+def test_modes_that_are_not_whole_numbers_raise_error(raman, modes):
+    # a bare integer is the obvious first guess, and 1.5 used to select mode 1 silently
+    with pytest.raises(exception.IncorrectUsage):
+        raman.excitation_profile(modes=modes)
+
+
+def test_modes_accept_any_sequence_of_integers(raman):
+    expected = [
+        series.label for series in raman.excitation_profile(modes=[1, 3]).series
+    ]
+    for modes in ((1, 3), np.array([1, 3]), [np.int64(1), np.int64(3)]):
+        actual = [
+            series.label for series in raman.excitation_profile(modes=modes).series
+        ]
+        assert actual == expected
