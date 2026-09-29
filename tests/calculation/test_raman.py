@@ -624,3 +624,14 @@ def test_activity_does_not_warn_about_low_modes():
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         raman.activity()
+
+
+def test_intensity_is_quiet_when_nothing_scatters():
+    # every mode of a centrosymmetric crystal can be infrared active instead, and an
+    # empty spectrum has no strongest line to complain about
+    silent = [np.zeros((3, 3))] * 3
+    raman = make_raman(silent, frequencies=(10.0, 500.0, 1000.0))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = raman.intensity(laser=1.0, temperature=300.0)
+    assert np.all(result["powder"] == 0)
