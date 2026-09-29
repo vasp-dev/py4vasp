@@ -70,8 +70,10 @@ def test_negative_minimum_frequency_raises_error(raman):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.raman("Sr2TiO4")
     # selections reports what the schema offers rather than reading the file, exactly
-    # as it does for the dielectric tensor
-    check_factory_methods(Raman, data, skip_methods=["selections"])
+    # as it does for the dielectric tensor. intensity has no default laser energy,
+    # because a measured intensity is not defined without one.
+    parameters = {"intensity": {"laser": 0.5}}
+    check_factory_methods(Raman, data, parameters, skip_methods=["selections"])
 
 
 def make_raman(tensors, energies=(0.0, 1.0, 2.0), frequencies=None):
@@ -321,3 +323,56 @@ mode  deg   omega (cm-1)   omega (meV)      activity   depolarization
    1    1         100.00         12.40       45.0000           0.0000
    2    1         500.00         61.99       21.0000           0.7500"""
     assert actual == {"text/plain": expected_text}
+
+
+BOLTZMANN = 8.617333262e-5  # eV/K, the CODATA value
+
+
+def test_intensity_at_zero_temperature_scales_the_activity(raman, Assert):
+    # what a spectrometer sees is the activity times the fourth power of the frequency
+    # of the scattered photon, divided by the frequency of the vibration
+    laser = raman.read()["energies"][-1]
+    activity = raman.activity(laser=laser)
+    frequencies = activity["frequencies"]
+    expected = activity["powder"] * (laser - frequencies) ** 4 / frequencies
+    Assert.allclose(raman.intensity(laser=laser)["powder"], expected)
+
+
+def test_intensity_applies_the_bose_factor(raman, Assert):
+    # a warm crystal is already vibrating, so it scatters more than a cold one by the
+    # Stokes factor n + 1
+    laser = raman.read()["energies"][-1]
+    cold = raman.intensity(laser=laser)
+    hot = raman.intensity(laser=laser, temperature=300.0)
+    ratio = hot["powder"] / cold["powder"]
+    exponent = cold["frequencies"] / (BOLTZMANN * 300.0)
+    Assert.allclose(ratio, 1 / (1 - np.exp(-exponent)))
+
+
+def test_intensity_at_zero_temperature_has_no_bose_factor(raman, Assert):
+    # the limit of n + 1 as the temperature goes to zero is one, not zero
+    laser = raman.read()["energies"][-1]
+    Assert.allclose(
+        raman.intensity(laser=laser)["powder"],
+        raman.intensity(laser=laser, temperature=1e-8)["powder"],
+    )
+
+
+def test_intensity_vanishes_for_modes_above_the_laser(raman):
+    # the laser cannot excite a vibration that costs more energy than its photons
+    laser = raman.read()["energies"][2]
+    result = raman.intensity(laser=laser)
+    assert np.any(result["frequencies"] > laser)
+    assert np.all(result["powder"][result["frequencies"] >= laser] == 0)
+    assert np.any(result["powder"] > 0)
+
+
+def test_intensity_accepts_the_same_observables(raman):
+    laser = raman.read()["energies"][-1]
+    result = raman.intensity("parallel, perpendicular", laser=laser)
+    assert sorted(result) == ["frequencies", "laser", "parallel", "perpendicular"]
+
+
+def test_negative_temperature_raises_error(raman):
+    with pytest.raises(exception.IncorrectUsage):
+        raman.intensity(laser=raman.read()["energies"][-1], temperature=-1.0)

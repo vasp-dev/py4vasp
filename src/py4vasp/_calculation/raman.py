@@ -21,6 +21,10 @@ _DEFAULT_OBSERVABLE = "powder"
 # Width of a Raman line in eV. Vibrational spectroscopy quotes linewidths in cm^-1 and
 # a few wavenumbers is the usual choice; 1 meV is 8.07 cm^-1.
 _DEFAULT_FWHM = 1e-3  # eV
+# The CODATA value in eV/K. py4vasp keeps its conversion factors in _util/convert.py,
+# but those are the ones VASP itself uses for its printout; a constant a user does
+# physics with wants the measured value instead. See backlog/public-unit-constants.md.
+_BOLTZMANN = 8.617333262e-5  # eV/K
 _MESH_MARGIN = 5  # line widths of empty axis on either side of the outermost line
 _MESH_POINTS_PER_WIDTH = 8  # enough that the narrowest line is drawn as a curve
 _MAXIMUM_MESH_POINTS = 20000
@@ -53,6 +57,23 @@ def _ratio(numerator, denominator):
         out=np.full_like(numerator, np.nan),
         where=denominator > 0,
     )
+
+
+def _bose_factor(frequencies, temperature):
+    """The Stokes factor n + 1, i.e. how much a warm crystal scatters over a cold one.
+
+    A vibration that is already excited stimulates the scattering, so a warm crystal
+    gives a stronger Stokes line. The limit as the temperature goes to zero is one.
+    """
+    if temperature <= 0:
+        return np.ones_like(frequencies)
+    exponent = frequencies / (_BOLTZMANN * temperature)
+    return 1 / (1 - np.exp(-exponent))
+
+
+def _scattered_photon(frequencies, laser):
+    """Energy the scattered photon keeps, which is zero if the laser cannot excite it."""
+    return np.clip(laser - frequencies, 0.0, None)
 
 
 def _mesh(frequencies, shape):
@@ -213,6 +234,39 @@ class RamanHandler:
             f"{', '.join(_OBSERVABLES)} to average over the orientations of a "
             f"crystallite, or one of {directions} for a single element of the tensor "
             "of an oriented crystal."
+        )
+        raise exception.IncorrectUsage(message)
+
+    def intensity(
+        self,
+        selection: str | None = None,
+        *,
+        laser: float,
+        temperature: float = 0.0,
+        minimum_frequency: float = _MINIMUM_FREQUENCY,
+    ) -> dict:
+        """Scale the activity to what a spectrometer measures."""
+        self._raise_error_if_temperature_is_negative(temperature)
+        data = self.activity(
+            selection, laser=laser, minimum_frequency=minimum_frequency
+        )
+        frequencies = data["frequencies"]
+        scale = (
+            _bose_factor(frequencies, temperature)
+            * _scattered_photon(frequencies, data["laser"]) ** 4
+            / frequencies
+        )
+        return {
+            label: value if label in ("frequencies", "laser") else value * scale
+            for label, value in data.items()
+        }
+
+    def _raise_error_if_temperature_is_negative(self, temperature):
+        if temperature >= 0:
+            return
+        message = (
+            f"The temperature {temperature} is negative. Pass a temperature in Kelvin, "
+            "or 0 for the limit in which the crystal is not vibrating on its own."
         )
         raise exception.IncorrectUsage(message)
 
@@ -502,6 +556,89 @@ class Raman(graph.Mixin):
             self._handler_factory,
             RamanHandler.activity,
             laser=laser,
+            minimum_frequency=minimum_frequency,
+        )
+
+    def intensity(
+        self,
+        selection: str | None = None,
+        *,
+        laser: float,
+        temperature: float = 0.0,
+        minimum_frequency: float = _MINIMUM_FREQUENCY,
+    ) -> dict:
+        """Scale the activity to what a spectrometer measures.
+
+        The activity says how strongly a vibration modulates the susceptibility, which
+        is not yet what a detector counts. Three factors separate them: a warm crystal
+        is already vibrating and scatters more, a photon that has given up energy to a
+        vibration carries less, and the scattered power goes with the fourth power of
+        the frequency of the light that comes out.
+
+        Parameters
+        ----------
+        selection : str | None
+            Which observable to scale, ``"powder"`` by default. See
+            :py:meth:`activity` for the alternatives.
+        laser : float
+            Photon energy of the laser in eV. There is no default, because an
+            intensity is not defined without one: the scattered photon has an energy
+            only once you say what went in. Divide 1239.84 eV nm by your wavelength in
+            nm to get it -- 532 nm is 2.33 eV.
+        temperature : float
+            Temperature of the sample in Kelvin, 0 by default, which is the limit in
+            which the crystal is not vibrating on its own.
+        minimum_frequency : float
+            Modes with a frequency below this energy in eV are omitted.
+
+        Returns
+        -------
+        dict
+            The frequency of every mode in eV, the photon energy that was used, and
+            one entry per selected observable. The intensities are on an arbitrary
+            scale, so compare them with one another rather than with an absolute
+            number. A mode that costs more energy than one laser photon carries cannot
+            be excited and comes back as exactly zero.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        A green laser of 532 nm is 2.33 eV
+
+        >>> intensity = calculation.raman.intensity(laser=2.33)
+        >>> sorted(intensity)
+        ['frequencies', 'laser', 'powder']
+
+        Warming the sample makes every line stronger, because the crystal is already
+        vibrating and stimulates the scattering
+
+        >>> import numpy as np
+        >>> warm = calculation.raman.intensity(laser=2.33, temperature=300)
+        >>> bool(np.all(warm["powder"] >= intensity["powder"]))
+        True
+
+        The effect is largest for the modes of lowest energy, which are the easiest to
+        excite thermally
+
+        >>> ratio = np.divide(warm["powder"], intensity["powder"],
+        ...     out=np.ones_like(warm["powder"]), where=intensity["powder"] > 0)
+        >>> bool(ratio[0] > ratio[-1])
+        True
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            RamanHandler.intensity,
+            laser=laser,
+            temperature=temperature,
             minimum_frequency=minimum_frequency,
         )
 
