@@ -190,3 +190,39 @@ def test_tensor_that_is_not_symmetric_raises_error():
     raman = make_raman([asymmetric])
     with pytest.raises(exception.DataMismatch):
         raman.activity()
+
+
+@pytest.fixture
+def two_modes():
+    """A totally symmetric mode and a traceless one, with invariants known by hand.
+
+    The identity has a mean polarizability of 1 and no anisotropy, so its powder
+    activity is 45 and it scatters no depolarized light at all. The traceless tensor
+    has no isotropic part and an anisotropy of 3, so its activity is 7 * 3 and its
+    depolarization ratio sits at the maximum of 3/4.
+    """
+    return make_raman([np.eye(3), np.diag((1.0, -1.0, 0.0))])
+
+
+def test_print(two_modes, format_):
+    actual, _ = format_(two_modes)
+    expected_text = """\
+Raman activity at a laser energy of 0.00 eV
+-------------------------------------------
+mode   omega (cm-1)   omega (meV)      activity   depolarization
+   1         100.00         12.40       45.0000           0.0000
+   2         500.00         61.99       21.0000           0.7500"""
+    assert actual == {"text/plain": expected_text}
+
+
+def test_print_reports_the_modes_in_the_order_vasp_wrote_them(raman, Assert):
+    # VASP writes the frequencies in descending order and the table follows it, so a
+    # row can be compared against the OUTCAR line by line
+    rows = str(raman).splitlines()[3:]
+    printed = [float(row.split()[1]) for row in rows]
+    Assert.allclose(np.array(printed), raman.read()["frequencies"] * convert.EV_TO_CM1)
+
+
+def test_print_writes_to_stdout(raman, capsys):
+    assert raman.print() is None
+    assert capsys.readouterr().out == str(raman) + "\n"

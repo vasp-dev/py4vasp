@@ -47,6 +47,17 @@ def _ratio(numerator, denominator):
     )
 
 
+def _mode_to_string(index, frequency, activity, depolarization):
+    # both units of the frequency, because cm^-1 is what a Raman experiment is quoted
+    # in and meV is what the rest of py4vasp and the plotted axis use
+    wavenumber = frequency * convert.EV_TO_CM1
+    energy = frequency * convert.EV_TO_MEV
+    return (
+        f"{index:4d}{wavenumber:15.2f}{energy:14.2f}"
+        f"{activity:14.4f}{depolarization:17.4f}"
+    )
+
+
 def _invariants(tensors):
     """The two rotational invariants of every tensor, shape ``(mode,)`` each.
 
@@ -164,12 +175,14 @@ class RamanHandler:
         raise exception.IncorrectUsage(message)
 
     def __str__(self) -> str:
-        data = self.to_dict()
-        frequencies = data["frequencies"] * convert.EV_TO_MEV
-        energies = data["energies"]
-        return f"""Raman tensor:
-    modes: {len(frequencies)} between {np.min(frequencies):.2f} and {np.max(frequencies):.2f} meV
-    photon energies: [{np.min(energies):.2f}, {np.max(energies):.2f}] eV, {len(energies)} points"""
+        data = self.activity("powder, depolarization")
+        header = f"Raman activity at a laser energy of {data['laser']:.2f} eV"
+        columns = "mode   omega (cm-1)   omega (meV)      activity   depolarization"
+        rows = zip(data["frequencies"], data["powder"], data["depolarization"])
+        table = "\n".join(
+            _mode_to_string(index, *row) for index, row in enumerate(rows, start=1)
+        )
+        return f"{header}\n{'-' * len(header)}\n{columns}\n{table}"
 
     def _raise_error_if_frequency_is_negative(self, minimum_frequency):
         if minimum_frequency >= 0:
@@ -233,12 +246,18 @@ class Raman:
     >>> raman["raman_tensor"].shape
     (18, 3, 3, 301)
 
-    Printing the quantity summarizes the two axes
+    Printing the quantity lists every mode with the strength of its line and how much
+    it depolarizes the scattered light. Sr2TiO4 has an inversion centre, so half of its
+    modes are infrared active instead and do not scatter at all -- a mode that does not
+    scatter has no depolarization ratio either
 
     >>> print(calculation.raman)
-    Raman tensor:
-        modes: 18 between 13.23 and 80.23 meV
-        photon energies: [0.00, 12.00] eV, 301 points
+    Raman activity at a laser energy of 0.00 eV
+    -------------------------------------------
+    mode   omega (cm-1)   omega (meV)      activity   depolarization
+       1         106.74         13.23        0.3862           0.0139
+       2         120.08         14.89        0.0000              nan
+       3...
     """
 
     def __init__(self, source, quantity_name: str = "raman"):
