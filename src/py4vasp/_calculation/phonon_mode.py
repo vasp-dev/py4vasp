@@ -34,6 +34,10 @@ _HBAR_SQUARED = 0.004180159279779  # eV amu Å²
 # 8 cm⁻¹, where the soft mode of that same BaTiO3 is 200 cm⁻¹. A calculation with a
 # genuinely softer mode lowers it, which is why displace takes it as a parameter.
 _MINIMUM_FREQUENCY = 1e-3  # eV
+# Two modes closer than this are treated as one degenerate level. 0.1 meV is about
+# 0.8 cm^-1, which is below the resolution of a Raman or infrared experiment and above
+# the noise a diagonalization of the dynamical matrix leaves behind.
+_DEGENERACY_TOLERANCE = 1e-4  # eV
 
 
 class PhononModeHandler:
@@ -104,6 +108,47 @@ class PhononModeHandler:
         if self._has_qpoints():
             return self._energies_of_dispersion()
         return convert.to_complex(self._raw_phonon_mode.frequencies[:])
+
+    def degenerate_groups(self, tolerance: float = _DEGENERACY_TOLERANCE) -> list:
+        """Group the modes that share a frequency."""
+        self._raise_error_if_tolerance_is_negative(tolerance)
+        self._raise_error_if_modes_are_a_dispersion()
+        frequencies = self.frequencies()
+        # sorting by the real part first keeps an unstable mode, which is purely
+        # imaginary, away from a stable one of the same magnitude
+        order = np.lexsort((frequencies.imag, frequencies.real))
+        groups = []
+        for index in order:
+            if groups and self._is_degenerate(
+                frequencies, groups[-1][-1], index, tolerance
+            ):
+                groups[-1].append(int(index))
+            else:
+                groups.append([int(index)])
+        return [sorted(group) for group in groups]
+
+    def _is_degenerate(self, frequencies, previous, current, tolerance):
+        return abs(frequencies[current] - frequencies[previous]) <= tolerance
+
+    def _raise_error_if_tolerance_is_negative(self, tolerance):
+        if tolerance >= 0:
+            return
+        message = (
+            f"The tolerance {tolerance} is negative, but it is compared to the "
+            "distance between two frequencies, which is never negative. Use "
+            "tolerance=0 to group only the modes that agree exactly."
+        )
+        raise exception.IncorrectUsage(message)
+
+    def _raise_error_if_modes_are_a_dispersion(self):
+        if not self._has_qpoints():
+            return
+        message = (
+            "Grouping degenerate modes is implemented only for the modes at the zone "
+            "centre. A dispersion carries a q point as a leading dimension, and which "
+            "branches are degenerate changes along the path."
+        )
+        raise exception.NotImplemented(message)
 
     def _energies_of_dispersion(self) -> np.ndarray:
         # a dispersion stores a real frequency in THz, where an unstable mode is
@@ -660,6 +705,70 @@ class PhononMode(view.Mixin):
             selection,
             self._handler_factory,
             PhononModeHandler.frequencies,
+        )
+
+    def degenerate_groups(
+        self,
+        selection: str | None = None,
+        *,
+        tolerance: float = _DEGENERACY_TOLERANCE,
+    ) -> list:
+        """Group the modes that share a frequency.
+
+        Symmetry forces some vibrations of a crystal to cost exactly the same energy,
+        so they appear as one line in a spectrum rather than as several. Which modes
+        those are follows from the frequencies alone, which is what this reports.
+
+        Parameters
+        ----------
+        selection : str | None
+            Which modes VASP computed to use. Defaults to the modes at the zone centre.
+        tolerance : float
+            Two modes closer than this energy in eV form one group. The default of
+            0.1 meV is below what a vibrational experiment resolves and above the
+            noise a diagonalization leaves behind. Modes are chained, so a group may
+            be wider than the tolerance if its members overlap in sequence.
+
+        Returns
+        -------
+        list
+            One list of mode indices per group, ordered by frequency, with the indices
+            counting from zero so that they index the array
+            :py:meth:`frequencies` returns. Note that :py:meth:`print` labels the same
+            modes counting from one.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The three modes that translate the crystal all cost no energy, so they form one
+        group; every vibration of this crystal has a frequency of its own
+
+        >>> groups = calculation.phonon.mode.degenerate_groups()
+        >>> groups[0]
+        [0, 1, 2]
+        >>> len(groups)
+        19
+
+        Use the indices to average a quantity over the modes of one level
+
+        >>> import numpy as np
+        >>> frequencies = calculation.phonon.mode.frequencies()
+        >>> bool(np.isclose(np.mean(frequencies[groups[0]]), 0))
+        True
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            PhononModeHandler.degenerate_groups,
+            tolerance=tolerance,
         )
 
     def displace(
