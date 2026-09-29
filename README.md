@@ -109,6 +109,18 @@ along with each commit, you can run
 pre-commit install
 ~~~
 
+## Getting help
+
+If you found a bug, please open an issue at
+[github.com/vasp-dev/py4vasp/issues](https://github.com/vasp-dev/py4vasp/issues)
+describing what you did, what you expected, and what happened instead --
+a minimal example that reproduces the problem is the most helpful thing you
+can include.
+
+For general usage questions about py4vasp, use the "Using VASP" category of
+the [VASP forum](https://www.vasp.at/forum/); for anything specific to the
+Python interface itself, a GitHub issue works too.
+
 ## Contributing to py4vasp
 
 We welcome contributions to py4vasp. To improve the code please follow this workflow
