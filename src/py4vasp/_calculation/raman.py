@@ -69,6 +69,46 @@ def _ratio(numerator, denominator):
     )
 
 
+# A spectrum whose strongest line sits this far into the frequency range is normal; one
+# whose strongest line sits below it is what an artifact amplified by 1/omega looks like.
+_LOW_MODE_FRACTION = 0.1
+
+
+def _warn_if_the_lowest_modes_dominate(result):
+    """Say so when the strongest line is one of the lowest modes.
+
+    The factors that turn an activity into an intensity grow as the frequency falls, so
+    a mode that translates or rotates the system rather than vibrating it takes the
+    whole spectrum over once it survives ``minimum_frequency``. VASP stores only the
+    magnitude of a frequency in this group, so py4vasp cannot tell such a mode from a
+    real one and has to hand the question back to the user.
+    """
+    frequencies = result["frequencies"]
+    activities = [
+        result[label]
+        for label in result
+        if label in set(_OBSERVABLES) - _RATIO_OBSERVABLES
+    ]
+    if not activities or len(frequencies) < 3:
+        return
+    values = activities[0]
+    if not np.any(values > 0):
+        return
+    lowest, highest = np.min(frequencies), np.max(frequencies)
+    strongest = frequencies[int(np.argmax(values))]
+    if strongest > lowest + _LOW_MODE_FRACTION * (highest - lowest):
+        return
+    message = f"""The strongest line of this spectrum is one of the lowest modes.
+    It sits at {strongest * convert.EV_TO_CM1:.3g} cm^-1 where the modes reach up to
+    {highest * convert.EV_TO_CM1:.3g} cm^-1. The factors that turn an activity into an
+    intensity grow as the frequency falls, so a mode that translates or rotates the
+    system rather than vibrating it dominates everything else once it is included.
+    VASP stores only the magnitude of a frequency here, so py4vasp cannot recognize
+    such a mode. Check calculation.phonon.mode, which reports an unstable mode as an
+    imaginary frequency, and raise minimum_frequency above the modes you find."""
+    warnings.warn(message, UserWarning)
+
+
 def _validated_number(value, name, hint=""):
     """Return the value as a float, or report that the user passed something else."""
     try:
@@ -355,7 +395,9 @@ class RamanHandler:
         )
         frequencies = data["frequencies"]
         scale = _intensity_scale(frequencies, data["laser"], temperature)
-        return {label: _scaled(label, value, scale) for label, value in data.items()}
+        result = {label: _scaled(label, value, scale) for label, value in data.items()}
+        _warn_if_the_lowest_modes_dominate(result)
+        return result
 
     def excitation_profile(
         self,
@@ -613,9 +655,11 @@ class Raman(graph.Mixin):
     (18, 3, 3, 301)
 
     Printing the quantity lists every mode with the strength of its line and how much
-    it depolarizes the scattered light. Sr2TiO4 has an inversion centre, so half of its
-    modes are infrared active instead and do not scatter at all -- a mode that does not
-    scatter has no depolarization ratio either
+    it depolarizes the scattered light. There is one row per mode, and ``deg`` says how
+    many modes share that frequency, so a doubly degenerate level occupies two rows
+    that both read 2 and nothing is counted twice. Sr2TiO4 has an inversion centre, so
+    half of its modes are infrared active instead and do not scatter at all -- a mode
+    that does not scatter has no depolarization ratio either
 
     >>> print(calculation.raman)
     Raman activity at a laser energy of 0.00 eV
@@ -750,6 +794,13 @@ class Raman(graph.Mixin):
             used, and one entry per selected observable. A mode that does not scatter
             has no depolarization ratio, which is reported as not-a-number.
 
+            The activities are squares of the susceptibility derivative on the scale
+            VASP writes it in, and py4vasp does not convert them, so compare them with
+            one another rather than with an absolute number. In particular they are
+            not the A^4/amu of the polarizability-derivative convention: the
+            susceptibility and the polarizability differ by the volume of the cell.
+            The depolarization ratio is dimensionless and lies between 0 and 3/4.
+
         Examples
         --------
         First, we create some example data so that you can follow along. Please define a
@@ -820,7 +871,12 @@ class Raman(graph.Mixin):
             Temperature of the sample in Kelvin, 0 by default, which is the limit in
             which the crystal is not vibrating on its own.
         minimum_frequency : float
-            Modes with a frequency below this energy in eV are omitted.
+            Modes with a frequency below this energy in eV are omitted. This matters
+            more here than for :py:meth:`activity`: the factors above grow as the
+            frequency falls, so a mode that translates or rotates the system rather
+            than vibrating it will dominate the whole spectrum if it is left in.
+            py4vasp warns when the strongest line is one of the lowest modes, but it
+            cannot recognize such a mode by itself -- see the Notes of this class.
 
         Returns
         -------
@@ -855,11 +911,13 @@ class Raman(graph.Mixin):
         True
 
         The effect is largest for the modes of lowest energy, which are the easiest to
-        excite thermally
+        excite thermally. Note that VASP writes the modes in its own order rather than
+        sorted, so pick them out by frequency
 
         >>> ratio = np.divide(warm["powder"], intensity["powder"],
         ...     out=np.ones_like(warm["powder"]), where=intensity["powder"] > 0)
-        >>> bool(ratio[0] > ratio[-1])
+        >>> frequencies = intensity["frequencies"]
+        >>> bool(ratio[np.argmin(frequencies)] > ratio[np.argmax(frequencies)])
         True
         """
         return merge_default(
@@ -1057,6 +1115,15 @@ class Raman(graph.Mixin):
         selection : str | None
             Select which source of the quantity is printed. If you select multiple
             sources, py4vasp prints one block per source.
+
+        Notes
+        -----
+        The table has one row per mode, in the order VASP wrote them, which is not
+        sorted. The ``deg`` column gives the number of modes sharing that frequency,
+        so a doubly degenerate level fills two rows that both read 2; the activity
+        shown is that of the single mode, not of the level. The frequency is given as
+        a wavenumber and as an energy, and the activity is evaluated in the static
+        limit -- use :py:meth:`activity` to choose a laser energy.
         """
         print(self.__str__(selection))
 

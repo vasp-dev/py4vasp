@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
+import warnings
 
 import numpy as np
 import pytest
@@ -593,3 +594,33 @@ def test_a_width_too_narrow_to_resolve_raises_error(raman):
     # area and a warning telling the user to do something to_graph does not allow
     with pytest.raises(exception.IncorrectUsage):
         raman.to_graph(shape=broadening.Lorentzian(fwhm=1e-12))
+
+
+def test_intensity_warns_when_the_lowest_mode_dominates():
+    # the 1/omega and Bose factors make low modes dominate, so a translation that
+    # survived minimum_frequency takes the spectrum over. VASP reports the magnitude
+    # of a frequency in this group, so py4vasp cannot recognize such a mode itself.
+    equal = [np.eye(3)] * 3
+    raman = make_raman(equal, frequencies=(10.0, 500.0, 1000.0))
+    with pytest.warns(UserWarning, match="lowest"):
+        result = raman.intensity(laser=1.0, temperature=300.0)
+    assert np.argmax(result["powder"]) == 0
+
+
+def test_intensity_is_quiet_when_a_genuine_line_dominates():
+    # the lowest mode does not scatter at all here, so nothing is amplified into a
+    # spurious peak and the user should not be told to go looking for one
+    tensors = [np.zeros((3, 3)), np.eye(3), np.eye(3)]
+    raman = make_raman(tensors, frequencies=(10.0, 500.0, 1000.0))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        raman.intensity(laser=1.0, temperature=300.0)
+
+
+def test_activity_does_not_warn_about_low_modes():
+    # the warning belongs to the factors that amplify them, which activity does not use
+    equal = [np.eye(3)] * 3
+    raman = make_raman(equal, frequencies=(10.0, 500.0, 1000.0))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        raman.activity()
