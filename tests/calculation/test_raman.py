@@ -556,3 +556,40 @@ def test_modes_accept_any_sequence_of_integers(raman):
             series.label for series in raman.excitation_profile(modes=modes).series
         ]
         assert actual == expected
+
+
+def test_mesh_is_wide_enough_for_the_widest_line(raman, Assert):
+    # the line shapes accept one width per mode, so the axis has to contain the widest
+    # even though its spacing is set by the narrowest
+    frequencies = raman.read()["frequencies"]
+    widths = np.full(len(frequencies), 1e-3)
+    # the highest mode, so that too small a margin truncates it for certain
+    widths[int(np.argmax(frequencies))] = 2e-2
+    graph = raman.to_graph(shape=broadening.Gaussian(fwhm=widths))
+    series = graph.series[0]
+    total = np.sum(raman.activity()["powder"])
+    assert np.trapezoid(series.y, series.x) > 0.999 * total
+
+
+def test_a_line_wider_than_the_whole_spectrum_warns(raman):
+    # the width is an energy in eV and the field quotes cm^-1, so a user typing their
+    # usual 10 gets a line 26 times wider than the spectrum and a flat curve
+    highest = np.max(raman.read()["frequencies"])
+    with pytest.warns(UserWarning):
+        raman.to_graph(shape=broadening.Lorentzian(fwhm=10 * highest))
+
+
+def test_an_ordinary_width_does_not_warn(raman):
+    import warnings as warnings_
+
+    with warnings_.catch_warnings():
+        warnings_.simplefilter("error")
+        raman.to_graph()
+        raman.to_graph(shape=broadening.Gaussian(fwhm=4e-3))
+
+
+def test_a_width_too_narrow_to_resolve_raises_error(raman):
+    # silently coarsening the mesh used to produce a spectrum that lost part of its
+    # area and a warning telling the user to do something to_graph does not allow
+    with pytest.raises(exception.IncorrectUsage):
+        raman.to_graph(shape=broadening.Lorentzian(fwhm=1e-12))

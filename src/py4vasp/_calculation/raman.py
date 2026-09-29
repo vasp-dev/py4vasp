@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import warnings
+
 import numpy as np
 
 from py4vasp import broadening, exception, raw
@@ -29,7 +31,7 @@ _DEFAULT_FWHM = 1e-3  # eV
 _BOLTZMANN = 8.617333262e-5  # eV/K
 _MESH_MARGIN = 5  # line widths of empty axis on either side of the outermost line
 _MESH_POINTS_PER_WIDTH = 8  # enough that the narrowest line is drawn as a curve
-_MAXIMUM_MESH_POINTS = 20000
+_MAXIMUM_MESH_POINTS = 200000
 _DIRECTIONS = {"x": 0, "y": 1, "z": 2}
 # The observables are nonlinear functions of the Raman tensor -- a squared modulus, or a
 # ratio of two of them -- so they cannot be expressed as the weighted sums over an axis
@@ -142,15 +144,50 @@ def _scattered_photon(frequencies, laser):
 def _mesh(frequencies, shape):
     """Energy axis wide enough for every line and fine enough to resolve the narrowest.
 
+    The spacing follows the narrowest line, because that is the one that has to come
+    out as a curve rather than a spike. The margin follows the widest, because that is
+    the one reaching furthest beyond the mode it belongs to; the two differ as soon as
+    the caller gives every mode its own width.
+
     Note that a Lorentzian has tails that reach beyond any window, so the area under
     the spectrum is slightly smaller than the total activity however wide the axis is.
     """
-    width = np.min(shape.fwhm)
-    margin = _MESH_MARGIN * width
+    _warn_if_the_line_is_wider_than_the_spectrum(frequencies, shape)
+    narrowest = np.min(shape.fwhm)
+    margin = _MESH_MARGIN * np.max(shape.fwhm)
     first = max(np.min(frequencies) - margin, 0.0)
     last = np.max(frequencies) + margin
-    points = int(np.ceil((last - first) / width * _MESH_POINTS_PER_WIDTH)) + 1
-    return np.linspace(first, last, min(points, _MAXIMUM_MESH_POINTS))
+    points = int(np.ceil((last - first) / narrowest * _MESH_POINTS_PER_WIDTH)) + 1
+    _raise_error_if_the_mesh_would_be_too_large(points, narrowest, last - first)
+    return np.linspace(first, last, points)
+
+
+def _warn_if_the_line_is_wider_than_the_spectrum(frequencies, shape):
+    width = np.max(shape.fwhm)
+    highest = np.max(frequencies)
+    if width <= highest:
+        return
+    message = f"""The line shape is wider than the whole spectrum.
+    Its width is {width:.3g} eV but the highest mode is only at {highest:.3g} eV, so
+    every line is smeared into a single flat curve. Note that py4vasp quotes the width
+    as an energy in eV where a Raman experiment quotes it in cm^-1: if you meant
+    {width:.3g} cm^-1, pass {width / convert.EV_TO_CM1:.3g} instead."""
+    warnings.warn(message, UserWarning)
+
+
+def _raise_error_if_the_mesh_would_be_too_large(points, width, span):
+    if points <= _MAXIMUM_MESH_POINTS:
+        return
+    resolvable = span / _MAXIMUM_MESH_POINTS * _MESH_POINTS_PER_WIDTH
+    message = (
+        f"Drawing a line of width {width:.3g} eV over a range of {span:.3g} eV needs "
+        f"{points} points, more than the {_MAXIMUM_MESH_POINTS} py4vasp will build. "
+        f"The narrowest line this range resolves is about {resolvable:.3g} eV, which "
+        f"is {resolvable * convert.EV_TO_CM1:.3g} cm^-1. Widen the line shape, or "
+        "broaden the modes yourself with py4vasp.broadening.broaden on a mesh you "
+        "choose."
+    )
+    raise exception.IncorrectUsage(message)
 
 
 def _raise_error_if_not_a_line_shape(shape):
@@ -953,7 +990,8 @@ class Raman(graph.Mixin):
         Graph
             The spectrum drawn against the energy of the vibration in meV. The line
             shapes carry unit area, so the area under a peak is the activity of the
-            mode that produced it.
+            mode that produced it -- exactly for a Gaussian, and up to a percent or so
+            for the default Lorentzian, whose tails reach beyond any axis.
 
         Examples
         --------
@@ -977,7 +1015,8 @@ class Raman(graph.Mixin):
         >>> graph = calculation.raman.to_graph(shape=Gaussian(fwhm=0.004))
 
         The area under the spectrum is the total activity, because every line shape
-        carries unit area
+        carries unit area. A Gaussian shows it exactly; a Lorentzian loses a little,
+        because its tails reach beyond whatever axis you draw
 
         >>> import numpy as np
         >>> series = graph.series[0]
