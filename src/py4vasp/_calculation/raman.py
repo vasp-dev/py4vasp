@@ -10,7 +10,7 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
-from py4vasp._third_party import graph
+from py4vasp._third_party import graph, numeric
 from py4vasp._util import convert, select
 
 # Modes below this energy translate or rotate the system instead of vibrating it. The
@@ -81,15 +81,23 @@ def _raise_error_if_not_a_line_shape(shape):
     raise exception.IncorrectUsage(message)
 
 
-def _mode_to_string(index, frequency, activity, depolarization):
+def _mode_to_string(index, degeneracy, frequency, activity, depolarization):
     # both units of the frequency, because cm^-1 is what a Raman experiment is quoted
     # in and meV is what the rest of py4vasp and the plotted axis use
     wavenumber = frequency * convert.EV_TO_CM1
     energy = frequency * convert.EV_TO_MEV
     return (
-        f"{index:4d}{wavenumber:15.2f}{energy:14.2f}"
+        f"{index:4d}{degeneracy:5d}{wavenumber:15.2f}{energy:14.2f}"
         f"{activity:14.4f}{depolarization:17.4f}"
     )
+
+
+def _degeneracies(frequencies):
+    """How many modes share the frequency of each mode, shape ``(mode,)``."""
+    degeneracies = np.ones(len(frequencies), dtype=np.int64)
+    for group in numeric.degenerate_groups(frequencies):
+        degeneracies[group] = len(group)
+    return degeneracies
 
 
 def _invariants(tensors):
@@ -243,8 +251,15 @@ class RamanHandler:
     def __str__(self) -> str:
         data = self.activity("powder, depolarization")
         header = f"Raman activity at a laser energy of {data['laser']:.2f} eV"
-        columns = "mode   omega (cm-1)   omega (meV)      activity   depolarization"
-        rows = zip(data["frequencies"], data["powder"], data["depolarization"])
+        columns = (
+            "mode  deg   omega (cm-1)   omega (meV)      activity   depolarization"
+        )
+        rows = zip(
+            _degeneracies(data["frequencies"]),
+            data["frequencies"],
+            data["powder"],
+            data["depolarization"],
+        )
         table = "\n".join(
             _mode_to_string(index, *row) for index, row in enumerate(rows, start=1)
         )
@@ -320,9 +335,9 @@ class Raman(graph.Mixin):
     >>> print(calculation.raman)
     Raman activity at a laser energy of 0.00 eV
     -------------------------------------------
-    mode   omega (cm-1)   omega (meV)      activity   depolarization
-       1         106.74         13.23        0.3862           0.0139
-       2         120.08         14.89        0.0000              nan
+    mode  deg   omega (cm-1)   omega (meV)      activity   depolarization
+       1    1         106.74         13.23        0.3862           0.0139
+       2    1         120.08         14.89        0.0000              nan
        3...
     """
 

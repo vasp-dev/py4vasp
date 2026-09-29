@@ -351,6 +351,45 @@ def _validated_weights(weights, positions):
         ) from error
 
 
+# Two levels closer than this count as one. py4vasp measures every frequency as an
+# energy in eV, and 0.1 meV is about 0.8 cm^-1: below what a vibrational experiment
+# resolves and above the noise a diagonalization leaves behind.
+DEFAULT_DEGENERACY_TOLERANCE = 1e-4
+
+
+def degenerate_groups(values, tolerance=DEFAULT_DEGENERACY_TOLERANCE):
+    """Group the values that lie within *tolerance* of one another.
+
+    Symmetry forces some eigenvalues of a physical problem to coincide exactly, so a
+    calculation reports them as a handful of values repeated rather than as distinct
+    ones. Recovering which ones belong together is what this does.
+
+    Parameters
+    ----------
+    values : ArrayLike
+        The values to group. Complex values are sorted by their real part first, so
+        that a purely imaginary one does not join a real one of the same magnitude.
+    tolerance : float
+        Values closer than this form one group. Members are chained, so a group may
+        end up wider than the tolerance if its members overlap in sequence.
+
+    Returns
+    -------
+    list
+        One list of indices per group, the groups ordered by value and the indices
+        within a group ascending, so that each one indexes *values* directly.
+    """
+    values = np.asarray(values)
+    order = np.lexsort((values.imag, values.real))
+    groups = []
+    for index in order:
+        if groups and abs(values[index] - values[groups[-1][-1]]) <= tolerance:
+            groups[-1].append(int(index))
+        else:
+            groups.append([int(index)])
+    return [sorted(group) for group in groups]
+
+
 def _warn_if_the_mesh_does_not_resolve(mesh, shape):
     if len(mesh) < 2:
         return

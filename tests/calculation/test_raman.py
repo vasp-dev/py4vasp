@@ -74,14 +74,16 @@ def test_factory_methods(raw_data, check_factory_methods):
     check_factory_methods(Raman, data, skip_methods=["selections"])
 
 
-def make_raman(tensors, energies=(0.0, 1.0, 2.0)):
+def make_raman(tensors, energies=(0.0, 1.0, 2.0), frequencies=None):
     """Build a Raman quantity whose tensor is the given one at every photon energy."""
     tensors = np.asarray(tensors, dtype=np.complex128)
     shape = tensors.shape + (len(energies),)
     resolved = np.broadcast_to(tensors[..., np.newaxis], shape)
+    if frequencies is None:
+        frequencies = np.linspace(100, 500, len(tensors))
     return Raman.from_data(
         raw.Raman(
-            frequencies=raw.VaspData(np.linspace(100, 500, len(tensors))),
+            frequencies=raw.VaspData(np.array(frequencies, dtype=np.float64)),
             energies=raw.VaspData(np.array(energies, dtype=np.float64)),
             raman_tensor=raw.VaspData(
                 np.stack((resolved.real, resolved.imag), axis=-1)
@@ -204,22 +206,11 @@ def two_modes():
     return make_raman([np.eye(3), np.diag((1.0, -1.0, 0.0))])
 
 
-def test_print(two_modes, format_):
-    actual, _ = format_(two_modes)
-    expected_text = """\
-Raman activity at a laser energy of 0.00 eV
--------------------------------------------
-mode   omega (cm-1)   omega (meV)      activity   depolarization
-   1         100.00         12.40       45.0000           0.0000
-   2         500.00         61.99       21.0000           0.7500"""
-    assert actual == {"text/plain": expected_text}
-
-
 def test_print_reports_the_modes_in_the_order_vasp_wrote_them(raman, Assert):
     # VASP writes the frequencies in descending order and the table follows it, so a
     # row can be compared against the OUTCAR line by line
     rows = str(raman).splitlines()[3:]
-    printed = [float(row.split()[1]) for row in rows]
+    printed = [float(row.split()[2]) for row in rows]
     Assert.allclose(np.array(printed), raman.read()["frequencies"] * convert.EV_TO_CM1)
 
 
@@ -307,3 +298,26 @@ def test_selections(raman):
     assert "powder" in selections["observables"]
     assert "depolarization" in selections["observables"]
     assert selections["directions"][0] == "xx"
+
+
+def test_print_reports_the_degeneracy_of_every_level():
+    # two modes at the same frequency form one doubly degenerate level, which is how a
+    # spectrum of a symmetric crystal shows a single line where there are two modes
+    raman = make_raman(
+        [np.eye(3), np.diag((1.0, -1.0, 0.0)), np.diag((0.0, 1.0, -1.0))],
+        frequencies=(100.0, 300.0, 300.0),
+    )
+    rows = str(raman).splitlines()[3:]
+    degeneracies = [int(row.split()[1]) for row in rows]
+    assert degeneracies == [1, 2, 2]
+
+
+def test_print(two_modes, format_):
+    actual, _ = format_(two_modes)
+    expected_text = """\
+Raman activity at a laser energy of 0.00 eV
+-------------------------------------------
+mode  deg   omega (cm-1)   omega (meV)      activity   depolarization
+   1    1         100.00         12.40       45.0000           0.0000
+   2    1         500.00         61.99       21.0000           0.7500"""
+    assert actual == {"text/plain": expected_text}

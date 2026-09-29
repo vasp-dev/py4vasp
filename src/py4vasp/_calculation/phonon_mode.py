@@ -18,7 +18,7 @@ from py4vasp._calculation.structure import (
     raw_structure_from_parts,
 )
 from py4vasp._raw.models import PhononModeModel
-from py4vasp._third_party import view
+from py4vasp._third_party import numeric, view
 from py4vasp._util import check, convert
 from py4vasp._util import masses as mass_table
 from py4vasp._util import select
@@ -34,10 +34,8 @@ _HBAR_SQUARED = 0.004180159279779  # eV amu Å²
 # 8 cm⁻¹, where the soft mode of that same BaTiO3 is 200 cm⁻¹. A calculation with a
 # genuinely softer mode lowers it, which is why displace takes it as a parameter.
 _MINIMUM_FREQUENCY = 1e-3  # eV
-# Two modes closer than this are treated as one degenerate level. 0.1 meV is about
-# 0.8 cm^-1, which is below the resolution of a Raman or infrared experiment and above
-# the noise a diagonalization of the dynamical matrix leaves behind.
-_DEGENERACY_TOLERANCE = 1e-4  # eV
+# Two modes closer than this are treated as one degenerate level.
+_DEGENERACY_TOLERANCE = numeric.DEFAULT_DEGENERACY_TOLERANCE  # eV
 
 
 class PhononModeHandler:
@@ -113,22 +111,7 @@ class PhononModeHandler:
         """Group the modes that share a frequency."""
         self._raise_error_if_tolerance_is_negative(tolerance)
         self._raise_error_if_modes_are_a_dispersion()
-        frequencies = self.frequencies()
-        # sorting by the real part first keeps an unstable mode, which is purely
-        # imaginary, away from a stable one of the same magnitude
-        order = np.lexsort((frequencies.imag, frequencies.real))
-        groups = []
-        for index in order:
-            if groups and self._is_degenerate(
-                frequencies, groups[-1][-1], index, tolerance
-            ):
-                groups[-1].append(int(index))
-            else:
-                groups.append([int(index)])
-        return [sorted(group) for group in groups]
-
-    def _is_degenerate(self, frequencies, previous, current, tolerance):
-        return abs(frequencies[current] - frequencies[previous]) <= tolerance
+        return numeric.degenerate_groups(self.frequencies(), tolerance)
 
     def _raise_error_if_tolerance_is_negative(self, tolerance):
         if tolerance >= 0:
