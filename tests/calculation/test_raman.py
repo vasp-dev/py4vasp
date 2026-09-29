@@ -5,7 +5,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import exception, raw
+from py4vasp import broadening, exception, raw
 from py4vasp._calculation.raman import Raman
 from py4vasp._util import convert
 
@@ -226,3 +226,84 @@ def test_print_reports_the_modes_in_the_order_vasp_wrote_them(raman, Assert):
 def test_print_writes_to_stdout(raman, capsys):
     assert raman.print() is None
     assert capsys.readouterr().out == str(raman) + "\n"
+
+
+def test_to_graph_default(raman):
+    graph = raman.to_graph()
+    assert len(graph.series) == 1
+    assert graph.series[0].label == "powder"
+    assert graph.xlabel == "ω (meV)"
+    assert "activity" in graph.ylabel
+
+
+def test_to_graph_puts_the_modes_on_the_axis(raman, Assert):
+    graph = raman.to_graph()
+    frequencies = raman.read()["frequencies"] * convert.EV_TO_MEV
+    mesh = graph.series[0].x
+    # every line has to be on the axis, with room for its flanks on both sides
+    assert mesh[0] < np.min(frequencies) and mesh[-1] > np.max(frequencies)
+    assert np.all(np.diff(mesh) > 0)
+
+
+def test_to_graph_conserves_the_total_activity(raman, Assert):
+    # the line shapes of py4vasp.broadening carry unit area, so broadening moves the
+    # activity around the axis without creating or destroying any of it. A Gaussian
+    # falls off fast enough that the axis holds all of it.
+    graph = raman.to_graph(shape=broadening.Gaussian(fwhm=1e-3))
+    series = graph.series[0]
+    total = np.sum(raman.activity()["powder"])
+    Assert.allclose(np.trapezoid(series.y, series.x), total)
+
+
+def test_to_graph_with_a_lorentzian_keeps_most_of_the_activity(raman):
+    # a Lorentzian has tails that reach beyond any window, so no finite axis can hold
+    # all of its area. It must hold nearly all of it and never more.
+    graph = raman.to_graph()
+    series = graph.series[0]
+    total = np.sum(raman.activity()["powder"])
+    integral = np.trapezoid(series.y, series.x)
+    assert 0.85 * total < integral < total
+
+
+def test_to_graph_with_several_selections(raman):
+    graph = raman.to_graph("parallel, perpendicular")
+    assert [series.label for series in graph.series] == ["parallel", "perpendicular"]
+
+
+def test_to_graph_accepts_a_line_shape(raman, Assert):
+    narrow = raman.to_graph(shape=broadening.Gaussian(fwhm=5e-4))
+    wide = raman.to_graph(shape=broadening.Gaussian(fwhm=2e-3))
+    # a wider line is a lower one, because both carry the same area
+    assert np.max(narrow.series[0].y) > np.max(wide.series[0].y)
+    # the two spectra live on meshes of different spacing, so the trapezoidal rule
+    # gives their common area to its own accuracy rather than to machine precision
+    Assert.allclose(
+        np.trapezoid(narrow.series[0].y, narrow.series[0].x),
+        np.trapezoid(wide.series[0].y, wide.series[0].x),
+        tolerance=1e6,
+    )
+
+
+def test_to_graph_with_a_gaussian(raman):
+    graph = raman.to_graph(shape=broadening.Gaussian(fwhm=1e-3))
+    assert np.all(graph.series[0].y >= 0)
+
+
+def test_to_graph_at_a_laser_energy(raman, Assert):
+    laser = raman.read()["energies"][3]
+    graph = raman.to_graph(laser=laser, shape=broadening.Gaussian(fwhm=1e-3))
+    total = np.sum(raman.activity(laser=laser)["powder"])
+    Assert.allclose(np.trapezoid(graph.series[0].y, graph.series[0].x), total)
+
+
+def test_to_graph_rejects_something_that_is_not_a_line_shape(raman):
+    with pytest.raises(exception.IncorrectUsage):
+        raman.to_graph(shape=1e-3)
+
+
+def test_selections(raman):
+    selections = raman.selections()
+    assert selections["raman"] == ["default"]
+    assert "powder" in selections["observables"]
+    assert "depolarization" in selections["observables"]
+    assert selections["directions"][0] == "xx"

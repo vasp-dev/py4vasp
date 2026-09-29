@@ -2,13 +2,15 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import numpy as np
 
-from py4vasp import exception, raw
+from py4vasp import broadening, exception, raw
 from py4vasp._calculation.dispatch import (
     DataSource,
     merge_default,
+    merge_graphs,
     merge_strings,
     quantity,
 )
+from py4vasp._third_party import graph
 from py4vasp._util import convert, select
 
 # Modes below this energy translate or rotate the system instead of vibrating it. The
@@ -16,6 +18,12 @@ from py4vasp._util import convert, select
 # vibrational quantities drop the same modes.
 _MINIMUM_FREQUENCY = 1e-3  # eV
 _DEFAULT_OBSERVABLE = "powder"
+# Width of a Raman line in eV. Vibrational spectroscopy quotes linewidths in cm^-1 and
+# a few wavenumbers is the usual choice; 1 meV is 8.07 cm^-1.
+_DEFAULT_FWHM = 1e-3  # eV
+_MESH_MARGIN = 5  # line widths of empty axis on either side of the outermost line
+_MESH_POINTS_PER_WIDTH = 8  # enough that the narrowest line is drawn as a curve
+_MAXIMUM_MESH_POINTS = 20000
 _DIRECTIONS = {"x": 0, "y": 1, "z": 2}
 # The observables are nonlinear functions of the Raman tensor -- a squared modulus, or a
 # ratio of two of them -- so they cannot be expressed as the weighted sums over an axis
@@ -45,6 +53,32 @@ def _ratio(numerator, denominator):
         out=np.full_like(numerator, np.nan),
         where=denominator > 0,
     )
+
+
+def _mesh(frequencies, shape):
+    """Energy axis wide enough for every line and fine enough to resolve the narrowest.
+
+    Note that a Lorentzian has tails that reach beyond any window, so the area under
+    the spectrum is slightly smaller than the total activity however wide the axis is.
+    """
+    width = np.min(shape.fwhm)
+    margin = _MESH_MARGIN * width
+    first = max(np.min(frequencies) - margin, 0.0)
+    last = np.max(frequencies) + margin
+    points = int(np.ceil((last - first) / width * _MESH_POINTS_PER_WIDTH)) + 1
+    return np.linspace(first, last, min(points, _MAXIMUM_MESH_POINTS))
+
+
+def _raise_error_if_not_a_line_shape(shape):
+    if isinstance(shape, (broadening.Gaussian, broadening.Lorentzian)):
+        return
+    message = (
+        f"The shape {shape} is not a line shape. Pass one of the line shapes of "
+        "py4vasp.broadening, e.g. shape=Lorentzian(fwhm=0.001) for a width of 1 meV. "
+        "The width is an energy in eV like every other one in py4vasp, so a width you "
+        "know in cm^-1 has to be divided by 8065.61."
+    )
+    raise exception.IncorrectUsage(message)
 
 
 def _mode_to_string(index, frequency, activity, depolarization):
@@ -174,6 +208,38 @@ class RamanHandler:
         )
         raise exception.IncorrectUsage(message)
 
+    def to_graph(
+        self,
+        selection: str | None = None,
+        *,
+        laser: float = 0.0,
+        shape=None,
+        minimum_frequency: float = _MINIMUM_FREQUENCY,
+    ) -> graph.Graph:
+        """Broaden the lines of the selected observable into a spectrum."""
+        shape = broadening.Lorentzian(fwhm=_DEFAULT_FWHM) if shape is None else shape
+        _raise_error_if_not_a_line_shape(shape)
+        data = self.activity(
+            selection, laser=laser, minimum_frequency=minimum_frequency
+        )
+        frequencies = data["frequencies"]
+        mesh = _mesh(frequencies, shape)
+        # the axis is drawn in meV, so the spectrum is divided by the same factor to
+        # keep the area under a line equal to the activity of that line
+        series = [
+            graph.Series(
+                mesh * convert.EV_TO_MEV,
+                broadening.broaden(mesh, frequencies, data[label], shape=shape)
+                / convert.EV_TO_MEV,
+                label,
+            )
+            for label in data
+            if label not in ("frequencies", "laser")
+        ]
+        return graph.Graph(
+            series=series, xlabel="ω (meV)", ylabel="Raman activity (1/meV)"
+        )
+
     def __str__(self) -> str:
         data = self.activity("powder, depolarization")
         header = f"Raman activity at a laser energy of {data['laser']:.2f} eV"
@@ -196,7 +262,7 @@ class RamanHandler:
 
 
 @quantity("raman")
-class Raman:
+class Raman(graph.Mixin):
     """The Raman tensor describes how a vibration changes the susceptibility.
 
     Light scattering off a crystal exchanges energy with its vibrations, so the
@@ -424,6 +490,91 @@ class Raman:
             minimum_frequency=minimum_frequency,
         )
 
+    def to_graph(
+        self,
+        selection: str | None = None,
+        *,
+        laser: float = 0.0,
+        shape=None,
+        minimum_frequency: float = _MINIMUM_FREQUENCY,
+    ) -> graph.Graph:
+        """Broaden the lines of the selected observable into a spectrum.
+
+        A calculation reports a Raman spectrum as a list of lines, but a measurement
+        shows peaks of finite width. Giving every line a shape and adding them up is
+        what makes the two comparable.
+
+        Parameters
+        ----------
+        selection : str | None
+            Which observable to plot, ``"powder"`` by default. See
+            :py:meth:`activity` for the alternatives; selecting several draws one
+            spectrum each.
+        laser : float
+            Photon energy of the laser in eV, 0 by default, which is the ordinary
+            non-resonant experiment.
+        shape : Gaussian | Lorentzian
+            The line shape every mode is broadened with, by default a Lorentzian of
+            1 meV. Use :class:`py4vasp.broadening.Gaussian` or
+            :class:`py4vasp.broadening.Lorentzian` and note that the width is an
+            energy in eV, so a width known in cm^-1 has to be divided by 8065.61.
+        minimum_frequency : float
+            Modes with a frequency below this energy in eV are omitted.
+
+        Returns
+        -------
+        Graph
+            The spectrum drawn against the energy of the vibration in meV. The line
+            shapes carry unit area, so the area under a peak is the activity of the
+            mode that produced it.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Plotting the quantity broadens every line into a peak
+
+        >>> graph = calculation.raman.plot()
+        >>> graph.xlabel, graph.ylabel
+        ('ω (meV)', 'Raman activity (1/meV)')
+
+        Choose a wider line shape when you want to compare with an experiment that does
+        not resolve neighboring modes
+
+        >>> from py4vasp.broadening import Gaussian
+        >>> graph = calculation.raman.to_graph(shape=Gaussian(fwhm=0.004))
+
+        The area under the spectrum is the total activity, because every line shape
+        carries unit area
+
+        >>> import numpy as np
+        >>> series = graph.series[0]
+        >>> total = calculation.raman.activity()["powder"].sum()
+        >>> bool(np.isclose(np.trapezoid(series.y, series.x), total))
+        True
+
+        Ask for the two polarizations to see which modes are totally symmetric
+
+        >>> graph = calculation.raman.to_graph("parallel, perpendicular")
+        >>> [series.label for series in graph.series]
+        ['parallel', 'perpendicular']
+        """
+        return merge_graphs(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            RamanHandler.to_graph,
+            laser=laser,
+            shape=shape,
+            minimum_frequency=minimum_frequency,
+        )
+
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
 
@@ -446,7 +597,12 @@ class Raman:
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        directions = [f"{row}{column}" for row in _DIRECTIONS for column in _DIRECTIONS]
+        return {
+            self._quantity_name: list(raw_module.selections(self._quantity_name)),
+            "observables": list(_OBSERVABLES),
+            "directions": directions,
+        }
 
     def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
