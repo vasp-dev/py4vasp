@@ -484,3 +484,30 @@ def test_to_database(raman):
 
 def test_to_database_dispatch(raman):
     assert set(raman._to_database()) == {"raman"}
+
+
+def test_intensity_does_not_scale_the_depolarization_ratio(raman, Assert):
+    # the ratio is dimensionless and bounded by 3/4. The prefactor is common to the
+    # two polarizations, so it cancels out of their ratio and must not be applied again
+    laser = raman.read()["energies"][-1]
+    activity = raman.activity("depolarization", laser=laser)["depolarization"]
+    intensity = raman.intensity("depolarization", laser=laser, temperature=300.0)
+    Assert.allclose(intensity["depolarization"], activity)
+    assert np.all(intensity["depolarization"] <= 0.75)
+
+
+def test_excitation_profile_does_not_scale_the_depolarization_ratio(raman, Assert):
+    energies = raman.read()["energies"]
+    graph = raman.excitation_profile("depolarization", modes=[1], temperature=300.0)
+    expected = raman.activity("depolarization", laser=energies[-1])["depolarization"][0]
+    Assert.allclose(graph.series[0].y[-1], expected)
+    assert np.all(graph.series[0].y <= 0.75)
+
+
+def test_to_graph_refuses_to_broaden_a_ratio(raman):
+    # a ratio has no area to spread over an axis, and a mode that does not scatter has
+    # no ratio at all, which would poison the whole curve with not-a-number
+    with pytest.raises(exception.IncorrectUsage):
+        raman.to_graph("depolarization")
+    with pytest.raises(exception.IncorrectUsage):
+        raman.to_graph("powder, depolarization")

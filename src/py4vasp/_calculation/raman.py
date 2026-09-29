@@ -50,6 +50,12 @@ _OBSERVABLES = {
 }
 
 
+# Observables that are a ratio of two activities rather than an activity. The factors
+# that turn an activity into an intensity are common to numerator and denominator, so
+# they cancel; applying them would report a ratio far outside the range it can take.
+_RATIO_OBSERVABLES = frozenset({"depolarization"})
+
+
 def _ratio(numerator, denominator):
     # a mode that does not scatter at all has no depolarization ratio, so reporting a
     # number for it would claim knowledge the data does not contain
@@ -59,6 +65,13 @@ def _ratio(numerator, denominator):
         out=np.full_like(numerator, np.nan),
         where=denominator > 0,
     )
+
+
+def _scaled(label, value, scale):
+    """Apply the intensity factors, unless the observable is a ratio they cancel from."""
+    if label in ("frequencies", "laser") or label in _RATIO_OBSERVABLES:
+        return value
+    return value * scale
 
 
 def _intensity_scale(frequencies, laser, temperature):
@@ -267,10 +280,7 @@ class RamanHandler:
         )
         frequencies = data["frequencies"]
         scale = _intensity_scale(frequencies, data["laser"], temperature)
-        return {
-            label: value if label in ("frequencies", "laser") else value * scale
-            for label, value in data.items()
-        }
+        return {label: _scaled(label, value, scale) for label, value in data.items()}
 
     def excitation_profile(
         self,
@@ -300,7 +310,7 @@ class RamanHandler:
         tree = select.Tree.from_selection(selection or _DEFAULT_OBSERVABLE)
         for choice in tree.selections():
             label = "_".join(choice)
-            values = self._observable(label, tensors, invariants) * scale
+            values = _scaled(label, self._observable(label, tensors, invariants), scale)
             series += [
                 graph.Series(
                     energies,
@@ -368,6 +378,7 @@ class RamanHandler:
             )
             quantity = "intensity"
         frequencies = data["frequencies"]
+        self._raise_error_if_a_ratio_is_broadened(data)
         mesh = _mesh(frequencies, shape)
         # the axis is drawn in meV, so the spectrum is divided by the same factor to
         # keep the area under a line equal to the activity of that line
@@ -384,6 +395,19 @@ class RamanHandler:
         return graph.Graph(
             series=series, xlabel="ω (meV)", ylabel=f"Raman {quantity} (1/meV)"
         )
+
+    def _raise_error_if_a_ratio_is_broadened(self, data):
+        ratios = sorted(set(data) & _RATIO_OBSERVABLES)
+        if not ratios:
+            return
+        message = (
+            f"{', '.join(ratios)} cannot be broadened into a spectrum. It is a ratio "
+            "of two activities, so it has no area to spread over the axis, and a mode "
+            "that does not scatter has no ratio at all. Read it per mode with "
+            "activity() instead, or plot 'parallel, perpendicular' to see the two "
+            "polarizations that the ratio is built from."
+        )
+        raise exception.IncorrectUsage(message)
 
     def _raise_error_if_the_laser_cannot_excite_anything(self, laser):
         if laser > 0:
