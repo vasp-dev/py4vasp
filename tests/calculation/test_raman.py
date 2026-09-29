@@ -376,3 +376,34 @@ def test_intensity_accepts_the_same_observables(raman):
 def test_negative_temperature_raises_error(raman):
     with pytest.raises(exception.IncorrectUsage):
         raman.intensity(laser=raman.read()["energies"][-1], temperature=-1.0)
+
+
+def test_to_graph_default_is_the_activity(raman):
+    # plotting a thermally weighted spectrum by accident is the failure this prevents
+    assert raman.to_graph().ylabel == "Raman activity (1/meV)"
+
+
+def test_to_graph_with_temperature_plots_the_intensity(raman, Assert):
+    laser = raman.read()["energies"][-1]
+    shape = broadening.Gaussian(fwhm=1e-3)
+    graph = raman.to_graph(laser=laser, temperature=300.0, shape=shape)
+    assert graph.ylabel == "Raman intensity (1/meV)"
+    total = np.sum(raman.intensity(laser=laser, temperature=300.0)["powder"])
+    series = graph.series[0]
+    Assert.allclose(np.trapezoid(series.y, series.x), total)
+
+
+def test_to_graph_at_zero_temperature_still_plots_the_intensity(raman):
+    # temperature=0 asks for the intensity without the thermal factor, which is not
+    # the same curve as the bare activity
+    laser = raman.read()["energies"][-1]
+    shape = broadening.Gaussian(fwhm=1e-3)
+    cold = raman.to_graph(laser=laser, temperature=0.0, shape=shape)
+    activity = raman.to_graph(laser=laser, shape=shape)
+    assert cold.ylabel != activity.ylabel
+    assert np.max(cold.series[0].y) != np.max(activity.series[0].y)
+
+
+def test_to_graph_with_temperature_needs_a_laser(raman):
+    with pytest.raises(exception.IncorrectUsage):
+        raman.to_graph(temperature=300.0)

@@ -275,15 +275,27 @@ class RamanHandler:
         selection: str | None = None,
         *,
         laser: float = 0.0,
+        temperature: float | None = None,
         shape=None,
         minimum_frequency: float = _MINIMUM_FREQUENCY,
     ) -> graph.Graph:
         """Broaden the lines of the selected observable into a spectrum."""
         shape = broadening.Lorentzian(fwhm=_DEFAULT_FWHM) if shape is None else shape
         _raise_error_if_not_a_line_shape(shape)
-        data = self.activity(
-            selection, laser=laser, minimum_frequency=minimum_frequency
-        )
+        if temperature is None:
+            data = self.activity(
+                selection, laser=laser, minimum_frequency=minimum_frequency
+            )
+            quantity = "activity"
+        else:
+            self._raise_error_if_the_laser_cannot_excite_anything(laser)
+            data = self.intensity(
+                selection,
+                laser=laser,
+                temperature=temperature,
+                minimum_frequency=minimum_frequency,
+            )
+            quantity = "intensity"
         frequencies = data["frequencies"]
         mesh = _mesh(frequencies, shape)
         # the axis is drawn in meV, so the spectrum is divided by the same factor to
@@ -299,8 +311,19 @@ class RamanHandler:
             if label not in ("frequencies", "laser")
         ]
         return graph.Graph(
-            series=series, xlabel="ω (meV)", ylabel="Raman activity (1/meV)"
+            series=series, xlabel="ω (meV)", ylabel=f"Raman {quantity} (1/meV)"
         )
+
+    def _raise_error_if_the_laser_cannot_excite_anything(self, laser):
+        if laser > 0:
+            return
+        message = (
+            "Plotting an intensity needs the energy of the laser, because the "
+            "scattered photon has an energy only once you say what went in. Pass "
+            "laser= in eV, for example laser=2.33 for the 532 nm line. Leave the "
+            "temperature out to plot the activity, which needs no laser."
+        )
+        raise exception.IncorrectUsage(message)
 
     def __str__(self) -> str:
         data = self.activity("powder, depolarization")
@@ -647,6 +670,7 @@ class Raman(graph.Mixin):
         selection: str | None = None,
         *,
         laser: float = 0.0,
+        temperature: float | None = None,
         shape=None,
         minimum_frequency: float = _MINIMUM_FREQUENCY,
     ) -> graph.Graph:
@@ -665,6 +689,11 @@ class Raman(graph.Mixin):
         laser : float
             Photon energy of the laser in eV, 0 by default, which is the ordinary
             non-resonant experiment.
+        temperature : float | None
+            Leave this out to plot the bare activity. Give a temperature in Kelvin to
+            plot the intensity a spectrometer measures instead, which also needs a
+            laser energy; pass 0 for that intensity without the thermal enhancement.
+            The axis label says which of the two is drawn.
         shape : Gaussian | Lorentzian
             The line shape every mode is broadened with, by default a Lorentzian of
             1 meV. Use :class:`py4vasp.broadening.Gaussian` or
@@ -715,6 +744,13 @@ class Raman(graph.Mixin):
         >>> graph = calculation.raman.to_graph("parallel, perpendicular")
         >>> [series.label for series in graph.series]
         ['parallel', 'perpendicular']
+
+        Give a temperature to draw what a spectrometer measures instead of the bare
+        activity. The axis label says which of the two you are looking at
+
+        >>> graph = calculation.raman.to_graph(laser=2.33, temperature=300)
+        >>> graph.ylabel
+        'Raman intensity (1/meV)'
         """
         return merge_graphs(
             self._source,
@@ -723,6 +759,7 @@ class Raman(graph.Mixin):
             self._handler_factory,
             RamanHandler.to_graph,
             laser=laser,
+            temperature=temperature,
             shape=shape,
             minimum_frequency=minimum_frequency,
         )
