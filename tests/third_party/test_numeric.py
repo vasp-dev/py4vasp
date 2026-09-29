@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+import warnings
 from unittest.mock import patch
 
 import numpy as np
@@ -418,3 +419,28 @@ def test_broaden_accepts_a_mesh_of_a_single_point(Assert):
         numeric.broaden([0.0], [0.0], shape=numeric.Gaussian(fwhm=1.0)),
         numeric.Gaussian(fwhm=1.0).profile(0.0),
     )
+
+
+def test_degenerate_groups_of_a_single_value():
+    assert numeric.degenerate_groups([1.0]) == [[0]]
+    assert numeric.degenerate_groups([]) == []
+
+
+def test_degenerate_groups_does_not_warn_on_a_broken_calculation():
+    # a NaN frequency means something upstream went wrong; py4vasp should not add a
+    # numpy internals warning to whatever the user is already debugging
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        groups = numeric.degenerate_groups([1.0, np.nan, 1.0])
+    assert groups == [[0, 2], [1]]
+
+
+def test_degenerate_groups_keeps_identical_values_together():
+    # abs(inf - inf) is NaN, which used to put two identical infinities in different
+    # groups even though nothing separates them
+    assert numeric.degenerate_groups([np.inf, np.inf, 1.0]) == [[2], [0, 1]]
+
+
+def test_degenerate_groups_rejects_more_than_one_dimension():
+    with pytest.raises(exception.IncorrectUsage):
+        numeric.degenerate_groups([[1.0, 2.0], [3.0, 4.0]])

@@ -379,15 +379,39 @@ def degenerate_groups(values, tolerance=DEFAULT_DEGENERACY_TOLERANCE):
         One list of indices per group, the groups ordered by value and the indices
         within a group ascending, so that each one indexes *values* directly.
     """
-    values = np.asarray(values)
+    values = _validated_values(values)
     order = np.lexsort((values.imag, values.real))
     groups = []
-    for index in order:
-        if groups and abs(values[index] - values[groups[-1][-1]]) <= tolerance:
-            groups[-1].append(int(index))
-        else:
-            groups.append([int(index)])
+    # a NaN value means the calculation that produced it is already broken, and an
+    # infinite one makes the difference NaN as well; suppress numpy's own warning so
+    # that py4vasp does not add noise to whatever the caller is debugging
+    with np.errstate(invalid="ignore"):
+        for index in order:
+            if groups and _is_degenerate(values, groups[-1][-1], index, tolerance):
+                groups[-1].append(int(index))
+            else:
+                groups.append([int(index)])
     return [sorted(group) for group in groups]
+
+
+def _is_degenerate(values, previous, current, tolerance):
+    # identical values are degenerate whatever their magnitude, which the difference
+    # cannot express for two infinities
+    if values[current] == values[previous]:
+        return True
+    return abs(values[current] - values[previous]) <= tolerance
+
+
+def _validated_values(values):
+    array = np.asarray(values)
+    if array.ndim <= 1:
+        return array.reshape(-1)
+    message = (
+        f"Grouping needs a single list of values, but the given one has "
+        f"{array.ndim} dimensions. Group each row separately if you want the levels "
+        "of several independent problems."
+    )
+    raise exception.IncorrectUsage(message)
 
 
 def _warn_if_the_mesh_does_not_resolve(mesh, shape):
