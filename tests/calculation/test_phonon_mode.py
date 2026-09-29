@@ -652,3 +652,54 @@ def test_factory_methods(raw_data, check_factory_methods):
     check_factory_methods(
         PhononMode, data, parameters=parameters, skip_methods=["selections"]
     )
+
+
+def make_modes(raw_data, frequencies):
+    """A phonon mode quantity with the given complex frequencies in eV."""
+    raw_mode = raw_data.phonon_mode("default")
+    complex_frequencies = np.array(frequencies, dtype=np.complex128)
+    pairs = complex_frequencies.view(np.float64).reshape(-1, 2)
+    return PhononMode.from_data(
+        dataclasses.replace(raw_mode, frequencies=raw.VaspData(pairs))
+    )
+
+
+def test_degenerate_groups(raw_data):
+    modes = make_modes(raw_data, [0.010, 0.020, 0.020, 0.020, 0.030])
+    assert modes.degenerate_groups() == [[0], [1, 2, 3], [4]]
+
+
+def test_degenerate_groups_are_ordered_by_frequency(raw_data):
+    modes = make_modes(raw_data, [0.030, 0.010, 0.030])
+    assert modes.degenerate_groups() == [[1], [0, 2]]
+
+
+def test_degenerate_groups_tolerance(raw_data):
+    # the two modes differ by 0.5 micro-eV, which the default tolerance treats as the
+    # numerical noise of a diagonalization rather than as two distinct vibrations
+    modes = make_modes(raw_data, [0.010, 0.0100005, 0.030])
+    assert modes.degenerate_groups() == [[0, 1], [2]]
+    assert modes.degenerate_groups(tolerance=1e-7) == [[0], [1], [2]]
+
+
+def test_degenerate_groups_of_distinct_modes(raw_data):
+    modes = make_modes(raw_data, [0.010, 0.020, 0.030])
+    assert modes.degenerate_groups() == [[0], [1], [2]]
+
+
+def test_degenerate_groups_separate_imaginary_from_real(raw_data):
+    # an unstable mode is not degenerate with a stable one of the same magnitude
+    modes = make_modes(raw_data, [0.02, 0.02j])
+    assert modes.degenerate_groups() == [[1], [0]]
+
+
+def test_degenerate_groups_negative_tolerance_raises_error(raw_data):
+    modes = make_modes(raw_data, [0.010, 0.020])
+    with pytest.raises(exception.IncorrectUsage):
+        modes.degenerate_groups(tolerance=-1e-3)
+
+
+def test_degenerate_groups_of_dispersion_raises_error(raw_data):
+    modes = PhononMode.from_data(raw_data.phonon_mode("dispersion"))
+    with pytest.raises(exception.NotImplemented):
+        modes.degenerate_groups()

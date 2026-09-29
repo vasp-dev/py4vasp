@@ -172,6 +172,13 @@ class RawDataFactory:
             raise exception.NotImplemented()
 
     @staticmethod
+    def raman(selection):
+        if selection == "Sr2TiO4":
+            return _demo.raman.Sr2TiO4()
+        else:
+            raise exception.NotImplemented()
+
+    @staticmethod
     def dielectric_function(selection):
         if selection == "electron":
             return _demo.dielectric_function.electron()

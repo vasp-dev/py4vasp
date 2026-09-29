@@ -30,7 +30,7 @@ VoigtMatrix = Tuple[Voigt, Voigt, Voigt, Voigt, Voigt, Voigt]
 # series, e.g. "0.11". Increment it whenever any model below changes between releases
 # (a test enforces this, see tests/raw/test_schema_version.py); the version then reads
 # "0.11+db.1", "0.11+db.2", ... Reset it back to 0 on every new py4vasp minor release.
-__DB_SCHEMA__ = 2
+__DB_SCHEMA__ = 3
 
 
 def schema_version() -> str:
@@ -861,6 +861,22 @@ class PhononModeModel(_DatabaseModel):
     """The maximum real energy across all phonon modes and q-points, in eV."""
     frequencies_imag_max: Optional[float] = None
     """The maximum imaginary energy across all phonon modes and q-points, in eV."""
+
+
+@dataclass
+class RamanModel(_DatabaseModel):
+    """Data class for storing Raman data in the database."""
+
+    number_modes: Optional[int] = None
+    """The number of modes that vibrate and therefore scatter light."""
+    frequency_max: Optional[float] = None
+    """The energy of the highest of those modes, in eV."""
+    photon_energy_max: Optional[float] = None
+    """The highest photon energy at which the Raman tensor was evaluated, in eV."""
+    strongest_frequency: Optional[float] = None
+    """The energy of the mode with the strongest line in the static limit, in eV."""
+    strongest_activity: Optional[float] = None
+    """The powder activity of that mode, on the scale VASP writes the tensor in."""
 
 
 @dataclass

@@ -689,6 +689,29 @@ class DefaultCalculationFactory:
     >>> view = calculation.phonon.mode.to_view()
     >>> view.phonon.frequencies.shape
     (1, 21)
+
+    *How do I turn a list of peaks into a spectrum?* Give every peak a width and add
+    them up with :py:mod:`py4vasp.broadening`, which is what every quantity that plots
+    a spectrum uses
+
+    >>> import numpy as np
+    >>> from py4vasp.broadening import broaden, Lorentzian
+    >>> mesh = np.linspace(0, 10, 200)
+    >>> spectrum = broaden(mesh, [3.0, 7.0], [1.0, 2.0], shape=Lorentzian(fwhm=0.5))
+    >>> spectrum.shape
+    (200,)
+
+    *How strongly does each vibration scatter light?* Read the Raman tensor, which
+    :py:class:`~py4vasp._calculation.raman.Raman` averages over the orientations of a
+    crystallite for you rather than leaving you to write the invariants out
+
+    >>> activity = calculation.raman.activity()
+    >>> sorted(activity)
+    ['frequencies', 'laser', 'powder']
+
+    Pass a laser energy in eV to see how the lines change as it approaches an
+    electronic transition, and a temperature to get the intensity a spectrometer
+    measures rather than the bare activity.
     """
 
     def __getattr__(self, attr):

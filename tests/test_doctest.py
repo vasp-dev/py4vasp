@@ -27,6 +27,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     phonon_dos,
     phonon_mode,
     projector,
+    raman,
     stress,
     structure,
     symmetry,
@@ -93,6 +94,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.phonon_dos)
         + find_examples(_calculation.phonon_mode)
         + find_examples(_calculation.projector)
+        + find_examples(_calculation.raman)
         + find_examples(_calculation.stress)
         + find_examples(_calculation.structure)
         + find_examples(_calculation.symmetry)

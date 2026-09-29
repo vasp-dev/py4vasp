@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.11+db.2",
+  "schema_version": "0.11+db.3",
   "models": {
     "BandModel": [
       [
@@ -1077,6 +1077,28 @@
       [
         "orbital_types",
         "Optional[list[str]]"
+      ]
+    ],
+    "RamanModel": [
+      [
+        "frequency_max",
+        "Optional[float]"
+      ],
+      [
+        "number_modes",
+        "Optional[int]"
+      ],
+      [
+        "photon_energy_max",
+        "Optional[float]"
+      ],
+      [
+        "strongest_activity",
+        "Optional[float]"
+      ],
+      [
+        "strongest_frequency",
+        "Optional[float]"
       ]
     ],
     "RunInfoModel": [
