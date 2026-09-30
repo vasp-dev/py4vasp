@@ -755,4 +755,8 @@ def _merge_fields(left_graph, right_graph):
 def _merge_field(left_graph, right_graph, field_name):
     left_field = getattr(left_graph, field_name)
     right_field = getattr(right_graph, field_name)
-    return merge.merge_field_or_raise(left_field, right_field, field_name, "graphs")
+    # two calculations of the same quantity agree to the last digits at best, so a
+    # field that holds numbers -- the axis ticks and ranges -- is compared numerically
+    return merge.merge_field_or_raise(
+        left_field, right_field, field_name, "graphs", equal=merge.values_close
+    )

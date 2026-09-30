@@ -1281,3 +1281,39 @@ def test_importing_plotly_sets_vasp_default_template(imports):
         [sys.executable, "-c", code], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_merging_xticks_ignores_rounding(parabola):
+    # two calculations of the same path put the ticks at the same place, but the
+    # last digits of the positions depend on the order the numbers were added up
+    ticks = {0.0: "Γ", 0.23558375495067466: "M", 0.643626783882669: "Γ"}
+    rounded = {0.0: "Γ", 0.23558375495068118: "M", 0.6436267838826868: "Γ"}
+    merged = Graph(parabola, xticks=ticks) + Graph(parabola, xticks=rounded)
+    assert merged.xticks == ticks
+
+
+def test_merging_xticks_of_different_paths_raises_error(parabola):
+    ticks = {0.0: "Γ", 0.25: "M", 0.75: "Γ"}
+    other = {0.0: "Γ", 0.3: "M", 0.75: "Γ"}
+    with pytest.raises(exception.IncorrectUsage):
+        Graph(parabola, xticks=ticks) + Graph(parabola, xticks=other)
+
+
+def test_merging_xticks_with_different_labels_raises_error(parabola):
+    ticks = {0.0: "Γ", 0.25: "M", 0.75: "Γ"}
+    other = {0.0: "Γ", 0.25: "K", 0.75: "Γ"}
+    with pytest.raises(exception.IncorrectUsage):
+        Graph(parabola, xticks=ticks) + Graph(parabola, xticks=other)
+
+
+def test_merging_xticks_of_different_length_raises_error(parabola):
+    ticks = {0.0: "Γ", 0.25: "M", 0.75: "Γ"}
+    other = {0.0: "Γ", 0.25: "M"}
+    with pytest.raises(exception.IncorrectUsage):
+        Graph(parabola, xticks=ticks) + Graph(parabola, xticks=other)
+
+
+def test_merging_numeric_range_ignores_rounding(parabola):
+    graph = Graph(parabola, xrange=(0.0, 1.0))
+    merged = graph + Graph(parabola, xrange=(0.0, 1.0000000000000002))
+    assert merged.xrange == (0.0, 1.0)
