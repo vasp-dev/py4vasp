@@ -1433,3 +1433,24 @@ def test_to_POSCAR_without_supercell_is_unchanged(Sr2TiO4):
 def test_to_POSCAR_not_a_supercell(Sr2TiO4, not_a_supercell):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.to_POSCAR(supercell=not_a_supercell, **Sr2TiO4.ion_type_arg)
+
+
+@pytest.fixture(params=[0, -1, (2, 0, 1), (2, -1, 1)])
+def empty_supercell(request):
+    return request.param
+
+
+def test_to_POSCAR_empty_supercell(Sr2TiO4, empty_supercell):
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.to_POSCAR(supercell=empty_supercell, **Sr2TiO4.ion_type_arg)
+
+
+def test_plot_empty_supercell(Sr2TiO4, empty_supercell):
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.plot(supercell=empty_supercell, **Sr2TiO4.ion_type_arg)
+
+
+def test_to_POSCAR_supercell_is_keyword_only(Sr2TiO4):
+    # the first positional argument is ion_types, so a number there is a mistake
+    with pytest.raises(TypeError):
+        Sr2TiO4.to_POSCAR(2)

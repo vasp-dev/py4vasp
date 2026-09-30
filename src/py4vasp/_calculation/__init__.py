@@ -668,6 +668,16 @@ class DefaultCalculationFactory:
     Each of these is a selection for ``read(selection, cutoff=...)``, which returns the
     distance, the distance vector and the periodic image of every pair within the cutoff.
 
+    *How do I build the supercell for a finite-difference phonon run?* Replicate the
+    cell while writing the structure file. You do not need a finished VASP run to start
+    from: :py:meth:`~py4vasp._calculation.structure.Structure.from_POSCAR` reads a
+    POSCAR you already have
+
+    >>> poscar = calculation.structure.to_POSCAR()
+    >>> structure = py4vasp.calculation.structure.from_POSCAR(poscar)
+    >>> structure.to_POSCAR(supercell=(2, 2, 1)).splitlines()[6]
+    '8 4 16'
+
     *How do I average a tensor over the directions?* Select the average instead of
     computing it, here for the dielectric function
 

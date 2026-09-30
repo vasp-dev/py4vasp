@@ -143,7 +143,7 @@ class StructureHandler:
         )
         return self._create_repr(format_)
 
-    def to_POSCAR(self, ion_types=None, supercell=None) -> str:
+    def to_POSCAR(self, ion_types=None, *, supercell=None) -> str:
         """Convert the structure(s) to a POSCAR format."""
         if not self._is_slice:
             return self._create_repr(ion_types=ion_types, supercell=supercell)
@@ -642,13 +642,19 @@ Atoms # atomic
             message = f"supercell='{supercell}' contains noninteger values."
             raise exception.IncorrectUsage(message)
         if np.isscalar(integer_supercell):
-            return np.full(3, integer_supercell)
-        if integer_supercell.shape == (3,):
-            return integer_supercell
-        message = (
-            f"supercell='{supercell}' is not a scalar or a three component vector."
-        )
-        raise exception.IncorrectUsage(message)
+            integer_supercell = np.full(3, integer_supercell)
+        elif integer_supercell.shape != (3,):
+            message = (
+                f"supercell='{supercell}' is not a scalar or a three component vector."
+            )
+            raise exception.IncorrectUsage(message)
+        if np.any(integer_supercell < 1):
+            message = (
+                f"supercell='{supercell}' must repeat the cell at least once along "
+                "every direction."
+            )
+            raise exception.IncorrectUsage(message)
+        return integer_supercell
 
     def _cell_and_transformation(self, standard_form):
         if standard_form:
@@ -691,7 +697,7 @@ Atoms # atomic
 
 
 def _replicate_positions(positions, factors):
-    """Repeat the atoms of the cell, keeping the atoms of one element together."""
+    """Repeat the atoms of the cell, keeping the atoms of one species block together."""
     images = np.array(list(itertools.product(*(range(factor) for factor in factors))))
     positions = np.array(positions)[:, np.newaxis, :] + images
     return (positions / factors).reshape(-1, 3)
@@ -1205,7 +1211,7 @@ class Structure(view.Mixin):
             ion_types,
         )
 
-    def to_POSCAR(self, ion_types=None, supercell=None):
+    def to_POSCAR(self, ion_types=None, *, supercell=None):
         """Convert the structure(s) to a POSCAR format.
 
         Use this method to generate a string in POSCAR format representing the
@@ -1218,11 +1224,12 @@ class Structure(view.Mixin):
         ion_types : Sequence
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
-        supercell : int or np.ndarray
+        supercell : int or array_like of 3 int
             If present the structure is replicated the specified number of times along
             each direction. Use this to set up a calculation that needs a larger cell
             than the one VASP ran, such as the finite differences from which the force
-            constants are obtained.
+            constants are obtained. Only supercells along the lattice vectors are
+            supported, so a general 3x3 supercell matrix is not accepted.
 
         Returns
         -------
@@ -1252,11 +1259,16 @@ class Structure(view.Mixin):
         Replicate the cell to obtain the POSCAR of a supercell. Pass a single number
         to scale all three directions or one number per direction
 
-        >>> supercell = calculation.structure.to_POSCAR(supercell=2)
-        >>> supercell.splitlines()[6]
+        >>> poscar = calculation.structure.to_POSCAR(supercell=2)
+        >>> poscar.splitlines()[6]
         '16 8 32'
         >>> calculation.structure.to_POSCAR(supercell=(2, 2, 1)).splitlines()[6]
         '8 4 16'
+
+        The result is a string, so write it where VASP expects the file
+
+        >>> from py4vasp import control
+        >>> _ = control.POSCAR.from_string(poscar, path=path)
 
         Notice that converting multiple steps to POSCAR format is not implemented.
         """
@@ -1267,7 +1279,9 @@ class Structure(view.Mixin):
             self._handler_factory,
             StructureHandler.to_POSCAR,
             ion_types,
-            supercell,
+            # keyword, because the handler takes the supercell keyword-only so that a
+            # number cannot land in ion_types by accident
+            supercell=supercell,
         )
 
     def to_lammps(self, standard_form=True):
