@@ -50,18 +50,14 @@ def values_close(left_value, right_value):
     numbers compare within a tolerance here while everything else still has to
     match exactly. The tolerance is far below any difference that carries meaning,
     so genuinely different data is still rejected.
+
+    Whatever :func:`values_equal` accepts is accepted here too; this only ever
+    widens the comparison, never narrows it.
     """
+    if values_equal(left_value, right_value):
+        return True
     if isinstance(left_value, dict) or isinstance(right_value, dict):
-        if not (isinstance(left_value, dict) and isinstance(right_value, dict)):
-            return False
-        if len(left_value) != len(right_value):
-            return False
-        return all(
-            values_close(left_key, right_key) and values_close(left_entry, right_entry)
-            for (left_key, left_entry), (right_key, right_entry) in zip(
-                left_value.items(), right_value.items()
-            )
-        )
+        return _mappings_close(left_value, right_value)
     sequence_type = (list, tuple)
     if isinstance(left_value, sequence_type) and isinstance(right_value, sequence_type):
         if len(left_value) != len(right_value):
@@ -70,38 +66,55 @@ def values_close(left_value, right_value):
             values_close(left_entry, right_entry)
             for left_entry, right_entry in zip(left_value, right_value)
         )
-    if _both_numeric(left_value, right_value):
+    if _is_numeric(left_value) and _is_numeric(right_value):
         return _numbers_close(left_value, right_value)
-    return values_equal(left_value, right_value)
+    return False
 
 
-def _both_numeric(left_value, right_value):
-    numeric = (int, float, np.number, np.ndarray)
-    if isinstance(left_value, bool) or isinstance(right_value, bool):
+def _mappings_close(left_value, right_value):
+    if not (isinstance(left_value, dict) and isinstance(right_value, dict)):
         return False
-    if not (isinstance(left_value, numeric) and isinstance(right_value, numeric)):
+    if len(left_value) != len(right_value):
         return False
-    return not any(
-        np.issubdtype(np.asarray(value).dtype, np.str_)
-        for value in (left_value, right_value)
+    # a dict is equal to another one whatever the order its keys were inserted in, so
+    # sort them before pairing rather than trusting the order they come out in
+    left_items = _sorted_items(left_value)
+    right_items = _sorted_items(right_value)
+    return all(
+        values_close(left_key, right_key) and values_close(left_entry, right_entry)
+        for (left_key, left_entry), (right_key, right_entry) in zip(
+            left_items, right_items
+        )
     )
+
+
+def _sorted_items(mapping):
+    try:
+        return sorted(mapping.items(), key=lambda item: item[0])
+    except TypeError:
+        return list(mapping.items())
+
+
+def _is_numeric(value):
+    """Check for a number or an array of numbers, excluding booleans."""
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, (int, float, complex)):
+        return True
+    # anything numpy cannot read as a number becomes an array of objects, whose dtype
+    # is not a number either, so this covers every other type without a special case
+    return np.issubdtype(np.asarray(value).dtype, np.number)
 
 
 def _numbers_close(left_value, right_value):
     left_array, right_array = np.asarray(left_value), np.asarray(right_value)
     if left_array.shape != right_array.shape:
         return False
-    try:
-        return bool(
-            np.allclose(
-                left_array,
-                right_array,
-                rtol=RELATIVE_TOLERANCE,
-                atol=ABSOLUTE_TOLERANCE,
-            )
+    return bool(
+        np.allclose(
+            left_array, right_array, rtol=RELATIVE_TOLERANCE, atol=ABSOLUTE_TOLERANCE
         )
-    except (TypeError, ValueError):
-        return False
+    )
 
 
 def merge_field_or_raise(
