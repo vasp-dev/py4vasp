@@ -1391,3 +1391,66 @@ def test_from_POSCAR_without_elements_offers_every_route():
 def test_from_POSCAR_with_elements_is_accepted(Assert):
     structure = Structure.from_POSCAR(_VASP4_POSCAR, elements=["Si"])
     assert structure.read()["elements"] == ["Si", "Si"]
+
+
+def sorted_positions(positions):
+    positions = np.mod(np.round(np.asarray(positions), 10), 1)
+    return positions[np.lexsort(positions.T)]
+
+
+def test_to_POSCAR_supercell(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
+    poscar = Sr2TiO4.to_POSCAR(supercell=2, **Sr2TiO4.ion_type_arg)
+    actual = Structure.from_POSCAR(poscar).read()
+    reference = Sr2TiO4.to_ase(supercell=2, **Sr2TiO4.ion_type_arg)
+    Assert.allclose(actual["lattice_vectors"], reference.cell.array)
+    assert actual["elements"] == list(reference.symbols)
+    Assert.allclose(
+        sorted_positions(actual["positions"]),
+        sorted_positions(reference.get_scaled_positions()),
+    )
+
+
+def test_to_POSCAR_supercell_along_each_direction(Sr2TiO4, Assert):
+    pytest.importorskip("ase")
+    scale = (3, 2, 1)
+    poscar = Sr2TiO4.to_POSCAR(supercell=scale, **Sr2TiO4.ion_type_arg)
+    actual = Structure.from_POSCAR(poscar).read()
+    reference = Sr2TiO4.to_ase(supercell=scale, **Sr2TiO4.ion_type_arg)
+    Assert.allclose(actual["lattice_vectors"], reference.cell.array)
+    assert actual["elements"] == list(reference.symbols)
+    Assert.allclose(
+        sorted_positions(actual["positions"]),
+        sorted_positions(reference.get_scaled_positions()),
+    )
+
+
+def test_to_POSCAR_without_supercell_is_unchanged(Sr2TiO4):
+    assert Sr2TiO4.to_POSCAR(supercell=None, **Sr2TiO4.ion_type_arg) == REF_POSCAR
+    assert Sr2TiO4.to_POSCAR(supercell=1, **Sr2TiO4.ion_type_arg) == REF_POSCAR
+
+
+def test_to_POSCAR_not_a_supercell(Sr2TiO4, not_a_supercell):
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.to_POSCAR(supercell=not_a_supercell, **Sr2TiO4.ion_type_arg)
+
+
+@pytest.fixture(params=[0, -1, (2, 0, 1), (2, -1, 1)])
+def empty_supercell(request):
+    return request.param
+
+
+def test_to_POSCAR_empty_supercell(Sr2TiO4, empty_supercell):
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.to_POSCAR(supercell=empty_supercell, **Sr2TiO4.ion_type_arg)
+
+
+def test_plot_empty_supercell(Sr2TiO4, empty_supercell):
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.plot(supercell=empty_supercell, **Sr2TiO4.ion_type_arg)
+
+
+def test_to_POSCAR_supercell_is_keyword_only(Sr2TiO4):
+    # the first positional argument is ion_types, so a number there is a mistake
+    with pytest.raises(TypeError):
+        Sr2TiO4.to_POSCAR(2)
