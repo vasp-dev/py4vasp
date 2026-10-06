@@ -2,12 +2,25 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
 
+import hypothesis
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
 from py4vasp import _demo, exception
 from py4vasp._util import check
+
+# Hypothesis measures how long the first example of a test takes, fails the test if that
+# exceeds the deadline, and calls it flaky when the rerun is fast. The examples in
+# tests/raw/test_data.py are not slow -- 1-4 ms each, up to 9 ms under coverage, against
+# a default deadline of 200 ms -- but on a shared CI runner scheduling jitter or a
+# garbage collection inside that one call is enough to cross it. That measures the
+# runner rather than the code, so switch the deadline off.
+#
+# Loading the profile here covers every test under tests/; packages/ has its own
+# conftests, so a @given test added there would get the default deadline back.
+hypothesis.settings.register_profile("py4vasp", deadline=None)
+hypothesis.settings.load_profile("py4vasp")
 
 
 def pytest_addoption(parser):
