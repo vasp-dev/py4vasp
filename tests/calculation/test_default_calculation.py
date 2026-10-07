@@ -125,7 +125,6 @@ def test_selections_with_only_available_true(tmp_path):
     absent_when_unavailable = {
         "born_effective_charge",
         "dielectric_tensor",
-        "elastic_modulus",
         "internal_strain",
         "piezoelectric_tensor",
         "polarization",
@@ -135,6 +134,8 @@ def test_selections_with_only_available_true(tmp_path):
         assert quantity in full
         assert "default" in full[quantity]
         assert full[quantity]
+    # the showcase writes the elastic modulus so that its documentation can run
+    assert available["elastic_modulus"] == ["default"]
 
 
 def test_selections_on_empty_path_returns_all(tmp_path):
