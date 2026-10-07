@@ -23,10 +23,6 @@ from py4vasp._util import check, convert
 from py4vasp._util import masses as mass_table
 from py4vasp._util import select
 
-# ħ² in the units the displacement is expressed in, from ħ = 6.582119569e-16 eV s,
-# 1 amu = 1.66053907e-27 kg and 1 Å = 1e-10 m. VASP reports the frequency of a mode as
-# the energy ħω, so ħ/ω = ħ²/(ħω) converts it to the square of a normal coordinate.
-_HBAR_SQUARED = 0.004180159279779  # eV amu Å²
 # Default below which a mode carries no meaningful scale. VASP does not report the
 # translations as exactly zero and how far above zero they come out depends on the
 # calculation — a BaTiO3 linear response run puts them at 1.3e-4 eV — so the default
@@ -256,7 +252,7 @@ class PhononModeHandler:
         # ½ω²Q² = ħω is solved by Q = sqrt(2ħ/ω); the sign of the frequency does not
         # enter the energy, so an unstable mode uses the magnitude of its imaginary one
         frequency = np.abs(self.frequencies()[index])
-        normal_coordinate = amplitude * np.sqrt(2 * _HBAR_SQUARED / frequency)
+        normal_coordinate = amplitude * np.sqrt(2 * convert.HBAR_SQUARED / frequency)
         pattern = self._undo_mass_weighting(self._eigenvectors()[index], masses)
         structure = self._structure()
         lattice_vectors = structure.lattice_vectors()
@@ -395,33 +391,8 @@ class PhononModeHandler:
         return eigenvectors.reshape(len(eigenvectors), number_atoms, 3)
 
     def _masses(self, masses) -> np.ndarray:
-        structure = self._structure()
-        if masses is None:
-            return mass_table.of(structure._stoichiometry().elements())
-        masses = np.atleast_1d(masses).ravel()
-        if not np.issubdtype(masses.dtype, np.number):
-            message = (
-                "The masses must be a sequence of numbers, one per atom, but you "
-                f"provided {type(masses.item(0)).__name__ if masses.size == 1 else 'a sequence'} "
-                "that py4vasp cannot read as numbers."
-            )
-            raise exception.IncorrectUsage(message)
-        number_atoms = structure.number_atoms()
-        if len(masses) != number_atoms:
-            message = (
-                f"You provided {len(masses)} masses but the structure contains "
-                f"{number_atoms} atoms. Please pass one mass per atom in the order in "
-                "which the structure lists them."
-            )
-            raise exception.IncorrectUsage(message)
-        if not np.all(masses > 0):
-            message = (
-                "All masses must be positive numbers because the displacement of an "
-                f"atom is its eigenvector divided by the square root of its mass; you "
-                f"provided {list(masses)}."
-            )
-            raise exception.IncorrectUsage(message)
-        return masses
+        elements = self._structure()._stoichiometry().elements()
+        return mass_table.resolve(masses, elements)
 
     def _structure(self) -> StructureHandler:
         return StructureHandler.from_data(self._raw_phonon_mode.structure)

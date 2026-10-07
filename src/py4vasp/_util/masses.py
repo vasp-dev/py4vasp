@@ -65,6 +65,50 @@ def of(elements) -> np.ndarray:
     return np.array([_single_element(element) for element in elements])
 
 
+def resolve(masses, elements) -> np.ndarray:
+    """Use the masses the user provides or default to the standard atomic weights.
+
+    Parameters
+    ----------
+    masses : Sequence[float] | None
+        The mass of every atom in atomic mass units, or None for the default.
+    elements : Sequence[str]
+        The chemical symbol of every atom, which sets the default and the number of
+        masses the user has to provide.
+
+    Returns
+    -------
+    np.ndarray
+        One positive mass per atom in atomic mass units.
+    """
+    if masses is None:
+        return of(elements)
+    masses = np.atleast_1d(masses).ravel()
+    if not np.issubdtype(masses.dtype, np.number):
+        message = (
+            "The masses must be a sequence of numbers, one per atom, but you "
+            f"provided {type(masses.item(0)).__name__ if masses.size == 1 else 'a sequence'} "
+            "that py4vasp cannot read as numbers."
+        )
+        raise exception.IncorrectUsage(message)
+    if len(masses) != len(elements):
+        message = (
+            f"You provided {len(masses)} mass{'' if len(masses) == 1 else 'es'} but "
+            "the structure contains "
+            f"{len(elements)} atoms. Please pass one mass per atom in the order in "
+            "which the structure lists them."
+        )
+        raise exception.IncorrectUsage(message)
+    if not np.all(masses > 0):
+        message = (
+            "All masses must be positive numbers because the motion of an atom is "
+            "weighted with the inverse square root of its mass; you provided "
+            f"{[float(mass) for mass in masses]}."
+        )
+        raise exception.IncorrectUsage(message)
+    return masses
+
+
 def _single_element(element):
     try:
         return TABLE[element]

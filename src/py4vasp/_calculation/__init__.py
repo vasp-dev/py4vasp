@@ -704,6 +704,15 @@ class DefaultCalculationFactory:
     >>> view.phonon.frequencies.shape
     (1, 21)
 
+    *How do I get vibrational frequencies from the force constants?* The force
+    constants diagonalize into ħω in eV once the masses enter; multiply by 8065.610420
+    for cm⁻¹. ``to_molden`` writes the same modes for a molecular viewer
+
+    >>> frequencies = calculation.force_constant.frequencies()
+    >>> round(float(frequencies[-1].real * 8065.610420))
+    647
+    >>> molden = calculation.force_constant.to_molden()
+
     *How do I turn a list of peaks into a spectrum?* Give every peak a width and add
     them up with :py:mod:`py4vasp.broadening`, which is what every quantity that plots
     a spectrum uses

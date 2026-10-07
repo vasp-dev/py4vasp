@@ -109,3 +109,11 @@ def test_energy_conversion_factors_are_consistent():
     wavenumbers_per_THz = 1e12 / speed_of_light_in_cm_per_s
     ratio = convert.EV_TO_CM1 / convert.EV_TO_THZ
     assert np.isclose(ratio, wavenumbers_per_THz, rtol=1e-5)
+
+
+def test_hbar_squared(Assert):
+    # ħ² in eV amu Å² turns a dynamical-matrix eigenvalue in eV/(Å² amu) into (ħω)².
+    # CODATA: ħ = 1.054571817646e-34 J s, 1 eV = 1.602176634e-19 J,
+    # 1 amu = 1.66053906892e-27 kg, 1 Å = 1e-10 m
+    expected = 1.054571817646e-34**2 / (1.602176634e-19 * 1.66053906892e-27 * 1e-20)
+    Assert.allclose(convert.HBAR_SQUARED, expected, tolerance=100)

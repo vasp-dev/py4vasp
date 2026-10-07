@@ -55,7 +55,7 @@ dispersion that is a reshaped `np.arange`.
 ## Quantities with no examples at all
 
 `demo.py` writes none of `dielectric_tensor`, `elastic_modulus`,
-`born_effective_charge`, `force_constant`, `internal_strain`, `piezoelectric_tensor`,
+`born_effective_charge`, `internal_strain`, `piezoelectric_tensor`,
 `polarization`, `electronic_minimization`, `bader` or `exciton_eigenvector`, and none
 of them carries a docstring example.
 
