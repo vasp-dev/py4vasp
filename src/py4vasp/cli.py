@@ -20,7 +20,7 @@ def cli():
 
 
 @cli.command()
-@click.argument("quantity", type=click.Choice(("structure",)), metavar="QUANTITY")
+@click.argument("quantity", type=click.Choice(("structure",)))
 @click.argument("format", type=click.STRING)
 @click.option(
     "-f",
@@ -44,9 +44,10 @@ def cli():
     help="String to further clarify the specific source of the quantity.",
 )
 def convert(quantity, format, path, archive_path, selection):
-    """Convert a quantity to a different format.
+    """Convert the structure of a calculation to another format.
 
-    Specify which QUANTITY you want to convert into which FORMAT.
+    Currently, the only supported conversion is the structure to the LAMMPS format,
+    i.e., `py4vasp convert structure lammps`. The result is written to stdout.
     """
     if format.lower() != "lammps":
         raise click.UsageError(f"Converting {quantity} to {format} is not implemented.")

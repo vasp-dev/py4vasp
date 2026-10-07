@@ -160,6 +160,11 @@ rather than discovering them mid-implementation:
   just its docstring — and `--help` text that stands on its own. Plan the wording
   of the tolerances, units and conventions the user must know; that is where such
   a change usually fails.
+- **A finished backlog item is deleted.** When the work comes from a file under
+  `backlog/`, the chunk that resolves its last open point deletes the file on its
+  `Also:` line; if only part is resolved, trim the file to what is still open. Check
+  the latest `origin/master` first: a merged change may already have resolved part
+  of the item, and then its file is deleted or trimmed in the first chunk.
 
 ## Out of scope for this skill
 

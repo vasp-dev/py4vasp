@@ -16,6 +16,13 @@ quantities. The dispatch layer cannot know the tags; each quantity would have to
 them (e.g. a class attribute the message and the docstring both use). The user had to fall
 back on their own VASP knowledge. An ordinary user would notice this.
 
+`phonon.band` is a second example, found on a linear-response run that has modes but no
+dispersion. The message should say that VASP writes a phonon band structure only when the
+INCAR sets `LPHON_DISPERSION = T` and a `QPOINTS` file provides the q-point path, and that
+the modes at Γ of a linear-response run are in `calc.phonon.mode`. The `dispersion` source
+of `phonon.mode` needs the same tags. A hint like this may name an alternative quantity,
+not only tags, so the declaration should allow free text.
+
 **Smaller messages in the same area, all pre-existing:**
 
 - A mistyped source (`mode.read("dispersoin")`) raises "The selection 'dispersoin' is not a

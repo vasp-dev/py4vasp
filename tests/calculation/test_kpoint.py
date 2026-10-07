@@ -7,6 +7,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.kpoint import Kpoint, KpointHandler
+from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.models import KpointModel
 
 
@@ -141,6 +142,14 @@ def test_mode(raw_data):
         with pytest.raises(exception.RefinementError):
             raw_kpoints = raw_data.kpoint(unknown_mode)
             Kpoint.from_data(raw_kpoints).mode()
+
+
+def test_missing_mode_raises_no_data(raw_data):
+    # an absent mode is missing data, not a mode py4vasp fails to understand
+    raw_kpoints = raw_data.kpoint("line")
+    raw_kpoints.mode = VaspData(None)
+    with pytest.raises(exception.NoData):
+        Kpoint.from_data(raw_kpoints).mode()
 
 
 def test_explicit_kpoints_number_kpoints(explicit_kpoints):

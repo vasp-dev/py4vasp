@@ -1,16 +1,19 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import types
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation._stoichiometry import Stoichiometry
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.phonon_band import PhononBand, PhononBandHandler
 from py4vasp._calculation.phonon_mode import PhononMode
+from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.models import PhononBandModel
 from py4vasp._util import convert
 
@@ -174,6 +177,21 @@ def test_band_and_mode_agree_on_the_same_dataset(raw_data, Assert):
     frequencies = PhononMode.from_data(raw_mode).frequencies()
     assert np.any(bands < 0)  # the fixture must exercise an unstable mode
     Assert.allclose(np.abs(bands), np.abs(frequencies))
+
+
+@pytest.mark.parametrize("method", ["read", "plot"])
+def test_missing_dispersion_raises_no_data(raw_data, method):
+    # a linear-response run has phonon modes but writes no dispersion; the band must
+    # say that data is missing instead of failing to understand an absent q-point mode
+    raw_band = raw_data.phonon_band("default")
+    raw_qpoints = raw_band.dispersion.kpoints
+    for field in dataclasses.fields(raw_qpoints):
+        setattr(raw_qpoints, field.name, VaspData(None))
+    raw_band.dispersion.eigenvalues = VaspData(None)
+    raw_band.eigenvectors = VaspData(None)
+    band = PhononBand.from_data(raw_band)
+    with pytest.raises(exception.NoData, match="'phonon_band' has no data"):
+        getattr(band, method)()
 
 
 def test_print_writes_to_stdout(phonon_band, capsys):
