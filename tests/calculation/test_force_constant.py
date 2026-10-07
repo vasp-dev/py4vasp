@@ -6,8 +6,12 @@ import types
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._calculation.force_constant import ForceConstant, ForceConstantHandler
+from py4vasp._calculation.phonon_mode import PhononMode
 from py4vasp._calculation.structure import StructureHandler
+from py4vasp._demo import showcase
+from py4vasp._util import convert, masses
 
 
 @pytest.fixture(params=("all atoms", "selective dynamics"))
@@ -179,6 +183,65 @@ def test_eigenvalues_dispatcher(dispatcher, raw_data, Assert):
     raw_force_constant = raw_data.force_constant(dispatcher.ref.selection)
     handler = ForceConstantHandler.from_data(raw_force_constant)
     Assert.allclose(dispatcher.eigenvalues(), handler.eigenvalues())
+
+
+def expected_frequencies(Sr2TiO4, masses_per_atom):
+    # the dynamical matrix divides the force constants by the square root of the
+    # masses; its eigenvalues are (ħω)²/ħ², and a negative one is an unstable mode
+    masses_per_direction = np.repeat(masses_per_atom, 3)
+    if Sr2TiO4.ref.selective_dynamics is not None:
+        selective_dynamics = np.array(Sr2TiO4.ref.selective_dynamics, dtype=np.bool_)
+        masses_per_direction = masses_per_direction[selective_dynamics.flatten()]
+    inverse_sqrt_mass = 1 / np.sqrt(masses_per_direction)
+    weights = np.outer(inverse_sqrt_mass, inverse_sqrt_mass)
+    eigenvalues = np.linalg.eigvalsh(weights * Sr2TiO4.ref.force_constants)
+    squared = convert.HBAR_SQUARED * eigenvalues
+    return np.where(squared < 0, 1j * np.sqrt(np.abs(squared)), np.sqrt(np.abs(squared)))
+
+
+def test_frequencies(Sr2TiO4, Assert):
+    elements = Sr2TiO4.ref.structure._stoichiometry().elements()
+    expected = expected_frequencies(Sr2TiO4, masses.of(elements))
+    Assert.allclose(Sr2TiO4.frequencies(), expected)
+
+
+def test_frequencies_are_imaginary_for_unstable_modes(Sr2TiO4):
+    # the random test data are not at an energy minimum, so they contain unstable
+    # modes; VASP reports those as imaginary and py4vasp does not clamp them
+    frequencies = Sr2TiO4.frequencies()
+    unstable = Sr2TiO4.eigenvalues() < 0
+    assert np.any(unstable)
+    assert np.all(frequencies[unstable].real == 0)
+    assert np.all(frequencies[unstable].imag > 0)
+    assert np.all(frequencies[~unstable].imag == 0)
+
+
+def test_frequencies_accept_custom_masses(Sr2TiO4, Assert):
+    custom_masses = np.linspace(1.0, 7.0, 7)
+    expected = expected_frequencies(Sr2TiO4, custom_masses)
+    Assert.allclose(Sr2TiO4.frequencies(masses=custom_masses), expected)
+
+
+def test_frequencies_raise_error_if_masses_do_not_match_the_atoms(Sr2TiO4):
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.frequencies(masses=[1.0, 2.0])
+
+
+def test_frequencies_agree_with_the_phonon_modes(Assert):
+    # the showcase force constants are built from the showcase modes, so both routes to
+    # the frequency have to agree, including the vanishing acoustic modes
+    force_constant = ForceConstant.from_data(showcase.phonon.force_constant_Sr2TiO4())
+    phonon_mode = PhononMode.from_data(showcase.phonon.mode_Sr2TiO4())
+    np.testing.assert_allclose(
+        force_constant.frequencies(), phonon_mode.frequencies(), atol=1e-6
+    )
+
+
+def test_frequencies_dispatcher(dispatcher, raw_data, Assert):
+    raw_force_constant = raw_data.force_constant(dispatcher.ref.selection)
+    handler = ForceConstantHandler.from_data(raw_force_constant)
+    masses_ = np.arange(1.0, 8.0)
+    Assert.allclose(dispatcher.frequencies(masses_), handler.frequencies(masses_))
 
 
 def test_to_molden(Sr2TiO4, Assert):

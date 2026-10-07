@@ -13,7 +13,8 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._calculation.structure import StructureHandler
-from py4vasp._util import check
+from py4vasp._util import check, convert
+from py4vasp._util import masses as mass_table
 
 _A_TO_BOHR = 0.529177210544
 
@@ -34,14 +35,9 @@ class ForceConstantHandler:
         return cls(raw_force_constant)
 
     def __str__(self) -> str:
-        structure = StructureHandler.from_data(self._raw_force_constant.structure)
-        number_ions = structure.number_atoms()
-        if check.is_none(self._raw_force_constant.selective_dynamics):
-            selective_dynamics = np.ones((number_ions, 3), dtype=np.bool_)
-        else:
-            selective_dynamics = self._raw_force_constant.selective_dynamics[:]
+        number_ions = self._structure().number_atoms()
         formatter = _StringFormatter(
-            number_ions, self._force_constants, selective_dynamics
+            number_ions, self._force_constants, self._free_directions()
         )
         return str(formatter)
 
@@ -56,9 +52,8 @@ class ForceConstantHandler:
         dict
             Contains structural information as well as the raw force constant data.
         """
-        structure = StructureHandler.from_data(self._raw_force_constant.structure)
         result = {
-            "structure": structure.to_dict(),
+            "structure": self._structure().to_dict(),
             "force_constants": self._force_constants,
         }
         if not check.is_none(self._raw_force_constant.selective_dynamics):
@@ -87,19 +82,40 @@ class ForceConstantHandler:
         """Compute the eigenvalues of the force constant matrix in eV/Å²."""
         return np.linalg.eigvalsh(self._force_constants)
 
+    def frequencies(self, masses=None) -> np.ndarray:
+        """Compute the vibrational frequencies ħω in eV from the dynamical matrix."""
+        eigenvalues = np.linalg.eigvalsh(self._dynamical_matrix(masses))
+        # an eigenvalue of the dynamical matrix is ω², so ħ² turns it into (ħω)². A
+        # negative one is an unstable mode, which VASP reports as an imaginary frequency
+        squared = convert.HBAR_SQUARED * eigenvalues
+        magnitude = np.sqrt(np.abs(squared))
+        return np.where(squared < 0, 1j * magnitude, magnitude + 0j)
+
+    def _dynamical_matrix(self, masses):
+        elements = self._structure()._stoichiometry().elements()
+        masses = np.repeat(mass_table.resolve(masses, elements), 3)
+        masses = masses[self._free_directions().flatten()]
+        inverse_sqrt_mass = 1 / np.sqrt(masses)
+        return np.outer(inverse_sqrt_mass, inverse_sqrt_mass) * self._force_constants
+
+    def _structure(self):
+        return StructureHandler.from_data(self._raw_force_constant.structure)
+
+    def _free_directions(self):
+        if check.is_none(self._raw_force_constant.selective_dynamics):
+            return np.ones((self._structure().number_atoms(), 3), dtype=np.bool_)
+        return self._raw_force_constant.selective_dynamics[:].astype(np.bool_)
+
     def _diagonalize(self):
         eigenvalues, eigenvectors = np.linalg.eigh(self._force_constants)
-        eigenvectors = eigenvectors.T
-        if check.is_none(self._raw_force_constant.selective_dynamics):
-            return eigenvalues, eigenvectors.reshape(len(eigenvectors), -1, 3)
-        structure = StructureHandler.from_data(self._raw_force_constant.structure)
-        number_ions = structure.number_atoms()
-        unpacked_eigenvectors = np.zeros((len(eigenvectors), number_ions, 3))
-        selective_dynamics = self._raw_force_constant.selective_dynamics[:].astype(
-            np.bool_
-        )
-        unpacked_eigenvectors[:, selective_dynamics] = eigenvectors
-        return eigenvalues, unpacked_eigenvectors
+        return eigenvalues, self._unpack(eigenvectors.T)
+
+    def _unpack(self, vectors):
+        # every vector covers only the free directions; frozen atoms do not move
+        free_directions = self._free_directions()
+        unpacked = np.zeros((len(vectors), *free_directions.shape))
+        unpacked[:, free_directions] = vectors
+        return unpacked
 
     def to_molden(self) -> str:
         """Convert the eigenvectors of the force constant into molden format.
@@ -125,7 +141,7 @@ class ForceConstantHandler:
 """
 
     def _format_coordinates(self):
-        structure = StructureHandler.from_data(self._raw_force_constant.structure)
+        structure = self._structure()
         element_positions = zip(
             structure._stoichiometry().elements(),
             structure.cartesian_positions() / _A_TO_BOHR,
@@ -178,6 +194,13 @@ class ForceConstant:
     calculation, but note that it does not apply if you freeze some atoms with
     selective dynamics, because then the translation of the whole system is not
     contained in the force constants.
+
+    The eigenvalues of Φ are not the squares of the vibrational frequencies, because
+    the masses of the atoms do not enter. :py:meth:`frequencies` divides Φ by the square
+    root of the masses of both atoms and reports the frequencies of the resulting
+    dynamical matrix as the energy ħω in eV, the same convention the phonon modes use.
+    By default it takes the standard atomic weight of every element, where VASP uses
+    the POMASS of the POTCAR, so pass the masses explicitly to match VASP exactly.
 
     See Also
     --------
@@ -329,6 +352,77 @@ class ForceConstant:
             None,
             ForceConstantHandler.from_data,
             ForceConstantHandler.eigenvalues,
+        )
+
+    def frequencies(self, masses=None) -> np.ndarray:
+        """Compute the vibrational frequencies of the structure at the zone centre.
+
+        The frequencies follow from the dynamical matrix, i.e. the force constants
+        divided by the square root of the masses of both atoms. py4vasp reports them as
+        the energy ħω in eV like every other energy, so the numbers compare directly to
+        :py:meth:`py4vasp._calculation.phonon_mode.PhononMode.frequencies`. Multiply
+        with 241.8 to get THz or with 8065.6 to get cm⁻¹.
+
+        An unstable mode, i.e. a negative eigenvalue of the dynamical matrix, has an
+        imaginary frequency, so the array is complex. py4vasp reports the result as is:
+        the three modes that translate the crystal vanish only up to numerical noise and
+        may come out as a tiny imaginary number.
+
+        Parameters
+        ----------
+        masses : Sequence[float] | None
+            The mass of every atom in atomic mass units, in the order of the structure.
+            Defaults to the standard atomic weight of the element. VASP uses the POMASS
+            of the POTCAR instead, so pass those if you changed them or need to match
+            the OUTCAR to the last digit.
+
+        Returns
+        -------
+        np.ndarray
+            The complex frequencies ħω in eV in ascending order of the eigenvalue of the
+            dynamical matrix, so the unstable modes come first. There is one frequency
+            for every direction of every atom that was displaced; atoms frozen by
+            selective dynamics do not contribute.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> import numpy as np
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The three translations of the crystal have no frequency, and none of the other
+        modes is imaginary, because the structure is stable.
+
+        >>> frequencies = calculation.force_constant.frequencies()
+        >>> np.abs(frequencies[:3]) < 1e-6
+        array([ True,  True,  True])
+        >>> frequencies[3:6]
+        array([0.0132...+0.j, 0.0148...+0.j, 0.0169...+0.j])
+
+        These are the same frequencies the phonon modes report, converted here to cm⁻¹
+
+        >>> np.round(frequencies[3:6].real * 8065.6)
+        array([107., 120., 137.])
+
+        You can replace the masses, e.g. to study the isotope effect. Doubling every
+        mass lowers each frequency by a factor of √2
+
+        >>> masses = 2 * np.array([87.62, 87.62, 47.867, 15.999, 15.999, 15.999, 15.999])
+        >>> heavy = calculation.force_constant.frequencies(masses)
+        >>> np.allclose(heavy[3:] * np.sqrt(2), frequencies[3:])
+        True
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            ForceConstantHandler.from_data,
+            ForceConstantHandler.frequencies,
+            masses,
         )
 
     def to_molden(self) -> str:
