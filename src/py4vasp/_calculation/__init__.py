@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import importlib
 import pathlib
+import pkgutil
 from typing import Any, List, Optional, Tuple, Union
 
 from py4vasp import exception
@@ -522,9 +523,10 @@ def _sources_for(quantity, schema_name):
 def _ensure_all_quantities_imported():
     """Import all quantity modules so that _REGISTRY is fully populated."""
     calc_pkg = importlib.import_module("py4vasp._calculation")
-    calc_dir = pathlib.Path(calc_pkg.__file__).parent
-    for module_file in sorted(calc_dir.glob("*.py")):
-        name = module_file.stem
+    # Ask the package's loader rather than the filesystem, so discovery also works
+    # when the modules are not .py files on disk (zipimport, PyInstaller).
+    names = sorted(module.name for module in pkgutil.iter_modules(calc_pkg.__path__))
+    for name in names:
         if name.startswith("__"):
             continue
         try:

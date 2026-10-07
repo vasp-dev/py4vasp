@@ -2,13 +2,18 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Tests for Calculation wiring to _REGISTRY and _source storage."""
 
+import ast
 import contextlib
 import pathlib
+import subprocess
+import sys
+import zipfile
 from unittest.mock import patch
 
 import pytest
 
-from py4vasp import Calculation
+import py4vasp
+from py4vasp import Calculation, _calculation
 from py4vasp._calculation.dispatch import (
     _REGISTRY,
     DataSource,
@@ -196,3 +201,33 @@ class TestCalculationDir:
         names = dir(calc)
         assert "from_path" in names
         assert "from_file" in names
+
+
+_PRINT_REGISTRY_VIEWS = """
+import sys
+sys.path.insert(0, sys.argv[1])
+from py4vasp import _calculation
+print(repr((_calculation.QUANTITIES, _calculation.GROUPS)))
+"""
+
+
+def test_quantities_discovered_when_imported_from_zip(tmp_path):
+    # Frozen builds (PyInstaller, zipimport) provide the modules without .py files on
+    # disk, so discovery must go through the package loader.
+    package_dir = pathlib.Path(py4vasp.__file__).parent
+    archive = tmp_path / "py4vasp.zip"
+    with zipfile.ZipFile(archive, "w") as zip_file:
+        # directories are written too, so namespace packages (no __init__.py) resolve
+        for source in [package_dir, *package_dir.rglob("*")]:
+            if source.is_dir() or source.suffix == ".py":
+                zip_file.write(source, source.relative_to(package_dir.parent))
+    output = subprocess.run(
+        [sys.executable, "-I", "-c", _PRINT_REGISTRY_VIEWS, str(archive)],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=tmp_path,
+    ).stdout
+    quantities, groups = ast.literal_eval(output)
+    assert quantities == _calculation.QUANTITIES
+    assert groups == _calculation.GROUPS
