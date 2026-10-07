@@ -1251,6 +1251,21 @@ class TestMissingDataMessage:
         assert "group/5" not in message
         assert "and 3 more" in message
 
+    def test_optional_lists_optional_datasets(self):
+        missing = ([], ["input/qpoints/mode", "results/phonons/qpoint_coords"])
+        message = _missing_data_message("phonon_mode", "dispersion", missing, [])
+        assert "source 'dispersion'" in message
+        assert "contains all required data" in message
+        assert "input/qpoints/mode, results/phonons/qpoint_coords" in message
+        assert "INCAR" in message
+        assert "VASP finished" not in message
+        assert "No source" not in message
+
+    def test_optional_ignores_complete_sources(self):
+        missing = ([], ["group/x"])
+        message = _missing_data_message("phonon_mode", None, missing, ["dispersion"])
+        assert "selection=" not in message
+
     def test_required_without_dataset_list(self):
         message = _missing_data_message("structure", "poscar", None, ["default"])
         assert "source 'poscar'" in message

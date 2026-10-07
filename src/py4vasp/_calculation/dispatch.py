@@ -826,6 +826,14 @@ def _missing_data_message(quantity_name, selection, missing, complete):
     """
     quantity = quantity_name.lstrip("_")
     source = selection or DEFAULT_SELECTION
+    if missing and not missing[0] and missing[1]:
+        return (
+            f"The source '{source}' of '{quantity}' contains all required data, but "
+            "this method also needs optional data that is missing. The optional "
+            f"datasets {_format_datasets(missing[1])} are absent from the VASP output; "
+            "please make sure that the INCAR tags of the calculation produce the one "
+            "you need."
+        )
     message = f"'{quantity}' has no data for the source '{source}' in this calculation"
     if missing and missing[0]:
         datasets = _format_datasets(missing[0])
