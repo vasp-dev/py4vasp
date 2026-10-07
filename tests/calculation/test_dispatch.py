@@ -19,6 +19,7 @@ from py4vasp._calculation.dispatch import (
     FileSource,
     Group,
     SelectionContext,
+    _complete_sources,
     _dispatch,
     _missing_datasets,
     _parse_selections,
@@ -1153,6 +1154,59 @@ class TestMissingDatasets:
     def test_source_built_by_factory_cannot_be_listed(self, raw_data):
         structure = raw_data.structure("Sr2TiO4")
         assert _missing_datasets("structure", "poscar", structure) is None
+
+
+class _RaisingSource:
+    path = None
+
+    def __init__(self, error):
+        self._error = error
+
+    @contextlib.contextmanager
+    def access(self, quantity, selection=None):
+        raise self._error
+        yield
+
+
+class TestCompleteSources:
+    def _phonon_source(self, raw_data):
+        default = raw_data.phonon_mode("Sr2TiO4")
+        default.frequencies = raw.VaspData(None)
+        dispersion = raw_data.phonon_mode("dispersion")
+        return DictSource(
+            {"phonon_mode": default, ("phonon_mode", "dispersion"): dispersion}
+        )
+
+    def test_other_complete_source(self, raw_data):
+        source = self._phonon_source(raw_data)
+        assert _complete_sources(source, "phonon_mode", exclude=None) == ["dispersion"]
+
+    def test_excluded_source_is_skipped(self, raw_data):
+        source = self._phonon_source(raw_data)
+        assert _complete_sources(source, "phonon_mode", exclude="dispersion") == []
+
+    def test_aliases_are_not_listed(self, raw_data):
+        source = DataSource(raw_data.density("Sr2TiO4"))
+        sources = _complete_sources(source, "density", exclude=None)
+        assert "charge" not in sources
+        assert "default" not in sources
+        assert all(type(name) is str for name in sources)
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            FileNotFoundError(),
+            exception.FileAccessError(),
+            exception.OutdatedVaspVersion(),
+        ],
+    )
+    def test_source_that_cannot_be_opened_is_incomplete(self, error):
+        source = _RaisingSource(error)
+        assert _complete_sources(source, "phonon_mode", exclude=None) == []
+
+    def test_unknown_quantity_has_no_sources(self, raw_data):
+        source = DataSource(raw_data.density("Sr2TiO4"))
+        assert _complete_sources(source, "not_a_quantity", exclude=None) == []
 
 
 class TestIsAvailableInjected:

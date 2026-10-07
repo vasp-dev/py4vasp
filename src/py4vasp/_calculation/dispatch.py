@@ -785,6 +785,27 @@ def data_available(
         return False
 
 
+def _complete_sources(source, quantity_name, exclude):
+    """List the sources of *quantity_name* whose required data is all present.
+
+    Aliases are skipped, and so is the source *exclude* (None excludes the default
+    source). A source that cannot be opened counts as incomplete.
+    """
+    try:
+        names = schema_unique_selections(quantity_name.lstrip("_"))
+    except exception.FileAccessError:
+        return []
+    excluded = (exclude or DEFAULT_SELECTION).lower()
+    complete = []
+    for name in map(str, names):
+        if name.lower() == excluded:
+            continue
+        with contextlib.suppress(FileNotFoundError):
+            if data_available(source, quantity_name, selection=name):
+                complete.append(name)
+    return complete
+
+
 def _effective_source(quantity_name, selection):
     """Resolve the schema source name to use for an availability check.
 
