@@ -8,7 +8,7 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._calculation.force_constant import ForceConstant, ForceConstantHandler
-from py4vasp._calculation.phonon_mode import PhononMode
+from py4vasp._calculation.phonon_mode import PhononMode, PhononModeHandler
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._demo import showcase
 from py4vasp._util import convert, masses
@@ -242,6 +242,67 @@ def test_frequencies_dispatcher(dispatcher, raw_data, Assert):
     handler = ForceConstantHandler.from_data(raw_force_constant)
     masses_ = np.arange(1.0, 8.0)
     Assert.allclose(dispatcher.frequencies(masses_), handler.frequencies(masses_))
+
+
+def default_masses(Sr2TiO4):
+    return masses.of(Sr2TiO4.ref.structure._stoichiometry().elements())
+
+
+def test_displacements_are_mass_normalized(Sr2TiO4, Assert):
+    # the same normalization the phonon modes use: the normal coordinate is 1
+    displacements = Sr2TiO4.displacements()
+    weighted = default_masses(Sr2TiO4)[:, np.newaxis] * displacements**2
+    Assert.allclose(np.sum(weighted, axis=(1, 2)), np.ones(len(displacements)))
+
+
+def test_displacements_solve_the_equation_of_motion(Sr2TiO4, Assert):
+    # a normal mode u with frequency ω satisfies Φ u = ω² M u, and the order is the
+    # one of the frequencies
+    displacements = Sr2TiO4.displacements()
+    omega_squared = (Sr2TiO4.frequencies() ** 2).real / convert.HBAR_SQUARED
+    masses_per_direction = np.repeat(default_masses(Sr2TiO4), 3)
+    free = np.ones(displacements.shape[1:], dtype=np.bool_)
+    if Sr2TiO4.ref.selective_dynamics is not None:
+        free = np.array(Sr2TiO4.ref.selective_dynamics, dtype=np.bool_)
+    masses_per_direction = masses_per_direction[free.flatten()]
+    for displacement, eigenvalue in zip(displacements, omega_squared):
+        vector = displacement[free]
+        force = Sr2TiO4.ref.force_constants @ vector
+        Assert.allclose(force, eigenvalue * masses_per_direction * vector)
+
+
+def test_frozen_atoms_do_not_move(Sr2TiO4, Assert):
+    if Sr2TiO4.ref.selective_dynamics is None:
+        pytest.skip("every atom is displaced")
+    frozen = ~np.array(Sr2TiO4.ref.selective_dynamics, dtype=np.bool_)
+    displacements = Sr2TiO4.displacements()
+    assert np.all(displacements[:, frozen] == 0)
+
+
+def test_displacements_accept_custom_masses(Sr2TiO4, Assert):
+    custom_masses = np.linspace(1.0, 7.0, 7)
+    displacements = Sr2TiO4.displacements(masses=custom_masses)
+    weighted = custom_masses[:, np.newaxis] * displacements**2
+    Assert.allclose(np.sum(weighted, axis=(1, 2)), np.ones(len(displacements)))
+
+
+def test_displacements_agree_with_the_phonon_modes(Assert):
+    # the three translations are degenerate, so only the optical modes are unique up
+    # to their sign
+    force_constant = ForceConstant.from_data(showcase.phonon.force_constant_Sr2TiO4())
+    phonon_mode = PhononModeHandler.from_data(showcase.phonon.mode_Sr2TiO4())
+    actual = force_constant.displacements()[3:]
+    expected = phonon_mode.displacements()[3:]
+    for mode_actual, mode_expected in zip(actual, expected):
+        sign = np.sign(np.sum(mode_actual * mode_expected))
+        np.testing.assert_allclose(sign * mode_actual, mode_expected, atol=1e-8)
+
+
+def test_displacements_dispatcher(dispatcher, raw_data, Assert):
+    raw_force_constant = raw_data.force_constant(dispatcher.ref.selection)
+    handler = ForceConstantHandler.from_data(raw_force_constant)
+    masses_ = np.arange(1.0, 8.0)
+    Assert.allclose(dispatcher.displacements(masses_), handler.displacements(masses_))
 
 
 def test_to_molden(Sr2TiO4, Assert):

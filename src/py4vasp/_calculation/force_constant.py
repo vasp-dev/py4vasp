@@ -84,19 +84,28 @@ class ForceConstantHandler:
 
     def frequencies(self, masses=None) -> np.ndarray:
         """Compute the vibrational frequencies ħω in eV from the dynamical matrix."""
-        eigenvalues = np.linalg.eigvalsh(self._dynamical_matrix(masses))
+        eigenvalues, _ = self._diagonalize_dynamical_matrix(masses)
         # an eigenvalue of the dynamical matrix is ω², so ħ² turns it into (ħω)². A
         # negative one is an unstable mode, which VASP reports as an imaginary frequency
         squared = convert.HBAR_SQUARED * eigenvalues
         magnitude = np.sqrt(np.abs(squared))
         return np.where(squared < 0, 1j * magnitude, magnitude + 0j)
 
-    def _dynamical_matrix(self, masses):
+    def displacements(self, masses=None) -> np.ndarray:
+        """Compute how the atoms move in every normal mode."""
+        _, displacements = self._diagonalize_dynamical_matrix(masses)
+        return self._unpack(displacements)
+
+    def _diagonalize_dynamical_matrix(self, masses):
         elements = self._structure()._stoichiometry().elements()
         masses = np.repeat(mass_table.resolve(masses, elements), 3)
-        masses = masses[self._free_directions().flatten()]
-        inverse_sqrt_mass = 1 / np.sqrt(masses)
-        return np.outer(inverse_sqrt_mass, inverse_sqrt_mass) * self._force_constants
+        inverse_sqrt_mass = 1 / np.sqrt(masses[self._free_directions().flatten()])
+        weights = np.outer(inverse_sqrt_mass, inverse_sqrt_mass)
+        eigenvalues, eigenvectors = np.linalg.eigh(weights * self._force_constants)
+        # the eigenvectors are normalized, so dividing by the square root of the mass
+        # gives the displacement u with the sum of m |u|² equal to 1
+        displacements = eigenvectors.T * inverse_sqrt_mass
+        return eigenvalues, displacements
 
     def _structure(self):
         return StructureHandler.from_data(self._raw_force_constant.structure)
@@ -422,6 +431,65 @@ class ForceConstant:
             None,
             ForceConstantHandler.from_data,
             ForceConstantHandler.frequencies,
+            masses,
+        )
+
+    def displacements(self, masses=None) -> np.ndarray:
+        """Compute how the atoms move in every normal mode.
+
+        The normal modes are the eigenvectors of the dynamical matrix with the mass
+        weighting undone, so they describe the actual displacement of every atom. They
+        come in the order of :py:meth:`frequencies`, i.e. the n-th pattern vibrates
+        with the n-th frequency. In contrast, :py:meth:`eigenvectors` ignores the
+        masses, so its vectors are not the normal modes.
+
+        Parameters
+        ----------
+        masses : Sequence[float] | None
+            The mass of every atom in atomic mass units, in the order of the structure.
+            Defaults to the standard atomic weight of the element.
+
+        Returns
+        -------
+        np.ndarray
+            The displacement in Å of every atom along every direction. The first index
+            selects the mode, the second one the atom, and the third one the direction.
+            Each pattern is scaled to a normal coordinate of 1, i.e. the sum of m |u|²
+            over all atoms and directions is 1 amu Å². Atoms frozen by selective
+            dynamics do not move. The overall sign of a pattern is arbitrary, as is the
+            choice of patterns within a set of degenerate modes.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> import numpy as np
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        There is one pattern for each of the 21 modes of the seven atoms
+
+        >>> displacements = calculation.force_constant.displacements()
+        >>> displacements.shape
+        (21, 7, 3)
+
+        Every pattern is normalized with the masses, and apart from the three
+        translations the modes leave the centre of mass where it is
+
+        >>> masses = np.array([87.62, 87.62, 47.867, 15.999, 15.999, 15.999, 15.999])
+        >>> np.allclose(np.einsum("a,mad->m", masses, displacements**2), 1)
+        True
+        >>> np.allclose(np.einsum("a,mad->md", masses, displacements[3:]), 0)
+        True
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            ForceConstantHandler.from_data,
+            ForceConstantHandler.displacements,
             masses,
         )
 
