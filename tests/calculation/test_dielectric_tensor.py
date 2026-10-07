@@ -287,6 +287,18 @@ def test_to_INCAR_incorrect_selection(dft_tensor, selection):
         handler.to_INCAR(selection)
 
 
+def test_to_INCAR_hyphen_gives_readable_message(dft_tensor):
+    # the printed header spells the tensor "clamped-ion", which the selection parser
+    # reads as a subtraction; the message must not show its internal representation
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        handler.to_INCAR("clamped-ion")
+    message = str(error.value)
+    assert "Operation" not in message
+    assert "'clamped - ion'" in message
+    assert "clamped_ion" in message
+
+
 def test_to_INCAR_missing_tensor(rpa_tensor):
     handler = DielectricTensorHandler.from_data(rpa_tensor.ref.raw_tensor)
     with pytest.raises(exception.NoData):

@@ -347,9 +347,13 @@ _INCAR_TENSORS = ("clamped_ion", "relaxed_ion", "independent_particle")
 
 def _parse_incar_selection(selection):
     tree = select.Tree.from_selection(selection)
-    parts = [part for choice in tree.selections() for part in choice]
-    if unknown := set(parts).difference(_INCAR_TENSORS):
-        message = f"The selection {unknown} is not one of the dielectric tensors {_INCAR_TENSORS}."
+    parts = [str(part) for choice in tree.selections() for part in choice]
+    if unknown := [part for part in parts if part not in _INCAR_TENSORS]:
+        unknown = ", ".join(f"'{part}'" for part in unknown)
+        valid = ", ".join(_INCAR_TENSORS)
+        message = (
+            f"The selection {unknown} is not one of the dielectric tensors {valid}."
+        )
         raise exception.IncorrectUsage(message)
     if len(parts) > 1:
         message = f"PHON_DIELECTRIC holds a single tensor, but you selected {parts}."
