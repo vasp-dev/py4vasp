@@ -391,33 +391,8 @@ class PhononModeHandler:
         return eigenvectors.reshape(len(eigenvectors), number_atoms, 3)
 
     def _masses(self, masses) -> np.ndarray:
-        structure = self._structure()
-        if masses is None:
-            return mass_table.of(structure._stoichiometry().elements())
-        masses = np.atleast_1d(masses).ravel()
-        if not np.issubdtype(masses.dtype, np.number):
-            message = (
-                "The masses must be a sequence of numbers, one per atom, but you "
-                f"provided {type(masses.item(0)).__name__ if masses.size == 1 else 'a sequence'} "
-                "that py4vasp cannot read as numbers."
-            )
-            raise exception.IncorrectUsage(message)
-        number_atoms = structure.number_atoms()
-        if len(masses) != number_atoms:
-            message = (
-                f"You provided {len(masses)} masses but the structure contains "
-                f"{number_atoms} atoms. Please pass one mass per atom in the order in "
-                "which the structure lists them."
-            )
-            raise exception.IncorrectUsage(message)
-        if not np.all(masses > 0):
-            message = (
-                "All masses must be positive numbers because the displacement of an "
-                f"atom is its eigenvector divided by the square root of its mass; you "
-                f"provided {list(masses)}."
-            )
-            raise exception.IncorrectUsage(message)
-        return masses
+        elements = self._structure()._stoichiometry().elements()
+        return mass_table.resolve(masses, elements)
 
     def _structure(self) -> StructureHandler:
         return StructureHandler.from_data(self._raw_phonon_mode.structure)

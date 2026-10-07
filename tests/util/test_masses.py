@@ -31,3 +31,36 @@ def test_unknown_element_raises_error():
     with pytest.raises(exception.IncorrectUsage) as error:
         masses.of(["Sr", "Xx"])
     assert "Xx" in str(error.value)
+
+
+ELEMENTS = ["Sr", "Ti", "O"]
+
+
+def test_resolve_defaults_to_the_standard_atomic_weights(Assert):
+    Assert.allclose(masses.resolve(None, ELEMENTS), masses.of(ELEMENTS))
+
+
+def test_resolve_keeps_the_masses_the_user_provides(Assert):
+    Assert.allclose(masses.resolve([88.0, 48.0, 16.0], ELEMENTS), [88.0, 48.0, 16.0])
+
+
+def test_resolve_raises_error_if_masses_do_not_match_the_atoms():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve([1.0, 2.0], ELEMENTS)
+    assert "2" in str(error.value) and "3" in str(error.value)
+
+
+def test_resolve_raises_error_if_masses_are_not_numbers():
+    # a dictionary of element to mass is a plausible guess and would otherwise be
+    # reported as a single mass rather than as the wrong kind of input
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({"Sr": 87.62, "Ti": 47.867, "O": 15.999}, ELEMENTS)
+    assert "numbers" in str(error.value)
+
+
+@pytest.mark.parametrize("wrong_mass", (0.0, -1.0))
+def test_resolve_raises_error_for_nonpositive_mass(wrong_mass):
+    # dividing by the square root of the mass would fill the result with nan
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve([88.0, wrong_mass, 16.0], ELEMENTS)
+    assert "positive" in str(error.value)
