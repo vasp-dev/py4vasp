@@ -9,8 +9,7 @@ generic `NoData` raised lazily from `VaspData.data`:
     should produce this data and that the VASP calculation already finished. Also check
     that VASP did not exit with an error.
 
-The work on [missing-source-error-does-not-name-the-alternatives] improves this message in
-the dispatch layer by naming the missing source and any complete sources. To list the
+Since #346 the dispatch layer improves this message by naming the missing source and any complete sources. To list the
 missing datasets, it has to rebuild the paths by walking the schema against the raw
 data afterwards. That can only be best effort, because the access layer resolves much
 more than the schema shows:
