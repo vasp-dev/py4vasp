@@ -52,10 +52,13 @@ of the items below were touched; each needs its own decision.
   data first and raises `NoData`. The `None` branch is therefore dead code and
   `DispersionModel(eigenvalue_min=None)` is unreachable through this path. Shared by the
   electronic band, so it wants its own fix.
-- **`force_constant.py:18` names Å-per-Bohr `_A_TO_BOHR`.** The usage
-  `positions / _A_TO_BOHR` at `:128` is numerically right, so this is a naming bug only —
-  but the same `__str__` prints coordinates in Bohr while labelling the constants eV/Å²
-  (`:312`). Confirm that mixed printout is deliberately OUTCAR-shaped.
+- **`force_constant.py:19` names Å-per-Bohr `_A_TO_BOHR`.** The usage
+  `positions / _A_TO_BOHR` at `:151` is numerically right, so this is a naming bug only.
+  The Bohr coordinates are the `[FR-COORD]` block of `to_molden`, which the molden format
+  defines in Bohr, so they are not in conflict with the eV/Å² that `__str__` prints for
+  the constants. Left deliberately untouched when `to_molden` was fixed to write its
+  `[FREQ]` block in cm⁻¹ from the mass-weighted dynamical matrix, which kept that change
+  to the frequencies and the normal modes alone.
 - **`electron_phonon_chemical_potential.py:38-48` looks like it has two table headers
   swapped**: `chemical_potentials` prints under "Number of electrons per cell" and
   `carrier_densities` under "Chemical potential".

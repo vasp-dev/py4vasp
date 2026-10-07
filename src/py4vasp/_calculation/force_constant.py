@@ -85,11 +85,10 @@ class ForceConstantHandler:
     def frequencies(self, masses=None) -> np.ndarray:
         """Compute the vibrational frequencies ħω in eV from the dynamical matrix."""
         eigenvalues, _ = self._diagonalize_dynamical_matrix(masses)
-        # an eigenvalue of the dynamical matrix is ω², so ħ² turns it into (ħω)². A
-        # negative one is an unstable mode, which VASP reports as an imaginary frequency
-        squared = convert.HBAR_SQUARED * eigenvalues
-        magnitude = np.sqrt(np.abs(squared))
-        return np.where(squared < 0, 1j * magnitude, magnitude + 0j)
+        # a negative eigenvalue is an unstable mode, which VASP reports as an imaginary
+        # frequency
+        magnitude = _frequency_magnitude(eigenvalues)
+        return np.where(eigenvalues < 0, 1j * magnitude, magnitude + 0j)
 
     def displacements(self, masses=None) -> np.ndarray:
         """Compute how the atoms move in every normal mode."""
@@ -126,19 +125,15 @@ class ForceConstantHandler:
         unpacked[:, free_directions] = vectors
         return unpacked
 
-    def to_molden(self) -> str:
-        """Convert the eigenvectors of the force constant into molden format.
-
-        Keep in mind that the eigenvectors indicate the direction of the forces and do
-        not take into account the masses of the atom.
-
-        Returns
-        -------
-        str
-            String describing the structure and eigenvectors in molden format.
-        """
-        eigenvalues, eigenvectors = self._diagonalize()
-        frequencies = "\n".join(f"{x:12.6f}" for x in eigenvalues)
+    def to_molden(self, masses=None) -> str:
+        """Convert the normal modes into molden format, with the frequencies in cm⁻¹."""
+        eigenvalues, displacements = self._diagonalize_dynamical_matrix(masses)
+        # molden expects wavenumbers and marks an unstable mode by a negative one
+        magnitude = _frequency_magnitude(eigenvalues)
+        wavenumbers = np.sign(eigenvalues) * magnitude * convert.EV_TO_CM1
+        frequencies = "\n".join(f"{x:12.6f}" for x in wavenumbers)
+        # a viewer only needs the direction of every mode, so it is normalized to 1
+        directions = displacements / np.linalg.norm(displacements, axis=1)[:, None]
         return f"""\
 [Molden Format]
 [FREQ]
@@ -146,7 +141,7 @@ class ForceConstantHandler:
 [FR-COORD]
 {self._format_coordinates()}
 [FR-NORM-COORD]
-{self._format_eigenvectors(eigenvectors)}
+{self._format_eigenvectors(self._unpack(directions))}
 """
 
     def _format_coordinates(self):
@@ -176,6 +171,11 @@ class ForceConstantHandler:
     def _format_vector(self, vector):
         replace_nearly_zeros = lambda x: 0 if np.isclose(x, 0, atol=1e-9) else x
         return " ".join(f"{replace_nearly_zeros(x):12.6f}" for x in vector)
+
+
+def _frequency_magnitude(eigenvalues):
+    # an eigenvalue of the dynamical matrix is ω², so ħ² turns it into (ħω)²
+    return np.sqrt(convert.HBAR_SQUARED * np.abs(eigenvalues))
 
 
 @quantity("force_constant")
@@ -493,16 +493,53 @@ class ForceConstant:
             masses,
         )
 
-    def to_molden(self) -> str:
-        """Convert the eigenvectors of the force constant into molden format.
+    def to_molden(self, masses=None) -> str:
+        """Convert the normal modes into molden format to animate them in a viewer.
 
-        Keep in mind that the eigenvectors indicate the direction of the forces and do
-        not take into account the masses of the atom.
+        The file lists the frequency of every mode in cm⁻¹, the positions of the atoms
+        in Bohr, and the displacement pattern of every mode. Frequencies and patterns
+        are the ones :py:meth:`frequencies` and :py:meth:`displacements` return, i.e.
+        the normal modes of the dynamical matrix, so the masses of the atoms enter.
+        Following the molden convention, an unstable mode with an imaginary frequency
+        is listed as a negative wavenumber. Each pattern is normalized to a length of
+        1, because a viewer only needs its direction.
+
+        Parameters
+        ----------
+        masses : Sequence[float] | None
+            The mass of every atom in atomic mass units, in the order of the structure.
+            Defaults to the standard atomic weight of the element.
 
         Returns
         -------
         str
-            String describing the structure and eigenvectors in molden format.
+            String describing the structure and normal modes in molden format. Write it
+            to a file to open it in a viewer such as molden or Jmol.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The [FREQ] block starts with the three translations of the crystal, which are
+        zero up to numerical noise, followed by the optical modes in cm⁻¹
+
+        >>> molden = calculation.force_constant.to_molden()
+        >>> lines = molden.splitlines()
+        >>> lines[:2]
+        ['[Molden Format]', '[FREQ]']
+        >>> print("\\n".join(lines[5:8]))
+        106.74...
+        120.08...
+        136.76...
+
+        Write the string to a file to animate the modes
+
+        >>> _ = (path / "modes.molden").write_text(molden)
         """
         return merge_default(
             self._source,
@@ -510,6 +547,7 @@ class ForceConstant:
             None,
             ForceConstantHandler.from_data,
             ForceConstantHandler.to_molden,
+            masses,
         )
 
 
