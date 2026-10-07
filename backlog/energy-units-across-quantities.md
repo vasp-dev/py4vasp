@@ -5,16 +5,13 @@ printed table converts where it labels the number. The phonon family now follows
 is the survey of everything else, so the next round does not have to rediscover it. None
 of the items below were touched; each needs its own decision.
 
+Pressures are settled: `read` and `print` keep the kBar VASP writes, the database stores
+GPa, and `_util/convert.py` holds `KBAR_TO_GPA`. That fixed `StressModel`, which stored
+kBar under GPa docstrings, and `ElasticModulusModel`, whose tensors were kBar beside GPa
+moduli; `ElasticModulus.read` now states its unit.
+
 ## Wrong unit, or a value and its documentation disagreeing
 
-- **`StressModel` is off by a factor of ten.** `_raw/models.py:1045-1049` documents
-  `initial_stress_mean`, `final_stress_mean` and `final_stress_tensor` in GPa, but
-  `stress.py:72-85` stores the raw tensor with no conversion, and the raw tensor is kBar
-  (`stress.py:47` prints it under `in kB`). The sibling `elastic_modulus.py:99` *does*
-  divide by ten before filling its GPa fields, so the two modules disagree about what a
-  database row means.
-- **`ElasticModulus` exposes one value in two units.** `to_dict()` returns kBar
-  (`elastic_modulus.py:44-48`, undocumented), `to_database()` GPa.
 - **`Stress.__str__` prints two units and `to_dict` documents neither.** The header at
   `stress.py:43` says `units (eV)` for a row divided by `eV_to_kB`; the next row is kBar;
   `to_dict` returns kBar (`stress.py:52-70`).

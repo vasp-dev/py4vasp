@@ -17,6 +17,10 @@ from py4vasp._raw.data_wrapper import VaspData
 EV_TO_THZ = 241.798934781
 EV_TO_CM1 = 8065.610420
 EV_TO_MEV = 1000
+# A pressure, such as the stress or the elastic modulus, is returned in kBar as VASP
+# reports it, and printed that way so it matches the OUTCAR. The database stores it in
+# GPa, the unit of the bulk, shear and Young's moduli derived from it.
+KBAR_TO_GPA = 0.1
 # ħ² in eV amu Å², from ħ = 6.582119569e-16 eV s, 1 amu = 1.66053907e-27 kg and
 # 1 Å = 1e-10 m. It connects the masses and lengths of a structure to an energy: an
 # eigenvalue λ of the dynamical matrix in eV/(Å² amu) is a frequency ħω = sqrt(ħ²λ),

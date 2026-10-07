@@ -24,6 +24,7 @@ from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attr
     density,
     dielectric_function,
     dos,
+    elastic_modulus,
     electronic_structure,
     energy,
     force,

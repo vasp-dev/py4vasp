@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.11+db.3",
+  "schema_version": "0.11+db.4",
   "models": {
     "BandModel": [
       [
@@ -1379,5 +1379,8 @@
         "Optional[float]"
       ]
     ]
+  },
+  "changes": {
+    "4": "StressModel and the *_3d_tensor fields of ElasticModulusModel store GPa instead of kBar"
   }
 }

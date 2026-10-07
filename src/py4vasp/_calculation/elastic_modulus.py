@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._raw.models import ElasticModulusModel
-from py4vasp._util import check, error
+from py4vasp._util import check, convert, error
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -95,13 +95,9 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                 context=f"to_database.tensor[{idt}]",
             ):
                 if not check.is_none(tensor):
-                    compact_tensor[idt] = symmetry_reduce(symmetry_reduce(tensor).T).T
-                    voigt_tensor = compact_tensor[idt] / 10.0  # converting kbar to GPa
-                    compact_tensor[idt] = (
-                        list([list(l) for l in compact_tensor[idt]])
-                        if compact_tensor[idt] is not None
-                        else None
-                    )
+                    voigt_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
+                    voigt_tensor = voigt_tensor * convert.KBAR_TO_GPA
+                    compact_tensor[idt] = [list(row) for row in voigt_tensor]
 
             with error.suppress_and_record(
                 encountered_errors,
@@ -241,6 +237,8 @@ class ElasticModulus:
     variants of the elastic modulus: (i) in the clamped-ion one, the cell is deformed
     but the ions are kept in their positions; (ii) in the relaxed-ion one the
     atoms are allowed to relax when the cell is deformed.
+
+    Like VASP, py4vasp reads and prints the elastic modulus in kBar (1 GPa = 10 kBar).
     """
 
     def __init__(self, source, quantity_name: str = "elastic_modulus"):
@@ -258,10 +256,45 @@ class ElasticModulus:
     def read(self) -> dict:
         """Read the clamped-ion and relaxed-ion elastic modulus into a dictionary.
 
+        The elastic modulus is returned in kBar, the unit VASP writes it in and the one
+        :py:meth:`print` uses, so the numbers agree with the OUTCAR. Divide by 10 to
+        obtain GPa; 1 GPa = 10 kBar.
+
+        :py:meth:`print` shows the tensor as a 6 x 6 matrix in the order VASP uses,
+        xx, yy, zz, xy, yz, zx. This is not the usual Voigt order, which puts yz
+        fourth, so the fourth diagonal element of the printed table is C_66, not C_44.
+
         Returns
         -------
         dict
-            Contains the level of approximation and its associated elastic modulus.
+            The keys "clamped_ion" and "relaxed_ion" each map to the full Cartesian
+            tensor C_ijkl with shape (3, 3, 3, 3), in kBar. Element [i, j, k, l] couples
+            the stress σ_ij to the strain ε_kl.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The elastic modulus is a rank-4 tensor for both levels of approximation
+
+        >>> elastic_modulus = calculation.elastic_modulus.read()
+        >>> elastic_modulus["relaxed_ion"].shape
+        (3, 3, 3, 3)
+
+        The values are in kBar, so C_11 = C_xxxx of the relaxed ions in GPa is
+
+        >>> float(elastic_modulus["relaxed_ion"][0, 0, 0, 0]) / 10
+        297.0
+
+        Relaxing the ions lowers the modulus compared to clamping them in place
+
+        >>> float(elastic_modulus["clamped_ion"][0, 0, 0, 0]) / 10
+        309.0
         """
         return merge_default(
             self._source,

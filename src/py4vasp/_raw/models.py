@@ -30,7 +30,15 @@ VoigtMatrix = Tuple[Voigt, Voigt, Voigt, Voigt, Voigt, Voigt]
 # series, e.g. "0.11". Increment it whenever any model below changes between releases
 # (a test enforces this, see tests/raw/test_schema_version.py); the version then reads
 # "0.11+db.1", "0.11+db.2", ... Reset it back to 0 on every new py4vasp minor release.
-__DB_SCHEMA__ = 3
+__DB_SCHEMA__ = 4
+# Why the counter above moved although no field name or type changed, keyed by the value
+# it moved to. The fingerprint cannot see a field change its meaning, e.g. its unit, so
+# such a bump is only accepted with a reason recorded here. Empty it together with
+# resetting __DB_SCHEMA__ on a new py4vasp minor release.
+__DB_SEMANTIC_CHANGES__ = {
+    4: "StressModel and the *_3d_tensor fields of ElasticModulusModel store GPa "
+    "instead of kBar",
+}
 
 
 def schema_version() -> str:
@@ -102,7 +110,9 @@ def schema_fingerprint() -> dict:
     subclasses of :class:`_DatabaseModel` defined in this module, so no registration is
     needed (subclasses defined elsewhere, e.g. throwaway classes in tests, are ignored).
     Only the field name and type are recorded (not the field documentation), so
-    documentation edits do not trigger a schema-version bump. A committed snapshot of
+    documentation edits do not trigger a schema-version bump. ``"changes"`` carries
+    :data:`__DB_SEMANTIC_CHANGES__`, the reasons for a bump that changed what a field
+    means rather than its name or type. A committed snapshot of
     this fingerprint is checked by ``tests/raw/test_schema_version.py``.
     """
     models = [
@@ -114,7 +124,12 @@ def schema_fingerprint() -> dict:
             [field_.name, _format_type(field_.type)]
             for field_ in sorted(fields(model), key=lambda field_: field_.name)
         ]
-    return {"schema_version": schema_version(), "models": model_fingerprints}
+    changes = {str(counter): why for counter, why in __DB_SEMANTIC_CHANGES__.items()}
+    return {
+        "schema_version": schema_version(),
+        "models": model_fingerprints,
+        "changes": changes,
+    }
 
 
 def _strip_optional(annotation):
@@ -492,7 +507,7 @@ class ElasticModulusModel(_DatabaseModel):
     """Data class for storing elastic modulus data in the database."""
 
     total_3d_tensor: Optional[VoigtMatrix] = None
-    """The full 3D elastic modulus tensor, including both ionic and electronic contributions. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
+    """The full 3D elastic modulus tensor, including both ionic and electronic contributions. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx), in GPa."""
     total_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the total 3D elastic modulus tensor, in GPa."""
     total_shear_modulus: Optional[float] = None
@@ -509,7 +524,7 @@ class ElasticModulusModel(_DatabaseModel):
     """The fracture toughness calculated from the total bulk and shear moduli, in MPa*m^0.5."""
 
     ionic_3d_tensor: Optional[VoigtMatrix] = None
-    """The full 3D elastic modulus tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
+    """The full 3D elastic modulus tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx), in GPa."""
     ionic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the ionic contribution to the elastic modulus tensor, in GPa."""
     ionic_shear_modulus: Optional[float] = None
@@ -526,7 +541,7 @@ class ElasticModulusModel(_DatabaseModel):
     """The fracture toughness calculated from the ionic contribution to the bulk and shear moduli, in MPa*m^0.5."""
 
     electronic_3d_tensor: Optional[VoigtMatrix] = None
-    """The full 3D elastic modulus tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
+    """The full 3D elastic modulus tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx), in GPa."""
     electronic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the electronic contribution to the elastic modulus tensor, in GPa."""
     electronic_shear_modulus: Optional[float] = None

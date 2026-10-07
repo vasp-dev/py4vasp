@@ -28,7 +28,7 @@ def _setup_elastic_modulus(raw_data, selection):
     elastic_modulus.ref.structure = raw_elastic_modulus.structure
     elastic_modulus.ref.clamped_ion = raw_elastic_modulus.clamped_ion
     elastic_modulus.ref.relaxed_ion = raw_elastic_modulus.relaxed_ion
-    elastic_modulus.ref.overview_data = _setup_overview_data(elastic_modulus)
+    elastic_modulus.ref.overview_data = _setup_overview_data()
     if selection == "SiC":
         elastic_modulus.ref.overview_data["total_bulk_modulus"] = 227.9149991624522
         elastic_modulus.ref.overview_data["total_shear_modulus"] = 197.09002974236228
@@ -70,18 +70,9 @@ def _setup_elastic_modulus(raw_data, selection):
     return elastic_modulus
 
 
-def _setup_overview_data(modulus_obj):
-    total_tensor = modulus_obj.ref.relaxed_ion
-    compact_total_tensor = symmetry_reduce(symmetry_reduce(total_tensor).T).T
-    ionic_tensor = modulus_obj.ref.relaxed_ion - modulus_obj.ref.clamped_ion
-    compact_ionic_tensor = symmetry_reduce(symmetry_reduce(ionic_tensor).T).T
-    electronic_tensor = modulus_obj.ref.clamped_ion
-    compact_electronic_tensor = symmetry_reduce(symmetry_reduce(electronic_tensor).T).T
-    return_dict = {
-        "total_3d_tensor": list([list(l) for l in compact_total_tensor]),
-        "ionic_3d_tensor": list([list(l) for l in compact_ionic_tensor]),
-        "electronic_3d_tensor": list([list(l) for l in compact_electronic_tensor]),
-    }
+def _setup_overview_data():
+    # the tensors are checked separately by test_to_database_tensors_in_GPa
+    return_dict = {}
     for primary_key in ["total", "ionic", "electronic"]:
         for secondary_key in [
             "bulk_modulus",
@@ -100,6 +91,15 @@ def test_read(elastic_modulus, Assert):
     actual = elastic_modulus.read()
     Assert.allclose(actual["clamped_ion"], elastic_modulus.ref.clamped_ion)
     Assert.allclose(actual["relaxed_ion"], elastic_modulus.ref.relaxed_ion)
+
+
+def test_read_documents_the_unit_and_layout():
+    # read returns the kBar VASP writes, while the database stores GPa; a user can only
+    # tell the two apart from the documentation
+    documentation = ElasticModulus.read.__doc__
+    assert "kBar" in documentation
+    assert "(3, 3, 3, 3)" in documentation
+    assert "GPa" in documentation
 
 
 def test_to_dict_matches_read(elastic_modulus, Assert):
@@ -155,6 +155,21 @@ def test_to_database(elastic_moduli):
             assert np.all(
                 np.array(np.isclose(getattr(overview, key), value))
             ), f"mismatch in {key}: expected {value}, got {getattr(overview, key)}."
+
+
+def test_to_database_tensors_in_GPa(elastic_moduli, Assert):
+    handler = ElasticModulusHandler.from_data(elastic_moduli.ref.raw_elastic_modulus)
+    overview = handler.to_database()
+    clamped_ion = np.array(elastic_moduli.ref.clamped_ion)
+    relaxed_ion = np.array(elastic_moduli.ref.relaxed_ion)
+    tensors_in_kbar = {
+        "total_3d_tensor": relaxed_ion,
+        "ionic_3d_tensor": relaxed_ion - clamped_ion,
+        "electronic_3d_tensor": clamped_ion,
+    }
+    for key, tensor in tensors_in_kbar.items():
+        expected = symmetry_reduce(symmetry_reduce(tensor).T).T / 10
+        Assert.allclose(np.array(getattr(overview, key)), expected)
 
 
 def test_print_writes_to_stdout(elastic_modulus, capsys):
