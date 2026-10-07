@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._raw.models import ElasticModulusModel
-from py4vasp._util import check, error
+from py4vasp._util import check, convert, error
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -95,13 +95,9 @@ Direction    XX          YY          ZZ          XY          YZ          ZX
                 context=f"to_database.tensor[{idt}]",
             ):
                 if not check.is_none(tensor):
-                    compact_tensor[idt] = symmetry_reduce(symmetry_reduce(tensor).T).T
-                    voigt_tensor = compact_tensor[idt] / 10.0  # converting kbar to GPa
-                    compact_tensor[idt] = (
-                        list([list(l) for l in compact_tensor[idt]])
-                        if compact_tensor[idt] is not None
-                        else None
-                    )
+                    voigt_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
+                    voigt_tensor = voigt_tensor * convert.KBAR_TO_GPA
+                    compact_tensor[idt] = [list(row) for row in voigt_tensor]
 
             with error.suppress_and_record(
                 encountered_errors,

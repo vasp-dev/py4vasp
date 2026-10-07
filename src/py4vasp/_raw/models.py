@@ -492,7 +492,7 @@ class ElasticModulusModel(_DatabaseModel):
     """Data class for storing elastic modulus data in the database."""
 
     total_3d_tensor: Optional[VoigtMatrix] = None
-    """The full 3D elastic modulus tensor, including both ionic and electronic contributions. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
+    """The full 3D elastic modulus tensor, including both ionic and electronic contributions. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx), in GPa."""
     total_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the total 3D elastic modulus tensor, in GPa."""
     total_shear_modulus: Optional[float] = None
@@ -509,7 +509,7 @@ class ElasticModulusModel(_DatabaseModel):
     """The fracture toughness calculated from the total bulk and shear moduli, in MPa*m^0.5."""
 
     ionic_3d_tensor: Optional[VoigtMatrix] = None
-    """The full 3D elastic modulus tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
+    """The full 3D elastic modulus tensor for the ionic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx), in GPa."""
     ionic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the ionic contribution to the elastic modulus tensor, in GPa."""
     ionic_shear_modulus: Optional[float] = None
@@ -526,7 +526,7 @@ class ElasticModulusModel(_DatabaseModel):
     """The fracture toughness calculated from the ionic contribution to the bulk and shear moduli, in MPa*m^0.5."""
 
     electronic_3d_tensor: Optional[VoigtMatrix] = None
-    """The full 3D elastic modulus tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx)."""
+    """The full 3D elastic modulus tensor for the electronic contribution. Because of symmetry, the tensor is shown in its compact form, in the order (xx, yy, zz, xy, yz, zx), in GPa."""
     electronic_bulk_modulus: Optional[float] = None
     """The bulk modulus calculated from the electronic contribution to the elastic modulus tensor, in GPa."""
     electronic_shear_modulus: Optional[float] = None

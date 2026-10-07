@@ -17,6 +17,10 @@ from py4vasp._raw.data_wrapper import VaspData
 EV_TO_THZ = 241.798934781
 EV_TO_CM1 = 8065.610420
 EV_TO_MEV = 1000
+# A pressure, such as the stress or the elastic modulus, is returned in kBar as VASP
+# reports it, and printed that way so it matches the OUTCAR. The database stores it in
+# GPa, the unit of the bulk, shear and Young's moduli derived from it.
+KBAR_TO_GPA = 0.1
 
 
 def text_to_string(text):
