@@ -54,10 +54,15 @@ dispersion that is a reshaped `np.arange`.
 
 ## Quantities with no examples at all
 
-`demo.py` writes none of `dielectric_tensor`, `elastic_modulus`,
-`born_effective_charge`, `force_constant`, `internal_strain`, `piezoelectric_tensor`,
-`polarization`, `electronic_minimization`, `bader` or `exciton_eigenvector`, and none
-of them carries a docstring example.
+`demo.py` writes none of `dielectric_tensor`, `born_effective_charge`,
+`force_constant`, `internal_strain`, `piezoelectric_tensor`, `polarization`,
+`electronic_minimization`, `bader` or `exciton_eigenvector`, and none of them carries a
+docstring example.
+
+`elastic_modulus` was on this list and is the template for the others:
+`_demo/showcase/elastic_modulus.py` builds the tensor from a handful of tetragonal
+constants, and `tests/demo/test_showcase_elastic_modulus.py` pins the symmetry,
+stability and magnitude a random tensor would not have.
 
 These fail differently from the grid family, and more quietly. They print a fixed-width
 table, so random numbers still look like output — but a random dielectric tensor need
