@@ -1415,8 +1415,8 @@ class TestIsAvailableInjected:
 
     def test_returns_false_when_quantity_absent(self, tmp_path):
         calc = self._calc(tmp_path)
-        # born_effective_charge is not part of the default demo data
-        assert calc.born_effective_charge.is_available("default") is False
+        # piezoelectric_tensor is not part of the default demo data
+        assert calc.piezoelectric_tensor.is_available("default") is False
 
     def test_method_argument_is_ignored_by_default(self, tmp_path):
         calc = self._calc(tmp_path)

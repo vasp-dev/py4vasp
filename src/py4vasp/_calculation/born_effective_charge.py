@@ -13,7 +13,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import BornEffectiveChargeModel
-from py4vasp._util import check
+from py4vasp._util import check, incar
 
 
 class BornEffectiveChargeHandler:
@@ -50,6 +50,13 @@ ion {ion + 1:4d}   {element}
     def read(self) -> dict:
         """Read structure information and Born effective charges into a dictionary."""
         return self.to_dict()
+
+    def to_INCAR(self) -> str:
+        charge_tensors = self._raw_born_effective_charge.charge_tensors[:]
+        # VASP transposes every 3x3 block after reading it and expects the field
+        # direction first; vaspout.h5 stores the field direction as the last axis
+        rows = np.swapaxes(charge_tensors, 1, 2).reshape(len(charge_tensors), 9)
+        return incar.tag_block("PHON_BORN_CHARGES", rows)
 
     def to_dict(self) -> dict:
         """Read structure information and Born effective charges into a dictionary.
@@ -169,7 +176,10 @@ class BornEffectiveCharge:
         The structural information is added to inform about which atoms are included
         in the array. The Born effective charges array contains the mixed second
         derivative with respect to an electric field and an atomic displacement for
-        all atoms and possible directions.
+        all atoms and possible directions. ``charge_tensors[ion, i, j]`` is the
+        derivative with respect to the displacement in direction ``i`` and the electric
+        field in direction ``j``, which is the transpose of the blocks VASP prints in
+        the OUTCAR file. :py:meth:`to_INCAR` takes care of that orientation for you.
 
         Returns
         -------
@@ -187,6 +197,66 @@ class BornEffectiveCharge:
     def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read()
+
+    def to_INCAR(self, selection: str | None = None) -> str:
+        """Format the Born effective charges as the PHON_BORN_CHARGES tag of an INCAR file.
+
+        A phonon calculation of a polar material needs the Born effective charges to
+        describe the long-range dipole-dipole interaction, e.g., the LO-TO splitting.
+        Copy the returned text into the INCAR file of that calculation together with
+        :py:meth:`~py4vasp._calculation.dielectric_tensor.DielectricTensor.to_INCAR`.
+        The text ends with a newline, so you can concatenate it with other INCAR tags.
+
+        Each line holds the 3x3 tensor of one ion, in the order of the ions in the
+        POSCAR file of the linear-response calculation. Within a line, the nine numbers
+        are the rows of the tensor with the electric field as row index and the atomic
+        displacement as column index, which is the orientation VASP reads. You do not
+        need to transpose anything yourself. Note that this is the transpose of the
+        array returned by :py:meth:`read`, which stores the displacement first.
+
+        VASP expects the charges of the atoms in the primitive cell of the phonon
+        calculation and stops if the number of ions does not match. So compute the
+        Born effective charges for the primitive cell, and build the supercell of the
+        phonon calculation from that same POSCAR so that the order of the ions agrees.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the Born effective charges, if VASP produced more than
+            one. Most calculations only have the default source.
+
+        Returns
+        -------
+        str
+            The PHON_BORN_CHARGES tag with nine components for each ion.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Each of the seven ions of Sr2TiO4 gets a line of the tag
+
+        >>> print(calculation.born_effective_charge.to_INCAR())
+        PHON_BORN_CHARGES =   2.470000   0.000000   0.000000   0.000000   2.470000   0.000000   0.000000   0.000000   2.690000 \\
+                              2.470000   0.000000   0.000000   0.000000   2.470000   0.000000   0.000000   0.000000   2.690000 \\
+                              6.940000   0.000000   0.000000   0.000000   6.940000   0.000000   0.000000   0.000000   5.650000 \\
+                             -2.210000   0.000000   0.000000   0.000000  -2.210000   0.000000   0.000000   0.000000  -3.815000 \\
+                             -2.210000   0.000000   0.000000   0.000000  -2.210000   0.000000   0.000000   0.000000  -3.815000 \\
+                             -1.980000   0.000000   0.000000   0.000000  -5.480000   0.000000   0.000000   0.000000  -1.700000 \\
+                             -5.480000   0.000000   0.000000   0.000000  -1.980000   0.000000   0.000000   0.000000  -1.700000
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            BornEffectiveChargeHandler.from_data,
+            BornEffectiveChargeHandler.to_INCAR,
+        )
 
     def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""

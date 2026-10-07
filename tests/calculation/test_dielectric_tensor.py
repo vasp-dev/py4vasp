@@ -250,3 +250,75 @@ def test_to_database_nscf(nscf_tensor, Assert):
 
 def test_to_database_slab_cell(tensor_with_slab_cell, Assert):
     _check_to_database(tensor_with_slab_cell, Assert)
+
+
+def test_to_INCAR(dft_tensor):
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    expected = """\
+PHON_DIELECTRIC =   0.000000   3.000000   6.000000 \\
+                    1.000000   4.000000   7.000000 \\
+                    2.000000   5.000000   8.000000
+"""
+    assert handler.to_INCAR() == expected
+
+
+def test_to_INCAR_orientation(dft_tensor, Assert):
+    # VASP reads the nine numbers into DIELECTRIC_TENSOR(3,3) in Fortran order and then
+    # transposes it (phonon.F), so the list is the tensor row by row with the field
+    # direction as row. py4vasp stores the transpose of that Fortran array.
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    tensor_in_vasp = parse_INCAR_values(handler.to_INCAR()).reshape(3, 3)
+    Assert.allclose(tensor_in_vasp, dft_tensor.ref.clamped_ion[:].T)
+
+
+@pytest.mark.parametrize(
+    "selection", ("clamped_ion", "relaxed_ion", "independent_particle")
+)
+def test_to_INCAR_selection(dft_tensor, selection, Assert):
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    actual = parse_INCAR_values(handler.to_INCAR(selection)).reshape(3, 3)
+    Assert.allclose(actual, getattr(dft_tensor.ref, selection)[:].T)
+
+
+@pytest.mark.parametrize("selection", ("unknown", "clamped_ion, relaxed_ion"))
+def test_to_INCAR_incorrect_selection(dft_tensor, selection):
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    with pytest.raises(exception.IncorrectUsage):
+        handler.to_INCAR(selection)
+
+
+def test_to_INCAR_hyphen_gives_readable_message(dft_tensor):
+    # the printed header spells the tensor "clamped-ion", which the selection parser
+    # reads as a subtraction; the message must not show its internal representation
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        handler.to_INCAR("clamped-ion")
+    message = str(error.value)
+    assert "Operation" not in message
+    assert "'clamped - ion'" in message
+    assert "clamped_ion" in message
+
+
+def test_to_INCAR_missing_tensor(rpa_tensor):
+    handler = DielectricTensorHandler.from_data(rpa_tensor.ref.raw_tensor)
+    with pytest.raises(exception.NoData):
+        handler.to_INCAR("relaxed_ion")
+
+
+@pytest.mark.parametrize(
+    "selection, tensor",
+    (
+        (None, "clamped_ion"),
+        ("default", "clamped_ion"),
+        ("relaxed_ion", "relaxed_ion"),
+        ("default(relaxed_ion)", "relaxed_ion"),
+    ),
+)
+def test_to_INCAR_dispatcher(dft_tensor, selection, tensor):
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    assert dft_tensor.to_INCAR(selection) == handler.to_INCAR(tensor)
+
+
+def parse_INCAR_values(incar):
+    _, values = incar.split("=")
+    return np.array(values.replace("\\", " ").split(), dtype=float)

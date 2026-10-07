@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._raw.models import DielectricTensorModel
-from py4vasp._util import check, convert, error
+from py4vasp._util import check, convert, error, incar, select
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -63,6 +63,16 @@ Macroscopic static dielectric tensor (dimensionless)
 {_dielectric_tensor_string(data["clamped_ion"], "clamped-ion")}
 {_dielectric_tensor_string(data["relaxed_ion"], "relaxed-ion")}
 """.strip()
+
+    def to_INCAR(self, selection=None) -> str:
+        choice = _parse_incar_selection(selection)
+        tensor = self.to_dict()[choice]
+        if tensor is None:
+            message = f"The {choice} dielectric tensor was not computed in this VASP calculation."
+            raise exception.NoData(message)
+        # VASP transposes the tensor after reading it, so the rows of the INCAR are the
+        # rows of the Fortran array, which is the transpose of the numpy array
+        return incar.tag_block("PHON_DIELECTRIC", tensor.T)
 
     def to_database(self) -> dict:
         encountered_errors = {}
@@ -214,6 +224,67 @@ class DielectricTensor:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
+    def to_INCAR(self, selection: str | None = None) -> str:
+        """Format the dielectric tensor as the PHON_DIELECTRIC tag of an INCAR file.
+
+        A phonon calculation of a polar material needs the dielectric tensor to
+        describe the long-range dipole-dipole interaction, e.g., the LO-TO splitting.
+        Copy the returned text into the INCAR file of that calculation together with
+        :py:meth:`~py4vasp._calculation.born_effective_charge.BornEffectiveCharge.to_INCAR`.
+        The text ends with a newline, so you can concatenate it with other INCAR tags.
+
+        The tensor is written in the orientation VASP reads it, one row per line with
+        a backslash continuing the tag onto the next line. You do not need to transpose
+        anything yourself. Note that the rows are the columns of the array returned by
+        :py:meth:`read`; for the symmetric tensors VASP computes both agree.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose which dielectric tensor is written. The default is the
+            ``clamped_ion`` tensor, the electronic contribution only, which is the
+            high-frequency dielectric constant ε∞ that the dipole-dipole interaction
+            of phonons requires. Alternatively, select ``relaxed_ion`` for the static
+            tensor including the ionic contribution or ``independent_particle`` for the
+            electronic tensor without local field effects. Exactly one tensor can be
+            selected; you may nest it inside the source, e.g. ``default(clamped_ion)``.
+
+        Returns
+        -------
+        str
+            The PHON_DIELECTRIC tag with the nine components of the tensor.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Without a selection you obtain the clamped-ion tensor ε∞
+
+        >>> print(calculation.dielectric_tensor.to_INCAR())
+        PHON_DIELECTRIC =   4.620000   0.000000   0.000000 \\
+                            0.000000   4.620000   0.000000 \\
+                            0.000000   0.000000   4.350000
+
+        Select the relaxed-ion tensor to include the ionic contribution
+
+        >>> print(calculation.dielectric_tensor.to_INCAR("relaxed_ion"))
+        PHON_DIELECTRIC =  37.120000   0.000000   0.000000 \\
+                            0.000000  37.120000   0.000000 \\
+                            0.000000   0.000000  18.150000
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DielectricTensorHandler.to_INCAR,
+        )
+
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
 
@@ -270,6 +341,25 @@ def _dielectric_tensor_string(tensor, label):
     row_to_string = lambda row: 6 * " " + " ".join(f"{x:12.6f}" for x in row)
     rows = (row_to_string(row) for row in tensor)
     return f"{label:^55}".rstrip() + "\n" + "\n".join(rows)
+
+
+_INCAR_TENSORS = ("clamped_ion", "relaxed_ion", "independent_particle")
+
+
+def _parse_incar_selection(selection):
+    tree = select.Tree.from_selection(selection)
+    parts = [str(part) for choice in tree.selections() for part in choice]
+    if unknown := [part for part in parts if part not in _INCAR_TENSORS]:
+        unknown = ", ".join(f"'{part}'" for part in unknown)
+        valid = ", ".join(_INCAR_TENSORS)
+        message = (
+            f"The selection {unknown} is not one of the dielectric tensors {valid}."
+        )
+        raise exception.IncorrectUsage(message)
+    if len(parts) > 1:
+        message = f"PHON_DIELECTRIC holds a single tensor, but you selected {parts}."
+        raise exception.IncorrectUsage(message)
+    return parts[0] if parts else "clamped_ion"
 
 
 def _description(method):

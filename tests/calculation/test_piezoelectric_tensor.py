@@ -4,6 +4,8 @@ import types
 
 import pytest
 
+import py4vasp
+from py4vasp import exception
 from py4vasp._calculation.piezoelectric_tensor import (
     PiezoelectricTensor,
     PiezoelectricTensorHandler,
@@ -156,3 +158,12 @@ def test_selections(piezoelectric_tensor):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.piezoelectric_tensor("default")
     check_factory_methods(PiezoelectricTensor, data, skip_methods=["selections"])
+
+
+def test_absent_data_says_no_source(tmp_path):
+    calculation = py4vasp.demo.calculation(tmp_path / "calculation")
+    with pytest.raises(exception.NoData) as error:
+        calculation.piezoelectric_tensor.read()
+    message = str(error.value)
+    assert "No source of 'piezoelectric_tensor'" in message
+    assert "INCAR" in message

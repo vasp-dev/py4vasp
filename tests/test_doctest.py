@@ -13,7 +13,9 @@ from py4vasp import _calculation, broadening, demo
 from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calculation attributes
     band,
     bandgap,
+    born_effective_charge,
     dielectric_function,
+    dielectric_tensor,
     dos,
     elastic_modulus,
     energy,
@@ -82,7 +84,9 @@ def _all_calculation_examples():
         find_examples(_calculation)
         + find_examples(_calculation.band)
         + find_examples(_calculation.bandgap)
+        + find_examples(_calculation.born_effective_charge)
         + find_examples(_calculation.dielectric_function)
+        + find_examples(_calculation.dielectric_tensor)
         + find_examples(_calculation.dos)
         + find_examples(_calculation.elastic_modulus)
         + find_examples(_calculation.energy)
