@@ -224,6 +224,66 @@ class DielectricTensor:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
+    def to_INCAR(self, selection: str | None = None) -> str:
+        """Format the dielectric tensor as the PHON_DIELECTRIC tag of an INCAR file.
+
+        A phonon calculation of a polar material needs the dielectric tensor to
+        describe the long-range dipole-dipole interaction, e.g., the LO-TO splitting.
+        Copy the returned text into the INCAR file of that calculation together with
+        :py:meth:`~py4vasp._calculation.born_effective_charge.BornEffectiveCharge.to_INCAR`.
+        The text ends with a newline, so you can concatenate it with other INCAR tags.
+
+        The tensor is written in the orientation VASP reads it, one row per line with
+        a backslash continuing the tag onto the next line. You do not need to transpose
+        anything yourself.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose which dielectric tensor is written. The default is the
+            ``clamped_ion`` tensor, the electronic contribution only, which is the
+            high-frequency dielectric constant ε∞ that the dipole-dipole interaction
+            of phonons requires. Alternatively, select ``relaxed_ion`` for the static
+            tensor including the ionic contribution or ``independent_particle`` for the
+            electronic tensor without local field effects. Exactly one tensor can be
+            selected; you may nest it inside the source, e.g. ``default(clamped_ion)``.
+
+        Returns
+        -------
+        str
+            The PHON_DIELECTRIC tag with the nine components of the tensor.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        Without a selection you obtain the clamped-ion tensor ε∞
+
+        >>> print(calculation.dielectric_tensor.to_INCAR())
+        PHON_DIELECTRIC =   4.620000   0.000000   0.000000 \\
+                            0.000000   4.620000   0.000000 \\
+                            0.000000   0.000000   4.350000
+
+        Select the relaxed-ion tensor to include the ionic contribution
+
+        >>> print(calculation.dielectric_tensor.to_INCAR("relaxed_ion"))
+        PHON_DIELECTRIC =  37.120000   0.000000   0.000000 \\
+                            0.000000  37.120000   0.000000 \\
+                            0.000000   0.000000  18.150000
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            DielectricTensorHandler.to_INCAR,
+        )
+
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
 

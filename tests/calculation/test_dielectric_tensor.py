@@ -293,6 +293,20 @@ def test_to_INCAR_missing_tensor(rpa_tensor):
         handler.to_INCAR("relaxed_ion")
 
 
+@pytest.mark.parametrize(
+    "selection, tensor",
+    (
+        (None, "clamped_ion"),
+        ("default", "clamped_ion"),
+        ("relaxed_ion", "relaxed_ion"),
+        ("default(relaxed_ion)", "relaxed_ion"),
+    ),
+)
+def test_to_INCAR_dispatcher(dft_tensor, selection, tensor):
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    assert dft_tensor.to_INCAR(selection) == handler.to_INCAR(tensor)
+
+
 def parse_INCAR_values(incar):
     _, values = incar.split("=")
     return np.array(values.replace("\\", " ").split(), dtype=float)

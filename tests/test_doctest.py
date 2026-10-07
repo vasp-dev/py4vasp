@@ -14,6 +14,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     band,
     bandgap,
     dielectric_function,
+    dielectric_tensor,
     dos,
     elastic_modulus,
     energy,
@@ -83,6 +84,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.band)
         + find_examples(_calculation.bandgap)
         + find_examples(_calculation.dielectric_function)
+        + find_examples(_calculation.dielectric_tensor)
         + find_examples(_calculation.dos)
         + find_examples(_calculation.elastic_modulus)
         + find_examples(_calculation.energy)
