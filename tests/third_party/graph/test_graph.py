@@ -190,22 +190,6 @@ def test_contour_color_scheme(color_scheme):
         )
 
 
-@pytest.mark.xfail
-@pytest.mark.parametrize("contrast_mode", [True, False])
-def test_contour_contrast_mode(contrast_mode):
-    pytest.importorskip("plotly")
-    contour = Contour(
-        data=np.linspace(0, 10, 20 * 18).reshape((20, 18)),
-        lattice=slicing.Plane(np.diag([4.0, 3.6]), cut="c"),
-        label="rectangle contour",
-        contrast_mode=contrast_mode,
-        isolevels=True,
-    )
-    assert contrast_mode == contour.contrast_mode
-    graph = Graph(contour)
-    raise NotImplementedError("Implementation not yet complete.")
-
-
 @pytest.mark.parametrize(
     "color_limits", [None, (None, None), (-9, None), (None, 9), (-11, 11)]
 )
@@ -939,7 +923,6 @@ def test_contour_interpolate(tilted_contour, Assert):
     check_colorscale(fig, expected_data, False, Assert)
 
 
-# @pytest.mark.xfail
 def test_contour_interpolate_with_periodic_traces(tilted_contour, Assert):
     pytest.importorskip("plotly")
     fig, expected_data = check_basic_tilted_contour(tilted_contour, True, Assert)
