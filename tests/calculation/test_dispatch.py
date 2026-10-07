@@ -1259,7 +1259,8 @@ class TestMissingDataMessage:
 
     def test_required_names_every_complete_source(self):
         missing = (["group/x"], [])
-        message = _missing_data_message("density", None, missing, ["tau", "all_electron"])
+        complete = ["tau", "all_electron"]
+        message = _missing_data_message("density", None, missing, complete)
         assert "'tau', 'all_electron'" in message
         assert 'selection="tau"' in message
 
@@ -1341,9 +1342,7 @@ class TestDispatchMissingData:
         default = raw_data.phonon_mode("Sr2TiO4")
         default.frequencies = raw.VaspData(None)
         source = DataSource(default)
-        with patch(
-            "py4vasp._calculation.dispatch._complete_sources", return_value=[]
-        ):
+        with patch("py4vasp._calculation.dispatch._complete_sources", return_value=[]):
             with pytest.raises(exception.NoData, match="INCAR"):
                 self._read(source)
 
@@ -1385,9 +1384,7 @@ class TestDispatchMissingData:
             "py4vasp._calculation.dispatch._missing_datasets",
             return_value=([], ["group/x"]),
         ):
-            with patch(
-                "py4vasp._calculation.dispatch._complete_sources"
-            ) as complete:
+            with patch("py4vasp._calculation.dispatch._complete_sources") as complete:
                 with pytest.raises(exception.NoData, match="optional"):
                     self._read(self._source(raw_data))
         complete.assert_not_called()

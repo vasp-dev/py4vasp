@@ -7,7 +7,6 @@ import pytest
 
 import py4vasp
 from py4vasp import exception
-
 from py4vasp._calculation.born_effective_charge import (
     BornEffectiveCharge,
     BornEffectiveChargeHandler,
