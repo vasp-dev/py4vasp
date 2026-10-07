@@ -66,7 +66,7 @@ class VaspData(np.lib.mixins.NDArrayOperatorsMixin):
                 Could not find data in output, please make sure that the provided input
                 should produce this data and that the VASP calculation already finished.
                 Also check that VASP did not exit with an error."""
-            raise exception.NoData(textwrap.dedent(message))
+            raise exception._DatasetNotFound(textwrap.dedent(message))
         else:
             return self._data
 

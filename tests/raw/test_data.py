@@ -129,9 +129,15 @@ def test_slices(array_slice, Assert):
 )
 def test_missing_data(function):
     vasp = VaspData(None)
-    with pytest.raises(exception.NoData):
+    with pytest.raises(exception._DatasetNotFound):
         function(vasp)
     assert vasp.is_none()
+
+
+def test_dataset_not_found_is_no_data():
+    # the marker lets the dispatch layer recognize the generic error, but every
+    # user catching NoData must still catch it
+    assert issubclass(exception._DatasetNotFound, exception.NoData)
 
 
 def test_astype_with_none():

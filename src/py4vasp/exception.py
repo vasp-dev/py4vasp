@@ -32,6 +32,12 @@ class NoData(Py4VaspError):
     INCAR flags have not been set."""
 
 
+class _DatasetNotFound(NoData):
+    """Raised when a dataset absent from the VASP output is accessed. It is private
+    because users should catch NoData; it lets py4vasp tell this generic case apart
+    from the more specific NoData raised by the quantities and replace its message."""
+
+
 class FileAccessError(Py4VaspError):
     """Exception raised when error occurs during accessing the HDF5 file."""
 
