@@ -280,6 +280,19 @@ def test_to_INCAR_selection(dft_tensor, selection, Assert):
     Assert.allclose(actual, getattr(dft_tensor.ref, selection)[:].T)
 
 
+@pytest.mark.parametrize("selection", ("unknown", "clamped_ion, relaxed_ion"))
+def test_to_INCAR_incorrect_selection(dft_tensor, selection):
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    with pytest.raises(exception.IncorrectUsage):
+        handler.to_INCAR(selection)
+
+
+def test_to_INCAR_missing_tensor(rpa_tensor):
+    handler = DielectricTensorHandler.from_data(rpa_tensor.ref.raw_tensor)
+    with pytest.raises(exception.NoData):
+        handler.to_INCAR("relaxed_ion")
+
+
 def parse_INCAR_values(incar):
     _, values = incar.split("=")
     return np.array(values.replace("\\", " ").split(), dtype=float)

@@ -65,15 +65,14 @@ Macroscopic static dielectric tensor (dimensionless)
 """.strip()
 
     def to_INCAR(self, selection=None) -> str:
-        tensor = self.to_dict()[self._parse_incar_selection(selection)]
+        choice = _parse_incar_selection(selection)
+        tensor = self.to_dict()[choice]
+        if tensor is None:
+            message = f"The {choice} dielectric tensor was not computed in this VASP calculation."
+            raise exception.NoData(message)
         # VASP transposes the tensor after reading it, so the rows of the INCAR are the
         # rows of the Fortran array, which is the transpose of the numpy array
         return _incar_block("PHON_DIELECTRIC", tensor.T)
-
-    def _parse_incar_selection(self, selection):
-        tree = select.Tree.from_selection(selection)
-        parts = [part for choice in tree.selections() for part in choice]
-        return parts[0] if parts else "clamped_ion"
 
     def to_database(self) -> dict:
         encountered_errors = {}
@@ -281,6 +280,21 @@ def _dielectric_tensor_string(tensor, label):
     row_to_string = lambda row: 6 * " " + " ".join(f"{x:12.6f}" for x in row)
     rows = (row_to_string(row) for row in tensor)
     return f"{label:^55}".rstrip() + "\n" + "\n".join(rows)
+
+
+_INCAR_TENSORS = ("clamped_ion", "relaxed_ion", "independent_particle")
+
+
+def _parse_incar_selection(selection):
+    tree = select.Tree.from_selection(selection)
+    parts = [part for choice in tree.selections() for part in choice]
+    if unknown := set(parts).difference(_INCAR_TENSORS):
+        message = f"The selection {unknown} is not one of the dielectric tensors {_INCAR_TENSORS}."
+        raise exception.IncorrectUsage(message)
+    if len(parts) > 1:
+        message = f"PHON_DIELECTRIC holds a single tensor, but you selected {parts}."
+        raise exception.IncorrectUsage(message)
+    return parts[0] if parts else "clamped_ion"
 
 
 def _incar_block(tag, rows):
