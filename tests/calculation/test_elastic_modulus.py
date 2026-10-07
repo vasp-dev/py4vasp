@@ -93,6 +93,15 @@ def test_read(elastic_modulus, Assert):
     Assert.allclose(actual["relaxed_ion"], elastic_modulus.ref.relaxed_ion)
 
 
+def test_read_documents_the_unit_and_layout():
+    # read returns the kBar VASP writes, while the database stores GPa; a user can only
+    # tell the two apart from the documentation
+    documentation = ElasticModulus.read.__doc__
+    assert "kBar" in documentation
+    assert "(3, 3, 3, 3)" in documentation
+    assert "GPa" in documentation
+
+
 def test_to_dict_matches_read(elastic_modulus, Assert):
     Assert.allclose(
         elastic_modulus.to_dict()["clamped_ion"], elastic_modulus.read()["clamped_ion"]

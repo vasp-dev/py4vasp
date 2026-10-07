@@ -237,6 +237,8 @@ class ElasticModulus:
     variants of the elastic modulus: (i) in the clamped-ion one, the cell is deformed
     but the ions are kept in their positions; (ii) in the relaxed-ion one the
     atoms are allowed to relax when the cell is deformed.
+
+    Like VASP, py4vasp reads and prints the elastic modulus in kBar (1 GPa = 10 kBar).
     """
 
     def __init__(self, source, quantity_name: str = "elastic_modulus"):
@@ -254,10 +256,41 @@ class ElasticModulus:
     def read(self) -> dict:
         """Read the clamped-ion and relaxed-ion elastic modulus into a dictionary.
 
+        The elastic modulus is returned in kBar, the unit VASP writes it in and the one
+        :py:meth:`print` uses, so the numbers agree with the OUTCAR. Divide by 10 to
+        obtain GPa; 1 GPa = 10 kBar.
+
         Returns
         -------
         dict
-            Contains the level of approximation and its associated elastic modulus.
+            The keys "clamped_ion" and "relaxed_ion" each map to the full Cartesian
+            tensor C_ijkl with shape (3, 3, 3, 3), in kBar. Element [i, j, k, l] couples
+            the stress σ_ij to the strain ε_kl.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The elastic modulus is a rank-4 tensor for both levels of approximation
+
+        >>> elastic_modulus = calculation.elastic_modulus.read()
+        >>> elastic_modulus["relaxed_ion"].shape
+        (3, 3, 3, 3)
+
+        The values are in kBar, so C_11 = C_xxxx of the relaxed ions in GPa is
+
+        >>> float(elastic_modulus["relaxed_ion"][0, 0, 0, 0]) / 10
+        297.0
+
+        Relaxing the ions lowers the modulus compared to clamping them in place
+
+        >>> float(elastic_modulus["clamped_ion"][0, 0, 0, 0]) / 10
+        309.0
         """
         return merge_default(
             self._source,
