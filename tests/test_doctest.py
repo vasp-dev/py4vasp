@@ -17,6 +17,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     dos,
     energy,
     force,
+    force_constant,
     kpoint,
     local_moment,
     neighbor_list,
@@ -84,6 +85,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.dos)
         + find_examples(_calculation.energy)
         + find_examples(_calculation.force)
+        + find_examples(_calculation.force_constant)
         + find_examples(_calculation.kpoint)
         + find_examples(_calculation.local_moment)
         + find_examples(_calculation.neighbor_list)

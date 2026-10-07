@@ -253,3 +253,44 @@ def test_spectrum_is_broadened_once(raw_dos):
     assert not projections.flags.writeable
     assert phonon._spectrum()[1] is projections
     assert np.array(raw_dos.projections) is not projections
+
+
+@pytest.fixture
+def force_constants():
+    # VASP stores the derivative of the force, the negative of the Hessian
+    return -np.array(phonon.force_constant_Sr2TiO4().force_constants)
+
+
+def test_force_constants_are_symmetric(force_constants, Assert):
+    Assert.allclose(force_constants, force_constants.T)
+
+
+def test_force_constants_reproduce_the_mode_frequencies(
+    force_constants, mode_frequencies, Assert
+):
+    # the dynamical matrix divides the force constants by the square root of the masses
+    # of both atoms; its eigenvalues are the squares of the frequencies divided by ħ²
+    inverse_sqrt_mass = np.repeat(1 / np.sqrt(phonon.MASSES), 3)
+    dynamical_matrix = np.outer(inverse_sqrt_mass, inverse_sqrt_mass) * force_constants
+    eigenvalues = np.linalg.eigvalsh(dynamical_matrix)
+    frequencies = np.sqrt(np.abs(convert.HBAR_SQUARED * eigenvalues))
+    expected = np.sort(mode_frequencies.real) / convert.EV_TO_THZ
+    Assert.allclose(frequencies, expected, tolerance=1e6)
+
+
+def test_force_constants_obey_the_acoustic_sum_rule(force_constants, Assert):
+    # moving the whole crystal does not create a force on any atom
+    by_atom = force_constants.reshape(-1, phonon.NUMBER_ATOMS, 3)
+    Assert.allclose(np.sum(by_atom, axis=1), np.zeros((NUMBER_MODES, 3)), tolerance=1e6)
+
+
+def test_force_constants_displace_every_atom():
+    assert phonon.force_constant_Sr2TiO4().selective_dynamics.is_none()
+
+
+def test_demo_calculation_contains_the_force_constants(tmp_path, force_constants, Assert):
+    from py4vasp import demo
+
+    calculation = demo.calculation(tmp_path / "force_constant")
+    actual = calculation.force_constant.read()["force_constants"]
+    Assert.allclose(actual, force_constants)
