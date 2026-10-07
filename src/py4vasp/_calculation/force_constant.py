@@ -370,7 +370,8 @@ class ForceConstant:
         divided by the square root of the masses of both atoms. py4vasp reports them as
         the energy ħω in eV like every other energy, so the numbers compare directly to
         :py:meth:`py4vasp._calculation.phonon_mode.PhononMode.frequencies`. Multiply
-        with 241.8 to get THz or with 8065.6 to get cm⁻¹.
+        with 241.798934781 to get THz or with 8065.610420 to get cm⁻¹; these are the
+        factors VASP and :py:meth:`to_molden` use.
 
         An unstable mode, i.e. a negative eigenvalue of the dynamical matrix, has an
         imaginary frequency, so the array is complex. py4vasp reports the result as is:
@@ -414,7 +415,7 @@ class ForceConstant:
 
         These are the same frequencies the phonon modes report, converted here to cm⁻¹
 
-        >>> np.round(frequencies[3:6].real * 8065.6)
+        >>> np.round(frequencies[3:6].real * 8065.610420)
         array([107., 120., 137.])
 
         You can replace the masses, e.g. to study the isotope effect. Doubling every
