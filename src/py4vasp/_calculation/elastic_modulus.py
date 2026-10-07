@@ -260,6 +260,10 @@ class ElasticModulus:
         :py:meth:`print` uses, so the numbers agree with the OUTCAR. Divide by 10 to
         obtain GPa; 1 GPa = 10 kBar.
 
+        :py:meth:`print` shows the tensor as a 6 x 6 matrix in the order VASP uses,
+        xx, yy, zz, xy, yz, zx. This is not the usual Voigt order, which puts yz
+        fourth, so the fourth diagonal element of the printed table is C_66, not C_44.
+
         Returns
         -------
         dict
