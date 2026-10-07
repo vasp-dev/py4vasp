@@ -1219,6 +1219,18 @@ class TestMissingDataMessage:
         assert "source 'default'" in message
         assert "group/eigenvalues, group/eigenvectors" in message
 
+    @pytest.mark.parametrize(
+        "missing, phrase",
+        [
+            ((["group/x"], []), "required dataset group/x is missing"),
+            ((["group/x", "group/y"], []), "required datasets group/x, group/y are"),
+            (([], ["group/x"]), "optional dataset group/x is absent"),
+            (([], ["group/x", "group/y"]), "optional datasets group/x, group/y are"),
+        ],
+    )
+    def test_singular_and_plural(self, missing, phrase):
+        assert phrase in _missing_data_message("structure", None, missing, [])
+
     def test_required_names_explicit_source(self):
         missing = (["group/x"], [])
         message = _missing_data_message("band", "kpoints_opt", missing, ["default"])

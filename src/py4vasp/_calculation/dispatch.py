@@ -860,14 +860,13 @@ def _missing_data_message(quantity_name, selection, missing, complete):
         return (
             f"The source '{source}' of '{quantity}' contains all required data, but "
             "this method also needs optional data that is missing. The optional "
-            f"datasets {_format_datasets(missing[1])} are absent from the VASP output; "
-            "please make sure that the INCAR tags of the calculation produce the one "
-            "you need."
+            f"{_format_datasets(missing[1])} absent from the VASP output; please make "
+            "sure that the INCAR tags of the calculation produce the one you need."
         )
     message = f"'{quantity}' has no data for the source '{source}' in this calculation"
     if missing and missing[0]:
         datasets = _format_datasets(missing[0])
-        message += f": the required datasets {datasets} are missing from the VASP output"
+        message += f": the required {datasets} missing from the VASP output"
     message += ". "
     if complete:
         message += _point_to_complete_sources(complete)
@@ -881,9 +880,12 @@ def _missing_data_message(quantity_name, selection, missing, complete):
 
 
 def _format_datasets(datasets):
+    "Name the datasets including noun and verb, e.g. 'dataset x is'."
     listed = ", ".join(datasets[:_MAX_LISTED_DATASETS])
     remaining = len(datasets) - _MAX_LISTED_DATASETS
-    return f"{listed} and {remaining} more" if remaining > 0 else listed
+    if remaining > 0:
+        listed += f" and {remaining} more"
+    return f"dataset {listed} is" if len(datasets) == 1 else f"datasets {listed} are"
 
 
 def _point_to_complete_sources(complete):

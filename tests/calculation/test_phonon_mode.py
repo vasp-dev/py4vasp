@@ -703,3 +703,19 @@ def test_degenerate_groups_of_dispersion_raises_error(raw_data):
     modes = PhononMode.from_data(raw_data.phonon_mode("dispersion"))
     with pytest.raises(exception.NotImplemented):
         modes.degenerate_groups()
+
+
+def test_missing_default_source_names_dispersion(tmp_path):
+    # a dispersion calculation stores its modes only under the "dispersion" source;
+    # the error must point there instead of suggesting that VASP failed
+    path = tmp_path / "calculation"
+    calculation = py4vasp.demo.calculation(path)
+    with h5py.File(path / "vaspout.h5", "a") as h5f:
+        del h5f["results/linear_response/dynmat/eigenvalues"]
+        del h5f["results/linear_response/dynmat/eigenvectors"]
+    with pytest.raises(exception.NoData) as error:
+        calculation.phonon.mode.read()
+    message = str(error.value)
+    assert "results/linear_response/dynmat/eigenvalues" in message
+    assert 'selection="dispersion"' in message
+    assert "VASP calculation already finished" not in message
