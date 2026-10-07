@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._raw.models import DielectricTensorModel
-from py4vasp._util import check, convert, error
+from py4vasp._util import check, convert, error, select
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -64,12 +64,16 @@ Macroscopic static dielectric tensor (dimensionless)
 {_dielectric_tensor_string(data["relaxed_ion"], "relaxed-ion")}
 """.strip()
 
-    def to_INCAR(self) -> str:
+    def to_INCAR(self, selection=None) -> str:
+        tensor = self.to_dict()[self._parse_incar_selection(selection)]
         # VASP transposes the tensor after reading it, so the rows of the INCAR are the
         # rows of the Fortran array, which is the transpose of the numpy array
-        return _incar_block(
-            "PHON_DIELECTRIC", self._raw_dielectric_tensor.electron[:].T
-        )
+        return _incar_block("PHON_DIELECTRIC", tensor.T)
+
+    def _parse_incar_selection(self, selection):
+        tree = select.Tree.from_selection(selection)
+        parts = [part for choice in tree.selections() for part in choice]
+        return parts[0] if parts else "clamped_ion"
 
     def to_database(self) -> dict:
         encountered_errors = {}

@@ -271,6 +271,15 @@ def test_to_INCAR_orientation(dft_tensor, Assert):
     Assert.allclose(tensor_in_vasp, dft_tensor.ref.clamped_ion[:].T)
 
 
+@pytest.mark.parametrize(
+    "selection", ("clamped_ion", "relaxed_ion", "independent_particle")
+)
+def test_to_INCAR_selection(dft_tensor, selection, Assert):
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    actual = parse_INCAR_values(handler.to_INCAR(selection)).reshape(3, 3)
+    Assert.allclose(actual, getattr(dft_tensor.ref, selection)[:].T)
+
+
 def parse_INCAR_values(incar):
     _, values = incar.split("=")
     return np.array(values.replace("\\", " ").split(), dtype=float)
