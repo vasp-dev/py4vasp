@@ -386,18 +386,53 @@ def _dispatch(
                 "which sources exist."
             )
             raise exception.IncorrectUsage(message)
-        with source.access(quantity_name, selection=ctx.selection_name) as raw:
-            handler = handler_factory(raw)
-            if handler_wants_selection:
-                if ctx.remaining_selection is None and selection_has_default:
-                    result = method(handler, *args, **kwargs)
+        try:
+            with source.access(quantity_name, selection=ctx.selection_name) as raw:
+                handler = handler_factory(raw)
+                if handler_wants_selection:
+                    if ctx.remaining_selection is None and selection_has_default:
+                        result = method(handler, *args, **kwargs)
+                    else:
+                        result = method(
+                            handler, ctx.remaining_selection, *args, **kwargs
+                        )
                 else:
-                    result = method(handler, ctx.remaining_selection, *args, **kwargs)
-            else:
-                result = method(handler, *args, **kwargs)
-            key = ctx.selection_name or "default"
-            results[key] = result
+                    result = method(handler, *args, **kwargs)
+                key = ctx.selection_name or "default"
+                results[key] = result
+        except exception._DatasetNotFound:
+            # The generic error only says that some data is absent. A source that
+            # suppresses errors (database collection) never gets here.
+            message = _explain_missing_data(source, quantity_name, ctx.selection_name)
+            if message is None:
+                raise
+            raise exception.NoData(message) from None
     return results
+
+
+def _explain_missing_data(source, quantity_name, selection):
+    """Describe the data missing from *selection*, or None if it cannot be named."""
+    try:
+        with source.access(quantity_name, selection=selection) as raw_data:
+            missing = _missing_datasets(quantity_name, selection, raw_data)
+    except _UNAVAILABLE_EXCEPTIONS:
+        missing = None
+    if missing == ([], []):
+        return None
+    if missing and not missing[0]:
+        complete = []  # the source is complete, so other sources do not help
+    else:
+        complete = _complete_sources(source, quantity_name, exclude=selection)
+    return _missing_data_message(quantity_name, selection, missing, complete)
+
+
+# accessing a source raises one of these when its data is not there
+_UNAVAILABLE_EXCEPTIONS = (
+    exception.FileAccessError,
+    exception.OutdatedVaspVersion,
+    exception.NoData,
+    FileNotFoundError,
+)
 
 
 def _result_has_data(result) -> bool:
@@ -686,12 +721,7 @@ def _availability_of_source(instance, quantity, selection, method):
     try:
         with instance._source.access(quantity, selection=source) as raw_data:
             return instance._is_available(raw_data, selection, method)
-    except (
-        exception.FileAccessError,
-        exception.OutdatedVaspVersion,
-        exception.NoData,
-        FileNotFoundError,
-    ):
+    except _UNAVAILABLE_EXCEPTIONS:
         return False
 
 

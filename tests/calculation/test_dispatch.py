@@ -1273,6 +1273,85 @@ class TestMissingDataMessage:
         assert 'selection="default"' in message
 
 
+class _FrequencyHandler:
+    def __init__(self, raw_data):
+        self._raw_data = raw_data
+
+    def read(self):
+        return np.asarray(self._raw_data.frequencies)
+
+    def read_custom_error(self):
+        raise exception.NoData("custom message")
+
+
+class TestDispatchMissingData:
+    def _source(self, raw_data, default_frequencies=None):
+        default = raw_data.phonon_mode("Sr2TiO4")
+        default.frequencies = raw.VaspData(default_frequencies)
+        dispersion = raw_data.phonon_mode("dispersion")
+        return DictSource(
+            {"phonon_mode": default, ("phonon_mode", "dispersion"): dispersion}
+        )
+
+    def _read(self, source, method=_FrequencyHandler.read, selection=None):
+        return _dispatch(source, "phonon_mode", selection, _FrequencyHandler, method)
+
+    def test_names_missing_dataset_and_complete_source(self, raw_data):
+        with pytest.raises(exception.NoData) as error:
+            self._read(self._source(raw_data))
+        message = str(error.value)
+        assert "results/linear_response/dynmat/eigenvalues" in message
+        assert 'selection="dispersion"' in message
+        assert type(error.value) is exception.NoData
+        assert error.value.__cause__ is None
+        assert error.value.__suppress_context__
+
+    def test_no_complete_source_advises_on_vasp(self, raw_data):
+        default = raw_data.phonon_mode("Sr2TiO4")
+        default.frequencies = raw.VaspData(None)
+        source = DataSource(default)
+        with patch(
+            "py4vasp._calculation.dispatch._complete_sources", return_value=[]
+        ):
+            with pytest.raises(exception.NoData, match="INCAR"):
+                self._read(source)
+
+    def test_custom_no_data_is_unchanged(self, raw_data):
+        source = self._source(raw_data, default_frequencies=np.zeros(3))
+        with pytest.raises(exception.NoData, match="^custom message$"):
+            self._read(source, _FrequencyHandler.read_custom_error)
+
+    def test_unexplained_missing_data_keeps_generic_error(self, raw_data):
+        with patch(
+            "py4vasp._calculation.dispatch._missing_datasets", return_value=([], [])
+        ):
+            with pytest.raises(exception._DatasetNotFound):
+                self._read(self._source(raw_data))
+
+    def test_optional_data_does_not_check_other_sources(self, raw_data):
+        with patch(
+            "py4vasp._calculation.dispatch._missing_datasets",
+            return_value=([], ["group/x"]),
+        ):
+            with patch(
+                "py4vasp._calculation.dispatch._complete_sources"
+            ) as complete:
+                with pytest.raises(exception.NoData, match="optional"):
+                    self._read(self._source(raw_data))
+        complete.assert_not_called()
+
+    def test_database_does_not_explain(self, raw_data):
+        with patch("py4vasp._calculation.dispatch._complete_sources") as complete:
+            result = merge_to_database(
+                self._source(raw_data),
+                "phonon_mode",
+                _FrequencyHandler,
+                _FrequencyHandler.read,
+            )
+        complete.assert_not_called()
+        assert set(result["phonon_mode"]) == {"dispersion"}
+
+
 class TestIsAvailableInjected:
     def _calc(self, tmp_path):
         from py4vasp import demo
