@@ -28,6 +28,8 @@ pd = import_.optional("pandas")
 
 _vasp_template_registered = False
 
+IMAGE_FORMATS = (".png", ".jpg", ".jpeg", ".webp", ".svg", ".pdf")
+
 
 def _register_vasp_template():
     """Register the "vasp" plotly template and make it the default.
@@ -715,8 +717,9 @@ class Graph(Sequence):
     def to_image(self, filename: str | Path) -> None:
         """Save the graph as an image file.
 
-        The format is deduced from the extension of the filename; common raster (png,
-        jpg) and vector (svg, pdf) formats are supported. The size of the image is the
+        The format is deduced from the extension of the filename; the raster formats
+        png, jpg (or jpeg) and webp and the vector formats svg and pdf are supported,
+        in upper or lower case. The size of the image is the
         size of the figure, i.e., set :py:attr:`xsize` and :py:attr:`ysize` (in pixels)
         to change it. This works for every graph, in particular for one combined from
         several calculations with the ``+`` operator.
@@ -727,6 +730,12 @@ class Graph(Sequence):
             Path to the output image. Unlike the ``to_image`` method of the
             quantities, a relative path is relative to the current working directory,
             because a graph does not know which calculation it came from.
+
+        Raises
+        ------
+        py4vasp.exception.IncorrectUsage
+            If the filename has no extension or one that is not a supported format,
+            e.g. eps, which the image export of plotly no longer provides.
 
         Examples
         --------
@@ -745,6 +754,7 @@ class Graph(Sequence):
         >>> (path / "combined.svg").exists()
         True
         """
+        check_image_format(filename)
         self.to_plotly().write_image(filename)
 
     def _create_and_populate_df(self, series):
@@ -801,3 +811,14 @@ def _merge_field(left_graph, right_graph, field_name):
     return merge.merge_field_or_raise(
         left_field, right_field, field_name, "graphs", equal=merge.values_close
     )
+
+
+def check_image_format(filename):
+    "Raise an error unless the extension of filename is a format plotly can export."
+    if Path(filename).suffix.lower() in IMAGE_FORMATS:
+        return
+    message = f"""\
+Cannot save the image "{filename}". The format of the image is deduced from the
+extension of the filename, so please end it with one of the supported extensions
+{", ".join(IMAGE_FORMATS)}."""
+    raise exception.IncorrectUsage(message)
