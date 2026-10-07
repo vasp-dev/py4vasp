@@ -830,6 +830,8 @@ def _complete_sources(source, quantity_name, exclude):
     for name in map(str, names):
         if name.lower() == excluded:
             continue
+        if _schema_specification(quantity_name, name) is None:
+            continue  # built by a data factory, so nothing proves it complete
         with contextlib.suppress(FileNotFoundError):
             if data_available(source, quantity_name, selection=name):
                 complete.append(name)
@@ -855,7 +857,7 @@ def _missing_data_message(quantity_name, selection, missing, complete):
         The other sources of the quantity that contain all required data.
     """
     quantity = quantity_name.lstrip("_")
-    source = selection or DEFAULT_SELECTION
+    source = _effective_source(quantity_name, selection) or DEFAULT_SELECTION
     if missing and not missing[0] and missing[1]:
         return (
             f"The source '{source}' of '{quantity}' contains all required data, but "
@@ -970,21 +972,25 @@ def _missing_datasets(quantity_name, selection, raw_data):
     """List the HDF5 datasets of one source that are absent from *raw_data*.
 
     The paths are reconstructed from the schema, so this is a best effort: datasets
-    whose path depends on an index cannot be named and are skipped. Datasets of linked
-    quantities are included; when a whole link is absent, all its datasets are listed.
+    whose path depends on an index cannot be named. Optional ones are skipped; a missing
+    required one makes the whole list unreliable, so None is returned. Datasets of
+    linked quantities are included; when a whole link is absent, all its datasets are
+    listed.
 
     Returns
     -------
     tuple[list[str], list[str]] | None
-        The missing required and the missing optional datasets, or None when the source
-        is built by a data factory and so has no datasets in the schema.
+        The missing required and the missing optional datasets, or None when they
+        cannot be determined, e.g. because the source is built by a data factory and so
+        has no datasets in the schema.
     """
     spec = _schema_specification(quantity_name, selection)
     if spec is None:
         return None
-    missing = ([], [])
+    required, optional, unnamed_required = [], [], []
+    missing = (required, optional, unnamed_required)
     _collect_missing(spec, raw_data, False, missing, set())
-    return missing
+    return None if unnamed_required else (required, optional)
 
 
 def _collect_missing(spec, raw_data, optional, missing, seen):
@@ -998,7 +1004,10 @@ def _collect_missing(spec, raw_data, optional, missing, seen):
             _collect_missing_linked(specification, value, field_optional, missing, seen)
         elif check.is_none(value):
             dataset = getattr(specification, "dataset", specification)
-            if "{" not in dataset and dataset not in missing[field_optional]:
+            if "{" in dataset:
+                if not field_optional:
+                    missing[2].append(dataset)
+            elif dataset not in missing[field_optional]:
                 missing[field_optional].append(dataset)
 
 

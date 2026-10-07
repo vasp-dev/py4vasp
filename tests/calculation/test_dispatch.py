@@ -1152,6 +1152,13 @@ class TestMissingDatasets:
         assert "input/qpoints/mode" in optional
         assert "results/phonons/qpoint_coords" in optional
 
+    def test_unnamed_required_dataset_gives_no_list(self, raw_data):
+        # the path of a required dataset depends on an index, so it cannot be named;
+        # listing only the optional datasets would wrongly suggest the required are there
+        current_density = raw_data.current_density("nmr")
+        current_density.current_density = raw.VaspData(None)
+        assert _missing_datasets("current_density", "nmr", current_density) is None
+
     def test_source_built_by_factory_cannot_be_listed(self, raw_data):
         structure = raw_data.structure("Sr2TiO4")
         assert _missing_datasets("structure", "poscar", structure) is None
@@ -1204,6 +1211,13 @@ class TestCompleteSources:
     def test_source_that_cannot_be_opened_is_incomplete(self, error):
         source = _RaisingSource(error)
         assert _complete_sources(source, "phonon_mode", exclude=None) == []
+
+    def test_source_built_by_factory_is_not_complete(self, raw_data):
+        # "poscar" has no datasets in the schema, so nothing proves it complete
+        structure = raw_data.structure("Sr2TiO4")
+        structure.positions = raw.VaspData(None)
+        source = DataSource(structure)
+        assert "poscar" not in _complete_sources(source, "structure", exclude=None)
 
     def test_unknown_quantity_has_no_sources(self, raw_data):
         source = DataSource(raw_data.density("Sr2TiO4"))
@@ -1278,6 +1292,11 @@ class TestMissingDataMessage:
         message = _missing_data_message("phonon_mode", None, missing, ["dispersion"])
         assert "selection=" not in message
 
+    def test_quantity_without_default_names_its_source(self):
+        message = _missing_data_message("current_density", None, None, [])
+        assert "source 'nmr'" in message
+        assert "'default'" not in message
+
     def test_required_without_dataset_list(self):
         message = _missing_data_message("structure", "poscar", None, ["default"])
         assert "source 'poscar'" in message
@@ -1332,6 +1351,27 @@ class TestDispatchMissingData:
         source = self._source(raw_data, default_frequencies=np.zeros(3))
         with pytest.raises(exception.NoData, match="^custom message$"):
             self._read(source, _FrequencyHandler.read_custom_error)
+
+    def test_source_failing_on_second_access_still_explains(self, raw_data):
+        default = raw_data.phonon_mode("Sr2TiO4")
+        default.frequencies = raw.VaspData(None)
+
+        class _OnceSource:
+            path = None
+            calls = 0
+
+            @contextlib.contextmanager
+            def access(self, quantity, selection=None):
+                self.calls += 1
+                if self.calls > 1:
+                    raise exception.FileAccessError("gone")
+                yield default
+
+        with pytest.raises(exception.NoData) as error:
+            self._read(_OnceSource())
+        message = str(error.value)
+        assert "source 'default'" in message
+        assert "datasets" not in message
 
     def test_unexplained_missing_data_keeps_generic_error(self, raw_data):
         with patch(
