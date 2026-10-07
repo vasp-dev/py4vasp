@@ -196,7 +196,8 @@ def expected_frequencies(Sr2TiO4, masses_per_atom):
     weights = np.outer(inverse_sqrt_mass, inverse_sqrt_mass)
     eigenvalues = np.linalg.eigvalsh(weights * Sr2TiO4.ref.force_constants)
     squared = convert.HBAR_SQUARED * eigenvalues
-    return np.where(squared < 0, 1j * np.sqrt(np.abs(squared)), np.sqrt(np.abs(squared)))
+    magnitude = np.sqrt(np.abs(squared))
+    return np.where(squared < 0, 1j * magnitude, magnitude)
 
 
 def test_frequencies(Sr2TiO4, Assert):

@@ -288,7 +288,9 @@ def test_force_constants_displace_every_atom():
     assert phonon.force_constant_Sr2TiO4().selective_dynamics.is_none()
 
 
-def test_demo_calculation_contains_the_force_constants(tmp_path, force_constants, Assert):
+def test_demo_calculation_contains_the_force_constants(
+    tmp_path, force_constants, Assert
+):
     from py4vasp import demo
 
     calculation = demo.calculation(tmp_path / "force_constant")
