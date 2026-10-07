@@ -232,7 +232,7 @@ def mode_Sr2TiO4() -> raw.PhononMode:
     branches come out at exactly zero: they translate the whole crystal, which costs no
     energy. None of them is imaginary, which is what marks a structure as stable.
     """
-    at_gamma = branch_frequencies(np.zeros((1, 3)))[0] / convert.EV_TO_THZ
+    at_gamma = _frequencies_at_gamma()
     # VASP stores the eigenvalues of the dynamical matrix as complex numbers so that an
     # unstable mode can be reported as an imaginary frequency
     complex_frequencies = at_gamma.astype(np.complex128)
@@ -242,6 +242,36 @@ def mode_Sr2TiO4() -> raw.PhononMode:
         frequencies=_demo.wrap_data(as_pairs_of_reals),
         eigenvectors=_demo.wrap_data(_displacements()),
     )
+
+
+def force_constant_Sr2TiO4() -> raw.ForceConstant:
+    """Force constants of Sr2TiO4 that vibrate exactly like :func:`mode_Sr2TiO4`.
+
+    The modes are built first and the force constants follow from them: the dynamical
+    matrix has the mass-weighted displacements as eigenvectors and (ħω)²/ħ² as
+    eigenvalues, and multiplying with the square root of the masses on both sides turns
+    it into the Hessian. So the frequencies a user computes from these force constants
+    are the ones the phonon modes report, and the three translations cost no energy,
+    i.e. the acoustic sum rule holds. Every atom is displaced.
+    """
+    at_gamma = _frequencies_at_gamma()
+    eigenvalues = at_gamma**2 / convert.HBAR_SQUARED
+    eigenvectors = np.reshape(_displacements(), (NUMBER_MODES, NUMBER_MODES))
+    dynamical_matrix = eigenvectors.T @ np.diag(eigenvalues) @ eigenvectors
+    sqrt_mass = np.repeat(np.sqrt(MASSES), 3)
+    hessian = np.outer(sqrt_mass, sqrt_mass) * dynamical_matrix
+    hessian = 0.5 * (hessian + hessian.T)
+    return raw.ForceConstant(
+        structure=structure.Sr2TiO4(),
+        # VASP stores the derivative of the force, the negative of the Hessian
+        force_constants=_demo.wrap_data(-hessian),
+        selective_dynamics=raw.VaspData(None),
+    )
+
+
+def _frequencies_at_gamma():
+    """The energy ħω in eV of every mode the dispersion has at the zone centre."""
+    return branch_frequencies(np.zeros((1, 3)))[0] / convert.EV_TO_THZ
 
 
 def _displacements():

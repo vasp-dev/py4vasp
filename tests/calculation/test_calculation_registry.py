@@ -2,13 +2,20 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """Tests for Calculation wiring to _REGISTRY and _source storage."""
 
+import ast
 import contextlib
+import importlib
 import pathlib
+import pkgutil
+import subprocess
+import sys
+import zipfile
 from unittest.mock import patch
 
 import pytest
 
-from py4vasp import Calculation
+import py4vasp
+from py4vasp import Calculation, _calculation
 from py4vasp._calculation.dispatch import (
     _REGISTRY,
     DataSource,
@@ -196,3 +203,55 @@ class TestCalculationDir:
         names = dir(calc)
         assert "from_path" in names
         assert "from_file" in names
+
+
+_PRINT_REGISTRY_VIEWS = """
+import sys
+sys.path.insert(0, sys.argv[1])
+from py4vasp import _calculation
+print(repr((_calculation.__file__, _calculation.QUANTITIES, _calculation.GROUPS)))
+"""
+
+
+def test_quantities_discovered_when_imported_from_zip(tmp_path):
+    # Frozen builds (PyInstaller, zipimport) provide the modules without .py files on
+    # disk, so discovery must go through the package loader.
+    package_dir = pathlib.Path(py4vasp.__file__).parent
+    archive = tmp_path / "py4vasp.zip"
+    with zipfile.ZipFile(archive, "w") as zip_file:
+        # directories are written too, so namespace packages (no __init__.py) resolve
+        for source in [package_dir, *package_dir.rglob("*")]:
+            if source.is_dir() or source.suffix == ".py":
+                zip_file.write(source, source.relative_to(package_dir.parent))
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", _PRINT_REGISTRY_VIEWS, str(archive)],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0, result.stderr
+    module_file, quantities, groups = ast.literal_eval(result.stdout)
+    assert module_file.startswith(str(archive))
+    assert quantities == _calculation.QUANTITIES
+    assert groups == _calculation.GROUPS
+
+
+def test_warns_when_no_quantity_modules_found():
+    with patch("py4vasp._calculation.pkgutil.iter_modules", return_value=[]):
+        with pytest.warns(UserWarning, match="py4vasp._calculation"):
+            _calculation._ensure_all_quantities_imported()
+
+
+def test_discovery_propagates_error_inside_module():
+    import_module = importlib.import_module
+
+    def import_or_fail(name):
+        if name == "py4vasp._calculation.broken":
+            raise RuntimeError("error inside the quantity module")
+        return import_module(name)
+
+    broken = pkgutil.ModuleInfo(None, "broken", False)
+    with patch("py4vasp._calculation.pkgutil.iter_modules", return_value=[broken]):
+        with patch("importlib.import_module", side_effect=import_or_fail):
+            with pytest.raises(RuntimeError, match="inside the quantity module"):
+                _calculation._ensure_all_quantities_imported()

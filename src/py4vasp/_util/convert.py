@@ -21,6 +21,11 @@ EV_TO_MEV = 1000
 # reports it, and printed that way so it matches the OUTCAR. The database stores it in
 # GPa, the unit of the bulk, shear and Young's moduli derived from it.
 KBAR_TO_GPA = 0.1
+# ħ² in eV amu Å², from ħ = 6.582119569e-16 eV s, 1 amu = 1.66053907e-27 kg and
+# 1 Å = 1e-10 m. It connects the masses and lengths of a structure to an energy: an
+# eigenvalue λ of the dynamical matrix in eV/(Å² amu) is a frequency ħω = sqrt(ħ²λ),
+# and ħ/ω = ħ²/(ħω) converts a frequency to the square of a normal coordinate.
+HBAR_SQUARED = 0.004180159279779
 
 
 def text_to_string(text):

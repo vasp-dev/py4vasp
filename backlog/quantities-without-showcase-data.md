@@ -55,9 +55,8 @@ dispersion that is a reshaped `np.arange`.
 ## Quantities with no examples at all
 
 `demo.py` writes none of `dielectric_tensor`, `born_effective_charge`,
-`force_constant`, `internal_strain`, `piezoelectric_tensor`, `polarization`,
-`electronic_minimization`, `bader` or `exciton_eigenvector`, and none of them carries a
-docstring example.
+`internal_strain`, `piezoelectric_tensor`, `polarization`, `electronic_minimization`,
+`bader` or `exciton_eigenvector`, and none of them carries a docstring example.
 
 `elastic_modulus` was on this list and is the template for the others:
 `_demo/showcase/elastic_modulus.py` builds the tensor from a handful of tetragonal
