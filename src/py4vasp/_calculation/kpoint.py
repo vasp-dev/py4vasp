@@ -113,7 +113,7 @@ reciprocal"""
         return functools.reduce(concatenate_distances, kpoint_norms)
 
     def mode(self) -> str:
-        mode = convert.text_to_string(self._raw_kpoint.mode).strip() or "# empty string"
+        mode = convert.text_to_string(self._raw_mode()).strip() or "# empty string"
         first_char = mode[0].lower()
         if first_char == "a":
             return "automatic"
@@ -131,6 +131,12 @@ reciprocal"""
             raise exception.RefinementError(
                 f"Could not understand the mode '{mode}' when refining the raw kpoints data."
             )
+
+    def _raw_mode(self):
+        # unwrapping an absent mode raises NoData, which the dispatch layer explains;
+        # converted as is, it would read as the mode "VaspData(None)"
+        mode = self._raw_kpoint.mode
+        return mode.data if isinstance(mode, raw.VaspData) else mode
 
     def labels(self) -> list[str] | None:
         if not self._raw_kpoint.label_indices.is_none():
