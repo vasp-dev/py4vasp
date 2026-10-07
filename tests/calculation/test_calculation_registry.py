@@ -231,3 +231,9 @@ def test_quantities_discovered_when_imported_from_zip(tmp_path):
     quantities, groups = ast.literal_eval(output)
     assert quantities == _calculation.QUANTITIES
     assert groups == _calculation.GROUPS
+
+
+def test_warns_when_no_quantity_modules_found():
+    with patch("py4vasp._calculation.pkgutil.iter_modules", return_value=[]):
+        with pytest.warns(UserWarning, match="py4vasp._calculation"):
+            _calculation._ensure_all_quantities_imported()

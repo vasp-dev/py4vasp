@@ -3,6 +3,7 @@
 import importlib
 import pathlib
 import pkgutil
+import warnings
 from typing import Any, List, Optional, Tuple, Union
 
 from py4vasp import exception
@@ -524,6 +525,14 @@ def _ensure_all_quantities_imported():
     # Ask the package's loader rather than the filesystem, so discovery also works
     # when the modules are not .py files on disk (zipimport, PyInstaller).
     names = sorted(module.name for module in pkgutil.iter_modules(calc_pkg.__path__))
+    if not names:
+        message = (
+            "The package loader could not list the modules of py4vasp._calculation, "
+            "so no quantities are registered and Calculation.selections() and "
+            "py4vasp._calculation.QUANTITIES will be empty. Accessing a quantity "
+            "directly, e.g. calculation.structure, still works."
+        )
+        warnings.warn(message, UserWarning)
     for name in names:
         if name.startswith("__"):
             continue
