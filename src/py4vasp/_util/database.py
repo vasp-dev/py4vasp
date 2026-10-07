@@ -573,7 +573,9 @@ def check_schema_snapshot(stored: dict, current: dict) -> Optional[str]:
 
     - Nothing changed -> OK.
     - Models unchanged, same py4vasp series, but the counter changed -> rejected (do not
-      bump the counter without a model change).
+      bump the counter without a model change), unless the counter increased and
+      ``current["changes"]`` records why under the new counter: a field that changes
+      its meaning, such as its unit, keeps its name and type.
     - py4vasp minor series changed (a release) -> the counter must reset to 0, i.e. the
       new version is the bare series like ``"0.12"``. A non-zero counter is rejected
       because an intermediate version such as ``"0.11+db.17"`` was never a released
@@ -593,14 +595,17 @@ def check_schema_snapshot(stored: dict, current: dict) -> Optional[str]:
             )
         return None
     if models_equal:
-        if c_counter != s_counter:
-            return (
-                "The database models are unchanged, so __DB_SCHEMA__ in models.py must "
-                f"stay at {s_counter} (schema version '{stored['schema_version']}'); it "
-                f"is currently {c_counter} (giving '{current['schema_version']}'). "
-                "Revert __DB_SCHEMA__ to its previous value."
-            )
-        return None
+        reason_recorded = str(c_counter) in current.get("changes", {})
+        if c_counter == s_counter or (c_counter > s_counter and reason_recorded):
+            return None
+        return (
+            "The database models are unchanged, so __DB_SCHEMA__ in models.py must "
+            f"stay at {s_counter} (schema version '{stored['schema_version']}'); it "
+            f"is currently {c_counter} (giving '{current['schema_version']}'). "
+            "Revert __DB_SCHEMA__ to its previous value, or, if a field changed its "
+            "meaning (e.g. its unit), record why under key "
+            f"{c_counter} of __DB_SEMANTIC_CHANGES__."
+        )
     if c_counter <= s_counter:
         diff = _format_model_diff(stored["models"], current["models"])
         return (

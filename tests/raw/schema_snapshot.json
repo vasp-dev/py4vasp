@@ -1379,5 +1379,8 @@
         "Optional[float]"
       ]
     ]
+  },
+  "changes": {
+    "4": "StressModel and the *_3d_tensor fields of ElasticModulusModel store GPa instead of kBar"
   }
 }

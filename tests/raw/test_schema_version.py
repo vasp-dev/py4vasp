@@ -65,6 +65,35 @@ def test_check_rejects_version_change_without_model_change():
     problem = database.check_schema_snapshot(stored, current)
     assert problem is not None
     assert "unchanged" in problem.lower()
+    # a change of meaning is a legitimate reason, so the message names the way out
+    assert "__DB_SEMANTIC_CHANGES__" in problem
+
+
+def _with_changes(snapshot, changes):
+    return {**snapshot, "changes": changes}
+
+
+def test_check_ok_when_counter_bump_without_model_change_records_a_reason():
+    # the fingerprint sees names and types only, so a field that changes its unit
+    # looks unchanged; the recorded reason is what justifies the new version
+    stored = _snapshot("0.11", MODELS_A)
+    reason = "BandModel.fermi_energy is stored relative to the vacuum level"
+    current = _with_changes(_snapshot("0.11+db.1", MODELS_A), {"1": reason})
+    assert database.check_schema_snapshot(stored, current) is None
+
+
+def test_check_rejects_reason_recorded_for_another_counter():
+    stored = _snapshot("0.11+db.1", MODELS_A)
+    current = _with_changes(_snapshot("0.11+db.2", MODELS_A), {"1": "an old reason"})
+    problem = database.check_schema_snapshot(stored, current)
+    assert problem is not None
+    assert "2" in problem
+
+
+def test_check_rejects_counter_decrease_even_with_a_reason():
+    stored = _snapshot("0.11+db.2", MODELS_A)
+    current = _with_changes(_snapshot("0.11+db.1", MODELS_A), {"1": "a reason"})
+    assert database.check_schema_snapshot(stored, current) is not None
 
 
 def test_check_ok_when_models_changed_and_counter_incremented():
@@ -118,6 +147,14 @@ def test_fingerprint_top_level_shape():
     fingerprint = models.schema_fingerprint()
     assert fingerprint["schema_version"] == models.schema_version()
     assert isinstance(fingerprint["models"], dict)
+
+
+def test_fingerprint_records_why_the_counter_moved_without_a_model_change():
+    # keyed by string, because the fingerprint round-trips through JSON
+    changes = models.schema_fingerprint()["changes"]
+    expected = {str(k): v for k, v in models.__DB_SEMANTIC_CHANGES__.items()}
+    assert changes == expected
+    assert "GPa" in changes["4"]
 
 
 def test_fingerprint_includes_all_models_but_not_the_base():
