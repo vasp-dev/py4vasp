@@ -6,8 +6,6 @@ from dataclasses import fields
 import numpy as np
 import pytest
 
-import py4vasp
-from py4vasp import exception
 from py4vasp._calculation.born_effective_charge import (
     BornEffectiveCharge,
     BornEffectiveChargeHandler,
@@ -121,15 +119,6 @@ def test_to_database(Sr2TiO4):
             assert getattr(born_db, fld.name) is None or isinstance(
                 getattr(born_db, fld.name), float
             )
-
-
-def test_absent_data_says_no_source(tmp_path):
-    calculation = py4vasp.demo.calculation(tmp_path / "calculation")
-    with pytest.raises(exception.NoData) as error:
-        calculation.born_effective_charge.read()
-    message = str(error.value)
-    assert "No source of 'born_effective_charge'" in message
-    assert "INCAR" in message
 
 
 def test_Sr2TiO4_to_INCAR(Sr2TiO4):

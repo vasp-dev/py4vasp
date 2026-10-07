@@ -30,6 +30,7 @@ from py4vasp._demo.showcase import (  # noqa: F401 -- imports submodules as attr
     force,
     grid,
     kpoint,
+    linear_response,
     local_moment,
     pair_correlation,
     partial_density,

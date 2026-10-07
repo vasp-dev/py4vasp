@@ -63,7 +63,7 @@ def test_selections_only_available_reports_present_data(tmp_path):
     assert "structure" in actual
     assert "default" in actual["structure"]
     # a quantity with no data in the demo is omitted entirely
-    assert "born_effective_charge" not in actual
+    assert "piezoelectric_tensor" not in actual
 
 
 def test_selections_evaluable(tmp_path):
@@ -123,8 +123,6 @@ def test_selections_with_only_available_true(tmp_path):
     assert set(available) <= set(full)
     # quantities without any data should not appear in the available result
     absent_when_unavailable = {
-        "born_effective_charge",
-        "dielectric_tensor",
         "internal_strain",
         "piezoelectric_tensor",
         "polarization",

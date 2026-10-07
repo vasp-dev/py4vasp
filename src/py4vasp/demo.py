@@ -98,6 +98,8 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, showcase.force.Sr2TiO4())
     write(h5f, showcase.stress.Sr2TiO4())
     write(h5f, showcase.elastic_modulus.Sr2TiO4())
+    write(h5f, showcase.linear_response.born_effective_charge_Sr2TiO4())
+    write(h5f, showcase.linear_response.dielectric_tensor_Sr2TiO4())
     write(h5f, showcase.symmetry.Sr2TiO4())
     write(h5f, _demo.system.Sr2TiO4())
     write(h5f, showcase.phonon.band_Sr2TiO4())
