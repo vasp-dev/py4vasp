@@ -3,6 +3,7 @@
 import types
 from dataclasses import fields
 
+import numpy as np
 import pytest
 
 import py4vasp
@@ -129,3 +130,28 @@ def test_absent_data_says_no_source(tmp_path):
     message = str(error.value)
     assert "No source of 'born_effective_charge'" in message
     assert "INCAR" in message
+
+
+def test_Sr2TiO4_to_INCAR(Sr2TiO4):
+    expected = """\
+PHON_BORN_CHARGES =   0.000000   3.000000   6.000000   1.000000   4.000000   7.000000   2.000000   5.000000   8.000000 \\
+                      9.000000  12.000000  15.000000  10.000000  13.000000  16.000000  11.000000  14.000000  17.000000 \\
+                     18.000000  21.000000  24.000000  19.000000  22.000000  25.000000  20.000000  23.000000  26.000000 \\
+                     27.000000  30.000000  33.000000  28.000000  31.000000  34.000000  29.000000  32.000000  35.000000 \\
+                     36.000000  39.000000  42.000000  37.000000  40.000000  43.000000  38.000000  41.000000  44.000000 \\
+                     45.000000  48.000000  51.000000  46.000000  49.000000  52.000000  47.000000  50.000000  53.000000 \\
+                     54.000000  57.000000  60.000000  55.000000  58.000000  61.000000  56.000000  59.000000  62.000000
+"""
+    assert Sr2TiO4.to_INCAR() == expected
+
+
+def test_Sr2TiO4_to_INCAR_orientation(Sr2TiO4, Assert):
+    # VASP reads the list into BORN_EFF_CHARGES(3,3,NIONS) in Fortran order and then
+    # transposes every 3x3 block (phonon.F). The first index is the field direction
+    # (polar_ewald.F contracts it with q). VASP writes the Born charges to vaspout.h5
+    # with the field as the last numpy axis, so the INCAR holds every block transposed.
+    _, values = Sr2TiO4.to_INCAR().split("=")
+    values = np.array(values.replace("\\", " ").split(), dtype=float)
+    number_ions = len(Sr2TiO4.ref.charge_tensors)
+    charges_in_vasp = values.reshape(number_ions, 3, 3)
+    Assert.allclose(charges_in_vasp, np.swapaxes(Sr2TiO4.ref.charge_tensors, 1, 2))

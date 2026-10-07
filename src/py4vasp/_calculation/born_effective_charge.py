@@ -13,7 +13,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import BornEffectiveChargeModel
-from py4vasp._util import check
+from py4vasp._util import check, incar
 
 
 class BornEffectiveChargeHandler:
@@ -50,6 +50,13 @@ ion {ion + 1:4d}   {element}
     def read(self) -> dict:
         """Read structure information and Born effective charges into a dictionary."""
         return self.to_dict()
+
+    def to_INCAR(self) -> str:
+        charge_tensors = self._raw_born_effective_charge.charge_tensors[:]
+        # VASP transposes every 3x3 block after reading it and expects the field
+        # direction first; vaspout.h5 stores the field direction as the last axis
+        rows = np.swapaxes(charge_tensors, 1, 2).reshape(len(charge_tensors), 9)
+        return incar.tag_block("PHON_BORN_CHARGES", rows)
 
     def to_dict(self) -> dict:
         """Read structure information and Born effective charges into a dictionary.

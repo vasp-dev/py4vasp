@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._raw.models import DielectricTensorModel
-from py4vasp._util import check, convert, error, select
+from py4vasp._util import check, convert, error, incar, select
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -72,7 +72,7 @@ Macroscopic static dielectric tensor (dimensionless)
             raise exception.NoData(message)
         # VASP transposes the tensor after reading it, so the rows of the INCAR are the
         # rows of the Fortran array, which is the transpose of the numpy array
-        return _incar_block("PHON_DIELECTRIC", tensor.T)
+        return incar.tag_block("PHON_DIELECTRIC", tensor.T)
 
     def to_database(self) -> dict:
         encountered_errors = {}
@@ -295,13 +295,6 @@ def _parse_incar_selection(selection):
         message = f"PHON_DIELECTRIC holds a single tensor, but you selected {parts}."
         raise exception.IncorrectUsage(message)
     return parts[0] if parts else "clamped_ion"
-
-
-def _incar_block(tag, rows):
-    prefix = f"{tag} = "
-    lines = (" ".join(f"{x:10.6f}" for x in row) for row in rows)
-    separator = " \\\n" + len(prefix) * " "
-    return prefix + separator.join(lines) + "\n"
 
 
 def _description(method):
