@@ -534,12 +534,7 @@ def _ensure_all_quantities_imported():
         )
         warnings.warn(message, UserWarning)
     for name in names:
-        if name.startswith("__"):
-            continue
-        try:
-            importlib.import_module(f"py4vasp._calculation.{name}")
-        except Exception:
-            pass
+        importlib.import_module(f"py4vasp._calculation.{name}")
 
 
 def _collect_to_database(dispatcher_cls, source, properties):
