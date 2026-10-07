@@ -30,8 +30,6 @@ def _append_database_error(
     encountered_errors.setdefault(key, []).append(message)
 
 
-_REGISTRY_MODULES_IMPORTED = False
-
 _SUPPRESSED_DB_EXCEPTIONS = (
     exception.Py4VaspError,
     exception.OutdatedVaspVersion,
