@@ -64,6 +64,13 @@ Macroscopic static dielectric tensor (dimensionless)
 {_dielectric_tensor_string(data["relaxed_ion"], "relaxed-ion")}
 """.strip()
 
+    def to_INCAR(self) -> str:
+        # VASP transposes the tensor after reading it, so the rows of the INCAR are the
+        # rows of the Fortran array, which is the transpose of the numpy array
+        return _incar_block(
+            "PHON_DIELECTRIC", self._raw_dielectric_tensor.electron[:].T
+        )
+
     def to_database(self) -> dict:
         encountered_errors = {}
         error_key = "dielectric_tensor:default"
@@ -270,6 +277,13 @@ def _dielectric_tensor_string(tensor, label):
     row_to_string = lambda row: 6 * " " + " ".join(f"{x:12.6f}" for x in row)
     rows = (row_to_string(row) for row in tensor)
     return f"{label:^55}".rstrip() + "\n" + "\n".join(rows)
+
+
+def _incar_block(tag, rows):
+    prefix = f"{tag} = "
+    lines = (" ".join(f"{x:10.6f}" for x in row) for row in rows)
+    separator = " \\\n" + len(prefix) * " "
+    return prefix + separator.join(lines) + "\n"
 
 
 def _description(method):

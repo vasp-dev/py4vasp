@@ -250,3 +250,27 @@ def test_to_database_nscf(nscf_tensor, Assert):
 
 def test_to_database_slab_cell(tensor_with_slab_cell, Assert):
     _check_to_database(tensor_with_slab_cell, Assert)
+
+
+def test_to_INCAR(dft_tensor):
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    expected = """\
+PHON_DIELECTRIC =   0.000000   3.000000   6.000000 \\
+                    1.000000   4.000000   7.000000 \\
+                    2.000000   5.000000   8.000000
+"""
+    assert handler.to_INCAR() == expected
+
+
+def test_to_INCAR_orientation(dft_tensor, Assert):
+    # VASP reads the nine numbers into DIELECTRIC_TENSOR(3,3) in Fortran order and then
+    # transposes it (phonon.F), so the list is the tensor row by row with the field
+    # direction as row. py4vasp stores the transpose of that Fortran array.
+    handler = DielectricTensorHandler.from_data(dft_tensor.ref.raw_tensor)
+    tensor_in_vasp = parse_INCAR_values(handler.to_INCAR()).reshape(3, 3)
+    Assert.allclose(tensor_in_vasp, dft_tensor.ref.clamped_ion[:].T)
+
+
+def parse_INCAR_values(incar):
+    _, values = incar.split("=")
+    return np.array(values.replace("\\", " ").split(), dtype=float)
