@@ -103,8 +103,9 @@ def test_to_database(stresses, Assert):
     handler = StressHandler.from_data(stresses.ref.raw_data)
     db_data: StressModel = handler.to_database()
     assert isinstance(db_data, StressModel)
-    initial_tensor = stresses.ref.stress[0]
-    final_tensor = stresses.ref.stress[-1]
+    # VASP writes the stress in kBar and the database stores GPa
+    initial_tensor = stresses.ref.stress[0] / 10
+    final_tensor = stresses.ref.stress[-1] / 10
 
     assert db_data.initial_stress_mean == pytest.approx(
         (initial_tensor[0, 0] + initial_tensor[1, 1] + initial_tensor[2, 2]) / 3.0

@@ -17,7 +17,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import StressModel
-from py4vasp._util import tensor
+from py4vasp._util import convert, tensor
 
 
 class StressHandler:
@@ -70,8 +70,8 @@ in kB   {stress_to_string(stress)}
         }
 
     def to_database(self) -> dict:
-        """Serialize stress statistics to the database format."""
-        stress = np.array(self._raw_stress.stress)
+        """Serialize stress statistics to the database format, converted to GPa."""
+        stress = np.array(self._raw_stress.stress) * convert.KBAR_TO_GPA
         if stress.ndim == 3:
             initial_stress_tensor = stress[0]
             final_stress_tensor = stress[-1]
