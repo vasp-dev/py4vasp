@@ -806,6 +806,57 @@ def _complete_sources(source, quantity_name, exclude):
     return complete
 
 
+_MAX_LISTED_DATASETS = 5
+
+
+def _missing_data_message(quantity_name, selection, missing, complete):
+    """Explain which data of a source is missing and where the user finds it instead.
+
+    Parameters
+    ----------
+    quantity_name : str
+        The quantity whose data is missing.
+    selection : str | None
+        The source that was accessed; None is the default source.
+    missing : tuple[list[str], list[str]] | None
+        The missing required and optional datasets as returned by
+        :func:`_missing_datasets`, or None if they cannot be determined.
+    complete : list[str]
+        The other sources of the quantity that contain all required data.
+    """
+    quantity = quantity_name.lstrip("_")
+    source = selection or DEFAULT_SELECTION
+    message = f"'{quantity}' has no data for the source '{source}' in this calculation"
+    if missing and missing[0]:
+        datasets = _format_datasets(missing[0])
+        message += f": the required datasets {datasets} are missing from the VASP output"
+    message += ". "
+    if complete:
+        message += _point_to_complete_sources(complete)
+    else:
+        message += (
+            f"No source of '{quantity}' contains the required data. Please make sure "
+            "that the INCAR tags of the calculation produce this data, that VASP "
+            "finished, and that it did not exit with an error."
+        )
+    return message
+
+
+def _format_datasets(datasets):
+    listed = ", ".join(datasets[:_MAX_LISTED_DATASETS])
+    remaining = len(datasets) - _MAX_LISTED_DATASETS
+    return f"{listed} and {remaining} more" if remaining > 0 else listed
+
+
+def _point_to_complete_sources(complete):
+    names = ", ".join(f"'{name}'" for name in complete)
+    if len(complete) == 1:
+        intro = f"The source {names} contains all required data; select it"
+    else:
+        intro = f"The sources {names} contain all required data; select one of them"
+    return f'{intro} by passing it as the selection, e.g. selection="{complete[0]}".'
+
+
 def _effective_source(quantity_name, selection):
     """Resolve the schema source name to use for an availability check.
 

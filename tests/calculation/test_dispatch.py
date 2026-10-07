@@ -21,6 +21,7 @@ from py4vasp._calculation.dispatch import (
     SelectionContext,
     _complete_sources,
     _dispatch,
+    _missing_data_message,
     _missing_datasets,
     _parse_selections,
     _result_has_data,
@@ -1207,6 +1208,54 @@ class TestCompleteSources:
     def test_unknown_quantity_has_no_sources(self, raw_data):
         source = DataSource(raw_data.density("Sr2TiO4"))
         assert _complete_sources(source, "not_a_quantity", exclude=None) == []
+
+
+class TestMissingDataMessage:
+    def test_required_names_quantity_source_and_datasets(self):
+        missing = (["group/eigenvalues", "group/eigenvectors"], [])
+        message = _missing_data_message("_phonon_mode", None, missing, ["dispersion"])
+        assert "'phonon_mode'" in message
+        assert "'_phonon_mode'" not in message
+        assert "source 'default'" in message
+        assert "group/eigenvalues, group/eigenvectors" in message
+
+    def test_required_names_explicit_source(self):
+        missing = (["group/x"], [])
+        message = _missing_data_message("band", "kpoints_opt", missing, ["default"])
+        assert "source 'kpoints_opt'" in message
+
+    def test_required_points_to_complete_source(self):
+        missing = (["group/x"], [])
+        message = _missing_data_message("phonon_mode", None, missing, ["dispersion"])
+        assert "'dispersion'" in message
+        assert 'selection="dispersion"' in message
+        assert "INCAR" not in message
+
+    def test_required_names_every_complete_source(self):
+        missing = (["group/x"], [])
+        message = _missing_data_message("density", None, missing, ["tau", "all_electron"])
+        assert "'tau', 'all_electron'" in message
+        assert 'selection="tau"' in message
+
+    def test_required_without_complete_source_advises_on_vasp(self):
+        missing = (["group/x"], [])
+        message = _missing_data_message("born_effective_charge", None, missing, [])
+        assert "No source of 'born_effective_charge'" in message
+        assert "INCAR" in message
+        assert "selection=" not in message
+
+    def test_required_long_list_is_shortened(self):
+        missing = ([f"group/{i}" for i in range(8)], [])
+        message = _missing_data_message("structure", None, missing, [])
+        assert "group/4" in message
+        assert "group/5" not in message
+        assert "and 3 more" in message
+
+    def test_required_without_dataset_list(self):
+        message = _missing_data_message("structure", "poscar", None, ["default"])
+        assert "source 'poscar'" in message
+        assert "datasets" not in message
+        assert 'selection="default"' in message
 
 
 class TestIsAvailableInjected:
