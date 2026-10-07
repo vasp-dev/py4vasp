@@ -19,7 +19,10 @@ from py4vasp._calculation.dispatch import (
     FileSource,
     Group,
     SelectionContext,
+    _complete_sources,
     _dispatch,
+    _missing_data_message,
+    _missing_datasets,
     _parse_selections,
     _result_has_data,
     _substitute_remaining_selection,
@@ -1112,6 +1115,290 @@ class TestDataAvailable:
     def test_missing_file_returns_false(self, tmp_path):
         source = FileSource(tmp_path)
         assert not data_available(source, "density")
+
+
+class TestMissingDatasets:
+    def test_complete_data_misses_nothing(self, raw_data):
+        # the demo data stores plain numpy arrays, which count as present
+        mode = raw_data.phonon_mode("Sr2TiO4")
+        required, _ = _missing_datasets("phonon_mode", None, mode)
+        assert required == []
+
+    def test_each_dataset_listed_once(self, raw_data):
+        # several links reach the same structure datasets
+        mode = raw_data.phonon_mode("Sr2TiO4")
+        _, optional = _missing_datasets("phonon_mode", None, mode)
+        assert "input/incar/IDIPOL" in optional
+        assert len(optional) == len(set(optional))
+
+    def test_missing_required_dataset(self, raw_data):
+        mode = raw_data.phonon_mode("Sr2TiO4")
+        mode.frequencies = raw.VaspData(None)
+        required, optional = _missing_datasets("phonon_mode", None, mode)
+        assert required == ["results/linear_response/dynmat/eigenvalues"]
+        assert "results/linear_response/dynmat/eigenvalues" not in optional
+
+    def test_missing_dataset_of_linked_quantity(self, raw_data):
+        density = raw_data.density("Sr2TiO4")
+        density.structure.positions = raw.VaspData(None)
+        required, _ = _missing_datasets("density", None, density)
+        assert required == ["intermediate/ion_dynamics/position_ions"]
+
+    def test_missing_optional_link_lists_its_datasets(self, raw_data):
+        mode = raw_data.phonon_mode("dispersion")
+        mode.qpoints = raw.VaspData(None)
+        required, optional = _missing_datasets("phonon_mode", "dispersion", mode)
+        assert required == []
+        assert "input/qpoints/mode" in optional
+        assert "results/phonons/qpoint_coords" in optional
+
+    def test_unnamed_required_dataset_gives_no_list(self, raw_data):
+        # the path of a required dataset depends on an index, so it cannot be named;
+        # listing only the optional datasets would wrongly suggest the required are there
+        current_density = raw_data.current_density("nmr")
+        current_density.current_density = raw.VaspData(None)
+        assert _missing_datasets("current_density", "nmr", current_density) is None
+
+    def test_source_built_by_factory_cannot_be_listed(self, raw_data):
+        structure = raw_data.structure("Sr2TiO4")
+        assert _missing_datasets("structure", "poscar", structure) is None
+
+
+class _RaisingSource:
+    path = None
+
+    def __init__(self, error):
+        self._error = error
+
+    @contextlib.contextmanager
+    def access(self, quantity, selection=None):
+        raise self._error
+        yield
+
+
+class TestCompleteSources:
+    def _phonon_source(self, raw_data):
+        default = raw_data.phonon_mode("Sr2TiO4")
+        default.frequencies = raw.VaspData(None)
+        dispersion = raw_data.phonon_mode("dispersion")
+        return DictSource(
+            {"phonon_mode": default, ("phonon_mode", "dispersion"): dispersion}
+        )
+
+    def test_other_complete_source(self, raw_data):
+        source = self._phonon_source(raw_data)
+        assert _complete_sources(source, "phonon_mode", exclude=None) == ["dispersion"]
+
+    def test_excluded_source_is_skipped(self, raw_data):
+        source = self._phonon_source(raw_data)
+        assert _complete_sources(source, "phonon_mode", exclude="dispersion") == []
+
+    def test_aliases_are_not_listed(self, raw_data):
+        source = DataSource(raw_data.density("Sr2TiO4"))
+        sources = _complete_sources(source, "density", exclude=None)
+        assert "charge" not in sources
+        assert "default" not in sources
+        assert all(type(name) is str for name in sources)
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            FileNotFoundError(),
+            exception.FileAccessError(),
+            exception.OutdatedVaspVersion(),
+        ],
+    )
+    def test_source_that_cannot_be_opened_is_incomplete(self, error):
+        source = _RaisingSource(error)
+        assert _complete_sources(source, "phonon_mode", exclude=None) == []
+
+    def test_source_built_by_factory_is_not_complete(self, raw_data):
+        # "poscar" has no datasets in the schema, so nothing proves it complete
+        structure = raw_data.structure("Sr2TiO4")
+        structure.positions = raw.VaspData(None)
+        source = DataSource(structure)
+        assert "poscar" not in _complete_sources(source, "structure", exclude=None)
+
+    def test_unknown_quantity_has_no_sources(self, raw_data):
+        source = DataSource(raw_data.density("Sr2TiO4"))
+        assert _complete_sources(source, "not_a_quantity", exclude=None) == []
+
+
+class TestMissingDataMessage:
+    def test_required_names_quantity_source_and_datasets(self):
+        missing = (["group/eigenvalues", "group/eigenvectors"], [])
+        message = _missing_data_message("_phonon_mode", None, missing, ["dispersion"])
+        assert "'phonon_mode'" in message
+        assert "'_phonon_mode'" not in message
+        assert "source 'default'" in message
+        assert "group/eigenvalues, group/eigenvectors" in message
+
+    @pytest.mark.parametrize(
+        "missing, phrase",
+        [
+            ((["group/x"], []), "required dataset group/x is missing"),
+            ((["group/x", "group/y"], []), "required datasets group/x, group/y are"),
+            (([], ["group/x"]), "optional dataset group/x is absent"),
+            (([], ["group/x", "group/y"]), "optional datasets group/x, group/y are"),
+        ],
+    )
+    def test_singular_and_plural(self, missing, phrase):
+        assert phrase in _missing_data_message("structure", None, missing, [])
+
+    def test_required_names_explicit_source(self):
+        missing = (["group/x"], [])
+        message = _missing_data_message("band", "kpoints_opt", missing, ["default"])
+        assert "source 'kpoints_opt'" in message
+
+    def test_required_points_to_complete_source(self):
+        missing = (["group/x"], [])
+        message = _missing_data_message("phonon_mode", None, missing, ["dispersion"])
+        assert "'dispersion'" in message
+        assert 'selection="dispersion"' in message
+        assert "INCAR" not in message
+
+    def test_required_names_every_complete_source(self):
+        missing = (["group/x"], [])
+        complete = ["tau", "all_electron"]
+        message = _missing_data_message("density", None, missing, complete)
+        assert "'tau', 'all_electron'" in message
+        assert 'selection="tau"' in message
+
+    def test_required_without_complete_source_advises_on_vasp(self):
+        missing = (["group/x"], [])
+        message = _missing_data_message("born_effective_charge", None, missing, [])
+        assert "No source of 'born_effective_charge'" in message
+        assert "INCAR" in message
+        assert "selection=" not in message
+
+    def test_required_long_list_is_shortened(self):
+        missing = ([f"group/{i}" for i in range(8)], [])
+        message = _missing_data_message("structure", None, missing, [])
+        assert "group/4" in message
+        assert "group/5" not in message
+        assert "and 3 more" in message
+
+    def test_optional_lists_optional_datasets(self):
+        missing = ([], ["input/qpoints/mode", "results/phonons/qpoint_coords"])
+        message = _missing_data_message("phonon_mode", "dispersion", missing, [])
+        assert "source 'dispersion'" in message
+        assert "contains all required data" in message
+        assert "input/qpoints/mode, results/phonons/qpoint_coords" in message
+        assert "INCAR" in message
+        assert "VASP finished" not in message
+        assert "No source" not in message
+
+    def test_optional_ignores_complete_sources(self):
+        missing = ([], ["group/x"])
+        message = _missing_data_message("phonon_mode", None, missing, ["dispersion"])
+        assert "selection=" not in message
+
+    def test_quantity_without_default_names_its_source(self):
+        message = _missing_data_message("current_density", None, None, [])
+        assert "source 'nmr'" in message
+        assert "'default'" not in message
+
+    def test_required_without_dataset_list(self):
+        message = _missing_data_message("structure", "poscar", None, ["default"])
+        assert "source 'poscar'" in message
+        assert "datasets" not in message
+        assert 'selection="default"' in message
+
+
+class _FrequencyHandler:
+    def __init__(self, raw_data):
+        self._raw_data = raw_data
+
+    def read(self):
+        return np.asarray(self._raw_data.frequencies)
+
+    def read_custom_error(self):
+        raise exception.NoData("custom message")
+
+
+class TestDispatchMissingData:
+    def _source(self, raw_data, default_frequencies=None):
+        default = raw_data.phonon_mode("Sr2TiO4")
+        default.frequencies = raw.VaspData(default_frequencies)
+        dispersion = raw_data.phonon_mode("dispersion")
+        return DictSource(
+            {"phonon_mode": default, ("phonon_mode", "dispersion"): dispersion}
+        )
+
+    def _read(self, source, method=_FrequencyHandler.read, selection=None):
+        return _dispatch(source, "phonon_mode", selection, _FrequencyHandler, method)
+
+    def test_names_missing_dataset_and_complete_source(self, raw_data):
+        with pytest.raises(exception.NoData) as error:
+            self._read(self._source(raw_data))
+        message = str(error.value)
+        assert "results/linear_response/dynmat/eigenvalues" in message
+        assert 'selection="dispersion"' in message
+        assert type(error.value) is exception.NoData
+        assert error.value.__cause__ is None
+        assert error.value.__suppress_context__
+
+    def test_no_complete_source_advises_on_vasp(self, raw_data):
+        default = raw_data.phonon_mode("Sr2TiO4")
+        default.frequencies = raw.VaspData(None)
+        source = DataSource(default)
+        with patch("py4vasp._calculation.dispatch._complete_sources", return_value=[]):
+            with pytest.raises(exception.NoData, match="INCAR"):
+                self._read(source)
+
+    def test_custom_no_data_is_unchanged(self, raw_data):
+        source = self._source(raw_data, default_frequencies=np.zeros(3))
+        with pytest.raises(exception.NoData, match="^custom message$"):
+            self._read(source, _FrequencyHandler.read_custom_error)
+
+    def test_source_failing_on_second_access_still_explains(self, raw_data):
+        default = raw_data.phonon_mode("Sr2TiO4")
+        default.frequencies = raw.VaspData(None)
+
+        class _OnceSource:
+            path = None
+            calls = 0
+
+            @contextlib.contextmanager
+            def access(self, quantity, selection=None):
+                self.calls += 1
+                if self.calls > 1:
+                    raise exception.FileAccessError("gone")
+                yield default
+
+        with pytest.raises(exception.NoData) as error:
+            self._read(_OnceSource())
+        message = str(error.value)
+        assert "source 'default'" in message
+        assert "datasets" not in message
+
+    def test_unexplained_missing_data_keeps_generic_error(self, raw_data):
+        with patch(
+            "py4vasp._calculation.dispatch._missing_datasets", return_value=([], [])
+        ):
+            with pytest.raises(exception._DatasetNotFound):
+                self._read(self._source(raw_data))
+
+    def test_optional_data_does_not_check_other_sources(self, raw_data):
+        with patch(
+            "py4vasp._calculation.dispatch._missing_datasets",
+            return_value=([], ["group/x"]),
+        ):
+            with patch("py4vasp._calculation.dispatch._complete_sources") as complete:
+                with pytest.raises(exception.NoData, match="optional"):
+                    self._read(self._source(raw_data))
+        complete.assert_not_called()
+
+    def test_database_does_not_explain(self, raw_data):
+        with patch("py4vasp._calculation.dispatch._complete_sources") as complete:
+            result = merge_to_database(
+                self._source(raw_data),
+                "phonon_mode",
+                _FrequencyHandler,
+                _FrequencyHandler.read,
+            )
+        complete.assert_not_called()
+        assert set(result["phonon_mode"]) == {"dispersion"}
 
 
 class TestIsAvailableInjected:

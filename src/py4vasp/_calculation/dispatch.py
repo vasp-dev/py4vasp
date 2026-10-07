@@ -386,18 +386,53 @@ def _dispatch(
                 "which sources exist."
             )
             raise exception.IncorrectUsage(message)
-        with source.access(quantity_name, selection=ctx.selection_name) as raw:
-            handler = handler_factory(raw)
-            if handler_wants_selection:
-                if ctx.remaining_selection is None and selection_has_default:
-                    result = method(handler, *args, **kwargs)
+        try:
+            with source.access(quantity_name, selection=ctx.selection_name) as raw:
+                handler = handler_factory(raw)
+                if handler_wants_selection:
+                    if ctx.remaining_selection is None and selection_has_default:
+                        result = method(handler, *args, **kwargs)
+                    else:
+                        result = method(
+                            handler, ctx.remaining_selection, *args, **kwargs
+                        )
                 else:
-                    result = method(handler, ctx.remaining_selection, *args, **kwargs)
-            else:
-                result = method(handler, *args, **kwargs)
-            key = ctx.selection_name or "default"
-            results[key] = result
+                    result = method(handler, *args, **kwargs)
+                key = ctx.selection_name or "default"
+                results[key] = result
+        except exception._DatasetNotFound:
+            # The generic error only says that some data is absent. A source that
+            # suppresses errors (database collection) never gets here.
+            message = _explain_missing_data(source, quantity_name, ctx.selection_name)
+            if message is None:
+                raise
+            raise exception.NoData(message) from None
     return results
+
+
+def _explain_missing_data(source, quantity_name, selection):
+    """Describe the data missing from *selection*, or None if it cannot be named."""
+    try:
+        with source.access(quantity_name, selection=selection) as raw_data:
+            missing = _missing_datasets(quantity_name, selection, raw_data)
+    except _UNAVAILABLE_EXCEPTIONS:
+        missing = None
+    if missing == ([], []):
+        return None
+    if missing and not missing[0]:
+        complete = []  # the source is complete, so other sources do not help
+    else:
+        complete = _complete_sources(source, quantity_name, exclude=selection)
+    return _missing_data_message(quantity_name, selection, missing, complete)
+
+
+# accessing a source raises one of these when its data is not there
+_UNAVAILABLE_EXCEPTIONS = (
+    exception.FileAccessError,
+    exception.OutdatedVaspVersion,
+    exception.NoData,
+    FileNotFoundError,
+)
 
 
 def _result_has_data(result) -> bool:
@@ -686,12 +721,7 @@ def _availability_of_source(instance, quantity, selection, method):
     try:
         with instance._source.access(quantity, selection=source) as raw_data:
             return instance._is_available(raw_data, selection, method)
-    except (
-        exception.FileAccessError,
-        exception.OutdatedVaspVersion,
-        exception.NoData,
-        FileNotFoundError,
-    ):
+    except _UNAVAILABLE_EXCEPTIONS:
         return False
 
 
@@ -785,6 +815,90 @@ def data_available(
         return False
 
 
+def _complete_sources(source, quantity_name, exclude):
+    """List the sources of *quantity_name* whose required data is all present.
+
+    Aliases are skipped, and so is the source *exclude* (None excludes the default
+    source). A source that cannot be opened counts as incomplete.
+    """
+    try:
+        names = schema_unique_selections(quantity_name.lstrip("_"))
+    except exception.FileAccessError:
+        return []
+    excluded = (exclude or DEFAULT_SELECTION).lower()
+    complete = []
+    for name in map(str, names):
+        if name.lower() == excluded:
+            continue
+        if _schema_specification(quantity_name, name) is None:
+            continue  # built by a data factory, so nothing proves it complete
+        with contextlib.suppress(FileNotFoundError):
+            if data_available(source, quantity_name, selection=name):
+                complete.append(name)
+    return complete
+
+
+_MAX_LISTED_DATASETS = 5
+
+
+def _missing_data_message(quantity_name, selection, missing, complete):
+    """Explain which data of a source is missing and where the user finds it instead.
+
+    Parameters
+    ----------
+    quantity_name : str
+        The quantity whose data is missing.
+    selection : str | None
+        The source that was accessed; None is the default source.
+    missing : tuple[list[str], list[str]] | None
+        The missing required and optional datasets as returned by
+        :func:`_missing_datasets`, or None if they cannot be determined.
+    complete : list[str]
+        The other sources of the quantity that contain all required data.
+    """
+    quantity = quantity_name.lstrip("_")
+    source = _effective_source(quantity_name, selection) or DEFAULT_SELECTION
+    if missing and not missing[0] and missing[1]:
+        return (
+            f"The source '{source}' of '{quantity}' contains all required data, but "
+            "this method also needs optional data that is missing. The optional "
+            f"{_format_datasets(missing[1])} absent from the VASP output; please make "
+            "sure that the INCAR tags of the calculation produce the one you need."
+        )
+    message = f"'{quantity}' has no data for the source '{source}' in this calculation"
+    if missing and missing[0]:
+        datasets = _format_datasets(missing[0])
+        message += f": the required {datasets} missing from the VASP output"
+    message += ". "
+    if complete:
+        message += _point_to_complete_sources(complete)
+    else:
+        message += (
+            f"No source of '{quantity}' contains the required data. Please make sure "
+            "that the INCAR tags of the calculation produce this data, that VASP "
+            "finished, and that it did not exit with an error."
+        )
+    return message
+
+
+def _format_datasets(datasets):
+    "Name the datasets including noun and verb, e.g. 'dataset x is'."
+    listed = ", ".join(datasets[:_MAX_LISTED_DATASETS])
+    remaining = len(datasets) - _MAX_LISTED_DATASETS
+    if remaining > 0:
+        listed += f" and {remaining} more"
+    return f"dataset {listed} is" if len(datasets) == 1 else f"datasets {listed} are"
+
+
+def _point_to_complete_sources(complete):
+    names = ", ".join(f"'{name}'" for name in complete)
+    if len(complete) == 1:
+        intro = f"The source {names} contains all required data; select it"
+    else:
+        intro = f"The sources {names} contain all required data; select one of them"
+    return f'{intro} by passing it as the selection, e.g. selection="{complete[0]}".'
+
+
 def _effective_source(quantity_name, selection):
     """Resolve the schema source name to use for an availability check.
 
@@ -852,6 +966,58 @@ def _linked_data_available(link, value, enforce_optional_linked, seen):
         enforce_optional_linked,
         seen | {key},
     )
+
+
+def _missing_datasets(quantity_name, selection, raw_data):
+    """List the HDF5 datasets of one source that are absent from *raw_data*.
+
+    The paths are reconstructed from the schema, so this is a best effort: datasets
+    whose path depends on an index cannot be named. Optional ones are skipped; a missing
+    required one makes the whole list unreliable, so None is returned. Datasets of
+    linked quantities are included; when a whole link is absent, all its datasets are
+    listed.
+
+    Returns
+    -------
+    tuple[list[str], list[str]] | None
+        The missing required and the missing optional datasets, or None when they
+        cannot be determined, e.g. because the source is built by a data factory and so
+        has no datasets in the schema.
+    """
+    spec = _schema_specification(quantity_name, selection)
+    if spec is None:
+        return None
+    required, optional, unnamed_required = [], [], []
+    missing = (required, optional, unnamed_required)
+    _collect_missing(spec, raw_data, False, missing, set())
+    return None if unnamed_required else (required, optional)
+
+
+def _collect_missing(spec, raw_data, optional, missing, seen):
+    for field in dataclasses.fields(spec):
+        specification = getattr(spec, field.name)
+        if check.is_none(specification):
+            continue
+        field_optional = optional or _field_is_optional(field)
+        value = None if raw_data is None else getattr(raw_data, field.name)
+        if isinstance(specification, Link):
+            _collect_missing_linked(specification, value, field_optional, missing, seen)
+        elif check.is_none(value):
+            dataset = getattr(specification, "dataset", specification)
+            if "{" in dataset:
+                if not field_optional:
+                    missing[2].append(dataset)
+            elif dataset not in missing[field_optional]:
+                missing[field_optional].append(dataset)
+
+
+def _collect_missing_linked(link, value, optional, missing, seen):
+    key = (link.quantity, link.source)
+    nested_spec = _schema_specification(link.quantity, link.source)
+    if key in seen or nested_spec is None:
+        return
+    nested_value = None if check.is_none(value) else value
+    _collect_missing(nested_spec, nested_value, optional, missing, seen | {key})
 
 
 def _field_is_optional(field):

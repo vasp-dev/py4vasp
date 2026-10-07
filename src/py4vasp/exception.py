@@ -29,7 +29,15 @@ class NotImplemented(Py4VaspError):
 
 class NoData(Py4VaspError):
     """Exception raised when certain data is not present, because the corresponding
-    INCAR flags have not been set."""
+    INCAR flags have not been set or because the selected source of a quantity is not
+    part of the calculation. Where possible, the message lists the missing datasets and
+    names the sources of the quantity that do contain the data."""
+
+
+class _DatasetNotFound(NoData):
+    """Raised when a dataset absent from the VASP output is accessed. It is private
+    because users should catch NoData; it lets py4vasp tell this generic case apart
+    from the more specific NoData raised by the quantities and replace its message."""
 
 
 class FileAccessError(Py4VaspError):

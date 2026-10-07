@@ -157,6 +157,21 @@ string:
        ]
 
 
+Missing Data
+~~~~~~~~~~~~
+
+Raw data is loaded lazily, so a dataset absent from the VASP output only raises
+when the handler reads it: ``VaspData`` raises the private
+``exception._DatasetNotFound``, a subclass of ``NoData``. ``_dispatch`` catches
+it, accesses the source a second time, and replaces the generic message with one
+that names the source, lists the missing datasets (reconstructed from the schema
+by ``_missing_datasets``) and, when required data is missing, names the other
+sources that contain all required data (``_complete_sources``). If no source is
+complete, the message advises checking the INCAR tags and the VASP run. Any
+``NoData`` a handler raises itself passes through unchanged, and database
+collection never reaches this code because its source suppresses the error.
+
+
 Standalone Dispatch Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
