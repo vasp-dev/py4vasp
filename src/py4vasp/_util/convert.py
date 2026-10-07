@@ -17,6 +17,11 @@ from py4vasp._raw.data_wrapper import VaspData
 EV_TO_THZ = 241.798934781
 EV_TO_CM1 = 8065.610420
 EV_TO_MEV = 1000
+# ħ² in eV amu Å², from ħ = 6.582119569e-16 eV s, 1 amu = 1.66053907e-27 kg and
+# 1 Å = 1e-10 m. It connects the masses and lengths of a structure to an energy: an
+# eigenvalue λ of the dynamical matrix in eV/(Å² amu) is a frequency ħω = sqrt(ħ²λ),
+# and ħ/ω = ħ²/(ħω) converts a frequency to the square of a normal coordinate.
+HBAR_SQUARED = 0.004180159279779
 
 
 def text_to_string(text):

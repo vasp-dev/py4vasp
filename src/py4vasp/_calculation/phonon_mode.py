@@ -23,10 +23,6 @@ from py4vasp._util import check, convert
 from py4vasp._util import masses as mass_table
 from py4vasp._util import select
 
-# ħ² in the units the displacement is expressed in, from ħ = 6.582119569e-16 eV s,
-# 1 amu = 1.66053907e-27 kg and 1 Å = 1e-10 m. VASP reports the frequency of a mode as
-# the energy ħω, so ħ/ω = ħ²/(ħω) converts it to the square of a normal coordinate.
-_HBAR_SQUARED = 0.004180159279779  # eV amu Å²
 # Default below which a mode carries no meaningful scale. VASP does not report the
 # translations as exactly zero and how far above zero they come out depends on the
 # calculation — a BaTiO3 linear response run puts them at 1.3e-4 eV — so the default
@@ -256,7 +252,7 @@ class PhononModeHandler:
         # ½ω²Q² = ħω is solved by Q = sqrt(2ħ/ω); the sign of the frequency does not
         # enter the energy, so an unstable mode uses the magnitude of its imaginary one
         frequency = np.abs(self.frequencies()[index])
-        normal_coordinate = amplitude * np.sqrt(2 * _HBAR_SQUARED / frequency)
+        normal_coordinate = amplitude * np.sqrt(2 * convert.HBAR_SQUARED / frequency)
         pattern = self._undo_mass_weighting(self._eigenvectors()[index], masses)
         structure = self._structure()
         lattice_vectors = structure.lattice_vectors()

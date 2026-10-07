@@ -11,11 +11,7 @@ import pytest
 import py4vasp
 from py4vasp import _demo, exception, raw
 from py4vasp._calculation.kpoint import Kpoint
-from py4vasp._calculation.phonon_mode import (
-    _HBAR_SQUARED,
-    PhononMode,
-    PhononModeHandler,
-)
+from py4vasp._calculation.phonon_mode import PhononMode, PhononModeHandler
 from py4vasp._calculation.structure import Structure
 from py4vasp._demo import showcase
 from py4vasp._demo.phonon import mode as phonon_mode_demo
@@ -391,13 +387,6 @@ def test_plot_is_alias_of_to_view(phonon_mode, Assert):
     Assert.same_structure_view(phonon_mode.plot(), phonon_mode.to_view())
 
 
-def test_conversion_constant_is_hbar_squared(Assert):
-    # CODATA: ħ = 1.054571817646e-34 J s, 1 eV = 1.602176634e-19 J,
-    # 1 amu = 1.66053906892e-27 kg, 1 Å = 1e-10 m
-    expected = 1.054571817646e-34**2 / (1.602176634e-19 * 1.66053906892e-27 * 1e-20)
-    Assert.allclose(_HBAR_SQUARED, expected, tolerance=100)
-
-
 def test_displace_without_amplitude_keeps_the_structure(mode_handler, Assert):
     actual = Structure.from_data(mode_handler.displace("4", amplitude=0.0))
     Assert.same_structure(actual.read(), mode_handler.ref.structure.read())
@@ -426,7 +415,7 @@ def test_amplitude_one_displaces_by_the_energy_of_the_mode(mode_handler, Assert)
     displacement = get_displacement(mode_handler, mode_handler.displace("4"))
     normal_coordinate = get_normal_coordinate(mode_handler, displacement)
     frequency = np.abs(mode_handler.ref.frequencies[3])
-    energy = 0.5 * frequency**2 / _HBAR_SQUARED * normal_coordinate**2
+    energy = 0.5 * frequency**2 / convert.HBAR_SQUARED * normal_coordinate**2
     # the normal coordinate is recovered from positions stored in direct coordinates,
     # so it carries the rounding of the conversion through the lattice vectors
     Assert.allclose(energy, frequency, tolerance=100)
@@ -434,7 +423,7 @@ def test_amplitude_one_displaces_by_the_energy_of_the_mode(mode_handler, Assert)
 
 def test_displace_scales_the_normal_coordinate_with_the_amplitude(mode_handler, Assert):
     frequency = np.abs(mode_handler.ref.frequencies[3])
-    expected = np.sqrt(2 * _HBAR_SQUARED / frequency)
+    expected = np.sqrt(2 * convert.HBAR_SQUARED / frequency)
     for amplitude in (0.25, 1.0, 2.0):
         displacement = get_displacement(
             mode_handler, mode_handler.displace("4", amplitude)
