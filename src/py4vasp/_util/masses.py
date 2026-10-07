@@ -93,7 +93,8 @@ def resolve(masses, elements) -> np.ndarray:
         raise exception.IncorrectUsage(message)
     if len(masses) != len(elements):
         message = (
-            f"You provided {len(masses)} masses but the structure contains "
+            f"You provided {len(masses)} mass{'' if len(masses) == 1 else 'es'} but "
+            "the structure contains "
             f"{len(elements)} atoms. Please pass one mass per atom in the order in "
             "which the structure lists them."
         )
@@ -102,7 +103,7 @@ def resolve(masses, elements) -> np.ndarray:
         message = (
             "All masses must be positive numbers because the motion of an atom is "
             "weighted with the inverse square root of its mass; you provided "
-            f"{list(masses)}."
+            f"{[float(mass) for mass in masses]}."
         )
         raise exception.IncorrectUsage(message)
     return masses

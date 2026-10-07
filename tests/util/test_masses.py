@@ -64,3 +64,15 @@ def test_resolve_raises_error_for_nonpositive_mass(wrong_mass):
     with pytest.raises(exception.IncorrectUsage) as error:
         masses.resolve([88.0, wrong_mass, 16.0], ELEMENTS)
     assert "positive" in str(error.value)
+
+
+def test_resolve_error_uses_singular_for_one_mass():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve(18.0, ELEMENTS)
+    assert "1 mass but" in str(error.value)
+
+
+def test_resolve_error_lists_masses_as_plain_numbers():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve(np.array([88.0, 0.0, 16.0]), ELEMENTS)
+    assert "[88.0, 0.0, 16.0]" in str(error.value)

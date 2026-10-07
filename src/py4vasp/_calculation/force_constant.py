@@ -502,8 +502,10 @@ class ForceConstant:
         are the ones :py:meth:`frequencies` and :py:meth:`displacements` return, i.e.
         the normal modes of the dynamical matrix, so the masses of the atoms enter.
         Following the molden convention, an unstable mode with an imaginary frequency
-        is listed as a negative wavenumber. Each pattern is normalized to a length of
-        1, because a viewer only needs its direction.
+        is listed as a negative wavenumber, so the three translations may show up as a
+        tiny negative number. Each pattern is normalized to a length of 1, because a
+        viewer only needs its direction. The molden format has no unit cell, so a
+        viewer shows the atoms of one cell as an isolated cluster.
 
         Parameters
         ----------
