@@ -209,7 +209,7 @@ _PRINT_REGISTRY_VIEWS = """
 import sys
 sys.path.insert(0, sys.argv[1])
 from py4vasp import _calculation
-print(repr((_calculation.QUANTITIES, _calculation.GROUPS)))
+print(repr((_calculation.__file__, _calculation.QUANTITIES, _calculation.GROUPS)))
 """
 
 
@@ -223,14 +223,15 @@ def test_quantities_discovered_when_imported_from_zip(tmp_path):
         for source in [package_dir, *package_dir.rglob("*")]:
             if source.is_dir() or source.suffix == ".py":
                 zip_file.write(source, source.relative_to(package_dir.parent))
-    output = subprocess.run(
+    result = subprocess.run(
         [sys.executable, "-I", "-c", _PRINT_REGISTRY_VIEWS, str(archive)],
         capture_output=True,
         text=True,
-        check=True,
         cwd=tmp_path,
-    ).stdout
-    quantities, groups = ast.literal_eval(output)
+    )
+    assert result.returncode == 0, result.stderr
+    module_file, quantities, groups = ast.literal_eval(result.stdout)
+    assert module_file.startswith(str(archive))
     assert quantities == _calculation.QUANTITIES
     assert groups == _calculation.GROUPS
 
