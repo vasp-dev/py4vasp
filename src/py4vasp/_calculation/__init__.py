@@ -682,6 +682,23 @@ class DefaultCalculationFactory:
     >>> structure.to_POSCAR(supercell=(2, 2, 1)).splitlines()[6]
     '8 4 16'
 
+    *How do I pass ε∞ and the Born effective charges to a polar phonon run?* Let the
+    linear-response calculation write the INCAR tags for you. Both strings end with a
+    newline, so you can join them and append them to the INCAR file of the phonon
+    calculation, where you also switch on the polar correction with
+    ``LPHON_POLAR = .TRUE.``. The orientation of the tensors is already the one VASP
+    reads
+
+    >>> tags = (
+    ...     calculation.dielectric_tensor.to_INCAR()
+    ...     + calculation.born_effective_charge.to_INCAR()
+    ... )
+    >>> [line.split()[0] for line in tags.splitlines() if "=" in line]
+    ['PHON_DIELECTRIC', 'PHON_BORN_CHARGES']
+    >>> import pathlib
+    >>> with open(pathlib.Path(path) / "INCAR", "a") as incar:
+    ...     _ = incar.write(tags)
+
     *How do I average a tensor over the directions?* Select the average instead of
     computing it, here for the dielectric function
 
