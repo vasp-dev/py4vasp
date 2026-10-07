@@ -854,6 +854,51 @@ def _linked_data_available(link, value, enforce_optional_linked, seen):
     )
 
 
+def _missing_datasets(quantity_name, selection, raw_data):
+    """List the HDF5 datasets of one source that are absent from *raw_data*.
+
+    The paths are reconstructed from the schema, so this is a best effort: datasets
+    whose path depends on an index cannot be named and are skipped. Datasets of linked
+    quantities are included; when a whole link is absent, all its datasets are listed.
+
+    Returns
+    -------
+    tuple[list[str], list[str]] | None
+        The missing required and the missing optional datasets, or None when the source
+        is built by a data factory and so has no datasets in the schema.
+    """
+    spec = _schema_specification(quantity_name, selection)
+    if spec is None:
+        return None
+    missing = ([], [])
+    _collect_missing(spec, raw_data, False, missing, set())
+    return missing
+
+
+def _collect_missing(spec, raw_data, optional, missing, seen):
+    for field in dataclasses.fields(spec):
+        specification = getattr(spec, field.name)
+        if check.is_none(specification):
+            continue
+        field_optional = optional or _field_is_optional(field)
+        value = None if raw_data is None else getattr(raw_data, field.name)
+        if isinstance(specification, Link):
+            _collect_missing_linked(specification, value, field_optional, missing, seen)
+        elif check.is_none(value):
+            dataset = getattr(specification, "dataset", specification)
+            if "{" not in dataset and dataset not in missing[field_optional]:
+                missing[field_optional].append(dataset)
+
+
+def _collect_missing_linked(link, value, optional, missing, seen):
+    key = (link.quantity, link.source)
+    nested_spec = _schema_specification(link.quantity, link.source)
+    if key in seen or nested_spec is None:
+        return
+    nested_value = None if check.is_none(value) else value
+    _collect_missing(nested_spec, nested_value, optional, missing, seen | {key})
+
+
 def _field_is_optional(field):
     return (
         field.default is not dataclasses.MISSING

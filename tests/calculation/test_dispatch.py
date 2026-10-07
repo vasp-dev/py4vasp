@@ -20,6 +20,7 @@ from py4vasp._calculation.dispatch import (
     Group,
     SelectionContext,
     _dispatch,
+    _missing_datasets,
     _parse_selections,
     _result_has_data,
     _substitute_remaining_selection,
@@ -1112,6 +1113,46 @@ class TestDataAvailable:
     def test_missing_file_returns_false(self, tmp_path):
         source = FileSource(tmp_path)
         assert not data_available(source, "density")
+
+
+class TestMissingDatasets:
+    def test_complete_data_misses_nothing(self, raw_data):
+        # the demo data stores plain numpy arrays, which count as present
+        mode = raw_data.phonon_mode("Sr2TiO4")
+        required, _ = _missing_datasets("phonon_mode", None, mode)
+        assert required == []
+
+    def test_each_dataset_listed_once(self, raw_data):
+        # several links reach the same structure datasets
+        mode = raw_data.phonon_mode("Sr2TiO4")
+        _, optional = _missing_datasets("phonon_mode", None, mode)
+        assert "input/incar/IDIPOL" in optional
+        assert len(optional) == len(set(optional))
+
+    def test_missing_required_dataset(self, raw_data):
+        mode = raw_data.phonon_mode("Sr2TiO4")
+        mode.frequencies = raw.VaspData(None)
+        required, optional = _missing_datasets("phonon_mode", None, mode)
+        assert required == ["results/linear_response/dynmat/eigenvalues"]
+        assert "results/linear_response/dynmat/eigenvalues" not in optional
+
+    def test_missing_dataset_of_linked_quantity(self, raw_data):
+        density = raw_data.density("Sr2TiO4")
+        density.structure.positions = raw.VaspData(None)
+        required, _ = _missing_datasets("density", None, density)
+        assert required == ["intermediate/ion_dynamics/position_ions"]
+
+    def test_missing_optional_link_lists_its_datasets(self, raw_data):
+        mode = raw_data.phonon_mode("dispersion")
+        mode.qpoints = raw.VaspData(None)
+        required, optional = _missing_datasets("phonon_mode", "dispersion", mode)
+        assert required == []
+        assert "input/qpoints/mode" in optional
+        assert "results/phonons/qpoint_coords" in optional
+
+    def test_source_built_by_factory_cannot_be_listed(self, raw_data):
+        structure = raw_data.structure("Sr2TiO4")
+        assert _missing_datasets("structure", "poscar", structure) is None
 
 
 class TestIsAvailableInjected:
