@@ -123,6 +123,15 @@ def check_conversion_called(
     assert f"{converted}\n" == result.stdout
 
 
+def test_convert_help_names_supported_conversion():
+    # the help must not advertise a generality the command does not have
+    result = _runner().invoke(cli, ["convert", "--help"])
+    assert result.exit_code == 0
+    usage = result.stdout.splitlines()[0]
+    assert "{structure}" in usage
+    assert "lammps" in result.stdout.lower()
+
+
 def test_convert_wrong_quantity():
     runner = _runner()
     result = runner.invoke(cli, ["convert", "not_implemented"])
