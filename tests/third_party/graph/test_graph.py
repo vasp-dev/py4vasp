@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+import pathlib
 import re
 import subprocess
 import sys
@@ -1317,3 +1318,22 @@ def test_merging_numeric_range_ignores_rounding(parabola):
     graph = Graph(parabola, xrange=(0.0, 1.0))
     merged = graph + Graph(parabola, xrange=(0.0, 1.0000000000000002))
     assert merged.xrange == (0.0, 1.0)
+
+
+@pytest.mark.parametrize("filename", ["graph.png", pathlib.Path("graph.svg")])
+def test_to_image(parabola, filename):
+    graph = Graph(parabola)
+    with patch.object(Graph, "to_plotly") as to_plotly:
+        graph.to_image(filename)
+        to_plotly.assert_called_once_with()
+        to_plotly.return_value.write_image.assert_called_once_with(filename)
+
+
+def test_to_image_of_combined_graph(parabola, sine):
+    pytest.importorskip("plotly")
+    graph = Graph(parabola) + Graph(sine)
+    with patch("plotly.graph_objs.Figure.write_image", autospec=True) as write_image:
+        graph.to_image("combined.png")
+        figure, filename = write_image.call_args.args
+        assert filename == "combined.png"
+        assert [trace.name for trace in figure.data] == [parabola.label, sine.label]

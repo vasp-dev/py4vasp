@@ -132,7 +132,8 @@ class Graph(Sequence):
 
     The Graph class provides a comprehensive interface for creating, customizing, and
     exporting data visualizations. It supports single or multiple data series, interactive
-    plotting with Plotly, and various export formats including CSV and pandas DataFrames.
+    plotting with Plotly, and various export formats including images, CSV and pandas
+    DataFrames.
 
     This class acts as both a container for data series and a configuration object for
     plot properties such as axis labels, ranges, sizes, and titles. It implements the
@@ -146,7 +147,7 @@ class Graph(Sequence):
     - Configurable figure dimensions
     - Subplot support for organizing multiple plots vertically
     - Secondary y-axis support for comparing series with different scales
-    - Export capabilities to CSV, pandas DataFrame, and Plotly figures
+    - Export capabilities to images, CSV, pandas DataFrame, and Plotly figures
     - Automatic color cycling for multiple series
     - Contour plot support with aspect ratio handling
 
@@ -307,6 +308,11 @@ class Graph(Sequence):
         nothing left to retype before showing it
 
         >>> graph.show()
+
+        A combined graph is saved like any other, here as png next to the
+        calculations
+
+        >>> graph.to_image(path / "comparison.png")
 
         For more than two, sum them. ``sum`` needs the first graph as its start value,
         because there is no empty graph to add the others to
@@ -705,6 +711,41 @@ class Graph(Sequence):
         """
         df = self.to_frame()
         df.to_csv(filename, index=False)
+
+    def to_image(self, filename: str | Path) -> None:
+        """Save the graph as an image file.
+
+        The format is deduced from the extension of the filename; common raster (png,
+        jpg) and vector (svg, pdf) formats are supported. The size of the image is the
+        size of the figure, i.e., set :py:attr:`xsize` and :py:attr:`ysize` (in pixels)
+        to change it. This works for every graph, in particular for one combined from
+        several calculations with the ``+`` operator.
+
+        Parameters
+        ----------
+        filename
+            Path to the output image. Unlike the ``to_image`` method of the
+            quantities, a relative path is relative to the current working directory,
+            because a graph does not know which calculation it came from.
+
+        Examples
+        --------
+        Save a simple graph as png:
+
+        >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")
+        >>> graph.to_image(path / "graph.png")
+        >>> (path / "graph.png").exists()
+        True
+
+        Save two graphs combined into one figure as a vector graphic:
+
+        >>> first = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="first")
+        >>> second = py4vasp.plot(x=[1, 2, 3], y=[6, 5, 4], label="second")
+        >>> (first + second).to_image(path / "combined.svg")
+        >>> (path / "combined.svg").exists()
+        True
+        """
+        self.to_plotly().write_image(filename)
 
     def _create_and_populate_df(self, series):
         df = pd.DataFrame()
