@@ -695,9 +695,15 @@ class DefaultCalculationFactory:
     ... )
     >>> [line.split()[0] for line in tags.splitlines() if "=" in line]
     ['PHON_DIELECTRIC', 'PHON_BORN_CHARGES']
+
+    Append them to the INCAR of the *phonon* run, not to the one of the linear-response
+    calculation you read them from. Here the phonon run lives in a sibling directory
+
     >>> import pathlib
-    >>> with open(pathlib.Path(path) / "INCAR", "a") as incar:
-    ...     _ = incar.write(tags)
+    >>> phonon_run = pathlib.Path(path).parent / "phonon"
+    >>> phonon_run.mkdir(exist_ok=True)
+    >>> with open(phonon_run / "INCAR", "a") as incar:
+    ...     _ = incar.write("LPHON_POLAR = .TRUE.\\n" + tags)
 
     *How do I average a tensor over the directions?* Select the average instead of
     computing it, here for the dielectric function

@@ -176,7 +176,10 @@ class BornEffectiveCharge:
         The structural information is added to inform about which atoms are included
         in the array. The Born effective charges array contains the mixed second
         derivative with respect to an electric field and an atomic displacement for
-        all atoms and possible directions.
+        all atoms and possible directions. ``charge_tensors[ion, i, j]`` is the
+        derivative with respect to the displacement in direction ``i`` and the electric
+        field in direction ``j``, which is the transpose of the blocks VASP prints in
+        the OUTCAR file. :py:meth:`to_INCAR` takes care of that orientation for you.
 
         Returns
         -------

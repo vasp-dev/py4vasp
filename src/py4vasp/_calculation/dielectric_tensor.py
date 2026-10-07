@@ -235,7 +235,8 @@ class DielectricTensor:
 
         The tensor is written in the orientation VASP reads it, one row per line with
         a backslash continuing the tag onto the next line. You do not need to transpose
-        anything yourself.
+        anything yourself. Note that the rows are the columns of the array returned by
+        :py:meth:`read`; for the symmetric tensors VASP computes both agree.
 
         Parameters
         ----------
