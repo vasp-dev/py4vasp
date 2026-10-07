@@ -32,7 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 plot = [
     "pandas>=2.2.2",
-    "plotly>=5.23",
+    "plotly>=6.1",
     "kaleido>=1.0",
 ]
 structure = [
