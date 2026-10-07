@@ -72,8 +72,7 @@ class ForceConstantHandler:
 
         The eigenvectors are the ones of the force constants themselves; the masses of
         the atoms are not taken into account, so these are not the normal modes of the
-        system. Use :py:meth:`read` and diagonalize the resulting array yourself if you
-        need the corresponding eigenvalues.
+        system. :py:meth:`eigenvalues` returns the corresponding eigenvalues.
 
         Returns
         -------
@@ -83,6 +82,10 @@ class ForceConstantHandler:
             direction. Atoms frozen by selective dynamics have zero displacement.
         """
         return self._diagonalize()[1]
+
+    def eigenvalues(self) -> np.ndarray:
+        """Compute the eigenvalues of the force constant matrix in eV/Å²."""
+        return np.linalg.eigvalsh(self._force_constants)
 
     def _diagonalize(self):
         eigenvalues, eigenvectors = np.linalg.eigh(self._force_constants)
@@ -266,8 +269,7 @@ class ForceConstant:
 
         The eigenvectors are the ones of the force constants themselves; the masses of
         the atoms are not taken into account, so these are not the normal modes of the
-        system. Use :py:meth:`read` and diagonalize the resulting array yourself if you
-        need the corresponding eigenvalues.
+        system. :py:meth:`eigenvalues` returns the corresponding eigenvalues.
 
         Returns
         -------
@@ -282,6 +284,51 @@ class ForceConstant:
             None,
             ForceConstantHandler.from_data,
             ForceConstantHandler.eigenvectors,
+        )
+
+    def eigenvalues(self) -> np.ndarray:
+        """Compute the eigenvalues of the force constant matrix.
+
+        These are the curvatures of the energy along the directions
+        :py:meth:`eigenvectors` returns, in the same order. The masses of the atoms do
+        not enter, so they are not the squares of the vibrational frequencies. A
+        dynamically stable structure has no negative eigenvalue and, if you displaced
+        all atoms, three that vanish because moving the whole crystal does not change
+        its energy.
+
+        Returns
+        -------
+        np.ndarray
+            The eigenvalues in eV/Å² in ascending order, one for every direction of
+            every atom that was displaced. Atoms frozen by selective dynamics do not
+            contribute.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Please define a
+        variable `path` with the path to a directory that does not exist yet.
+        Alternatively, use your own data if you have run VASP.
+
+        >>> import numpy as np
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation(path)
+
+        The first three eigenvalues belong to the translations of the crystal, so they
+        vanish up to numerical noise; the others are positive, because the structure is
+        stable.
+
+        >>> eigenvalues = calculation.force_constant.eigenvalues()
+        >>> np.allclose(eigenvalues[:3], 0)
+        True
+        >>> eigenvalues[3:6]
+        array([0.813..., 1.089..., 1.639...])
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            ForceConstantHandler.from_data,
+            ForceConstantHandler.eigenvalues,
         )
 
     def to_molden(self) -> str:

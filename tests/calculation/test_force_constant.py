@@ -45,6 +45,7 @@ def dispatcher(raw_data, request):
     force_constants = ForceConstant.from_data(raw_force_constants)
     force_constants.ref = types.SimpleNamespace()
     force_constants.ref.format_output = get_format_output(request.param)
+    force_constants.ref.selection = f"Sr2TiO4 {request.param}"
     return force_constants
 
 
@@ -155,6 +156,29 @@ def test_eigenvectors_diagonalize_reported_force_constants(Sr2TiO4, Assert):
     eigenvectors = eigenvectors.reshape(len(eigenvectors), -1)
     eigenvalues = [vector @ force_constants @ vector for vector in eigenvectors]
     assert np.all(np.diff(eigenvalues) > 0)
+
+
+def test_eigenvalues(Sr2TiO4, Assert):
+    # VASP stores only the degrees of freedom selective dynamics leaves free, so there
+    # is one eigenvalue per free direction of an atom
+    expected = np.linalg.eigvalsh(Sr2TiO4.ref.force_constants)
+    Assert.allclose(Sr2TiO4.eigenvalues(), expected)
+
+
+def test_eigenvalues_belong_to_the_eigenvectors(Sr2TiO4, Assert):
+    force_constants = Sr2TiO4.to_dict()["force_constants"]
+    eigenvectors = Sr2TiO4.eigenvectors()
+    if Sr2TiO4.ref.selective_dynamics is not None:
+        eigenvectors = eigenvectors[:, Sr2TiO4.ref.selective_dynamics]
+    eigenvectors = eigenvectors.reshape(len(eigenvectors), -1)
+    expected = [vector @ force_constants @ vector for vector in eigenvectors]
+    Assert.allclose(Sr2TiO4.eigenvalues(), expected)
+
+
+def test_eigenvalues_dispatcher(dispatcher, raw_data, Assert):
+    raw_force_constant = raw_data.force_constant(dispatcher.ref.selection)
+    handler = ForceConstantHandler.from_data(raw_force_constant)
+    Assert.allclose(dispatcher.eigenvalues(), handler.eigenvalues())
 
 
 def test_to_molden(Sr2TiO4, Assert):
