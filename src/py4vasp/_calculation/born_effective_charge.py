@@ -37,11 +37,13 @@ BORN EFFECTIVE CHARGES (including local field effects) (in |e|, cumulative outpu
         generator = zip(data["structure"]["elements"], data["charge_tensors"])
         vec_to_string = lambda vec: " ".join(f"{x:11.5f}" for x in vec)
         for ion, (element, charge_tensor) in enumerate(generator):
+            # like OUTCAR, each row is the field direction; vaspout.h5 stores it last
+            field_x, field_y, field_z = charge_tensor.T
             result += f"""
 ion {ion + 1:4d}   {element}
-    1 {vec_to_string(charge_tensor[0])}
-    2 {vec_to_string(charge_tensor[1])}
-    3 {vec_to_string(charge_tensor[2])}"""
+    1 {vec_to_string(field_x)}
+    2 {vec_to_string(field_y)}
+    3 {vec_to_string(field_z)}"""
         return result
 
     def _repr_pretty_(self, p, cycle):
@@ -133,6 +135,12 @@ class BornEffectiveCharge:
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
 
+        The output imitates the block of Born effective charges in the OUTCAR file, so
+        you can compare the two directly. For every ion, the row index is the direction
+        of the electric field and the column index the direction of the atomic
+        displacement. This is the orientation of the PHON_BORN_CHARGES tag written by
+        :py:meth:`to_INCAR` and the transpose of the array returned by :py:meth:`read`.
+
         Parameters
         ----------
         selection : str | None
@@ -179,7 +187,8 @@ class BornEffectiveCharge:
         all atoms and possible directions. ``charge_tensors[ion, i, j]`` is the
         derivative with respect to the displacement in direction ``i`` and the electric
         field in direction ``j``, which is the transpose of the blocks VASP prints in
-        the OUTCAR file. :py:meth:`to_INCAR` takes care of that orientation for you.
+        the OUTCAR file. :py:meth:`print` and :py:meth:`to_INCAR` take care of that
+        orientation for you.
 
         Returns
         -------
