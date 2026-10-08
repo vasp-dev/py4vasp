@@ -144,8 +144,9 @@ class PhononModeHandler:
 
         Parameters
         ----------
-        masses : Sequence[float] | None
-            The mass of every atom in atomic mass units. Defaults to the standard
+        masses : Sequence[float] | Mapping[str, float] | None
+            The mass of every atom in atomic mass units, or a dictionary from element
+            to mass that replaces only the elements it names. Defaults to the standard
             atomic weight of the element.
 
         Returns
@@ -176,8 +177,9 @@ class PhononModeHandler:
         amplitude : float
             The normal coordinate of the displacement in units of the one at which the
             harmonic energy ½ω²Q² of the mode equals ħω.
-        masses : Sequence[float] | None
-            The mass of every atom in atomic mass units. Defaults to the standard
+        masses : Sequence[float] | Mapping[str, float] | None
+            The mass of every atom in atomic mass units, or a dictionary from element
+            to mass that replaces only the elements it names. Defaults to the standard
             atomic weight of the element.
         minimum_frequency : float
             The frequency ħω in eV below which a mode counts as a translation.
@@ -606,6 +608,12 @@ class PhononMode(view.Mixin):
     def frequencies(self, selection: str | None = None) -> np.ndarray:
         """Read the phonon frequencies as a numpy array.
 
+        These are the frequencies VASP computed with the masses of the POTCAR, so they
+        cannot be changed afterwards. To see how another isotope shifts them, recompute
+        them from the force constants with
+        :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.frequencies`,
+        which takes the masses, e.g. ``masses={"O": 17.999}`` for ¹⁸O.
+
         Parameters
         ----------
         selection : str | None
@@ -755,12 +763,21 @@ class PhononMode(view.Mixin):
             excites the mode by that energy and one of 2 by four times as much. A
             negative amplitude moves the atoms to the other side of the equilibrium,
             which is what the double well of an unstable mode requires.
-        masses : Sequence[float] | None
-            The mass of every atom in atomic mass units. By default py4vasp uses the
-            standard atomic weight of the element. Set this to the POMASS of your
-            POTCAR if you overwrote it, e.g. to replace hydrogen by deuterium; it must
-            be the mass VASP used, because that is the one the eigenvectors are
-            weighted with.
+        masses : Sequence[float] | Mapping[str, float] | None
+            The mass of every atom in atomic mass units, in the order of the structure,
+            or a dictionary from element to mass that replaces the mass of only the
+            elements it names. By default py4vasp uses the standard atomic weight of
+            the element listed in
+            :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
+            this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
+            if you replaced hydrogen by deuterium; it must be the mass VASP used,
+            because that is the one the eigenvectors are weighted with. Any other mass
+            does not give the modes of another isotope but a pattern that is no normal
+            mode at all. To study an isotope without rerunning VASP, recompute the
+            modes from the force constants with
+            :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.frequencies`
+            and
+            :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.displacements`.
         minimum_frequency : float
             The frequency ħω in eV under which py4vasp considers a mode to translate
             the crystal rather than vibrate it. Such a mode stores no energy, so the
@@ -817,6 +834,17 @@ class PhononMode(view.Mixin):
         >>> shift = rescaled.cartesian_positions() - equilibrium
         >>> round(float(np.max(np.linalg.norm(shift, axis=1))), 3)
         0.05
+
+        If you overwrote the POMASS of an element in the POTCAR, pass the mass VASP
+        used, e.g. ``masses={"O": 17.999}`` for a calculation with ¹⁸O, so that py4vasp
+        undoes the weighting of the eigenvectors with it. Passing a mass VASP did not
+        use does *not* give you the modes of another isotope. To study an isotope
+        without rerunning VASP, recompute the modes from the force constants; they
+        come in the same shape, one pattern per mode, with ¹⁸O in place of oxygen here
+
+        >>> heavy_oxygen = calculation.force_constant.displacements({"O": 17.999})
+        >>> heavy_oxygen.shape
+        (21, 7, 3)
 
         A frozen-phonon scan needs both sides of the minimum, and selecting several
         modes at once gives you a dictionary of structures
@@ -884,12 +912,21 @@ class PhononMode(view.Mixin):
             of phase from one cell to the next, so pass a supercell to see that wave;
             in a single cell every cell moves alike and the animation looks like a
             mode of the zone centre.
-        masses : Sequence[float] | None
-            The mass of every atom in atomic mass units. By default py4vasp uses the
-            standard atomic weight of the element. Set this to the POMASS of your
-            POTCAR if you overwrote it, e.g. to replace hydrogen by deuterium; it must
-            be the mass VASP used, because that is the one the eigenvectors are
-            weighted with.
+        masses : Sequence[float] | Mapping[str, float] | None
+            The mass of every atom in atomic mass units, in the order of the structure,
+            or a dictionary from element to mass that replaces the mass of only the
+            elements it names. By default py4vasp uses the standard atomic weight of
+            the element listed in
+            :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
+            this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
+            if you replaced hydrogen by deuterium; it must be the mass VASP used,
+            because that is the one the eigenvectors are weighted with. Any other mass
+            does not give the modes of another isotope but a pattern that is no normal
+            mode at all. To study an isotope without rerunning VASP, recompute the
+            modes from the force constants with
+            :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.frequencies`
+            and
+            :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.displacements`.
 
         Returns
         -------

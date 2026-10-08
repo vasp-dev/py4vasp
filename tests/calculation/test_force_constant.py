@@ -223,6 +223,16 @@ def test_frequencies_accept_custom_masses(Sr2TiO4, Assert):
     Assert.allclose(Sr2TiO4.frequencies(masses=custom_masses), expected)
 
 
+def heavy_oxygen(Sr2TiO4):
+    elements = Sr2TiO4.ref.structure._stoichiometry().elements()
+    return np.where(np.array(elements) == "O", 17.999, masses.of(elements))
+
+
+def test_frequencies_accept_masses_per_element(Sr2TiO4, Assert):
+    expected = expected_frequencies(Sr2TiO4, heavy_oxygen(Sr2TiO4))
+    Assert.allclose(Sr2TiO4.frequencies(masses={"O": 17.999}), expected)
+
+
 def test_frequencies_raise_error_if_masses_do_not_match_the_atoms(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.frequencies(masses=[1.0, 2.0])
@@ -364,6 +374,11 @@ def test_to_molden_custom_masses(Sr2TiO4):
     frequencies, _ = parse_molden(Sr2TiO4.to_molden(masses=custom_masses))
     expected = signed_wavenumbers(Sr2TiO4.frequencies(custom_masses))
     np.testing.assert_allclose(frequencies, expected, atol=1e-6)
+
+
+def test_to_molden_accepts_masses_per_element(Sr2TiO4):
+    actual = Sr2TiO4.to_molden(masses={"O": 17.999})
+    assert actual == Sr2TiO4.to_molden(masses=heavy_oxygen(Sr2TiO4))
 
 
 def test_to_molden_dispatcher(dispatcher, raw_data):

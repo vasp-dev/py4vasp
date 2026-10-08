@@ -2,6 +2,9 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """The mass of every element, used to undo the mass weighting VASP applies."""
 
+import numbers
+from collections.abc import Mapping
+
 import numpy as np
 
 from py4vasp import exception
@@ -70,8 +73,10 @@ def resolve(masses, elements) -> np.ndarray:
 
     Parameters
     ----------
-    masses : Sequence[float] | None
-        The mass of every atom in atomic mass units, or None for the default.
+    masses : Sequence[float] | Mapping[str, float] | None
+        The mass of every atom in atomic mass units, or a mapping from element to
+        mass that replaces the default of only the listed elements, or None for the
+        default.
     elements : Sequence[str]
         The chemical symbol of every atom, which sets the default and the number of
         masses the user has to provide.
@@ -83,6 +88,59 @@ def resolve(masses, elements) -> np.ndarray:
     """
     if masses is None:
         return of(elements)
+    if isinstance(masses, Mapping):
+        return _from_mapping(masses, elements)
+    return _from_sequence(masses, elements)
+
+
+_POSITIVE = (
+    "All masses must be positive, finite numbers because the motion of an atom is "
+    "weighted with the inverse square root of its mass"
+)
+
+
+def _from_mapping(masses, elements):
+    _raise_error_if_elements_are_not_in_structure(masses, elements)
+    if not all(_is_number(mass) for mass in masses.values()):
+        message = (
+            "The masses in the mapping must be numbers in atomic mass units, but you "
+            f"provided {dict(masses)} that py4vasp cannot read as numbers."
+        )
+        raise exception.IncorrectUsage(message)
+    masses = {element: float(mass) for element, mass in masses.items()}
+    invalid = {element: mass for element, mass in masses.items() if not _valid(mass)}
+    if invalid:
+        raise exception.IncorrectUsage(f"{_POSITIVE}; you provided {invalid}.")
+    return np.array([_override(masses, element) for element in elements])
+
+
+def _raise_error_if_elements_are_not_in_structure(masses, elements):
+    missing = [key for key in masses if key not in elements]
+    if not missing:
+        return
+    message = (
+        f"You provided a mass for {', '.join(map(repr, missing))} but the structure "
+        f"contains only the elements {', '.join(dict.fromkeys(elements))}."
+    )
+    if any(key not in TABLE for key in missing):
+        message += (
+            " Please use the chemical symbols exactly as the structure names them, "
+            "e.g. 'O' rather than 'o', and for an isotope the symbol of its element, "
+            "e.g. {'H': 2.014} for deuterium."
+        )
+    raise exception.IncorrectUsage(message)
+
+
+def _is_number(mass):
+    # a bool is a number to Python, but a mass of True is certainly a mistake
+    return isinstance(mass, numbers.Real) and not isinstance(mass, (bool, np.bool_))
+
+
+def _valid(mass):
+    return np.isfinite(mass) & (mass > 0)
+
+
+def _from_sequence(masses, elements):
     masses = np.atleast_1d(masses).ravel()
     if not np.issubdtype(masses.dtype, np.number):
         message = (
@@ -99,14 +157,14 @@ def resolve(masses, elements) -> np.ndarray:
             "which the structure lists them."
         )
         raise exception.IncorrectUsage(message)
-    if not np.all(masses > 0):
-        message = (
-            "All masses must be positive numbers because the motion of an atom is "
-            "weighted with the inverse square root of its mass; you provided "
-            f"{[float(mass) for mass in masses]}."
-        )
+    if not np.all(_valid(masses)):
+        message = f"{_POSITIVE}; you provided {[float(mass) for mass in masses]}."
         raise exception.IncorrectUsage(message)
     return masses
+
+
+def _override(masses, element):
+    return masses[element] if element in masses else _single_element(element)
 
 
 def _single_element(element):
