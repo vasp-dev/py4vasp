@@ -139,21 +139,7 @@ def interesting_example(example):
     return True
 
 
-# Modules whose examples still use a variable `path` they never define. A user who
-# copies such an example gets a NameError, so the examples are being rewritten to build
-# their data with demo.calculation(); until a module is rewritten, its examples get the
-# path injected. test_allowlist_is_not_stale keeps this list exact.
-_STILL_USES_INJECTED_PATH = (
-)
-
-
-def _example_globals(example, path):
-    if pathlib.Path(example.filename).stem in _STILL_USES_INJECTED_PATH:
-        example.globs["path"] = path
-    return example.globs
-
-
-def _run_example(example, tmp_path, monkeypatch, path=None):
+def _run_example(example, tmp_path, monkeypatch):
     # examples may change the directory or create temporary ones; both are confined to
     # this test and undone afterwards
     monkeypatch.chdir(tmp_path)
@@ -161,8 +147,6 @@ def _run_example(example, tmp_path, monkeypatch, path=None):
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["py4vasp"] = py4vasp
-    # demo.calculation(path) requires a directory that does not exist yet
-    _example_globals(example, path or tmp_path / example.name.replace(".", "_"))
     result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0
@@ -204,13 +188,8 @@ def test_util(example: doctest.DocTest):
 @pytest.mark.parametrize(
     "example", find_examples(demo), ids=lambda example: example.name
 )
-def test_demo(example: doctest.DocTest):
-    # deliberately no path injected: the demo shows how to get data without one
-    optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
-    runner = doctest.DocTestRunner(optionflags=optionflags)
-    result = runner.run(example)
-    assert result.failed == 0
-    assert result.attempted > 0
+def test_demo(example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch):
+    _run_example(example, tmp_path, monkeypatch)
 
 
 def get_broadening_examples():
@@ -251,19 +230,12 @@ def test_graph_functions(
     pytest.importorskip("plotly")
     example.globs["np"] = np
     with patch("plotly.graph_objs.Figure.show", return_value=None):
-        _run_example(example, tmp_path, monkeypatch, path=tmp_path)
+        _run_example(example, tmp_path, monkeypatch)
 
 
 def _example_from_source(source, filename):
     parser = doctest.DocTestParser()
     return parser.get_doctest(source, {}, "example", filename, 0)
-
-
-@pytest.mark.parametrize("filename", ("not_listed.py", "band.py"))
-def test_path_is_injected_only_for_listed_modules(filename, tmp_path):
-    example = _example_from_source(">>> path\n", filename)
-    expected = pathlib.Path(filename).stem in _STILL_USES_INJECTED_PATH
-    assert ("path" in _example_globals(example, tmp_path)) == expected
 
 
 def _reads_undefined_path(example):
@@ -295,17 +267,27 @@ def test_reads_undefined_path(source, expected):
     assert _reads_undefined_path(_example_from_source(source, "x.py")) == expected
 
 
-def test_allowlist_is_not_stale():
-    examples = _all_calculation_examples() + get_graph_examples()
-    still_reading = {
-        pathlib.Path(example.filename).stem
-        for example in examples
+def _every_module_with_examples():
+    # also the modules whose examples are not executed yet, because a user copies those
+    # just the same
+    directory = pathlib.Path(_calculation.__file__).parent
+    yield _calculation
+    for path in sorted(directory.glob("[a-z]*.py")):
+        yield importlib.import_module(f"py4vasp._calculation.{path.stem}")
+    yield from (demo, py4vasp._third_party.graph.graph, py4vasp._third_party.view.view)
+
+
+def test_no_example_reads_an_undefined_path():
+    # The examples used to rely on a `path` injected by this test, so they failed with
+    # a NameError when a user copied them. Nothing is injected anymore, but the
+    # examples that are not executed would not notice a regression.
+    offenders = sorted(
+        example.name
+        for module in _every_module_with_examples()
+        for example in find_examples(module)
         if _reads_undefined_path(example)
-    }
-    stale = sorted(set(_STILL_USES_INJECTED_PATH) - still_reading)
-    assert not stale, f"{stale} define their own path now, drop them from the list"
-    unlisted = sorted(still_reading - set(_STILL_USES_INJECTED_PATH))
-    assert not unlisted, f"examples of {unlisted} use a path nobody defines"
+    )
+    assert not offenders, f"{offenders} use a variable path they never define"
 
 
 def test_examples_found_despite_missing_optional_module(monkeypatch):

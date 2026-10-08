@@ -298,12 +298,11 @@ class Density(view.Mixin):
     Examples
     --------
 
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    you can use your own data if you have run VASP and construct `calculation` from it.
+    First, we create some example data so that you can follow along. Alternatively, you
+    can use your own data if you have run VASP and construct `calculation` from it.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     To produce density plots, please check the `to_contour` and `to_quiver` functions for
     a more detailed documentation.
@@ -346,7 +345,7 @@ class Density(view.Mixin):
     To produce a quiver plot for a noncollinear calculation:
 
     >>> from py4vasp import demo
-    >>> calculation_nc = demo.calculation(path, selection="noncollinear")
+    >>> calculation_nc = demo.calculation(selection="noncollinear")
     >>> calculation_nc.density.is_noncollinear()
     True
     >>> calculation_nc.density.to_quiver(c=0, supercell=2)
@@ -758,7 +757,7 @@ class Density(view.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> analysis = calculation.density.bader_analysis()
         >>> analysis.charges()
         {...}
@@ -787,7 +786,7 @@ class Density(view.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> basins = calculation.density.bader_analysis()
         >>> calculation.density.bader_charge(bader_analysis=basins)
         {...}

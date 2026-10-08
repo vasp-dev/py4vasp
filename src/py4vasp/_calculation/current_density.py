@@ -152,12 +152,11 @@ class CurrentDensity:
     Examples
     --------
 
-    First, we create some example data that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    you can use your own data if you have run VASP and construct `calculation` from it.
+    First, we create some example data that you can follow along. Alternatively, you can
+    use your own data if you have run VASP and construct `calculation` from it.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     To produce current density plots, please check the `to_contour` and `to_quiver`
     functions for a more detailed documentation.

@@ -284,7 +284,7 @@ class TransportInstance(ElectronPhononInstance, graph.Mixin):
         >>> [
         ...     instance.electronic_thermal_conductivity("xx")
         ...     for instance in calculation.electron_phonon.transport
-        ]
+        ... ]
         """
         return self._select_data("electronic_thermal_conductivity", selection)
 
