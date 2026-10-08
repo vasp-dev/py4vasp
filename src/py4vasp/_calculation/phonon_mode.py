@@ -608,6 +608,12 @@ class PhononMode(view.Mixin):
     def frequencies(self, selection: str | None = None) -> np.ndarray:
         """Read the phonon frequencies as a numpy array.
 
+        These are the frequencies VASP computed with the masses of the POTCAR, so they
+        cannot be changed afterwards. To see how another isotope shifts them, recompute
+        them from the force constants with
+        :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.frequencies`,
+        which takes the masses, e.g. ``masses={"O": 17.999}`` for ¹⁸O.
+
         Parameters
         ----------
         selection : str | None
@@ -765,7 +771,13 @@ class PhononMode(view.Mixin):
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
             this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
             if you replaced hydrogen by deuterium; it must be the mass VASP used,
-            because that is the one the eigenvectors are weighted with.
+            because that is the one the eigenvectors are weighted with. Any other mass
+            does not give the modes of another isotope but a pattern that is no normal
+            mode at all. To study an isotope without rerunning VASP, recompute the
+            modes from the force constants with
+            :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.frequencies`
+            and
+            :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.displacements`.
         minimum_frequency : float
             The frequency ħω in eV under which py4vasp considers a mode to translate
             the crystal rather than vibrate it. Such a mode stores no energy, so the
@@ -823,16 +835,16 @@ class PhononMode(view.Mixin):
         >>> round(float(np.max(np.linalg.norm(shift, axis=1))), 3)
         0.05
 
-        If you overwrote the POMASS of an element, pass the mass VASP used so that
-        py4vasp undoes the weighting of the eigenvectors with it. A dictionary changes
-        only the elements it names, so for a calculation with ¹⁸O the atoms move
-        differently than with the standard atomic weight of oxygen
+        If you overwrote the POMASS of an element in the POTCAR, pass the mass VASP
+        used, e.g. ``masses={"O": 17.999}`` for a calculation with ¹⁸O, so that py4vasp
+        undoes the weighting of the eigenvectors with it. Passing a mass VASP did not
+        use does *not* give you the modes of another isotope. To study an isotope
+        without rerunning VASP, recompute the modes from the force constants; they
+        come in the same shape, one pattern per mode, with ¹⁸O in place of oxygen here
 
-        >>> heavy_oxygen = calculation.phonon.mode.displace(
-        ...     "4", amplitude=0.5, masses={"O": 17.999}
-        ... )
-        >>> bool(np.allclose(heavy_oxygen.cartesian_positions(), displaced.cartesian_positions()))
-        False
+        >>> heavy_oxygen = calculation.force_constant.displacements({"O": 17.999})
+        >>> heavy_oxygen.shape
+        (21, 7, 3)
 
         A frozen-phonon scan needs both sides of the minimum, and selecting several
         modes at once gives you a dictionary of structures
@@ -908,7 +920,13 @@ class PhononMode(view.Mixin):
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
             this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
             if you replaced hydrogen by deuterium; it must be the mass VASP used,
-            because that is the one the eigenvectors are weighted with.
+            because that is the one the eigenvectors are weighted with. Any other mass
+            does not give the modes of another isotope but a pattern that is no normal
+            mode at all. To study an isotope without rerunning VASP, recompute the
+            modes from the force constants with
+            :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.frequencies`
+            and
+            :py:meth:`~py4vasp._calculation.force_constant.ForceConstant.displacements`.
 
         Returns
         -------
