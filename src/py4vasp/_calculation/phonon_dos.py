@@ -156,12 +156,11 @@ class PhononDos(graph.Mixin):
 
     Examples
     --------
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    use your own data if you have run VASP.
+    First, we create some example data so that you can follow along. Alternatively, use
+    your own data if you have run VASP.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     Plot the total density of states
 
@@ -235,12 +234,11 @@ class PhononDos(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Without a selection you obtain the energies and the total density of states
 
@@ -289,12 +287,11 @@ class PhononDos(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.phonon.dos.to_graph()
         Graph(series=[Series(x=array([...]), y=array([...]), label='total', ...)],
@@ -318,12 +315,11 @@ class PhononDos(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.phonon.dos.selections()
         {'atom': ['Sr', 'Ti', 'O', '1', '2', '3', '4', '5', '6', '7'],

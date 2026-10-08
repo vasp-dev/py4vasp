@@ -144,15 +144,6 @@ def interesting_example(example):
 # their data with demo.calculation(); until a module is rewritten, its examples get the
 # path injected. test_allowlist_is_not_stale keeps this list exact.
 _STILL_USES_INJECTED_PATH = (
-    "__init__",
-    "force_constant",
-    "graph",
-    "partial_density",
-    "phonon_band",
-    "phonon_dos",
-    "phonon_mode",
-    "raman",
-    "workfunction",
 )
 
 

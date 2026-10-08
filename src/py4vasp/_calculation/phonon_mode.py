@@ -432,12 +432,11 @@ class PhononMode(view.Mixin):
 
     Examples
     --------
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    use your own data if you have run VASP.
+    First, we create some example data so that you can follow along. Alternatively, use
+    your own data if you have run VASP.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     Printing the modes lists every frequency in the units a phonon calculation is
     usually reported in. The first three vanish because they translate the whole
@@ -496,12 +495,11 @@ class PhononMode(view.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.phonon.mode.selections()
         {'phonon_mode': ['default', 'dispersion']}
@@ -543,13 +541,12 @@ class PhononMode(view.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> import numpy as np
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> sorted(calculation.phonon.mode.read())
         ['eigenvectors', 'frequencies', 'structure']
@@ -628,13 +625,12 @@ class PhononMode(view.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> import numpy as np
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.phonon.mode.frequencies().shape
         (21,)
@@ -693,12 +689,11 @@ class PhononMode(view.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The three modes that translate the crystal all cost no energy, so they form one
         group; every vibration of this crystal has a frequency of its own
@@ -783,13 +778,12 @@ class PhononMode(view.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> import numpy as np
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Printing the modes tells you which number to select; here we take the fourth
         one, the lowest that does not merely translate the crystal. The result behaves
@@ -898,12 +892,11 @@ class PhononMode(view.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The view contains every mode of the crystal and the viewer lets you pick the
         one you want to watch

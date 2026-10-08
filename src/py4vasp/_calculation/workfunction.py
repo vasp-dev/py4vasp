@@ -112,15 +112,14 @@ class Workfunction(graph.Mixin):
 
     Examples
     --------
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    use your own data if you have run VASP.
+    First, we create some example data so that you can follow along. Alternatively, use
+    your own data if you have run VASP.
 
     A work function needs a surface, so the example data is a graphite slab with vacuum
     on either side of it.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path, "surface")
+    >>> calculation = demo.calculation(selection="surface")
 
     Printing it summarizes the potential in the vacuum and the reference energies
     inside the surface. The work function is the distance between the two: it costs
@@ -168,12 +167,11 @@ class Workfunction(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "surface")
+        >>> calculation = demo.calculation(selection="surface")
 
         >>> sorted(calculation.workfunction.read())
         ['average_potential', 'conduction_band_minimum', 'direction', 'distance',
@@ -217,12 +215,11 @@ class Workfunction(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "surface")
+        >>> calculation = demo.calculation(selection="surface")
 
         >>> calculation.workfunction.to_graph()
         Graph(series=Series(x=array([...]), y=array([...]), label='potential', ...),
@@ -263,12 +260,11 @@ class Workfunction(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "surface")
+        >>> calculation = demo.calculation(selection="surface")
 
         >>> calculation.workfunction.selections()
         {'workfunction': ['default']}

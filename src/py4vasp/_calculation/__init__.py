@@ -69,15 +69,17 @@ class Calculation:
     Examples
     --------
 
-    Let's first create some example data in a temporary directory. Please define `path`
-    as the path to a temporary directory that does not exist yet. This command create
-    example data in that directory and will return a Calculation but we ignore the result.
+    Let's first create some example data in a temporary directory and print where it
+    is, so that you can look at the files. Keep the returned calculation around, because
+    the temporary directory is removed once it is no longer used.
 
-    >>> _ = py4vasp.demo.calculation(path)
+    >>> example = py4vasp.demo.calculation()
+    >>> print("The example data is in", example.path())
+    The example data is in ...
 
-    We can now, generate a new calculation object to access the data from this path
+    We can now generate a new calculation object to access the data from this path
 
-    >>> calculation = Calculation.from_path(path)
+    >>> calculation = Calculation.from_path(example.path())
 
     Plot the density of states (DOS) of the calculation
 
@@ -239,10 +241,13 @@ instead of the constructor Calculation()."""
         Examples
         --------
 
-        Let's create an example calculation in a temporary directory and archive it.
-        Please define `path` as the path to a directory that does not exist yet.
+        Let's create an example calculation in a new temporary directory and archive it.
+        The directory is printed so that you can look at the archive.
 
-        >>> import shutil
+        >>> import pathlib, shutil, tempfile
+        >>> path = pathlib.Path(tempfile.mkdtemp())
+        >>> print("The archive is created in", path)
+        The archive is created in ...
         >>> _ = py4vasp.demo.calculation(path / "data" / "calculation")
         >>> archive = shutil.make_archive(str(path / "archive"), "zip", path / "data")
 
@@ -271,7 +276,7 @@ instead of the constructor Calculation()."""
         Prepare the calculation data for the default database:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calc_data = calculation._to_database()
         """
         metadata = CalculationMetaData(
@@ -319,7 +324,7 @@ instead of the constructor Calculation()."""
         --------
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Get all public quantities and their schema-defined selections (default):
 
@@ -376,7 +381,7 @@ instead of the constructor Calculation()."""
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.is_available()
         {'band': {...}, ...}
         """
@@ -627,14 +632,14 @@ class DefaultCalculationFactory:
     VASP output files. With the :class:`~py4vasp.Calculation` class, you can tailor
     the location of the files to your needs and both have access to the same quantities.
 
-    We demonstrate this setting up some example data in a temporary directory. Please
-    define a variable `path` with the path to a directory that does not exist yet, then
-    change to it.
+    We demonstrate this by setting up some example data in a temporary directory and
+    changing to it. Keep the returned calculation around, because the temporary
+    directory is removed once it is no longer used.
 
     >>> import os
     >>> from py4vasp import demo
-    >>> _ = demo.calculation(path)
-    >>> os.chdir(path)  # change to a temporary directory
+    >>> example = demo.calculation()
+    >>> os.chdir(example.path())
 
     Then the two following examples are equivalent:
 
@@ -696,11 +701,13 @@ class DefaultCalculationFactory:
     ['PHON_DIELECTRIC', 'PHON_BORN_CHARGES']
 
     Append them to the INCAR of the *phonon* run, not to the one of the linear-response
-    calculation you read them from. Here the phonon run lives in a sibling directory
+    calculation you read them from. Here the phonon run lives in a subdirectory of the
+    example data
 
-    >>> import pathlib
-    >>> phonon_run = pathlib.Path(path).parent / "phonon"
+    >>> phonon_run = example.path() / "phonon"
     >>> phonon_run.mkdir(exist_ok=True)
+    >>> print("The phonon run is in", phonon_run)
+    The phonon run is in ...phonon
     >>> with open(phonon_run / "INCAR", "a") as incar:
     ...     _ = incar.write("LPHON_POLAR = .TRUE.\\n" + tags)
 

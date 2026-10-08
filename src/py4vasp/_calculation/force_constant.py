@@ -337,13 +337,12 @@ class ForceConstant:
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> import numpy as np
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The first three eigenvalues belong to the translations of the crystal, so they
         vanish up to numerical noise; the others are positive, because the structure is
@@ -396,13 +395,12 @@ class ForceConstant:
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> import numpy as np
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The three translations of the crystal have no frequency, and none of the other
         modes is imaginary, because the structure is stable.
@@ -462,13 +460,12 @@ class ForceConstant:
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> import numpy as np
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         There is one pattern for each of the 21 modes of the seven atoms
 
@@ -521,12 +518,11 @@ class ForceConstant:
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The [FREQ] block starts with the three translations of the crystal, which are
         zero up to numerical noise, followed by the optical modes in cm⁻¹
@@ -540,9 +536,12 @@ class ForceConstant:
         120.08...
         136.76...
 
-        Write the string to a file to animate the modes
+        Write the string to a file to animate the modes, here next to the example data
 
-        >>> _ = (path / "modes.molden").write_text(molden)
+        >>> filename = calculation.path() / "modes.molden"
+        >>> _ = filename.write_text(molden)
+        >>> print("The modes are written to", filename)
+        The modes are written to ...modes.molden
         """
         return merge_default(
             self._source,
