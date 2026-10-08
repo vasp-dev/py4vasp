@@ -156,7 +156,7 @@ class Velocity(view.Mixin):
     Of course you can also use your own VASP calculation data if you have it available.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     If you access the velocities, the result will depend on the steps that you selected
     with the [] operator. Without any selection the results from the final step will be
@@ -257,7 +257,7 @@ class Velocity(view.Mixin):
         method. You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `read` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -305,7 +305,7 @@ class Velocity(view.Mixin):
         method. You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `to_numpy` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -360,7 +360,7 @@ class Velocity(view.Mixin):
         method. You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `to_view` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final

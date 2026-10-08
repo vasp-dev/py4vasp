@@ -145,23 +145,13 @@ def interesting_example(example):
 # path injected. test_allowlist_is_not_stale keeps this list exact.
 _STILL_USES_INJECTED_PATH = (
     "__init__",
-    "born_effective_charge",
-    "dielectric_tensor",
-    "elastic_modulus",
-    "force",
     "force_constant",
     "graph",
-    "neighbor_list",
-    "pair_correlation",
     "partial_density",
     "phonon_band",
     "phonon_dos",
     "phonon_mode",
     "raman",
-    "stress",
-    "structure",
-    "symmetry",
-    "velocity",
     "workfunction",
 )
 

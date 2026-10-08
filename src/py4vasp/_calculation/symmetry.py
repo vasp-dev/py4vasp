@@ -304,12 +304,11 @@ class Symmetry:
 
     Examples
     --------
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    use your own data if you have run VASP.
+    First, we create some example data so that you can follow along. Alternatively, use
+    your own data if you have run VASP.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     Read the symmetry operations into a Python dictionary for further processing
 
@@ -356,7 +355,7 @@ class Symmetry:
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Read the symmetry operations into a Python dictionary
 
@@ -393,7 +392,7 @@ class Symmetry:
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.symmetry.space_group()
         SpaceGroup(number=139, international_symbol='I4/mmm', point_group='4/mmm', crystal_system='tetragonal', is_symmorphic=True)
@@ -418,7 +417,7 @@ class Symmetry:
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.symmetry.has_inversion_symmetry()
         True
@@ -442,7 +441,7 @@ class Symmetry:
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.symmetry.point_group_schoenflies()
         'D4h'
@@ -467,7 +466,7 @@ class Symmetry:
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.symmetry.bravais_lattice()
         'tI'
@@ -492,7 +491,7 @@ class Symmetry:
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.symmetry.pearson_symbol()
         'tI14'

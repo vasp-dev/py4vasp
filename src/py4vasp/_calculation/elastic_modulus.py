@@ -278,7 +278,7 @@ class ElasticModulus:
         it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The elastic modulus is a rank-4 tensor for both levels of approximation
 
