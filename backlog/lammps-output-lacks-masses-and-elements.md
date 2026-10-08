@@ -15,3 +15,6 @@ also `mass-overrides-per-element.md` for how masses are exposed elsewhere.
 Unverified side note from the same trial: the demo box has a tilt xy = 4.69 against
 lx = 6.92, i.e. |xy| > lx/2, which older LAMMPS versions reject unless
 `box tilt large` is set. Check whether the standard form should reduce the tilt.
+
+The header `Configuration 1: system "Sr2TiO4"` reads like a step index, although the
+command converts the final step (from the reviewer notes of #353).
