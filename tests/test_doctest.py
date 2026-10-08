@@ -184,8 +184,12 @@ def test_util(example: doctest.DocTest):
     assert result.attempted > 0
 
 
+def get_demo_examples():
+    return [example for example in find_examples(demo) if interesting_example(example)]
+
+
 @pytest.mark.parametrize(
-    "example", find_examples(demo), ids=lambda example: example.name
+    "example", get_demo_examples(), ids=lambda example: example.name
 )
 def test_demo(example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch):
     _run_example(example, tmp_path, monkeypatch)

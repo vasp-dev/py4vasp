@@ -1,5 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+"""Generate example data, so that you can try py4vasp without a VASP calculation.
+
+Every example in the documentation of the quantities builds its data with
+:func:`calculation`, so you can copy and run them as they stand.
+"""
+
 from pathlib import Path
 from typing import Optional
 
@@ -20,12 +26,19 @@ def calculation(
 ) -> Calculation:
     """Initialize example data in the given path and return a Calculation accessing it.
 
+    The example data is written in the format VASP uses for its output, i.e., the
+    directory contains the HDF5 files vaspout.h5 and vaspwave.h5 but none of the text
+    files like INCAR or POSCAR. The numbers are made up to be consistent with each
+    other and to illustrate the features of py4vasp; they are not the result of a real
+    VASP calculation, so do not compare them to a physical reference.
+
     Parameters
     ----------
     path
-        Path where the calculation data will be generated. It must not exist. This
-        function will create the directory and create the data inside it. If a selection
-        is given the generated data will be stored in a subdirectory of the given path.
+        Path where the calculation data will be generated. Without a selection, this
+        directory must not exist yet; this function creates it and writes the data
+        inside. With a selection, the data is written to a subdirectory named after the
+        selection, so only that subdirectory must not exist yet.
         If no path is given, the data is generated in a new temporary directory. That
         directory is removed as soon as neither the returned calculation nor any
         quantity taken from it, e.g. ``calculation.dos``, is in use anymore. Keep the
@@ -99,7 +112,11 @@ def _create_path_for_data(path, selection):
     else:
         path = Path(path) / selection
     if path.exists():
-        raise exception.IncorrectUsage(f"The path '{path}' already exists.")
+        message = f"""\
+The path '{path}' already exists. If it contains example data you generated earlier,
+reopen it with Calculation.from_path("{path}"). Otherwise choose a directory that does
+not exist yet, or call demo.calculation() without a path to use a new temporary one."""
+        raise exception.IncorrectUsage(message)
     path.mkdir(parents=True)
     return path
 

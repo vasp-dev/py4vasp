@@ -143,8 +143,11 @@ so that everything below has something to run on
 >>> print("The files are in", calculation.path())
 
 This writes a small, deterministic calculation into a new temporary directory and returns
-a calculation that reads it. The default data describes an insulator relaxing onto its
-equilibrium structure. Pass a selection for a different kind of material --
+a calculation that reads it. Like a VASP run, the directory contains the HDF5 files
+*vaspout.h5* and *vaspwave.h5*, but none of the text files such as INCAR or POSCAR. The
+numbers are made up to be consistent with each other, not the result of a real VASP
+calculation. The default data describes an insulator relaxing onto its equilibrium
+structure. Pass a selection for a different kind of material --
 ``"collinear"`` and ``"noncollinear"`` for a magnet, ``"metal"`` for a system with
 states at the Fermi energy, ``"surface"`` for a slab, ``"spin_texture"``, or
 ``"perovskite"``

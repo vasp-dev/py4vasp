@@ -36,6 +36,17 @@ def test_existing_path_is_rejected(tmp_path):
         demo.calculation(tmp_path)
 
 
+def test_existing_path_message_says_how_to_reopen_the_data(tmp_path):
+    # rerunning a notebook cell is the common way to get here
+    path = tmp_path / "example"
+    demo.calculation(path)
+    with pytest.raises(exception.IncorrectUsage) as error:
+        demo.calculation(path)
+    message = str(error.value)
+    assert f'Calculation.from_path("{path}")' in message
+    assert "demo.calculation()" in message
+
+
 def test_calculation_without_path_creates_new_directory():
     first = demo.calculation()
     second = demo.calculation()
