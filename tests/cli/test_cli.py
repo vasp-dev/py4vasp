@@ -122,6 +122,10 @@ def test_convert_help_names_supported_conversion():
     assert "lammps" in result.stdout.lower()
     # no Structure method takes a source selection, so convert does not offer one
     assert "--selection" not in result.stdout
+    # instead the help says which step is converted and where to get the others
+    help_text = " ".join(result.stdout.split())  # click rewraps the paragraphs
+    assert "final ionic step" in help_text
+    assert "structure[" in help_text
 
 
 @pytest.mark.parametrize("option", ("-s", "--selection"))

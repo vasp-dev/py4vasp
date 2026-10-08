@@ -42,6 +42,10 @@ def convert(quantity, format, path, archive_path):
 
     Currently, the only supported conversion is the structure to the LAMMPS format,
     i.e., `py4vasp convert structure lammps`. The result is written to stdout.
+
+    The command converts the structure of the final ionic step, e.g., the relaxed
+    structure of a relaxation. To convert another step, use the Python interface,
+    e.g., `calculation.structure[0].to_lammps()` for the first step.
     """
     if format.lower() != "lammps":
         raise click.UsageError(f"Converting {quantity} to {format} is not implemented.")
