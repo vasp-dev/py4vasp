@@ -14,7 +14,7 @@ import pytest
 click_testing = pytest.importorskip("click.testing")
 CliRunner = click_testing.CliRunner
 
-from py4vasp import exception
+from py4vasp import demo, exception
 from py4vasp._calculation.symmetry import _SYMPREC
 from py4vasp.cli import cli
 
@@ -73,14 +73,6 @@ def test_convert_lammps(mock_calculation, lammps):
 
 
 @pytest.mark.parametrize("position", ("first", "middle", "last"))
-@pytest.mark.parametrize("selection", (("-s", "choice"), ("--selection", "choice")))
-def test_convert_selection(mock_calculation, position, selection):
-    runner = _runner()
-    result = invoke_runner_with_options(runner, position, selection)
-    check_conversion_called(mock_calculation, result, selection=selection[1])
-
-
-@pytest.mark.parametrize("position", ("first", "middle", "last"))
 @pytest.mark.parametrize("argument", ("-f", "--from"))
 @pytest.mark.parametrize("path", ("dirname", "filename"))
 def test_convert_path(mock_calculation, position, argument, path, tmp_path):
@@ -105,9 +97,7 @@ def invoke_runner_with_options(runner, position, options):
         raise NotImplementedError
 
 
-def check_conversion_called(
-    mock_calculation, result, selection=None, expected_path=pathlib.Path.cwd()
-):
+def check_conversion_called(mock_calculation, result, expected_path=pathlib.Path.cwd()):
     assert result.exit_code == 0
     if expected_path.name == "filename":
         constructor = mock_calculation.from_file
@@ -115,10 +105,7 @@ def check_conversion_called(
         constructor = mock_calculation.from_path
     constructor.assert_called_once_with(expected_path)
     structure = constructor.return_value.structure
-    if selection is None:
-        structure.to_lammps.assert_called_once_with()
-    else:
-        structure.to_lammps.assert_called_once_with(selection=selection)
+    structure.to_lammps.assert_called_once_with()
     converted = structure.to_lammps.return_value
     assert f"{converted}\n" == result.stdout
 
@@ -130,6 +117,19 @@ def test_convert_help_names_supported_conversion():
     usage = result.stdout.splitlines()[0]
     assert "{structure}" in usage
     assert "lammps" in result.stdout.lower()
+    # no Structure method takes a source selection, so convert does not offer one
+    assert "--selection" not in result.stdout
+
+
+@pytest.mark.parametrize("option", ("-s", "--selection"))
+def test_convert_rejects_selection(tmp_path, option):
+    demo.calculation(tmp_path / "demo")
+    arguments = ["convert", "structure", "lammps", "--from", tmp_path / "demo"]
+    result = _runner().invoke(cli, [*arguments, option, "default"])
+    assert result.exit_code == 2
+    assert "No such option" in _messages(result)
+    # a clean usage error, not an exception escaping from the conversion
+    assert isinstance(result.exception, SystemExit)
 
 
 def test_convert_wrong_quantity():
