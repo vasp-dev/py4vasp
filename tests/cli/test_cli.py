@@ -65,11 +65,14 @@ _KPATH_TEXT = (
 
 
 @pytest.mark.parametrize("lammps", ("LAMMPS", "Lammps", "lammps"))
-def test_convert_lammps(mock_calculation, lammps):
-    runner = _runner()
-    result = runner.invoke(cli, ["convert", "structure", lammps])
+def test_convert_lammps_of_demo_calculation(tmp_path, monkeypatch, lammps):
+    # a real calculation instead of a mock, so that the command and Structure.to_lammps
+    # cannot drift apart; without --from the command reads the current directory
+    calculation = demo.calculation(tmp_path / "demo")
+    monkeypatch.chdir(tmp_path / "demo")
+    result = _runner().invoke(cli, ["convert", "structure", lammps])
     assert result.exit_code == 0
-    check_conversion_called(mock_calculation, result)
+    assert result.stdout == f"{calculation.structure.to_lammps()}\n"
 
 
 @pytest.mark.parametrize("position", ("first", "middle", "last"))
@@ -83,7 +86,7 @@ def test_convert_path(mock_calculation, position, argument, path, tmp_path):
         expected_path.touch()
     runner = _runner()
     result = invoke_runner_with_options(runner, position, (argument, expected_path))
-    check_conversion_called(mock_calculation, result, expected_path=expected_path)
+    check_conversion_called(mock_calculation, result, expected_path)
 
 
 def invoke_runner_with_options(runner, position, options):
@@ -97,7 +100,7 @@ def invoke_runner_with_options(runner, position, options):
         raise NotImplementedError
 
 
-def check_conversion_called(mock_calculation, result, expected_path=pathlib.Path.cwd()):
+def check_conversion_called(mock_calculation, result, expected_path):
     assert result.exit_code == 0
     if expected_path.name == "filename":
         constructor = mock_calculation.from_file
