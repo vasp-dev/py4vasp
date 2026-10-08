@@ -44,30 +44,6 @@ from py4vasp._util import color as _util_color
 from py4vasp._util import import_
 
 
-def test_creating_default_calculation(tmp_path):
-    demo.calculation(tmp_path / "specific_example")
-
-
-def test_creating_perovskite_calculation(tmp_path):
-    # the "perovskite" selection pairs a structure with its symmetry so the
-    # symmetry-derived structure examples have consistent data
-    calculation = demo.calculation(tmp_path / "perovskite_example", "perovskite")
-    assert calculation.structure.number_atoms() == 5
-
-
-def test_creating_surface_calculation(tmp_path):
-    # the "surface" selection is the only one with a vacuum region, which the surface
-    # quantities need
-    calculation = demo.calculation(tmp_path / "surface_example", "surface")
-    assert calculation.structure.number_atoms() == 8
-
-
-def test_creating_metal_calculation(tmp_path):
-    # the "metal" selection is the only one with states at the Fermi energy
-    calculation = demo.calculation(tmp_path / "metal_example", "metal")
-    assert calculation.structure.number_atoms() == 1
-
-
 finder = doctest.DocTestFinder()
 
 
@@ -195,6 +171,18 @@ def get_util_examples():
     "example", get_util_examples(), ids=lambda example: example.name
 )
 def test_util(example: doctest.DocTest):
+    optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+    runner = doctest.DocTestRunner(optionflags=optionflags)
+    result = runner.run(example)
+    assert result.failed == 0
+    assert result.attempted > 0
+
+
+@pytest.mark.parametrize(
+    "example", find_examples(demo), ids=lambda example: example.name
+)
+def test_demo(example: doctest.DocTest):
+    # deliberately no path injected: the demo shows how to get data without one
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     result = runner.run(example)

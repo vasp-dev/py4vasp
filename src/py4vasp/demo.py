@@ -7,6 +7,7 @@ import h5py
 
 from py4vasp import _demo, exception, raw
 from py4vasp._calculation import Calculation
+from py4vasp._calculation.dispatch import TemporarySource
 from py4vasp._demo import showcase
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_WAVEFILE
 from py4vasp._raw.write import write
@@ -14,7 +15,9 @@ from py4vasp._raw.write import write
 __all__ = ["calculation"]
 
 
-def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
+def calculation(
+    path: Optional[Path] = None, selection: Optional[str] = None
+) -> Calculation:
     """Initialize example data in the given path and return a Calculation accessing it.
 
     Parameters
@@ -23,6 +26,11 @@ def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
         Path where the calculation data will be generated. It must not exist. This
         function will create the directory and create the data inside it. If a selection
         is given the generated data will be stored in a subdirectory of the given path.
+        If no path is given, the data is generated in a new temporary directory. That
+        directory is removed as soon as neither the returned calculation nor any
+        quantity taken from it, e.g. ``calculation.dos``, is in use anymore. Keep the
+        calculation around while you want to look at the files, because a path alone
+        does not keep the directory alive.
     selection
         Optional choice of which data is generated. If not provided or None some default
         data is generated that is suitable for most examples. The alternatives describe
@@ -37,15 +45,39 @@ def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
     -------
     -
         A calculation that accesses the generated data.
+
+    Examples
+    --------
+    Generate the default example data in a temporary directory and print where the
+    files are, so that you can look at them
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation()
+    >>> print("The files are in", calculation.path())
+    The files are in ...py4vasp-...
+
+    Pick the data of a different kind of material with a selection
+
+    >>> metal = demo.calculation(selection="metal")
+    >>> metal.structure.number_atoms()
+    1
     """
     generator = _find_generator(selection)
+    if path is None:
+        source = TemporarySource()
+        _write_data_to_directory(generator, source.path)
+        return Calculation._from_source(source)
     path = _create_path_for_data(path, selection)
+    _write_data_to_directory(generator, path)
+    return Calculation.from_path(path)
+
+
+def _write_data_to_directory(generator, path):
     filename = path / DEFAULT_FILE
     wavefilename = path / DEFAULT_WAVEFILE
     with h5py.File(filename, "w") as h5f:
         with h5py.File(wavefilename, "w") as wavef:
             _write_calculation_data(generator, h5f, waveh5f=wavef)
-    return Calculation.from_path(path)
 
 
 def _find_generator(selection):

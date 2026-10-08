@@ -139,23 +139,34 @@ If you do not have a VASP calculation at hand, *py4vasp* generates example data 
 so that everything below has something to run on
 
 >>> from py4vasp import demo
+>>> calculation = demo.calculation()
+>>> print("The files are in", calculation.path())
+
+This writes a small, deterministic calculation into a new temporary directory and returns
+a calculation that reads it. The default data describes an insulator relaxing onto its
+equilibrium structure. Pass a selection for a different kind of material --
+``"collinear"`` and ``"noncollinear"`` for a magnet, ``"metal"`` for a system with
+states at the Fermi energy, ``"surface"`` for a slab, ``"spin_texture"``, or
+``"perovskite"``
+
+>>> metal = demo.calculation(selection="metal")
+
+The temporary directory is removed once neither the calculation nor any quantity taken
+from it, e.g. ``calculation.dos``, is in use anymore. If you want to keep the files,
+pass a directory that does not exist yet
+
 >>> calculation = demo.calculation("example")
 
-This writes a small, deterministic calculation into the directory *example*, which must
-not exist yet, and returns a calculation that reads it. The default data describes an
-insulator relaxing onto its equilibrium structure. Pass a selection for a different kind
-of material -- ``"collinear"`` and ``"noncollinear"`` for a magnet, ``"metal"`` for a
-system with states at the Fermi energy, ``"surface"`` for a slab, ``"spin_texture"``, or
-``"perovskite"``. A selection is written into a subdirectory named after it, so a
-calculation created that way is reopened with
+A selection is then written into a subdirectory named after it, so
+``demo.calculation("example", "metal")`` is reopened with
 ``Calculation.from_path("example/metal")``.
 
 To see which quantities a calculation actually contains, ask it
 
 >>> calculation.selections(only_available=True)
 
-The examples in the documentation of the individual quantities all build their data this
-way, so each of them can be copied and run as it stands.
+The examples in the documentation of the individual quantities all build their data with
+``demo.calculation()``, so each of them can be copied and run as it stands.
 
 The user interface of *py4vasp* is optimized for usage inside a Jupyter_ environment
 (Jupyter notebook or Jupyter lab), though it can be used in regular Python scripts
