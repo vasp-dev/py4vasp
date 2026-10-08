@@ -11,3 +11,7 @@ to `generate` would make both levels behave the same.
 
 Cosmetic, but the inconsistency is the sort of thing that makes a tool feel
 unfinished.
+
+The same holds one level down: `py4vasp convert structure lamps` answers "Converting
+structure to lamps is not implemented." without listing `lammps` as the format that is
+(from the reviewer notes of #353).
