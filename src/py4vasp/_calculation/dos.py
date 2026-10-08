@@ -197,12 +197,11 @@ class Dos(graph.Mixin):
     Examples
     --------
 
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    you can use your own data if you have run VASP with :tag:`LORBIT`.
+    First, we create some example data so that you can follow along. Alternatively, you
+    can use your own data if you have run VASP with :tag:`LORBIT`.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     If you want to visualize the total DOS, you can use the `plot` method. This will
     show the different spin components if :tag:`ISPIN` = 2
@@ -225,7 +224,7 @@ class Dos(graph.Mixin):
     The example data above describes an insulator, so its DOS vanishes at the Fermi
     energy. Generate a metal instead to see a DOS that does not
 
-    >>> metal = demo.calculation(path, selection="metal")
+    >>> metal = demo.calculation(selection="metal")
     >>> metal.dos.read()
     {'energies': array(...), 'total': array(...), 'fermi_energy': np.float64(0.0)}
     """
@@ -277,15 +276,13 @@ class Dos(graph.Mixin):
         selection, you will obtain the projected DOS with a label corresponding to the
         projection.
 
-        We create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, you can use your own data if you have run VASP with
-        :tag:`LORBIT`.
+        We create some example data so that you can follow along. Alternatively, you can
+        use your own data if you have run VASP with :tag:`LORBIT`.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-        >>> collinear_calculation = demo.calculation(path, selection="collinear")
-        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+        >>> calculation = demo.calculation()
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         Parameters
         ----------
@@ -382,15 +379,13 @@ class Dos(graph.Mixin):
         calculation and you pass in a selection, py4vasp will add additional lines
         corresponding to the selected projections.
 
-        We create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, you can use your own data if you have run VASP with
-        :tag:`LORBIT`.
+        We create some example data so that you can follow along. Alternatively, you can
+        use your own data if you have run VASP with :tag:`LORBIT`.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-        >>> collinear_calculation = demo.calculation(path, selection="collinear")
-        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+        >>> calculation = demo.calculation()
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         Parameters
         ----------
@@ -475,15 +470,13 @@ class Dos(graph.Mixin):
     def to_frame(self, selection=None):
         """Read the data into a pandas DataFrame.
 
-        We create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, you can use your own data if you have run VASP with
-        :tag:`LORBIT`.
+        We create some example data so that you can follow along. Alternatively, you can
+        use your own data if you have run VASP with :tag:`LORBIT`.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-        >>> collinear_calculation = demo.calculation(path, selection="collinear")
-        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+        >>> calculation = demo.calculation()
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         Parameters
         ----------

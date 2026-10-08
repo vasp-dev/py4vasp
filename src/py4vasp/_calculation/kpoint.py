@@ -292,7 +292,7 @@ class Kpoint:
         Read the **k** points data into a dictionary:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.kpoint.read()
         {'mode': 'line', 'line_length': 41, 'number_kpoints': 164,
             'coordinates': array(...), 'weights': array(...), 'labels': [...]}
@@ -328,7 +328,7 @@ class Kpoint:
         Get the number of points per line in the Brillouin zone:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.kpoint.line_length()
         41
         """
@@ -354,7 +354,7 @@ class Kpoint:
         Get the number of lines in the Brillouin zone for the "kpoints_opt" mesh:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.kpoint.number_lines(selection="kpoints_opt")
         4
         """
@@ -379,7 +379,7 @@ class Kpoint:
         Get the number of points in the Brillouin zone:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.kpoint.number_kpoints()
         164
         """
@@ -410,7 +410,7 @@ class Kpoint:
         Convert the coordinates of the **k** points into a one dimensional array:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.kpoint.distances()
         array([...])
         """
@@ -435,7 +435,7 @@ class Kpoint:
         Get the **k**-point generation mode specified in the KPOINTS_OPT file:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.kpoint.mode(selection="kpoints_opt")
         'line'
         """
@@ -476,7 +476,7 @@ class Kpoint:
         appears twice:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> [label for label in calculation.kpoint.labels() if label]
         ['Γ', 'X', 'X', 'P', 'P', 'N', 'N', 'Γ']
 
@@ -529,7 +529,7 @@ class Kpoint:
         Extract all **k** points on a line through the Brillouin zone:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> start = [0, 0, 0]
         >>> finish = [0, 0, 1]
         >>> calculation.kpoint.path_indices(start, finish)

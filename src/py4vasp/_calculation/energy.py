@@ -309,7 +309,7 @@ class Energy(graph.Mixin):
     Of course you can also use your own VASP calculation data if you have it available.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     Plotting the energy along the trajectory shows how the relaxation converges. Note
     the [] operator: without it you address the final step only.
@@ -369,7 +369,7 @@ class Energy(graph.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Without a selection you obtain every energy of the final step
 
@@ -419,7 +419,7 @@ class Energy(graph.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Plot how the total energy converges along the relaxation
 
@@ -462,7 +462,7 @@ class Energy(graph.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Without a selection you obtain the total energy of the final step
 
@@ -500,7 +500,7 @@ class Energy(graph.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.energy.selections()
         {'energy': ['default', 'afqmc'], 'component': [...]}
         """

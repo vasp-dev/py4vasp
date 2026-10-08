@@ -306,7 +306,7 @@ class Optics(graph.Mixin):
     You can also use your own VASP calculation data if you have it available.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     The `selections` routine reports which dielectric functions, coefficients, and
     directions you can select.
@@ -365,7 +365,7 @@ class Optics(graph.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Read the spectra of the isotropic average into a dictionary
 
@@ -431,7 +431,7 @@ class Optics(graph.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Plot the transmission of the isotropic average
 
@@ -489,7 +489,7 @@ class Optics(graph.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Compute the perceived color from the reflectivity under the default D65 daylight
 
@@ -534,7 +534,7 @@ class Optics(graph.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Overlay the transmission, absorption, and reflectivity
 

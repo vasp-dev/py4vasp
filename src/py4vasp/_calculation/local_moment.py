@@ -297,7 +297,7 @@ class LocalMoment(view.Mixin):
     Of course you can also use your own VASP calculation data if you have it available.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path, "collinear")
+    >>> calculation = demo.calculation(selection="collinear")
 
     If you access the local moments, the result will depend on the steps that you
     selected with the [] operator. Without any selection the results from the final
@@ -395,8 +395,8 @@ class LocalMoment(view.Mixin):
         it available.
 
         >>> from py4vasp import demo
-        >>> collinear_calculation = demo.calculation(path, "collinear")
-        >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `read` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -471,8 +471,8 @@ class LocalMoment(view.Mixin):
         it available.
 
         >>> from py4vasp import demo
-        >>> collinear_calculation = demo.calculation(path, "collinear")
-        >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `to_view` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -533,7 +533,7 @@ class LocalMoment(view.Mixin):
         it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "collinear")
+        >>> calculation = demo.calculation(selection="collinear")
 
         If you use the `projected_charge` method, the result will depend on the steps
         that you selected with the [] operator. Without any selection the results from
@@ -580,8 +580,8 @@ class LocalMoment(view.Mixin):
         it available.
 
         >>> from py4vasp import demo
-        >>> collinear_calculation = demo.calculation(path, "collinear")
-        >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `projected_magnetic` method, the result will depend on the steps
         that you selected with the [] operator. Without any selection the results from
@@ -638,7 +638,7 @@ class LocalMoment(view.Mixin):
         it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "collinear")
+        >>> calculation = demo.calculation(selection="collinear")
 
         If you use the `charge` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -695,8 +695,8 @@ class LocalMoment(view.Mixin):
         it available.
 
         >>> from py4vasp import demo
-        >>> collinear_calculation = demo.calculation(path, "collinear")
-        >>> noncollinear_calculation = demo.calculation(path, "noncollinear")
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `magnetic` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final

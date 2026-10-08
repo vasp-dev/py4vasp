@@ -315,12 +315,11 @@ class Band(graph.Mixin):
 
     Examples
     --------
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    you can use your own data if you have run VASP and construct `calculation` from it.
+    First, we create some example data so that you can follow along. Alternatively, you
+    can use your own data if you have run VASP and construct `calculation` from it.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     To produce band structure plot use, please check the `to_graph` function for
     a more detailed documentation.
@@ -403,15 +402,13 @@ class Band(graph.Mixin):
         you want to use the electronic eigenvalues and occupations to compute integrals
         over the Brillouin zone.
 
-        We create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, you can use your own data if you have run VASP and construct
-        `calculation` from it.
+        We create some example data so that you can follow along. Alternatively, you can
+        use your own data if you have run VASP and construct `calculation` from it.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-        >>> collinear_calculation = demo.calculation(path, selection="collinear")
-        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+        >>> calculation = demo.calculation()
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         Parameters
         ----------
@@ -529,15 +526,13 @@ class Band(graph.Mixin):
         of the band on reference orbitals. The maximum width is adjustable with an
         argument.
 
-        We create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, you can use your own data if you have run VASP and construct
-        `calculation` from it.
+        We create some example data so that you can follow along. Alternatively, you can
+        use your own data if you have run VASP and construct `calculation` from it.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-        >>> collinear_calculation = demo.calculation(path, selection="collinear")
-        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+        >>> calculation = demo.calculation()
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         Parameters
         ----------
@@ -631,15 +626,13 @@ class Band(graph.Mixin):
     def to_frame(self, selection=None, fermi_energy=None):
         """Read the data into a DataFrame.
 
-        We create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, you can use your own data if you have run VASP and construct
-        `calculation` from it.
+        We create some example data so that you can follow along. Alternatively, you can
+        use your own data if you have run VASP and construct `calculation` from it.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
-        >>> collinear_calculation = demo.calculation(path, selection="collinear")
-        >>> noncollinear_calculation = demo.calculation(path, selection="noncollinear")
+        >>> calculation = demo.calculation()
+        >>> collinear_calculation = demo.calculation(selection="collinear")
+        >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         Parameters
         ----------
@@ -735,13 +728,11 @@ class Band(graph.Mixin):
         at each **k** point. You can select which components of the spin are shown
         and which bands are included. You can also select particular atoms and orbitals.
 
-        Let us generate some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, you can use your own data if you have run VASP with an
-        appropriate k-point mesh.
+        Let us generate some example data so that you can follow along. Alternatively,
+        you can use your own data if you have run VASP with an appropriate k-point mesh.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, selection="spin_texture")
+        >>> calculation = demo.calculation(selection="spin_texture")
 
         Parameters
         ----------
