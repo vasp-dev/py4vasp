@@ -1,8 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import ast
 import doctest
 import importlib
 import pathlib
+import tempfile
 from unittest.mock import patch
 
 import numpy as np
@@ -137,11 +139,59 @@ def interesting_example(example):
     return True
 
 
-def _run_calculation_example(example, tmp_path):
+# Modules whose examples still use a variable `path` they never define. A user who
+# copies such an example gets a NameError, so the examples are being rewritten to build
+# their data with demo.calculation(); until a module is rewritten, its examples get the
+# path injected. test_allowlist_is_not_stale keeps this list exact.
+_STILL_USES_INJECTED_PATH = (
+    "__init__",
+    "band",
+    "bandgap",
+    "born_effective_charge",
+    "dielectric_function",
+    "dielectric_tensor",
+    "dos",
+    "elastic_modulus",
+    "energy",
+    "force",
+    "force_constant",
+    "graph",
+    "kpoint",
+    "local_moment",
+    "neighbor_list",
+    "optics",
+    "pair_correlation",
+    "partial_density",
+    "phonon_band",
+    "phonon_dos",
+    "phonon_mode",
+    "projector",
+    "raman",
+    "stress",
+    "structure",
+    "symmetry",
+    "system",
+    "velocity",
+    "workfunction",
+)
+
+
+def _example_globals(example, path):
+    if pathlib.Path(example.filename).stem in _STILL_USES_INJECTED_PATH:
+        example.globs["path"] = path
+    return example.globs
+
+
+def _run_example(example, tmp_path, monkeypatch, path=None):
+    # examples may change the directory or create temporary ones; both are confined to
+    # this test and undone afterwards
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["py4vasp"] = py4vasp
-    example.globs["path"] = tmp_path / example.name.replace(".", "_")
+    # demo.calculation(path) requires a directory that does not exist yet
+    _example_globals(example, path or tmp_path / example.name.replace(".", "_"))
     result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0
@@ -150,16 +200,18 @@ def _run_calculation_example(example, tmp_path):
 @pytest.mark.parametrize(
     "example", get_calculation_examples(), ids=lambda example: example.name
 )
-def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
-    _run_calculation_example(example, tmp_path)
+def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch):
+    _run_example(example, tmp_path, monkeypatch)
 
 
 @pytest.mark.parametrize(
     "example", get_full_calculation_examples(), ids=lambda example: example.name
 )
-def test_calculation_full(example: doctest.DocTest, tmp_path: pathlib.Path):
+def test_calculation_full(
+    example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch
+):
     pytest.importorskip(_FULL_INSTALL_EXAMPLES[example.name])
-    _run_calculation_example(example, tmp_path)
+    _run_example(example, tmp_path, monkeypatch)
 
 
 def get_util_examples():
@@ -222,17 +274,67 @@ def get_graph_examples():
 @pytest.mark.parametrize(
     "example", get_graph_examples(), ids=lambda example: example.name
 )
-def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path):
+def test_graph_functions(
+    example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch
+):
     pytest.importorskip("plotly")
-    optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
-    runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["np"] = np
-    example.globs["py4vasp"] = py4vasp
-    example.globs["path"] = tmp_path
     with patch("plotly.graph_objs.Figure.show", return_value=None):
-        result = runner.run(example)
-    assert result.failed == 0
-    assert result.attempted > 0
+        _run_example(example, tmp_path, monkeypatch, path=tmp_path)
+
+
+def _example_from_source(source, filename):
+    parser = doctest.DocTestParser()
+    return parser.get_doctest(source, {}, "example", filename, 0)
+
+
+@pytest.mark.parametrize("filename", ("not_listed.py", "band.py"))
+def test_path_is_injected_only_for_listed_modules(filename, tmp_path):
+    example = _example_from_source(">>> path\n", filename)
+    expected = pathlib.Path(filename).stem in _STILL_USES_INJECTED_PATH
+    assert ("path" in _example_globals(example, tmp_path)) == expected
+
+
+def _reads_undefined_path(example):
+    "Does the example use a variable `path` before it assigns one?"
+    defined = False
+    for line in example.examples:
+        tree = ast.parse(line.source)
+        names = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Name) and node.id == "path"
+        ]
+        if not defined and any(isinstance(n.ctx, ast.Load) for n in names):
+            return True
+        defined = defined or any(isinstance(n.ctx, ast.Store) for n in names)
+    return False
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    (
+        (">>> path\n", True),
+        (">>> calculation.path()\n", False),
+        (">>> f(path='folder')\n", False),
+        (">>> path = 'folder'\n>>> print(path)\n", False),
+    ),
+)
+def test_reads_undefined_path(source, expected):
+    assert _reads_undefined_path(_example_from_source(source, "x.py")) == expected
+
+
+def test_allowlist_is_not_stale():
+    examples = _all_calculation_examples() + get_graph_examples()
+    still_reading = {
+        pathlib.Path(example.filename).stem
+        for example in examples
+        if _reads_undefined_path(example)
+    }
+    stale = sorted(set(_STILL_USES_INJECTED_PATH) - still_reading)
+    assert not stale, f"{stale} define their own path now, drop them from the list"
+    unlisted = sorted(still_reading - set(_STILL_USES_INJECTED_PATH))
+    assert not unlisted, f"examples of {unlisted} use a path nobody defines"
 
 
 def test_examples_found_despite_missing_optional_module(monkeypatch):
