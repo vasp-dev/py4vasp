@@ -211,6 +211,12 @@ class TemporarySource(FileSource):
         self._directory = _temporary_directory()
         super().__init__(self._directory.name)
 
+    def __deepcopy__(self, memo):
+        # A copy of the directory object would point to the same directory, which the
+        # first of them to be deleted removes. Sharing the source is safe, because it
+        # never changes after it is created.
+        return self
+
 
 class ArchiveSource:
     """Production source: reads raw data from an archived VASP calculation.

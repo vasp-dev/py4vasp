@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import contextlib
+import copy
 import dataclasses
 import gc
 import pathlib
@@ -1639,6 +1640,14 @@ class TestTemporarySource:
         del source
         gc.collect()
         assert not directory.exists()
+
+    def test_deepcopy_of_temporary_source_keeps_directory_alive(self):
+        source = TemporarySource()
+        duplicate = copy.deepcopy(source)
+        assert duplicate.path == source.path
+        del source
+        gc.collect()
+        assert duplicate.path.is_dir()
 
 
 def _all_registered_classes():
