@@ -380,11 +380,14 @@ class ForceConstant:
 
         Parameters
         ----------
-        masses : Sequence[float] | None
-            The mass of every atom in atomic mass units, in the order of the structure.
-            Defaults to the standard atomic weight of the element. VASP uses the POMASS
-            of the POTCAR instead, so pass those if you changed them or need to match
-            the OUTCAR to the last digit.
+        masses : Sequence[float] | Mapping[str, float] | None
+            The mass of every atom in atomic mass units, in the order of the structure,
+            or a dictionary from element to mass that replaces the mass of only the
+            elements it names, e.g. ``{"O": 17.999}``. Every other atom keeps the
+            default, the standard atomic weight of its element listed in
+            :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. VASP
+            uses the POMASS of the POTCAR instead, so pass those if you changed them or
+            need to match the OUTCAR to the last digit.
 
         Returns
         -------
@@ -418,10 +421,19 @@ class ForceConstant:
         >>> np.round(frequencies[3:6].real * 8065.610420)
         array([107., 120., 137.])
 
-        You can replace the masses, e.g. to study the isotope effect. Doubling every
-        mass lowers each frequency by a factor of √2
+        You can replace the masses, e.g. to study the isotope effect. Replacing oxygen
+        by ¹⁸O lowers the frequencies of the modes in which oxygen moves
 
-        >>> masses = 2 * np.array([87.62, 87.62, 47.867, 15.999, 15.999, 15.999, 15.999])
+        >>> heavy_oxygen = calculation.force_constant.frequencies({"O": 17.999})
+        >>> bool(np.all(heavy_oxygen[3:].real < frequencies[3:].real))
+        True
+
+        To replace the mass of individual atoms instead, pass one mass per atom.
+        Doubling every mass lowers each frequency by a factor of √2
+
+        >>> weights = calculation.mass.STANDARD_ATOMIC_WEIGHTS
+        >>> elements = calculation.structure.read()["elements"]
+        >>> masses = 2 * np.array([weights[element] for element in elements])
         >>> heavy = calculation.force_constant.frequencies(masses)
         >>> np.allclose(heavy[3:] * np.sqrt(2), frequencies[3:])
         True
@@ -446,9 +458,12 @@ class ForceConstant:
 
         Parameters
         ----------
-        masses : Sequence[float] | None
-            The mass of every atom in atomic mass units, in the order of the structure.
-            Defaults to the standard atomic weight of the element.
+        masses : Sequence[float] | Mapping[str, float] | None
+            The mass of every atom in atomic mass units, in the order of the structure,
+            or a dictionary from element to mass that replaces the mass of only the
+            elements it names, e.g. ``{"O": 17.999}``. Every other atom keeps the
+            default, the standard atomic weight of its element listed in
+            :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
 
         Returns
         -------
@@ -479,7 +494,9 @@ class ForceConstant:
         Every pattern is normalized with the masses, and apart from the three
         translations the modes leave the centre of mass where it is
 
-        >>> masses = np.array([87.62, 87.62, 47.867, 15.999, 15.999, 15.999, 15.999])
+        >>> weights = calculation.mass.STANDARD_ATOMIC_WEIGHTS
+        >>> elements = calculation.structure.read()["elements"]
+        >>> masses = np.array([weights[element] for element in elements])
         >>> np.allclose(np.einsum("a,mad->m", masses, displacements**2), 1)
         True
         >>> np.allclose(np.einsum("a,mad->md", masses, displacements[3:]), 0)
@@ -509,9 +526,12 @@ class ForceConstant:
 
         Parameters
         ----------
-        masses : Sequence[float] | None
-            The mass of every atom in atomic mass units, in the order of the structure.
-            Defaults to the standard atomic weight of the element.
+        masses : Sequence[float] | Mapping[str, float] | None
+            The mass of every atom in atomic mass units, in the order of the structure,
+            or a dictionary from element to mass that replaces the mass of only the
+            elements it names, e.g. ``{"O": 17.999}``. Every other atom keeps the
+            default, the standard atomic weight of its element listed in
+            :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
 
         Returns
         -------
