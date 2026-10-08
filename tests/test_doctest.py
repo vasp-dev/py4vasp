@@ -45,7 +45,6 @@ from py4vasp._third_party import numeric as _numeric
 from py4vasp._util import color as _util_color
 from py4vasp._util import import_
 
-
 finder = doctest.DocTestFinder()
 
 
@@ -224,9 +223,7 @@ def get_graph_examples():
 @pytest.mark.parametrize(
     "example", get_graph_examples(), ids=lambda example: example.name
 )
-def test_graph_functions(
-    example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch
-):
+def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch):
     pytest.importorskip("plotly")
     example.globs["np"] = np
     with patch("plotly.graph_objs.Figure.show", return_value=None):
