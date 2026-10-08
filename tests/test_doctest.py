@@ -23,6 +23,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     force_constant,
     kpoint,
     local_moment,
+    mass,
     neighbor_list,
     optics,
     pair_correlation,
@@ -94,6 +95,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.force_constant)
         + find_examples(_calculation.kpoint)
         + find_examples(_calculation.local_moment)
+        + find_examples(_calculation.mass)
         + find_examples(_calculation.neighbor_list)
         + find_examples(_calculation.optics)
         + find_examples(_calculation.pair_correlation)

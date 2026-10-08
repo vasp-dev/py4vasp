@@ -13,3 +13,11 @@ Available quantities
     {% for autosummary in calculation.AUTOSUMMARIES %}
         {{ autosummary[1] }}
     {% endfor %}
+
+Constants
+---------
+
+.. autosummary::
+    :nosignatures:
+
+    ~py4vasp._calculation.mass.Mass
