@@ -2,6 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """The mass of every element, used to undo the mass weighting VASP applies."""
 
+import numbers
 from collections.abc import Mapping
 
 import numpy as np
@@ -88,7 +89,40 @@ def resolve(masses, elements) -> np.ndarray:
     if masses is None:
         return of(elements)
     if isinstance(masses, Mapping):
-        return np.array([_override(masses, element) for element in elements])
+        masses = _from_mapping(masses, elements)
+    else:
+        masses = _from_sequence(masses, elements)
+    if not np.all(masses > 0):
+        message = (
+            "All masses must be positive numbers because the motion of an atom is "
+            "weighted with the inverse square root of its mass; you provided "
+            f"{[float(mass) for mass in masses]}."
+        )
+        raise exception.IncorrectUsage(message)
+    return masses
+
+
+def _from_mapping(masses, elements):
+    unknown = [key for key in masses if key not in elements]
+    if unknown:
+        message = (
+            f"You provided a mass for {', '.join(map(repr, unknown))} but the structure "
+            f"contains only the elements {', '.join(dict.fromkeys(elements))}. Please "
+            "use the chemical symbols exactly as the structure names them, e.g. 'O' "
+            "rather than 'o', and for an isotope the symbol of its element, e.g. "
+            "{'H': 2.014} for deuterium."
+        )
+        raise exception.IncorrectUsage(message)
+    if not all(isinstance(mass, numbers.Real) for mass in masses.values()):
+        message = (
+            "The masses in the mapping must be numbers in atomic mass units, but you "
+            f"provided {dict(masses)} that py4vasp cannot read as numbers."
+        )
+        raise exception.IncorrectUsage(message)
+    return np.array([_override(masses, element) for element in elements])
+
+
+def _from_sequence(masses, elements):
     masses = np.atleast_1d(masses).ravel()
     if not np.issubdtype(masses.dtype, np.number):
         message = (
@@ -103,13 +137,6 @@ def resolve(masses, elements) -> np.ndarray:
             "the structure contains "
             f"{len(elements)} atoms. Please pass one mass per atom in the order in "
             "which the structure lists them."
-        )
-        raise exception.IncorrectUsage(message)
-    if not np.all(masses > 0):
-        message = (
-            "All masses must be positive numbers because the motion of an atom is "
-            "weighted with the inverse square root of its mass; you provided "
-            f"{[float(mass) for mass in masses]}."
         )
         raise exception.IncorrectUsage(message)
     return masses

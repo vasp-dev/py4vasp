@@ -87,3 +87,25 @@ def test_resolve_error_lists_masses_as_plain_numbers():
     with pytest.raises(exception.IncorrectUsage) as error:
         masses.resolve(np.array([88.0, 0.0, 16.0]), ELEMENTS)
     assert "[88.0, 0.0, 16.0]" in str(error.value)
+
+
+@pytest.mark.parametrize("key", ("o", "D"))
+def test_resolve_mapping_raises_error_for_element_not_in_structure(key):
+    # a misspelled element or an isotope label would otherwise be silently ignored
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({key: 18.0}, ELEMENTS)
+    assert repr(key) in str(error.value)
+    assert all(element in str(error.value) for element in ELEMENTS)
+
+
+@pytest.mark.parametrize("wrong_mass", (0.0, -1.0))
+def test_resolve_mapping_raises_error_for_nonpositive_mass(wrong_mass):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({"O": wrong_mass}, ELEMENTS)
+    assert "positive" in str(error.value)
+
+
+def test_resolve_mapping_raises_error_for_non_numeric_mass():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({"O": "heavy"}, ELEMENTS)
+    assert "numbers" in str(error.value)
