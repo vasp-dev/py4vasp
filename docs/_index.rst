@@ -194,8 +194,14 @@ The interface for the other quantities is very similar. Every quantity provides
 a *read* function to get the raw data into Python and where it makes sense a
 *plot* function visualizes the data. However, note that in particular, all data
 visualized inside the structure require a Jupyter notebook to work.
-All plots can be converted to csv files `to_csv` of pandas dataframes `to_frame`
-for further refinement.
+All plots can be saved as images with `to_image`, converted to csv files with
+`to_csv`, or to pandas dataframes with `to_frame` for further refinement. The same
+methods exist on the graph that *plot* returns, so a figure that combines several
+calculations with ``+`` is saved in the same way. For two calculations ``coarse``
+and ``dense`` created with ``Calculation.from_path`` (see below)
+
+>>> graph = coarse.dos.plot().label("coarse") + dense.dos.plot().label("dense")
+>>> graph.to_image("comparison.png")
 
 If your calculation is not in the root directory, you can create your own
 instance

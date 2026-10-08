@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from py4vasp import exception
 from py4vasp._third_party import graph
 
 GRAPH = MagicMock(spec=graph.Graph)
@@ -91,6 +92,15 @@ def test_converting_graph_to_image_with_absolute_filename():
     example.to_image(filename=full_path)
     fig = GRAPH.to_plotly.return_value
     fig.write_image.assert_called_once_with(full_path)
+
+
+@pytest.mark.parametrize("filename", ["example", "example.txt", "example.eps"])
+def test_converting_graph_to_image_rejects_unsupported_extension(filename):
+    example = ExampleGraph()
+    GRAPH.reset_mock()
+    with pytest.raises(exception.IncorrectUsage):
+        example.to_image(filename=filename)
+    GRAPH.to_plotly.assert_not_called()
 
 
 def test_filename_is_keyword_only_argument():

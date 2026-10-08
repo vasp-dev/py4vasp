@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from py4vasp._third_party.graph.graph import Graph
+from py4vasp._third_party.graph.graph import Graph, check_image_format
 from py4vasp._util import convert
 
 """Use the Mixin for all quantities that define an option to produce an x-y graph. This
@@ -66,9 +66,11 @@ class Mixin(abc.ABC):
         return self.to_graph(*args, **kwargs).to_plotly()
 
     def to_image(self, *args, filename: Optional[str | Path] = None, **kwargs) -> None:
-        """
+        """Save the plot as an image file next to the calculation.
+
         The filetype is automatically deduced from the filename; possible formats
-        are common raster (png, jpg) and vector (svg, pdf) formats.
+        are the raster formats png, jpg (or jpeg) and webp and the vector formats svg
+        and pdf.
         If no filename is provided, a default filename is deduced from the
         name of the class and the picture has png format.
 
@@ -77,13 +79,17 @@ class Mixin(abc.ABC):
         *args
             Positional arguments passed to the :py:meth:`to_plotly` method.
         filename
-            Path where the image will be saved. Can be absolute or relative to
-            the current working directory. If relative, the file will be saved
-            relative to the internal path. If None, defaults to "{classname}.png"
+            Path where the image will be saved. A relative path is relative to the
+            directory of the calculation, not to the current working directory; pass
+            an absolute path to save elsewhere. If None, defaults to "{classname}.png"
             where classname is derived from the class name.
         **kwargs
             Keyword arguments passed to the :py:meth:`to_plotly` method.
 
+        Raises
+        ------
+        py4vasp.exception.IncorrectUsage
+            If the filename has no extension or one that is not a supported format.
 
         Notes
         -----
@@ -93,9 +99,10 @@ class Mixin(abc.ABC):
         on to the :py:meth:`to_plotly` method. Please check the documentation of
         that method to learn which arguments are allowed.
         """
-        fig = self.to_plotly(*args, **kwargs)
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
+        check_image_format(filename)
+        fig = self.to_plotly(*args, **kwargs)
         if os.path.isabs(filename):
             writeout_path = filename
         else:
@@ -133,9 +140,9 @@ class Mixin(abc.ABC):
         *args
             Positional arguments passed to :py:meth:`to_frame`.
         filename
-            Path where the CSV file will be saved. Can be absolute or relative to
-            the current working directory. If relative, the file will be saved
-            relative to the internal path. If None, defaults to "{classname}.csv"
+            Path where the CSV file will be saved. A relative path is relative to the
+            directory of the calculation, not to the current working directory; pass
+            an absolute path to save elsewhere. If None, defaults to "{classname}.csv"
             where classname is derived from the class name.
         **kwargs
             Keyword arguments passed to :py:meth:`to_frame`.
