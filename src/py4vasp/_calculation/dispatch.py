@@ -190,6 +190,28 @@ class FileSource:
             yield raw
 
 
+def _temporary_directory():
+    # TemporaryDirectory removes the directory when its owner is garbage collected and
+    # at the latest when the interpreter shuts down. On Windows the removal may fail if
+    # another process still accesses one of the files; ignoring the error leaves the
+    # files behind instead of raising in an unrelated part of the code.
+    return tempfile.TemporaryDirectory(prefix="py4vasp-", ignore_cleanup_errors=True)
+
+
+class TemporarySource(FileSource):
+    """Production source: reads raw data from a new temporary directory.
+
+    The directory is created empty, so the data has to be written into :attr:`path`
+    before it is read. It is removed when this source is deleted. Every quantity holds
+    on to the source it reads from, so the directory lives as long as any calculation
+    or quantity that can still read from it.
+    """
+
+    def __init__(self):
+        self._directory = _temporary_directory()
+        super().__init__(self._directory.name)
+
+
 class ArchiveSource:
     """Production source: reads raw data from an archived VASP calculation.
 
@@ -241,13 +263,7 @@ class ArchiveSource:
         return pathlib.Path(self._directory.name)
 
     def _extract_calculation(self):
-        # TemporaryDirectory removes the directory when this source is garbage collected
-        # and at the latest when the interpreter shuts down. On Windows the removal may
-        # fail if another process still accesses one of the files; ignoring the error
-        # leaves the files behind instead of raising in an unrelated part of the code.
-        directory = tempfile.TemporaryDirectory(
-            prefix="py4vasp-", ignore_cleanup_errors=True
-        )
+        directory = _temporary_directory()
         with archive.open_archive(self._archive) as opened:
             selected = archive.select_directory(
                 opened, self._markers(), self._path_in_archive
