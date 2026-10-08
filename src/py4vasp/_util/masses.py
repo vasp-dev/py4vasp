@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 """The mass of every element, used to undo the mass weighting VASP applies."""
 
+from collections.abc import Mapping
+
 import numpy as np
 
 from py4vasp import exception
@@ -70,8 +72,10 @@ def resolve(masses, elements) -> np.ndarray:
 
     Parameters
     ----------
-    masses : Sequence[float] | None
-        The mass of every atom in atomic mass units, or None for the default.
+    masses : Sequence[float] | Mapping[str, float] | None
+        The mass of every atom in atomic mass units, or a mapping from element to
+        mass that replaces the default of only the listed elements, or None for the
+        default.
     elements : Sequence[str]
         The chemical symbol of every atom, which sets the default and the number of
         masses the user has to provide.
@@ -83,6 +87,8 @@ def resolve(masses, elements) -> np.ndarray:
     """
     if masses is None:
         return of(elements)
+    if isinstance(masses, Mapping):
+        return np.array([_override(masses, element) for element in elements])
     masses = np.atleast_1d(masses).ravel()
     if not np.issubdtype(masses.dtype, np.number):
         message = (
@@ -107,6 +113,10 @@ def resolve(masses, elements) -> np.ndarray:
         )
         raise exception.IncorrectUsage(message)
     return masses
+
+
+def _override(masses, element):
+    return masses[element] if element in masses else _single_element(element)
 
 
 def _single_element(element):

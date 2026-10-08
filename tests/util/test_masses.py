@@ -44,6 +44,17 @@ def test_resolve_keeps_the_masses_the_user_provides(Assert):
     Assert.allclose(masses.resolve([88.0, 48.0, 16.0], ELEMENTS), [88.0, 48.0, 16.0])
 
 
+def test_resolve_overrides_the_elements_in_a_mapping(Assert):
+    expected = [87.62, 47.867, 18.0]
+    Assert.allclose(masses.resolve({"O": 18.0}, ELEMENTS), expected)
+
+
+def test_resolve_mapping_applies_to_every_atom_of_the_element(Assert):
+    elements = ["Sr", "O", "Ti", "O"]
+    expected = [87.62, 18.0, 47.867, 18.0]
+    Assert.allclose(masses.resolve({"O": 18.0}, elements), expected)
+
+
 def test_resolve_raises_error_if_masses_do_not_match_the_atoms():
     with pytest.raises(exception.IncorrectUsage) as error:
         masses.resolve([1.0, 2.0], ELEMENTS)
@@ -51,10 +62,10 @@ def test_resolve_raises_error_if_masses_do_not_match_the_atoms():
 
 
 def test_resolve_raises_error_if_masses_are_not_numbers():
-    # a dictionary of element to mass is a plausible guess and would otherwise be
-    # reported as a single mass rather than as the wrong kind of input
+    # passing the elements instead of their masses would otherwise be reported as the
+    # wrong number of masses rather than as the wrong kind of input
     with pytest.raises(exception.IncorrectUsage) as error:
-        masses.resolve({"Sr": 87.62, "Ti": 47.867, "O": 15.999}, ELEMENTS)
+        masses.resolve(["Sr", "Ti", "O"], ELEMENTS)
     assert "numbers" in str(error.value)
 
 
