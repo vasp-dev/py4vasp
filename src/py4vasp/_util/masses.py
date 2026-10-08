@@ -89,37 +89,55 @@ def resolve(masses, elements) -> np.ndarray:
     if masses is None:
         return of(elements)
     if isinstance(masses, Mapping):
-        masses = _from_mapping(masses, elements)
-    else:
-        masses = _from_sequence(masses, elements)
-    if not np.all(masses > 0):
-        message = (
-            "All masses must be positive numbers because the motion of an atom is "
-            "weighted with the inverse square root of its mass; you provided "
-            f"{[float(mass) for mass in masses]}."
-        )
-        raise exception.IncorrectUsage(message)
-    return masses
+        return _from_mapping(masses, elements)
+    return _from_sequence(masses, elements)
+
+
+_POSITIVE = (
+    "All masses must be positive, finite numbers because the motion of an atom is "
+    "weighted with the inverse square root of its mass"
+)
 
 
 def _from_mapping(masses, elements):
-    unknown = [key for key in masses if key not in elements]
-    if unknown:
-        message = (
-            f"You provided a mass for {', '.join(map(repr, unknown))} but the structure "
-            f"contains only the elements {', '.join(dict.fromkeys(elements))}. Please "
-            "use the chemical symbols exactly as the structure names them, e.g. 'O' "
-            "rather than 'o', and for an isotope the symbol of its element, e.g. "
-            "{'H': 2.014} for deuterium."
-        )
-        raise exception.IncorrectUsage(message)
-    if not all(isinstance(mass, numbers.Real) for mass in masses.values()):
+    _raise_error_if_elements_are_not_in_structure(masses, elements)
+    if not all(_is_number(mass) for mass in masses.values()):
         message = (
             "The masses in the mapping must be numbers in atomic mass units, but you "
             f"provided {dict(masses)} that py4vasp cannot read as numbers."
         )
         raise exception.IncorrectUsage(message)
+    masses = {element: float(mass) for element, mass in masses.items()}
+    invalid = {element: mass for element, mass in masses.items() if not _valid(mass)}
+    if invalid:
+        raise exception.IncorrectUsage(f"{_POSITIVE}; you provided {invalid}.")
     return np.array([_override(masses, element) for element in elements])
+
+
+def _raise_error_if_elements_are_not_in_structure(masses, elements):
+    missing = [key for key in masses if key not in elements]
+    if not missing:
+        return
+    message = (
+        f"You provided a mass for {', '.join(map(repr, missing))} but the structure "
+        f"contains only the elements {', '.join(dict.fromkeys(elements))}."
+    )
+    if any(key not in TABLE for key in missing):
+        message += (
+            " Please use the chemical symbols exactly as the structure names them, "
+            "e.g. 'O' rather than 'o', and for an isotope the symbol of its element, "
+            "e.g. {'H': 2.014} for deuterium."
+        )
+    raise exception.IncorrectUsage(message)
+
+
+def _is_number(mass):
+    # a bool is a number to Python, but a mass of True is certainly a mistake
+    return isinstance(mass, numbers.Real) and not isinstance(mass, (bool, np.bool_))
+
+
+def _valid(mass):
+    return np.isfinite(mass) & (mass > 0)
 
 
 def _from_sequence(masses, elements):
@@ -138,6 +156,9 @@ def _from_sequence(masses, elements):
             f"{len(elements)} atoms. Please pass one mass per atom in the order in "
             "which the structure lists them."
         )
+        raise exception.IncorrectUsage(message)
+    if not np.all(_valid(masses)):
+        message = f"{_POSITIVE}; you provided {[float(mass) for mass in masses]}."
         raise exception.IncorrectUsage(message)
     return masses
 
