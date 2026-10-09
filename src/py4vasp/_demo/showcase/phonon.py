@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import functools
 
 import numpy as np
@@ -59,7 +60,7 @@ def band_Sr2TiO4() -> raw.PhononBand:
     eighteen optical branches sit above them. Every frequency is positive, which is what
     a structure at its energy minimum gives; a negative one would mark an unstable mode.
     """
-    qpoints = kpoint.line_mode()
+    qpoints = dataclasses.replace(kpoint.line_mode(), cell=_primitive_cell())
     coordinates = np.array(qpoints.coordinates)
     by_branch = branch_frequencies(coordinates)
     # VASP writes the frequencies of every q point in ascending order. The acoustic
@@ -86,8 +87,17 @@ def primitive_structure_Sr2TiO4() -> raw.Structure:
     """
     return raw.Structure(
         stoichiometry=_demo.stoichiometry.Sr2TiO4(has_ion_types=True),
-        cell=kpoint.line_mode().cell,
+        cell=_primitive_cell(),
         positions=_demo.wrap_data(structure.ideal_positions()),
+    )
+
+
+def _primitive_cell():
+    # a single frame, not the trajectory of the relaxation the line mode is built on
+    trajectory_cell = kpoint.line_mode().cell
+    return raw.Cell(
+        lattice_vectors=np.asarray(trajectory_cell.lattice_vectors)[-1],
+        scale=trajectory_cell.scale,
     )
 
 

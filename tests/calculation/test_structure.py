@@ -1500,6 +1500,13 @@ def test_step_out_of_range_for_selected_source(demo_structure):
         demo_structure[10].positions("exciton")
 
 
+def test_phonon_source_is_a_single_structure(demo_structure):
+    # the primitive cell of a phonon calculation is one frame for cell and positions
+    assert demo_structure[:].lattice_vectors("phonon").shape == (3, 3)
+    poscar = demo_structure.to_POSCAR(selection="phonon")
+    assert poscar.splitlines()[5].split() == ["Sr", "Ti", "O"]
+
+
 def test_exporters_select_source(demo_structure):
     poscar = demo_structure.to_POSCAR(selection="exciton")
     assert poscar.splitlines()[5].split() == ["Sr", "Ti", "O"]

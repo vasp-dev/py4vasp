@@ -44,9 +44,14 @@ def dispersion():
 def _primitive_structure():
     # the primitive cell of a phonon calculation is a single frame, not a trajectory
     positions = np.linspace(0, 1, _demo.NUMBER_ATOMS * _demo.AXES)
+    trajectory_cell = _demo.cell.Sr2TiO4()
+    cell = raw.Cell(
+        lattice_vectors=trajectory_cell.lattice_vectors[-1],
+        scale=trajectory_cell.scale,
+    )
     return raw.Structure(
         stoichiometry=_demo.stoichiometry.Sr2TiO4(),
-        cell=_demo.cell.Sr2TiO4(),
+        cell=cell,
         positions=_demo.wrap_data(positions.reshape(_demo.NUMBER_ATOMS, _demo.AXES)),
     )
 
