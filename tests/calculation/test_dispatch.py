@@ -185,6 +185,17 @@ class TestParseSelections:
             result = _parse_selections("test_qty", "bar:baz(foo)")
         assert result == [SelectionContext("foo", "bar:baz")]
 
+    def test_explicit_default_groups_with_unnamed_source(self):
+        # a part without a source reads the default source, so both parts must end
+        # up in one context; otherwise their results share the key "default" and one
+        # silently overwrites the other
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections",
+            return_value=["default", "foo"],
+        ):
+            result = _parse_selections("test_qty", "default(bar), baz")
+        assert result == [SelectionContext("default", "bar, baz")]
+
     def test_selection_context_is_named_tuple(self):
         ctx = SelectionContext("source", "remainder")
         assert ctx.selection_name == "source"
