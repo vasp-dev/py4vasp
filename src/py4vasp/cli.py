@@ -14,7 +14,22 @@ from py4vasp._util import archive, suggest
 _HDF5_SUFFIXES = (".h5", ".hdf5")
 
 
-@click.group()
+class _SuggestingGroup(click.Group):
+    """Suggest the closest command for a mistyped one.
+
+    Newer versions of click suggest commands themselves, but not the oldest one
+    py4vasp supports, so this keeps the message the same for every version.
+    """
+
+    def resolve_command(self, ctx, args):
+        name = click.utils.make_str(args[0])
+        if self.get_command(ctx, name) is None and not name.startswith("-"):
+            suggestion = suggest.did_you_mean(name, self.list_commands(ctx))
+            ctx.fail(f"No such command '{name}'. {suggestion}".strip())
+        return super().resolve_command(ctx, args)
+
+
+@click.group(cls=_SuggestingGroup)
 def cli():
     pass
 
@@ -208,7 +223,7 @@ class _Divisions(click.ParamType):
         return tuple(numbers)
 
 
-@cli.group()
+@cli.group(cls=_SuggestingGroup)
 def generate():
     """Generate an input file for a VASP calculation."""
 

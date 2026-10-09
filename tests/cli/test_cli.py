@@ -760,3 +760,14 @@ def test_generate_does_not_depend_on_the_locale(
     assert result.exit_code == 0
     write_text.assert_called_once()
     assert write_text.call_args.kwargs.get("encoding") == "utf-8"
+
+
+@pytest.mark.parametrize(
+    "arguments, suggestion",
+    ((["convrt"], "convert"), (["generate", "kmes"], "kmesh")),
+)
+def test_mistyped_command_suggests_the_closest(arguments, suggestion):
+    result = _runner().invoke(cli, arguments)
+    assert result.exit_code == 2
+    assert "No such command" in _messages(result)
+    assert f'Did you mean "{suggestion}"?' in _messages(result)
