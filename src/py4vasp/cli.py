@@ -9,7 +9,7 @@ import py4vasp
 from py4vasp import exception
 from py4vasp._calculation.structure import Structure
 from py4vasp._calculation.symmetry import _SYMPREC
-from py4vasp._util import archive
+from py4vasp._util import archive, suggest
 
 _HDF5_SUFFIXES = (".h5", ".hdf5")
 
@@ -48,7 +48,12 @@ def convert(quantity, format, path, archive_path):
     e.g., `calculation.structure[0].to_lammps()` for the first step.
     """
     if format.lower() != "lammps":
-        raise click.UsageError(f"Converting {quantity} to {format} is not implemented.")
+        message = (
+            f"Converting {quantity} to {format} is not implemented. "
+            f"{suggest.did_you_mean(format.lower(), ['lammps'])}"
+            "The only supported format is lammps."
+        )
+        raise click.UsageError(message)
     path = pathlib.Path.cwd() if path is None else pathlib.Path(path)
     try:
         calculation = _open_calculation(path, archive_path)

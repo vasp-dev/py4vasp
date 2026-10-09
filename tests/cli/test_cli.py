@@ -154,6 +154,19 @@ def test_convert_wrong_format(mock_calculation):
     mock_calculation.from_path.assert_not_called()
 
 
+@pytest.mark.parametrize("format", ("lamps", "xyz"))
+def test_convert_wrong_format_names_the_supported_one(mock_calculation, format):
+    runner = _runner()
+    result = runner.invoke(cli, ["convert", "structure", format])
+    assert "lammps" in _messages(result)
+
+
+def test_convert_mistyped_format_suggests_the_closest(mock_calculation):
+    runner = _runner()
+    result = runner.invoke(cli, ["convert", "structure", "lamps"])
+    assert 'Did you mean "lammps"?' in _messages(result)
+
+
 def test_error_in_py4vasp(mock_calculation):
     runner = _runner()
     error_message = "Custom error message."
