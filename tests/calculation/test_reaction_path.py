@@ -187,3 +187,19 @@ def test_to_IRCCAR_format(curve):
  0.741022 0.746783
 """
     assert discretized.to_IRCCAR() == expected
+
+
+def test_to_ICONST_lines(path):
+    discretized = ReactionPath(path.labels, path.atom_pairs, path.coordinates, 49.75)
+    expected = """\
+R 1 2 0
+R 1 3 0
+R 2 3 0
+IS 49.75 49.75 49.75 0
+"""
+    assert discretized.to_ICONST() == expected
+
+
+def test_to_ICONST_without_lambda_raises(path):
+    with pytest.raises(exception.IncorrectUsage):
+        path.to_ICONST()

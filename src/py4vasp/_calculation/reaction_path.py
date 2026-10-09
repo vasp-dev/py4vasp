@@ -214,6 +214,45 @@ class ReactionPathHandler:
             lines += ["".join(f" {x:.6f}" for x in point) for point in self.coordinates]
             return "\n".join(lines) + "\n"
 
+        def to_ICONST(self):
+            """Write the ICONST file that defines the path-based collective variable.
+
+            For every pair of atoms, the ICONST file gets an R line that defines the
+            distance between them as a primitive coordinate. The final IS line combines
+            them into the path-based collective variable with the λ of the discretized
+            path, see :meth:`discretize`. Use it together with the IRCCAR file of the
+            same discretized path, see :meth:`to_IRCCAR`; the λ only fits the points it
+            was computed from. Every line ends with the status 0, which constrains the
+            IS coordinate, as a slow-growth simulation with INCREM requires. Edit the
+            status if your simulation needs a different one, see the ICONST page of the
+            VASP wiki.
+
+            Returns
+            -------
+            str
+                The content of the ICONST file.
+
+            Examples
+            --------
+            >>> import numpy as np
+            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
+            >>> x = np.linspace(0, 1, 101)
+            >>> path = ReactionPathHandler.ReactionPath(
+            ...     ["C~H", "H~N"], [[1, 2], [2, 3]], np.c_[x, 1 - x]
+            ... )
+            >>> print(path.discretize(6, tolerance=1e-3).to_ICONST(), end="")
+            R 1 2 0
+            R 2 3 0
+            IS 12.5 12.5 0
+            """
+            if self.lambda_ is None:
+                message = "The ICONST file needs the λ of a discretized path. Please call discretize first, and write the IRCCAR file from the same discretized path."
+                raise exception.IncorrectUsage(message)
+            lines = [f"R {first} {second} 0" for first, second in self.atom_pairs]
+            lambdas = " ".join(len(self.atom_pairs) * [str(self.lambda_)])
+            lines.append(f"IS {lambdas} 0")
+            return "\n".join(lines) + "\n"
+
 
 def _raise_if_invalid(number_steps, number_points, extra_points, tolerance):
     if not 2 <= number_points <= number_steps:
