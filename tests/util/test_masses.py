@@ -170,6 +170,42 @@ def test_resolve_mapping_suggests_spelling_only_for_unknown_symbols():
     assert "rather than" in str(error.value)
 
 
+def test_resolve_mapping_suggests_a_close_key():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({"o": 18.0}, stoichiometry())
+    assert 'Did you mean "O"?' in str(error.value)
+
+
+def test_resolve_mapping_raises_error_for_atom_outside_the_structure():
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({"9": 18.0}, stoichiometry())
+    assert "'9'" in str(error.value) and "1 to 3" in str(error.value)
+    # the key is an atom index, so a hint on chemical symbols would mislead
+    assert "rather than" not in str(error.value)
+
+
+@pytest.mark.parametrize("key", ("1 + 2", "Sr, 3", "1(2)", ""))
+def test_resolve_mapping_raises_error_for_more_than_one_selection(key):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({key: 18.0}, stoichiometry())
+    assert repr(key) in str(error.value) and "own entry" in str(error.value)
+
+
+@pytest.mark.parametrize("key", (4, 4.0, None))
+def test_resolve_mapping_raises_error_for_keys_that_are_not_strings(key):
+    # an integer key reads like a 0-based Python index, so ask for the string
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({key: 18.0}, stoichiometry())
+    assert '"4"' in str(error.value) and "counted from 1" in str(error.value)
+
+
+@pytest.mark.parametrize("key", ("O:3", "Sr:Ti", "3:1"))
+def test_resolve_mapping_raises_error_for_invalid_range(key):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({key: 18.0}, stoichiometry())
+    assert repr(key) in str(error.value) and "range" in str(error.value)
+
+
 @pytest.mark.parametrize("wrong_mass", (0.0, -1.0, float("inf"), float("nan")))
 def test_resolve_mapping_raises_error_for_nonpositive_mass(wrong_mass):
     with pytest.raises(exception.IncorrectUsage) as error:
