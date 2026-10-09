@@ -152,6 +152,17 @@ def _parse_selections(quantity_name, selection):
         source_name, remaining = _find_source_in_schema(sel, quantity_name)
         grouped.setdefault(source_name, [])
         grouped[source_name].append(remaining)
+    if None in grouped and DEFAULT_SELECTION in grouped:
+        # both select the default source and would share its result key
+        grouped[DEFAULT_SELECTION] += grouped.pop(None)
+        if [] in grouped[DEFAULT_SELECTION]:
+            message = (
+                f"The selection '{selection}' asks for the default source twice, once "
+                "without further selection. Please name what you want from the "
+                "default source explicitly, e.g. 'default(1, 2)' instead of "
+                "'default, 2'."
+            )
+            raise exception.IncorrectUsage(message)
     result = []
     for source_name, remaining_list in grouped.items():
         if remaining_list == [[]]:

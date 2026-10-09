@@ -159,6 +159,12 @@ def test_plots_select_source(raw_data, Assert):
     )
 
 
+def test_explicit_and_implicit_default_source_are_combined(raw_data):
+    density = make_reference_density(raw_data, "Fe3O4 noncollinear")
+    graph = density.to_contour("default(1), 2", a=0.3)
+    assert len(graph.series) == 2
+
+
 def test_spin_checks_select_source(raw_data):
     density = make_reference_density(raw_data, "Fe3O4 collinear")
     assert density.is_collinear("tau") is True

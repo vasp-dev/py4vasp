@@ -135,6 +135,24 @@ class TestParseSelections:
             result = _parse_selections("test_qty", "bar(baz)")
         assert result == [SelectionContext(None, "bar(baz)")]
 
+    def test_explicit_and_implicit_default_are_grouped(self):
+        # both select the default source; separate contexts would share the result
+        # key "default" and the second would overwrite the first
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections",
+            return_value=["default", "foo"],
+        ):
+            result = _parse_selections("test_qty", "default(bar), baz")
+        assert result == [SelectionContext("default", "bar, baz")]
+
+    def test_bare_default_with_implicit_default_is_ambiguous(self):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections",
+            return_value=["default", "foo"],
+        ):
+            with pytest.raises(exception.IncorrectUsage):
+                _parse_selections("test_qty", "default, baz")
+
     def test_multiple_children_are_grouped(self):
         # "foo(bar,baz)" yields two tuples from Tree that both resolve to source
         # "foo"; they must be grouped into one SelectionContext.
