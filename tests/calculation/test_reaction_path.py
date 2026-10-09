@@ -50,3 +50,38 @@ def test_reversed(path, Assert):
 def test_rejects_shape_mismatch(atom_pairs, coordinates):
     with pytest.raises(exception.IncorrectUsage):
         ReactionPath(["a", "b", "c"], atom_pairs, coordinates)
+
+
+def test_add_concatenates_in_order(path, Assert):
+    other = ReactionPath(path.labels, path.atom_pairs, [[2.6, 1.15, 0.98]])
+    joined = path.reversed() + other
+    expected = np.concatenate([path.coordinates[::-1], other.coordinates])
+    Assert.allclose(joined.coordinates, expected)
+    assert joined.labels == path.labels
+    Assert.allclose(joined.atom_pairs, path.atom_pairs)
+    assert joined.lambda_ is None
+
+
+def test_add_does_not_keep_lambda(path):
+    discretized = ReactionPath(path.labels, path.atom_pairs, path.coordinates, 50.0)
+    assert (discretized + discretized).lambda_ is None
+
+
+@pytest.mark.parametrize(
+    "atom_pairs", [[[1, 2], [1, 3], [3, 2]], [[1, 2], [1, 3], [2, 4]]]
+)
+def test_add_different_pairs_raises(path, atom_pairs):
+    other = ReactionPath(path.labels, atom_pairs, path.coordinates)
+    with pytest.raises(exception.IncorrectUsage):
+        path + other
+
+
+def test_add_fewer_pairs_raises(path):
+    other = ReactionPath(["C~H"], [[1, 2]], [[1.0]])
+    with pytest.raises(exception.IncorrectUsage):
+        path + other
+
+
+def test_add_other_type_raises(path):
+    with pytest.raises(TypeError):
+        path + 1.0

@@ -85,3 +85,30 @@ class ReactionPathHandler:
             array([2.45, 1.6 , 1.07])
             """
             return dataclasses.replace(self, coordinates=self.coordinates[::-1])
+
+        def __add__(self, other):
+            """Join two paths, appending the steps of the second one to the first.
+
+            Both paths must describe the same pairs of atoms in the same order. The
+            joined path is no longer discretized, so it does not keep λ.
+
+            Examples
+            --------
+            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
+            >>> to_reactant = ReactionPathHandler.ReactionPath(
+            ...     ["C~H"], [[1, 2]], [[1.20], [1.07]]
+            ... )
+            >>> to_product = ReactionPathHandler.ReactionPath(
+            ...     ["C~H"], [[1, 2]], [[1.20], [2.45]]
+            ... )
+            >>> path = to_reactant.reversed() + to_product
+            >>> path.coordinates[:, 0]
+            array([1.07, 1.2 , 1.2 , 2.45])
+            """
+            if not isinstance(other, type(self)):
+                return NotImplemented
+            if not np.array_equal(self.atom_pairs, other.atom_pairs):
+                message = f"Only paths over the same pairs of atoms can be joined, but one path uses the pairs {self.atom_pairs.tolist()} and the other {other.atom_pairs.tolist()}. Please select the same pairs in the same order for both paths."
+                raise exception.IncorrectUsage(message)
+            coordinates = np.concatenate([self.coordinates, other.coordinates])
+            return dataclasses.replace(self, coordinates=coordinates, lambda_=None)
