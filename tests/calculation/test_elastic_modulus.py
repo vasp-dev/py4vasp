@@ -5,7 +5,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation.elastic_modulus import (
     ElasticModulus,
     ElasticModulusHandler,
@@ -300,3 +300,27 @@ def test_hill_average_of_singular_modulus(elastic_modulus, method):
     # for the "dft" data
     with pytest.raises(exception.DataMismatch, match="relaxed_ion"):
         getattr(elastic_modulus, method)("relaxed_ion")
+
+
+def _soften_along_z(voigt):
+    # a slab with vacuum along z barely resists a strain along z
+    voigt[2, :] = voigt[:, 2] = 0
+    voigt[2, 2] = 1e-12
+
+
+def _make_shear_unstable(voigt):
+    voigt[3, 3] = -voigt[3, 3]
+
+
+@pytest.mark.parametrize("method", _HILL_AVERAGES)
+@pytest.mark.parametrize("modify", (_soften_along_z, _make_shear_unstable))
+def test_hill_average_of_unstable_modulus(method, modify):
+    # np.linalg.inv succeeds for these matrices, but the Hill average of a modulus
+    # that is not positive definite is meaningless
+    voigt = np.array(showcase._CLAMPED_ION)
+    modify(voigt)
+    tensor = showcase._to_cartesian(voigt)
+    raw_modulus = raw.ElasticModulus(clamped_ion=tensor, relaxed_ion=tensor)
+    elastic_modulus = ElasticModulus.from_data(raw_modulus)
+    with pytest.raises(exception.DataMismatch, match="clamped_ion"):
+        getattr(elastic_modulus, method)("clamped_ion")

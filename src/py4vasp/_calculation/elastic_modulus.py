@@ -666,17 +666,27 @@ def _voigt_matrix(tensor):
     return voigt * convert.KBAR_TO_GPA
 
 
+# the smallest eigenvalue of a stable Voigt matrix must exceed this fraction of the
+# largest one; below it, the Reuss bound is dominated by the inverse of a near zero
+_STABILITY_TOLERANCE = 1e-6
+
+
 def _hill_average_of_voigt_matrix(choice, voigt, index):
-    try:
-        return float(_ElasticTensor.from_array(voigt).get_VRH()[index])
-    except np.linalg.LinAlgError as error:
+    if not _is_positive_definite(voigt):
         message = (
-            f"The {choice} elastic modulus is singular, so py4vasp cannot invert it to "
-            "compute the Reuss bound of the Hill average. A singular elastic modulus "
-            "occurs, e.g., if the cell contains vacuum in one direction or if the "
-            "calculation did not compute all elements of the tensor."
+            f"The {choice} elastic modulus is not positive definite, so the averages "
+            "over a polycrystal are meaningless. Either the crystal is mechanically "
+            "unstable, or the elastic modulus is (nearly) singular, e.g., because the "
+            "cell contains vacuum in one direction or the calculation did not compute "
+            "all elements of the tensor. Check the eigenvalues of the Voigt matrix."
         )
-        raise exception.DataMismatch(message) from error
+        raise exception.DataMismatch(message)
+    return float(_ElasticTensor.from_array(voigt).get_VRH()[index])
+
+
+def _is_positive_definite(voigt):
+    eigenvalues = np.linalg.eigvalsh(voigt)
+    return eigenvalues[0] > _STABILITY_TOLERANCE * abs(eigenvalues[-1])
 
 
 def _elastic_modulus_string(tensor, label):
