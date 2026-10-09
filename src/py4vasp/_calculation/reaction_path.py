@@ -3,6 +3,7 @@
 """Project trajectories onto interatomic distances and discretize the resulting path,
 e.g., to prepare the IRCCAR and ICONST files for a slow-growth simulation."""
 
+import collections.abc
 import copy
 import dataclasses
 import itertools
@@ -36,12 +37,14 @@ class ReactionPathHandler:
     """Computes reaction paths from a single raw.Structure object."""
 
     @dataclasses.dataclass
-    class Path(graph.Mixin):
+    class Path(graph.Mixin, collections.abc.Sequence):
         """A path through the space of interatomic distances.
 
         Every row of the coordinates is one point of the path, every column one pair
         of atoms, so the path can describe an IRC, an MD trajectory, or any other
-        sequence of structures.
+        sequence of structures. The path behaves like a sequence of its points:
+        ``len(path)`` counts them, ``path[i]`` returns the distances of point i, and
+        ``path[a:b]`` returns the part of the path between them as a new path.
 
         Parameters
         ----------
@@ -134,6 +137,82 @@ class ReactionPathHandler:
                 raise exception.IncorrectUsage(message)
             coordinates = np.concatenate([self.coordinates, other.coordinates])
             return dataclasses.replace(self, coordinates=coordinates, lambda_=None)
+
+        def __len__(self):
+            return len(self.coordinates)
+
+        def __getitem__(self, index):
+            if isinstance(index, slice):
+                # a part of the path has a different spacing, so λ no longer fits
+                coordinates = self.coordinates[index]
+                return dataclasses.replace(self, coordinates=coordinates, lambda_=None)
+            return self.coordinates[index]
+
+        def __iter__(self):
+            return iter(self.coordinates)
+
+        def __contains__(self, point):
+            return bool(np.any(self._matches(point)))
+
+        def index(self, point, start=0, stop=None):
+            """Return the index of the first point of the path equal to the given one.
+
+            Parameters
+            ----------
+            point : array_like
+                The distances in Å of every pair of atoms; they must match exactly.
+            start, stop : int
+                Search only the points between these indices, as for a list.
+
+            Returns
+            -------
+            int
+                The index of the first matching point.
+
+            Raises
+            ------
+            ValueError
+                If the point is not on the path.
+
+            Examples
+            --------
+            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
+            >>> path = ReactionPathHandler.Path(["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]])
+            >>> path.index([1.60])
+            1
+            """
+            matches = np.flatnonzero(self._matches(point)[start:stop])
+            if len(matches) == 0:
+                raise ValueError(f"The point {point} is not on the path.")
+            return int(matches[0]) + range(len(self))[start:stop].start
+
+        def count(self, point):
+            """Count how often the path passes through the given point.
+
+            Parameters
+            ----------
+            point : array_like
+                The distances in Å of every pair of atoms; they must match exactly.
+
+            Returns
+            -------
+            int
+                The number of points of the path equal to the given one.
+
+            Examples
+            --------
+            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
+            >>> path = ReactionPathHandler.Path(["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]])
+            >>> (path.reversed() + path).count([1.07])
+            2
+            """
+            return int(np.sum(self._matches(point)))
+
+        def _matches(self, point):
+            point = np.asarray(point)
+            if point.shape != self.coordinates.shape[1:]:
+                return np.zeros(len(self), dtype=bool)
+            return np.all(self.coordinates == point, axis=1)
 
         def discretize(self, number_points, *, extra_points=0, tolerance):
             """Select points spaced approximately evenly along the path.

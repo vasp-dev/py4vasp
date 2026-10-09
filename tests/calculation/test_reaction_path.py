@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import collections.abc
 import itertools
 from unittest.mock import patch
 
@@ -366,3 +367,50 @@ def test_to_graph_series_per_pair(path, Assert):
 
 def test_plot_is_alias_of_to_graph(path):
     assert path.plot() == path.to_graph()
+
+
+def test_path_is_sequence(path):
+    assert isinstance(path, collections.abc.Sequence)
+    assert len(path) == 4
+
+
+@pytest.mark.parametrize("index", [0, 2, -1])
+def test_getitem_returns_point(path, index, Assert):
+    Assert.allclose(path[index], path.coordinates[index])
+
+
+def test_getitem_out_of_range_raises(path):
+    with pytest.raises(IndexError):
+        path[4]
+
+
+@pytest.mark.parametrize("slice_", [slice(1, 3), slice(None, None, 2)])
+def test_slice_returns_path(path, slice_, Assert):
+    discretized = Path(path.labels, path.atom_pairs, path.coordinates, 50.0)
+    part = discretized[slice_]
+    assert isinstance(part, Path)
+    Assert.allclose(part.coordinates, path.coordinates[slice_])
+    assert part.labels == path.labels
+    Assert.allclose(part.atom_pairs, path.atom_pairs)
+    # a part has a different spacing, so it does not keep λ
+    assert part.lambda_ is None
+
+
+def test_iterate_over_points(path, Assert):
+    points = list(path)
+    assert len(points) == 4
+    Assert.allclose(np.array(points), path.coordinates)
+    Assert.allclose(np.array(list(reversed(path))), path.coordinates[::-1])
+
+
+def test_contains_index_count(path):
+    point = np.array([1.60, 1.20, 1.07])
+    assert point in path
+    assert [9.0, 9.0, 9.0] not in path
+    assert path.index(point) == 2
+    assert path.count(point) == 1
+    assert (path + path).count(list(point)) == 2
+    assert (path + path).index(point, 3) == 6
+    assert (path + path).index(point, -3, -1) == 6
+    with pytest.raises(ValueError):
+        path.index([9.0, 9.0, 9.0])
