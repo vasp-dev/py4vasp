@@ -6,6 +6,7 @@ from dataclasses import fields
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._calculation.born_effective_charge import (
     BornEffectiveCharge,
     BornEffectiveChargeHandler,
@@ -122,14 +123,15 @@ def test_to_database(Sr2TiO4):
 
 
 def test_Sr2TiO4_to_INCAR(Sr2TiO4):
+    # a wider gap separates the rows of each tensor, so the 3x3 blocks stand out
     expected = """\
-PHON_BORN_CHARGES =   0.000000   3.000000   6.000000   1.000000   4.000000   7.000000   2.000000   5.000000   8.000000 \\
-                      9.000000  12.000000  15.000000  10.000000  13.000000  16.000000  11.000000  14.000000  17.000000 \\
-                     18.000000  21.000000  24.000000  19.000000  22.000000  25.000000  20.000000  23.000000  26.000000 \\
-                     27.000000  30.000000  33.000000  28.000000  31.000000  34.000000  29.000000  32.000000  35.000000 \\
-                     36.000000  39.000000  42.000000  37.000000  40.000000  43.000000  38.000000  41.000000  44.000000 \\
-                     45.000000  48.000000  51.000000  46.000000  49.000000  52.000000  47.000000  50.000000  53.000000 \\
-                     54.000000  57.000000  60.000000  55.000000  58.000000  61.000000  56.000000  59.000000  62.000000
+PHON_BORN_CHARGES =   0.000000   3.000000   6.000000     1.000000   4.000000   7.000000     2.000000   5.000000   8.000000 \\
+                      9.000000  12.000000  15.000000    10.000000  13.000000  16.000000    11.000000  14.000000  17.000000 \\
+                     18.000000  21.000000  24.000000    19.000000  22.000000  25.000000    20.000000  23.000000  26.000000 \\
+                     27.000000  30.000000  33.000000    28.000000  31.000000  34.000000    29.000000  32.000000  35.000000 \\
+                     36.000000  39.000000  42.000000    37.000000  40.000000  43.000000    38.000000  41.000000  44.000000 \\
+                     45.000000  48.000000  51.000000    46.000000  49.000000  52.000000    47.000000  50.000000  53.000000 \\
+                     54.000000  57.000000  60.000000    55.000000  58.000000  61.000000    56.000000  59.000000  62.000000
 """
     assert Sr2TiO4.to_INCAR() == expected
 
@@ -161,3 +163,20 @@ def test_print_rows_match_to_INCAR(Sr2TiO4):
     tag_values = Sr2TiO4.to_INCAR().replace("PHON_BORN_CHARGES =", "")
     incar = np.array(tag_values.replace("\\", "").split(), dtype=float)
     assert np.array_equal(printed, incar.reshape(-1, 9))
+
+
+@pytest.mark.parametrize("selection", (None, "default"))
+def test_read_dispatcher(dispatcher, Sr2TiO4, selection, Assert):
+    actual = dispatcher.read(selection)
+    Assert.allclose(actual["charge_tensors"], Sr2TiO4.ref.charge_tensors)
+    assert dispatcher.to_dict(selection).keys() == actual.keys()
+
+
+def test_read_unknown_selection(dispatcher):
+    with pytest.raises(exception.IncorrectUsage):
+        dispatcher.read("relaxed_ion")
+
+
+def test_to_INCAR_names_the_tag_that_enables_it():
+    # VASP ignores PHON_BORN_CHARGES unless LPHON_POLAR is set
+    assert "LPHON_POLAR" in BornEffectiveCharge.to_INCAR.__doc__

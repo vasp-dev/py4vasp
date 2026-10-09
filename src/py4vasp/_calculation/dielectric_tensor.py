@@ -232,6 +232,8 @@ class DielectricTensor:
         Copy the returned text into the INCAR file of that calculation together with
         :py:meth:`~py4vasp._calculation.born_effective_charge.BornEffectiveCharge.to_INCAR`.
         The text ends with a newline, so you can concatenate it with other INCAR tags.
+        VASP uses the tag only if the INCAR also sets ``LPHON_POLAR = .TRUE.``;
+        without it the phonons are computed without the dipole-dipole correction.
 
         The tensor is written in the orientation VASP reads it, one row per line with
         a backslash continuing the tag onto the next line. You do not need to transpose

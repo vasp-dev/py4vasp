@@ -9,12 +9,28 @@ import py4vasp
 from py4vasp import exception
 from py4vasp._calculation.structure import Structure
 from py4vasp._calculation.symmetry import _SYMPREC
-from py4vasp._util import archive
+from py4vasp._util import archive, suggest
 
 _HDF5_SUFFIXES = (".h5", ".hdf5")
 
 
-@click.group()
+class _SuggestingGroup(click.Group):
+    """Suggest the closest command for a mistyped one.
+
+    Newer versions of click suggest commands themselves, but not the oldest one
+    py4vasp supports, so this keeps the message the same for every version.
+    """
+
+    def resolve_command(self, ctx, args):
+        name = click.utils.make_str(args[0])
+        unknown = self.get_command(ctx, name) is None and not name.startswith("-")
+        if unknown and not ctx.resilient_parsing:
+            suggestion = suggest.did_you_mean(name, self.list_commands(ctx))
+            ctx.fail(f"No such command '{name}'. {suggestion}".strip())
+        return super().resolve_command(ctx, args)
+
+
+@click.group(cls=_SuggestingGroup)
 def cli():
     pass
 
@@ -48,7 +64,12 @@ def convert(quantity, format, path, archive_path):
     e.g., `calculation.structure[0].to_lammps()` for the first step.
     """
     if format.lower() != "lammps":
-        raise click.UsageError(f"Converting {quantity} to {format} is not implemented.")
+        message = (
+            f"Converting {quantity} to {format} is not implemented. "
+            f"{suggest.did_you_mean(format.lower(), ['lammps'])}"
+            "The only supported format is lammps."
+        )
+        raise click.UsageError(message)
     path = pathlib.Path.cwd() if path is None else pathlib.Path(path)
     try:
         calculation = _open_calculation(path, archive_path)
@@ -203,7 +224,7 @@ class _Divisions(click.ParamType):
         return tuple(numbers)
 
 
-@cli.group()
+@cli.group(cls=_SuggestingGroup)
 def generate():
     """Generate an input file for a VASP calculation."""
 

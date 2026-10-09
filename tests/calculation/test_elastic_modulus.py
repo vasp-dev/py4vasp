@@ -5,6 +5,7 @@ import types
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._calculation.elastic_modulus import ElasticModulus, ElasticModulusHandler
 from py4vasp._raw.models import ElasticModulusModel
 from py4vasp._util.tensor import symmetry_reduce
@@ -184,3 +185,17 @@ def test_selections(elastic_modulus):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.elastic_modulus("dft")
     check_factory_methods(ElasticModulus, data, skip_methods=["selections"])
+
+
+@pytest.mark.parametrize("selection", (None, "default"))
+def test_read_with_selection(elastic_modulus, selection, Assert):
+    actual = elastic_modulus.read(selection)
+    Assert.allclose(actual["relaxed_ion"], elastic_modulus.ref.relaxed_ion)
+    Assert.allclose(
+        elastic_modulus.to_dict(selection)["relaxed_ion"], actual["relaxed_ion"]
+    )
+
+
+def test_read_unknown_selection(elastic_modulus):
+    with pytest.raises(exception.IncorrectUsage):
+        elastic_modulus.read("relaxed_ion")

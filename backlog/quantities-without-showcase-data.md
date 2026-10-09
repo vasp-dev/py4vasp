@@ -88,3 +88,14 @@ in the handlers validates any of that, so there is no visible symptom at all.
   documented default `current=1.0` for a constant-current image is order unity. The two
   scales cannot both be right. It has tests around it and changing it changes
   user-visible currents, so it was left alone.
+- The demo cannot show some of the distinctions the documentation draws, because two
+  routes give identical data:
+  - `phonon.mode` and `force_constant` give the same frequencies, since the force
+    constants are built from the modes, so the linear-response vs finite-difference
+    distinction is invisible;
+  - every demo Born effective charge and dielectric tensor is diagonal (site symmetry of
+    Sr2TiO4), so the transpose that separates `read` from `print` and `to_INCAR` is
+    visible only in the tests;
+  - the `Graph.__add__` example overlays two default demo calculations
+    (`coarse`/`dense`), whose DOS are identical, so the figure shows a single curve.
+  (From the reviewer notes of #347, #350, #352 and #354.)

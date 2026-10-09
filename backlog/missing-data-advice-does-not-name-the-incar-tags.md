@@ -28,7 +28,8 @@ not only tags, so the declaration should allow free text.
 - A mistyped source (`mode.read("dispersoin")`) raises "The selection 'dispersoin' is not a
   source of the quantity 'phonon_mode' and the method takes no further selections. Use
   `selections` or `is_available` …". It could list the sources or suggest the closest one;
-  "takes no further selections" is jargon. See also [cli-subcommand-suggestions].
+  "takes no further selections" is jargon. `_util/suggest.py::did_you_mean`, which the CLI
+  uses for mistyped commands and formats, would give the suggestion.
 - A misspelled projection selection (`band.plot("Sr(q)")`, or an element not in the
   structure such as `"Ba"`) lists the valid selections, which is enough, but then advises
   checking the INCAR file and the VASP version, which is a red herring for a typo.
@@ -38,3 +39,9 @@ not only tags, so the declaration should allow free text.
 - `to_image` says a relative filename is saved "relative to the internal path"; the user
   could not tell that this means the calculation directory and used an absolute path to
   avoid writing into their run.
+- The advice "Use `selections` or `is_available`" leads nowhere when the quantity has no
+  data: `phonon.band.selections()` on a run without a dispersion raises the very same
+  `NoData` (from the reviewer notes of #349).
+- An error raised while reading a linked quantity is reported under the link target, e.g.
+  a missing structure under 'structure' rather than under the quantity the user asked
+  for (from #346). Some users read the listed HDF5 paths as noise.

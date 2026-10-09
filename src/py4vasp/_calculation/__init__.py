@@ -14,6 +14,7 @@ from py4vasp._calculation.dispatch import (
     ArchiveSource,
     FileSource,
     Group,
+    TemporarySource,
     _availability_quantity_of,
 )
 from py4vasp._raw.data import CalculationMetaData, _DatabaseData
@@ -156,6 +157,7 @@ instead of the constructor Calculation()."""
         calc._source = source
         calc._path = source.path
         calc._file = file
+        calc._warned_temporary = False
         return calc
 
     @classmethod
@@ -292,7 +294,21 @@ instead of the constructor Calculation()."""
         return _DatabaseData(metadata=metadata, properties=properties)
 
     def path(self):
-        "Return the path in which the calculation is run."
+        """Return the path in which the calculation is run.
+
+        For the example data :func:`py4vasp.demo.calculation` generates without a path,
+        this is a temporary directory and the first call warns that it is removed, with
+        every file you save there, once the calculation is no longer in use.
+        """
+        if isinstance(self._source, TemporarySource) and not self._warned_temporary:
+            self._warned_temporary = True
+            message = (
+                f"The data of this calculation is in the temporary directory "
+                f"{self._path}, which is removed together with every file you save "
+                "there as soon as the calculation is no longer in use. Pass a path to "
+                "demo.calculation() to keep the data."
+            )
+            warnings.warn(message, UserWarning, stacklevel=2)
         return self._path
 
     def selections(

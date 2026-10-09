@@ -781,7 +781,7 @@ class Structure(view.Mixin):
     >>> calculation.structure[:].number_steps()
     12
 
-    You can also select specific {step}s or a subset of {step}s as follows
+    You can also select specific steps or a subset of steps as follows
 
     >>> calculation.structure[3].number_steps()
     1

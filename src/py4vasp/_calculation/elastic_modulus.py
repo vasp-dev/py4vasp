@@ -253,7 +253,7 @@ class ElasticModulus:
     def _handler_factory(self, raw_data):
         return ElasticModulusHandler.from_data(raw_data)
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the clamped-ion and relaxed-ion elastic modulus into a dictionary.
 
         The elastic modulus is returned in kBar, the unit VASP writes it in and the one
@@ -263,6 +263,13 @@ class ElasticModulus:
         :py:meth:`print` shows the tensor as a 6 x 6 matrix in the order VASP uses,
         xx, yy, zz, xy, yz, zx. This is not the usual Voigt order, which puts yz
         fourth, so the fourth diagonal element of the printed table is C_66, not C_44.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the elastic modulus, if VASP produced more than one.
+            Most calculations only have the default source. Both the clamped-ion and
+            the relaxed-ion tensor are always returned.
 
         Returns
         -------
@@ -299,14 +306,14 @@ class ElasticModulus:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElasticModulusHandler.to_dict,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.

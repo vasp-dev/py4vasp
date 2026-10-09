@@ -154,6 +154,19 @@ def test_convert_wrong_format(mock_calculation):
     mock_calculation.from_path.assert_not_called()
 
 
+@pytest.mark.parametrize("format", ("lamps", "xyz"))
+def test_convert_wrong_format_names_the_supported_one(mock_calculation, format):
+    runner = _runner()
+    result = runner.invoke(cli, ["convert", "structure", format])
+    assert "lammps" in _messages(result)
+
+
+def test_convert_mistyped_format_suggests_the_closest(mock_calculation):
+    runner = _runner()
+    result = runner.invoke(cli, ["convert", "structure", "lamps"])
+    assert 'Did you mean "lammps"?' in _messages(result)
+
+
 def test_error_in_py4vasp(mock_calculation):
     runner = _runner()
     error_message = "Custom error message."
@@ -747,3 +760,22 @@ def test_generate_does_not_depend_on_the_locale(
     assert result.exit_code == 0
     write_text.assert_called_once()
     assert write_text.call_args.kwargs.get("encoding") == "utf-8"
+
+
+@pytest.mark.parametrize(
+    "arguments, suggestion",
+    ((["convrt"], "convert"), (["generate", "kmes"], "kmesh")),
+)
+def test_mistyped_command_suggests_the_closest(arguments, suggestion):
+    result = _runner().invoke(cli, arguments)
+    assert result.exit_code == 2
+    assert "No such command" in _messages(result)
+    assert f'Did you mean "{suggestion}"?' in _messages(result)
+
+
+def test_shell_completion_survives_a_mistyped_command():
+    # completion parses resiliently; a suggestion must not abort it
+    from click.shell_completion import ShellComplete
+
+    completion = ShellComplete(cli, {}, "py4vasp", "_PY4VASP_COMPLETE")
+    completion.get_completions(["convrt"], "")

@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import gc
+import warnings
 
 import pytest
 
@@ -92,3 +93,24 @@ def test_explicit_path_is_never_removed(tmp_path):
     gc.collect()
     assert path.is_dir()
     assert Calculation.from_path(path).dos.read()
+
+
+def test_path_of_temporary_calculation_warns_that_it_is_removed():
+    calculation = demo.calculation()
+    with pytest.warns(UserWarning, match="temporary") as record:
+        path = calculation.path()
+    assert str(path) in str(record[0].message)
+
+
+def test_path_of_explicit_calculation_does_not_warn(tmp_path, recwarn):
+    demo.calculation(tmp_path / "example").path()
+    assert not [w for w in recwarn if issubclass(w.category, UserWarning)]
+
+
+def test_path_of_temporary_calculation_warns_only_once():
+    calculation = demo.calculation()
+    with pytest.warns(UserWarning):
+        calculation.path()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        calculation.path()
