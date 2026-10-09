@@ -780,6 +780,26 @@ class DefaultCalculationFactory:
     Pass a laser energy in eV to see how the lines change as it approaches an
     electronic transition, and a temperature to get the intensity a spectrometer
     measures rather than the bare activity.
+
+    *How do I prepare the IRCCAR and ICONST files for a slow-growth run along the
+    IRC?* Map each IRC run onto the distances that define the reaction with
+    :py:class:`~py4vasp._calculation.reaction_path.ReactionPath`. Every run gives a
+    path with one point per step
+
+    >>> path = calculation.reaction_path.to_path("3~4, 1~2")
+    >>> path.labels
+    ('3~4', '1~2')
+
+    Both branches of an IRC calculation start at the transition state, so reverse the
+    one toward the reactant before you join them, then select evenly spaced points and
+    write the files::
+
+        to_reactant = py4vasp.Calculation.from_path("irc/m").reaction_path
+        to_product = py4vasp.Calculation.from_path("irc/p").reaction_path
+        pairs = "C~H, C~N, H~N"
+        path = to_reactant.to_path(pairs)[::-1] + to_product.to_path(pairs)
+        discretized = path.discretize(15, extra_points=2, tolerance=5e-3)
+        irccar, iconst = discretized.to_IRCCAR(), discretized.to_ICONST()
     """
 
     def __getattr__(self, attr):

@@ -65,8 +65,9 @@ class ReactionPathHandler:
 
         Examples
         --------
-        >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-        >>> path = ReactionPathHandler.Path(
+        >>> from py4vasp import demo
+        >>> Path = demo.calculation().reaction_path.Path
+        >>> path = Path(
         ...     labels=["C~H", "H~N"],
         ...     atom_pairs=[[1, 2], [2, 3]],
         ...     coordinates=[[1.07, 2.52], [1.60, 1.07], [2.45, 0.99]],
@@ -208,13 +209,16 @@ class ReactionPathHandler:
 
             Examples
             --------
-            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-            >>> path = ReactionPathHandler.Path(["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]])
+            >>> from py4vasp import demo
+            >>> Path = demo.calculation().reaction_path.Path
+            >>> path = Path(["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]])
             >>> path.index([1.60])
             1
             """
             matches = np.flatnonzero(self._matches(point)[start:stop])
             if len(matches) == 0:
+                # ValueError rather than a py4vasp exception, as the Sequence protocol
+                # and list.index promise
                 raise ValueError(f"The point {point} is not on the path.")
             return int(matches[0]) + range(len(self))[start:stop].start
 
@@ -233,8 +237,9 @@ class ReactionPathHandler:
 
             Examples
             --------
-            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-            >>> path = ReactionPathHandler.Path(["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]])
+            >>> from py4vasp import demo
+            >>> Path = demo.calculation().reaction_path.Path
+            >>> path = Path(["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]])
             >>> (path[::-1] + path).count([1.07])
             2
             """
@@ -293,9 +298,10 @@ class ReactionPathHandler:
             Examples
             --------
             >>> import numpy as np
-            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
+            >>> from py4vasp import demo
+            >>> Path = demo.calculation().reaction_path.Path
             >>> x = np.linspace(0, 1, 101)
-            >>> path = ReactionPathHandler.Path(["C~H"], [[1, 2]], x[:, np.newaxis])
+            >>> path = Path(["C~H"], [[1, 2]], x[:, np.newaxis])
             >>> discretized = path.discretize(6, tolerance=1e-3)
             >>> discretized.coordinates[:, 0]
             array([0. , 0.2, 0.4, 0.6, 0.8, 1. ])
@@ -339,8 +345,9 @@ class ReactionPathHandler:
 
             Examples
             --------
-            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-            >>> path = ReactionPathHandler.Path(
+            >>> from py4vasp import demo
+            >>> Path = demo.calculation().reaction_path.Path
+            >>> path = Path(
             ...     ["C~H", "H~N"], [[1, 2], [2, 3]], [[1.07, 2.52], [2.45, 0.99]]
             ... )
             >>> print(path.to_IRCCAR(), end="")
@@ -358,7 +365,9 @@ class ReactionPathHandler:
             For every pair of atoms, the ICONST file gets an R line that defines the
             distance between them as a primitive coordinate. The final IS line combines
             them into the path-based collective variable with the λ of the discretized
-            path, see :meth:`discretize`. Use it together with the IRCCAR file of the
+            path, see :meth:`discretize`, repeated once for every primitive coordinate,
+            because each of them enters the path-based coordinate with the same weight.
+            Use it together with the IRCCAR file of the
             same discretized path, see :meth:`to_IRCCAR`; the λ only fits the points it
             was computed from. Every line ends with the status 0, which constrains the
             IS coordinate, as a slow-growth simulation with INCREM requires. Edit the
@@ -373,9 +382,10 @@ class ReactionPathHandler:
             Examples
             --------
             >>> import numpy as np
-            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
+            >>> from py4vasp import demo
+            >>> Path = demo.calculation().reaction_path.Path
             >>> x = np.linspace(0, 1, 101)
-            >>> path = ReactionPathHandler.Path(
+            >>> path = Path(
             ...     ["C~H", "H~N"], [[1, 2], [2, 3]], np.c_[x, 1 - x]
             ... )
             >>> print(path.discretize(6, tolerance=1e-3).to_ICONST(), end="")
@@ -394,8 +404,7 @@ class ReactionPathHandler:
         def to_graph(self):
             """Plot the distance of every pair of atoms along the path.
 
-            Use this to check how the bonds change from the reactant to the product,
-            or which points a discretization selected.
+            Use this to check how the bonds change from the reactant to the product.
 
             Returns
             -------
@@ -405,8 +414,9 @@ class ReactionPathHandler:
 
             Examples
             --------
-            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-            >>> path = ReactionPathHandler.Path(
+            >>> from py4vasp import demo
+            >>> Path = demo.calculation().reaction_path.Path
+            >>> path = Path(
             ...     ["C~H", "H~N"], [[1, 2], [2, 3]], [[1.07, 2.52], [2.45, 0.99]]
             ... )
             >>> path.to_graph()
@@ -483,7 +493,7 @@ def _raise_if_points_stop_short(coordinates, indices, max_remainder):
     remainder = _path_length(coordinates[indices[-1] :])
     spacing = _path_length(coordinates[indices]) / (len(indices) - 1)
     if remainder > max_remainder * spacing:
-        message = f"The selected points stop {remainder:.4g} Å before the end of the path, which is {remainder / spacing:.3g} times their spacing ({spacing:.4g} Å). The tolerance is too tight for the steps of the path; increase it or select fewer points. Pass a larger max_remainder to accept points that cover only part of the path."
+        message = f"The selected points stop {remainder:.4g} Å before the end of the path, which is {remainder / spacing:.3g} times their spacing ({spacing:.4g} Å). The tolerance is too tight for the steps of the path; increase it, select fewer points, or provide a path with more steps. Pass a larger max_remainder to accept points that cover only part of the path."
         raise exception.IncorrectUsage(message)
 
 
@@ -643,6 +653,17 @@ class ReactionPath:
 
     Both runs start at the transition state, so the run toward the reactant is
     reversed before the run toward the product is appended.
+
+    :py:meth:`to_path` returns a :py:class:`Path`, available as
+    ``calculation.reaction_path.Path``, which provides the remaining steps:
+
+    - ``path[::-1]`` reverses the path, ``path[a:b]`` selects a part of it, and
+      ``path[i]`` returns the distances of a single point;
+    - ``first + second`` or :py:meth:`Path.join` append one path to another and check
+      that the two connect;
+    - :py:meth:`Path.discretize` selects evenly spaced points and computes λ;
+    - :py:meth:`Path.to_IRCCAR` and :py:meth:`Path.to_ICONST` write the files;
+    - :py:meth:`Path.plot` shows the distances along the path.
 
     See Also
     --------
