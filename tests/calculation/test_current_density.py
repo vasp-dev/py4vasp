@@ -229,9 +229,8 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def test_is_available(tmp_path):
-    """Every method reaches the "nmr" source when it is selected; without a
-    selection they ask for the default source that current_density does not define.
-    is_available resolves the sole source, see TestIsAvailable in test_dispatch."""
+    """current_density has no default source, so without a selection every method
+    uses its sole source "nmr", as is_available does."""
     from py4vasp import demo
 
     calc = demo.calculation(tmp_path / "example")
@@ -239,10 +238,11 @@ def test_is_available(tmp_path):
     for method in ("to_contour", "to_quiver"):
         assert current_density.is_available("nmr", method=method) is True
         assert getattr(current_density, method)("nmr", a=0) is not None
+        assert getattr(current_density, method)(a=0) is not None
     assert current_density.is_available("nmr") is True
-    assert current_density.is_available("nmr", method="read") is True
-    with pytest.raises(exception.Py4VaspError):
-        current_density.read()
+    assert current_density.is_available() is True
+    assert current_density.read().keys() == current_density.read("nmr").keys()
+    assert "current density" in str(current_density)
 
 
 @pytest.mark.parametrize("method", ["read", "to_dict"])

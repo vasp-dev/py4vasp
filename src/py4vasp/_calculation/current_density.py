@@ -241,8 +241,8 @@ class CurrentDensity:
         ----------
         selection : str | None
             Select the source of the data. VASP writes the current density of an NMR
-            calculation to the ``"nmr"`` source, and there is no default one, so pass
-            ``"nmr"``.
+            calculation to the ``"nmr"`` source, which is also used when you do not
+            pass a selection.
 
         Returns
         -------
