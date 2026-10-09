@@ -157,6 +157,7 @@ instead of the constructor Calculation()."""
         calc._source = source
         calc._path = source.path
         calc._file = file
+        calc._warned_temporary = False
         return calc
 
     @classmethod
@@ -296,10 +297,11 @@ instead of the constructor Calculation()."""
         """Return the path in which the calculation is run.
 
         For the example data :func:`py4vasp.demo.calculation` generates without a path,
-        this is a temporary directory and a warning reminds you that it is removed, with
+        this is a temporary directory and the first call warns that it is removed, with
         every file you save there, once the calculation is no longer in use.
         """
-        if isinstance(self._source, TemporarySource):
+        if isinstance(self._source, TemporarySource) and not self._warned_temporary:
+            self._warned_temporary = True
             message = (
                 f"The data of this calculation is in the temporary directory "
                 f"{self._path}, which is removed together with every file you save "

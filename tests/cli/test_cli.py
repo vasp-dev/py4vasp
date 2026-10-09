@@ -771,3 +771,11 @@ def test_mistyped_command_suggests_the_closest(arguments, suggestion):
     assert result.exit_code == 2
     assert "No such command" in _messages(result)
     assert f'Did you mean "{suggestion}"?' in _messages(result)
+
+
+def test_shell_completion_survives_a_mistyped_command():
+    # completion parses resiliently; a suggestion must not abort it
+    from click.shell_completion import ShellComplete
+
+    completion = ShellComplete(cli, {}, "py4vasp", "_PY4VASP_COMPLETE")
+    completion.get_completions(["convrt"], "")

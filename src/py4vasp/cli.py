@@ -23,7 +23,8 @@ class _SuggestingGroup(click.Group):
 
     def resolve_command(self, ctx, args):
         name = click.utils.make_str(args[0])
-        if self.get_command(ctx, name) is None and not name.startswith("-"):
+        unknown = self.get_command(ctx, name) is None and not name.startswith("-")
+        if unknown and not ctx.resilient_parsing:
             suggestion = suggest.did_you_mean(name, self.list_commands(ctx))
             ctx.fail(f"No such command '{name}'. {suggestion}".strip())
         return super().resolve_command(ctx, args)
