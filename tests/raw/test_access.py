@@ -274,6 +274,13 @@ def test_access_data_factory(mock_schema, tmp_path):
         assert raw_data.bar == filename
 
 
+def test_access_data_factory_missing_file(tmp_path):
+    # the poscar source of structure reads the POSCAR file through a data factory
+    with pytest.raises(exception.FileAccessError):
+        with raw.access("structure", path=tmp_path, selection="poscar"):
+            pass
+
+
 def test_access_version(mock_access):
     quantity = "version"
     mock_file, sources = mock_access
