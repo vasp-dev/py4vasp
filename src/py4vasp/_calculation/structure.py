@@ -91,6 +91,19 @@ class StructureHandler:
                 raise exception.IncorrectUsage(
                     f"Steps must be an integer or slice, got {type(self._steps).__name__!r}."
                 ) from error
+            self._raise_error_if_step_out_of_range()
+
+    def _raise_error_if_step_out_of_range(self):
+        # the steps are chosen before the source, so check them against this source
+        if check.is_none(self._raw_structure.positions) or not self._is_trajectory:
+            return
+        number_steps = len(self._raw_structure.positions)
+        if not -number_steps <= self._steps < number_steps:
+            message = (
+                f"The step {self._steps} is out of range, the selected structure has "
+                f"{number_steps} steps."
+            )
+            raise exception.IncorrectUsage(message)
 
     @classmethod
     def from_data(cls, raw_structure: raw.Structure, steps=None) -> "StructureHandler":

@@ -1493,6 +1493,13 @@ def test_source_passed_as_ion_types_is_rejected(demo_structure, method):
         getattr(demo_structure, method)("exciton")
 
 
+def test_step_out_of_range_for_selected_source(demo_structure):
+    # the default trajectory has more steps than the exciton one
+    assert demo_structure[10].positions().shape == (7, 3)
+    with pytest.raises(exception.IncorrectUsage):
+        demo_structure[10].positions("exciton")
+
+
 def test_exporters_select_source(demo_structure):
     poscar = demo_structure.to_POSCAR(selection="exciton")
     assert poscar.splitlines()[5].split() == ["Sr", "Ti", "O"]
