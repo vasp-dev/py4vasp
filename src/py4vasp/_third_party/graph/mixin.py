@@ -80,7 +80,9 @@ class Mixin(abc.ABC):
         If no filename is provided, a default filename is deduced from the
         name of the class and the picture has png format. To change the size of the
         image, set ``xsize`` and ``ysize`` (in pixels) of the graph that :py:meth:`plot`
-        returns and save it with its own ``to_image`` method.
+        returns and save it with its own ``to_image`` method. For a figure in print,
+        prefer svg or pdf: a larger size enlarges the canvas but not the fonts, so it
+        does not make a raster image sharper.
 
         Parameters
         ----------
@@ -111,6 +113,29 @@ class Mixin(abc.ABC):
         write ``filename="name_of_file"`` because the positional arguments are passed
         on to the :py:meth:`plot` method. Please check the documentation of
         that method to learn which arguments are allowed.
+
+        Examples
+        --------
+        Save the density of states of the example data in a new temporary directory,
+        which is printed so that you can look at the images
+
+        >>> import pathlib, tempfile
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> path = pathlib.Path(tempfile.mkdtemp())
+        >>> print("The images are saved to", path)
+        The images are saved to ...
+        >>> calculation.dos.to_image(filename=path / "dos.png")
+        >>> (path / "dos.png").exists()
+        True
+
+        For a figure in a paper, save a vector graphic of a larger graph
+
+        >>> graph = calculation.dos.plot()
+        >>> graph.xsize, graph.ysize = 1000, 600
+        >>> graph.to_image(path / "dos.pdf")
+        >>> (path / "dos.pdf").exists()
+        True
         """
         if filename is None:
             _raise_error_if_filename_is_positional("to_image", args, IMAGE_FORMATS)
@@ -173,6 +198,21 @@ class Mixin(abc.ABC):
         write ``filename="name_of_file"`` because the positional arguments are passed
         on to the :py:meth:`to_frame` method. Please check the documentation of
         that method to learn which arguments are allowed.
+
+        Examples
+        --------
+        Write the density of states of the example data to a new temporary directory,
+        which is printed so that you can look at the file
+
+        >>> import pathlib, tempfile
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> path = pathlib.Path(tempfile.mkdtemp())
+        >>> print("The file is written to", path)
+        The file is written to ...
+        >>> calculation.dos.to_csv(filename=path / "dos.csv")
+        >>> print((path / "dos.csv").read_text().splitlines()[0])
+        energies,total
         """
         if filename is None:
             _raise_error_if_filename_is_positional("to_csv", args, (".csv",))

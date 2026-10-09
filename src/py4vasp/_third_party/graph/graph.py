@@ -747,8 +747,10 @@ class Graph(Sequence):
         png, jpg (or jpeg) and webp and the vector formats svg and pdf are supported,
         in upper or lower case. The size of the image is the
         size of the figure, i.e., set :py:attr:`xsize` and :py:attr:`ysize` (in pixels)
-        to change it. This works for every graph, in particular for one combined from
-        several calculations with the ``+`` operator.
+        to change it. For a figure in print, prefer svg or pdf: a larger size enlarges
+        the canvas but not the fonts, so it does not make a raster image sharper. This
+        works for every graph, in particular for one combined from several calculations
+        with the ``+`` operator.
 
         Parameters
         ----------
