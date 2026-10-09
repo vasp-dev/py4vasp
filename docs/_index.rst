@@ -119,6 +119,16 @@ test of your installation running the following command
 
 This should print the version of *py4vasp* that you installed.
 
+If you bundle *py4vasp* into a standalone executable with PyInstaller, add the modules
+of the quantities to the hidden imports of your spec file. *py4vasp* imports them only
+when you first access a quantity, so PyInstaller cannot find them on its own.
+
+.. code-block:: python
+
+  from PyInstaller.utils.hooks import collect_submodules
+
+  hiddenimports = collect_submodules("py4vasp._calculation")
+
 .. important::
   *py4vasp* extracts all information from the HDF5 output so you need to make
   sure to compile VASP adding ``-DVASP_HDF5`` to the ``CPP_OPTIONS`` in the

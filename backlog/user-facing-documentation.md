@@ -9,7 +9,3 @@ words in that table, and `Structure.from_POSCAR` is pointed at from nowhere.
 
 A user simulation found the feature from `--help` in two minutes and from the
 documentation not at all. Needs a CLI reference page and a how-to.
-
-Frozen builds: since #343, PyInstaller users need
-`collect_submodules("py4vasp._calculation")` in their spec so the dynamically imported
-quantity modules are bundled. That is written only in the PR description.
