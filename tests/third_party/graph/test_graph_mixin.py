@@ -59,6 +59,24 @@ def test_convert_graph_to_csv():
     df.to_csv.assert_called_once_with(full_path, index=False)
 
 
+def test_converting_graph_to_csv_expands_home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    example = ExampleGraph()
+    example.to_csv(filename="~/example.csv")
+    df = GRAPH.to_frame.return_value
+    df.to_csv.assert_called_once_with(home / "example.csv", index=False)
+
+
+def test_converting_graph_to_csv_rejects_missing_directory():
+    example = ExampleGraph()
+    GRAPH.reset_mock()
+    with pytest.raises(exception.FileAccessError):
+        example.to_csv(filename="missing/example.csv")
+    GRAPH.to_frame.assert_not_called()
+
+
 def test_converting_graph_to_image():
     example = ExampleGraph()
     example.to_image()

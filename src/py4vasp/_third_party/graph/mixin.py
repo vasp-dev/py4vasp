@@ -1,7 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -151,10 +150,16 @@ class Mixin(abc.ABC):
         filename
             Path where the CSV file will be saved. A relative path is relative to the
             directory of the calculation, not to the current working directory; pass
-            an absolute path to save elsewhere. If None, defaults to "{classname}.csv"
-            where classname is derived from the class name.
+            an absolute path to save elsewhere. "~" is expanded to your home directory.
+            If None, defaults to "{classname}.csv" where classname is derived from the
+            class name.
         **kwargs
             Keyword arguments passed to :py:meth:`to_frame`.
+
+        Raises
+        ------
+        py4vasp.exception.FileAccessError
+            If the directory the file should be written to does not exist.
 
         Notes
         -----
@@ -168,12 +173,9 @@ class Mixin(abc.ABC):
             _raise_error_if_filename_is_positional("to_csv", args, (".csv",))
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.csv"
-        if os.path.isabs(filename):
-            writeout_path = filename
-        else:
-            writeout_path = self._path / filename
+        path = resolve_output_path(filename, self._path)
         df = self.to_frame(*args, **kwargs)
-        df.to_csv(writeout_path, index=False)
+        df.to_csv(path, index=False)
 
 
 def _raise_error_if_filename_is_positional(method, args, suffixes):
