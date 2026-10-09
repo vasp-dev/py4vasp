@@ -9,6 +9,7 @@ from py4vasp._third_party.graph.graph import (
     IMAGE_FORMATS,
     Graph,
     check_image_format,
+    expand_home,
     resolve_output_path,
 )
 from py4vasp._util import convert
@@ -182,13 +183,14 @@ class Mixin(abc.ABC):
         df.to_csv(path, index=False)
 
     def _output_path(self, filename):
-        # ask for the directory only if it is used, because it may warn about it
-        is_relative = not Path(filename).expanduser().is_absolute()
-        directory = self._output_directory() if is_relative else None
-        return resolve_output_path(filename, directory)
+        is_relative = not expand_home(filename).is_absolute()
+        path = resolve_output_path(filename, self._path if is_relative else None)
+        if is_relative:
+            self._warn_about_output()
+        return path
 
-    def _output_directory(self):
-        return self._path
+    def _warn_about_output(self):
+        "Hook for quantities to warn about files written to their directory."
 
 
 def _raise_error_if_filename_is_positional(method, args, suffixes):

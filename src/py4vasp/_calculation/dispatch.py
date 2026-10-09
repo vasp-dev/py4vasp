@@ -96,9 +96,9 @@ def quantity(name, group=None):
         if "_is_available" not in cls.__dict__:
             cls._is_available = _default_is_available
 
-        # The graph mixin writes files with a relative name to this directory; for the
-        # temporary directory of the demo data that warns the files are removed.
-        cls._output_directory = _output_directory
+        # The graph mixin calls this before it writes a file with a relative name to the
+        # directory of the quantity; for the demo data that directory is temporary.
+        cls._warn_about_output = _warn_about_output
 
         if group is None:
             _REGISTRY[name] = cls
@@ -723,11 +723,10 @@ def _availability_quantity_of(instance):
     return getattr(instance, "_availability_quantity", None) or instance._quantity_name
 
 
-def _output_directory(self):
+def _warn_about_output(self):
     if isinstance(self._source, TemporarySource):
         # skip this function, the graph mixin, and its public method to reach the user
         self._source.warn_about_removal(stacklevel=5)
-    return self._path
 
 
 def is_available(self, selection=None, method=None):

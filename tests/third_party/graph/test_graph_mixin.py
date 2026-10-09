@@ -125,6 +125,13 @@ def test_converting_graph_to_image_expands_home(tmp_path, monkeypatch):
     GRAPH.to_image.assert_called_once_with(home / "example.png")
 
 
+@pytest.mark.parametrize("method", ["to_image", "to_csv"])
+def test_saving_rejects_unknown_user(method):
+    example = ExampleGraph()
+    with pytest.raises(exception.FileAccessError):
+        getattr(example, method)(filename="~nouser_py4vasp/example.png")
+
+
 def test_converting_graph_to_image_rejects_missing_directory():
     example = ExampleGraph()
     GRAPH.reset_mock()

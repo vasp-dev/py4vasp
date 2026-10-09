@@ -851,10 +851,21 @@ def _merge_field(left_graph, right_graph, field_name):
     )
 
 
+def expand_home(filename):
+    'Return filename as path with a leading "~" or "~user" expanded.'
+    try:
+        return Path(filename).expanduser()
+    except RuntimeError:
+        message = f"""\
+Cannot write to "{filename}" because its home directory is unknown. Please check the
+user name after "~" or pass the full path instead."""
+        raise exception.FileAccessError(message)
+
+
 def resolve_output_path(filename, directory):
     """Return the path a file is written to; a relative filename is relative to
     directory and "~" is expanded to the home directory."""
-    path = Path(filename).expanduser()
+    path = expand_home(filename)
     if not path.is_absolute():
         path = Path(directory) / path
     if not path.parent.is_dir():

@@ -1394,6 +1394,11 @@ def test_resolve_output_path_expands_home(tmp_path, monkeypatch):
     assert actual == tmp_path / "image.png"
 
 
+def test_resolve_output_path_rejects_unknown_user(tmp_path):
+    with pytest.raises(exception.FileAccessError, match="nouser"):
+        resolve_output_path("~nouser_py4vasp/image.png", tmp_path)
+
+
 def test_resolve_output_path_rejects_missing_directory(tmp_path):
     with pytest.raises(exception.FileAccessError, match="missing"):
         resolve_output_path("missing/image.png", tmp_path)

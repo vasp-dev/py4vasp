@@ -142,6 +142,16 @@ def test_saving_into_temporary_calculation_warns_together_with_path():
         calculation.path()
 
 
+def test_failed_save_into_temporary_calculation_keeps_the_warning():
+    calculation = demo.calculation()
+    with patch.object(Dos, "plot"), warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with pytest.raises(exception.FileAccessError):
+            calculation.dos.to_image(filename="missing/dos.png")
+    with pytest.warns(UserWarning, match="temporary"):
+        calculation.path()
+
+
 def test_saving_temporary_calculation_elsewhere_does_not_warn(tmp_path):
     calculation = demo.calculation()
     with patch.object(Dos, "plot"), warnings.catch_warnings():
