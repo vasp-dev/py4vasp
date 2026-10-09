@@ -400,7 +400,7 @@ class ElasticModulus:
         compression. For a single crystal it depends on the direction, so py4vasp
         averages the elastic constants over all orientations of the crystallites in a
         polycrystal. It reports the Hill average, the mean of the upper (Voigt) and
-        lower (Reuss) bound, the same value py4vasp stores in the database.
+        lower (Reuss) bound.
 
         Parameters
         ----------
@@ -414,6 +414,13 @@ class ElasticModulus:
         dict
             Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
             bulk modulus in GPa.
+
+        Raises
+        ------
+        DataMismatch
+            If the elastic modulus is not positive definite, i.e., the crystal is
+            mechanically unstable or the modulus is (nearly) singular, e.g., for a cell
+            with vacuum. The average over a polycrystal is meaningless in that case.
 
         Examples
         --------
@@ -445,8 +452,7 @@ class ElasticModulus:
         shape at constant volume. For a single crystal it depends on the direction, so
         py4vasp averages the elastic constants over all orientations of the
         crystallites in a polycrystal. It reports the Hill average, the mean of the
-        upper (Voigt) and lower (Reuss) bound, the same value py4vasp stores in the
-        database.
+        upper (Voigt) and lower (Reuss) bound.
 
         Parameters
         ----------
@@ -460,6 +466,13 @@ class ElasticModulus:
         dict
             Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
             shear modulus in GPa.
+
+        Raises
+        ------
+        DataMismatch
+            If the elastic modulus is not positive definite, i.e., the crystal is
+            mechanically unstable or the modulus is (nearly) singular, e.g., for a cell
+            with vacuum. The average over a polycrystal is meaningless in that case.
 
         Examples
         --------
@@ -491,8 +504,7 @@ class ElasticModulus:
         is stretched along its axis and may contract freely in the perpendicular
         directions. py4vasp obtains it as E = 9KG / (3K + G) from the Hill averages of
         the bulk modulus K and the shear modulus G, see :py:meth:`bulk_modulus` and
-        :py:meth:`shear_modulus`. This is the same value py4vasp stores in the
-        database.
+        :py:meth:`shear_modulus`.
 
         Parameters
         ----------
@@ -506,6 +518,13 @@ class ElasticModulus:
         dict
             Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
             Young's modulus in GPa.
+
+        Raises
+        ------
+        DataMismatch
+            If the elastic modulus is not positive definite, i.e., the crystal is
+            mechanically unstable or the modulus is (nearly) singular, e.g., for a cell
+            with vacuum. The average over a polycrystal is meaningless in that case.
 
         Examples
         --------
@@ -537,8 +556,7 @@ class ElasticModulus:
         extension when a rod of the material is stretched along its axis. It has no
         unit. py4vasp obtains it as ν = (3K - 2G) / (6K + 2G) from the Hill averages of
         the bulk modulus K and the shear modulus G, see :py:meth:`bulk_modulus` and
-        :py:meth:`shear_modulus`. This is the same value py4vasp stores in the
-        database.
+        :py:meth:`shear_modulus`.
 
         Parameters
         ----------
@@ -552,6 +570,13 @@ class ElasticModulus:
         dict
             Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
             Poisson's ratio.
+
+        Raises
+        ------
+        DataMismatch
+            If the elastic modulus is not positive definite, i.e., the crystal is
+            mechanically unstable or the modulus is (nearly) singular, e.g., for a cell
+            with vacuum. The average over a polycrystal is meaningless in that case.
 
         Examples
         --------
