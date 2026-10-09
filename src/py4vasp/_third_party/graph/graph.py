@@ -836,6 +836,20 @@ def _merge_field(left_graph, right_graph, field_name):
     )
 
 
+def resolve_output_path(filename, directory):
+    """Return the path a file is written to; a relative filename is relative to
+    directory and "~" is expanded to the home directory."""
+    path = Path(filename).expanduser()
+    if not path.is_absolute():
+        path = Path(directory) / path
+    if not path.parent.is_dir():
+        message = f"""\
+Cannot write to "{path}" because the directory "{path.parent}" does not exist. Please
+create the directory first or choose a different filename."""
+        raise exception.FileAccessError(message)
+    return path
+
+
 def check_image_format(filename):
     "Raise an error unless the extension of filename is a format plotly can export."
     if Path(filename).suffix.lower() in IMAGE_FORMATS:

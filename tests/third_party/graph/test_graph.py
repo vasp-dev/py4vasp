@@ -12,6 +12,7 @@ import pytest
 
 from py4vasp import _config, exception
 from py4vasp._third_party.graph import Contour, Graph, Marker, Series
+from py4vasp._third_party.graph.graph import resolve_output_path
 from py4vasp._util import import_, slicing
 
 px = import_.optional("plotly.express")
@@ -1336,3 +1337,25 @@ def test_to_image_accepts_uppercase_extension(parabola):
     with patch.object(Graph, "to_plotly") as to_plotly:
         graph.to_image("graph.PNG")
         to_plotly.return_value.write_image.assert_called_once_with("graph.PNG")
+
+
+def test_resolve_output_path_relative_to_directory(tmp_path):
+    actual = resolve_output_path("image.png", tmp_path)
+    assert actual == tmp_path / "image.png"
+
+
+def test_resolve_output_path_keeps_absolute_path(tmp_path):
+    filename = tmp_path / "image.png"
+    actual = resolve_output_path(filename, tmp_path / "other")
+    assert actual == filename
+
+
+def test_resolve_output_path_expands_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    actual = resolve_output_path("~/image.png", tmp_path / "other")
+    assert actual == tmp_path / "image.png"
+
+
+def test_resolve_output_path_rejects_missing_directory(tmp_path):
+    with pytest.raises(exception.FileAccessError, match="missing"):
+        resolve_output_path("missing/image.png", tmp_path)
