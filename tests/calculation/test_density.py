@@ -110,6 +110,38 @@ def test_read(reference_density, Assert):
         Assert.allclose(actual[key], reference_density.ref.output[key])
 
 
+@pytest.mark.parametrize("method", ["read", "to_dict"])
+def test_read_selects_source(raw_data, method, Assert):
+    density = make_reference_density(raw_data, "Fe3O4 collinear")
+    expected = density["kinetic_energy"].read()
+    actual = getattr(density, method)("kinetic_energy")
+    assert actual.keys() == expected.keys()
+    Assert.allclose(actual["kinetic_energy"], expected["kinetic_energy"])
+    # an explicit selection takes precedence over the one from indexing
+    actual = getattr(density["kinetic_energy"], method)("default")
+    Assert.allclose(actual["charge"], density.read()["charge"])
+    both = getattr(density, method)("default, kinetic_energy")
+    assert both.keys() == {"default", "kinetic_energy"}
+    assert "kinetic_energy" in both["kinetic_energy"]
+
+
+def test_to_numpy_and_to_quiver_select_source(raw_data, Assert):
+    density = make_reference_density(raw_data, "Fe3O4 collinear")
+    expected = density["kinetic_energy"]
+    Assert.allclose(density.to_numpy("kinetic_energy"), expected.to_numpy())
+    actual = density.to_quiver("kinetic_energy", a=-0.2).series[0]
+    reference = expected.to_quiver(a=-0.2).series[0]
+    Assert.allclose(actual.data, reference.data)
+    assert actual.label == reference.label == "kinetic_energy"
+
+
+@pytest.mark.parametrize("method", ["read", "to_numpy"])
+def test_component_is_not_a_source(raw_data, method):
+    density = make_reference_density(raw_data, "Fe3O4 collinear")
+    with pytest.raises(exception.IncorrectUsage):
+        getattr(density, method)("magnetization")
+
+
 def test_empty_density(empty_density):
     with pytest.raises(exception.NoData):
         empty_density.read()

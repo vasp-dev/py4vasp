@@ -11,6 +11,7 @@ from py4vasp import raw as raw_module
 from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
+    _parse_selections,
     is_available_raw,
     merge_default,
     merge_strings,
@@ -18,6 +19,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
+from py4vasp._raw.schema import DEFAULT_SELECTION
 from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
@@ -372,6 +374,29 @@ class Density(view.Mixin):
     def _handler_factory(self, raw):
         return DensityHandler.from_data(raw, selection_name=self._selection_name)
 
+    def _merge_by_source(self, selection, method, **kwargs):
+        # The handler labels the density by its source, so dispatch every selected
+        # source through self[source] instead of passing the selection on directly.
+        results = {}
+        selection = selection or self._selection_name
+        for context in _parse_selections(self._quantity_name, selection):
+            source = context.selection_name
+            if context.remaining_selection is not None:
+                remaining = context.remaining_selection
+                source = f"{source}({remaining})" if source else remaining
+            density = self[context.selection_name]
+            results[context.selection_name or DEFAULT_SELECTION] = merge_default(
+                density._source,
+                density._quantity_name,
+                source,
+                density._handler_factory,
+                method,
+                **kwargs,
+            )
+        if len(results) == 1:
+            return next(iter(results.values()))
+        return results
+
     def _is_available(self, raw_data, selection=None, method=None) -> bool:
         # to_quiver visualizes the magnetization, which only exists for collinear or
         # noncollinear calculations (the leading dimension of charge is 2 or 4).
@@ -404,15 +429,17 @@ class Density(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the density into a dictionary.
 
         Parameters
         ----------
-        selection : str
+        selection : str | None
             VASP computes different densities depending on the INCAR settings. With this
-            parameter, you can control which one of them is returned. Please use the
-            `selections` routine to get a list of all possible choices.
+            parameter, you can control which one of them is returned, e.g.
+            ``"kinetic_energy"``; it takes precedence over a source chosen by indexing
+            like ``density["tau"]``. Please use the `selections` routine to get a list
+            of all possible choices.
 
         Returns
         -------
@@ -420,17 +447,11 @@ class Density(view.Mixin):
             Contains the structure information as well as the density represented
             on a grid in the unit cell.
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.to_dict,
-        )
+        return self._merge_by_source(selection, DensityHandler.to_dict)
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
     @documentation.format(
         component0=_join_with_emphasis(_COMPONENTS[0]),
@@ -502,25 +523,25 @@ class Density(view.Mixin):
         result["density"] = list(raw_module.selections(self._quantity_name))
         return result
 
-    def to_numpy(self):
+    def to_numpy(self, selection: str | None = None):
         """Convert the density to a numpy array.
 
         The number of components is 1 for nonpolarized calculations, 2 for collinear
         calculations, and 4 for noncollinear calculations. Each component is 3
         dimensional according to the grid VASP uses for the FFTs.
 
+        Parameters
+        ----------
+        selection : str | None
+            Select which density VASP computed is converted, e.g. ``"kinetic_energy"``.
+            It takes precedence over a source chosen by indexing like ``density["tau"]``.
+
         Returns
         -------
         np.ndarray
             All components of the selected density.
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.to_numpy,
-        )
+        return self._merge_by_source(selection, DensityHandler.to_numpy)
 
     def to_view(
         self,
@@ -646,6 +667,7 @@ class Density(view.Mixin):
     @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
     def to_quiver(
         self,
+        selection: Optional[str] = None,
         *,
         a: Optional[float] = None,
         b: Optional[float] = None,
@@ -663,6 +685,10 @@ class Density(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None = None
+            Select which density VASP computed is shown, e.g. ``"kinetic_energy"``.
+            It takes precedence over a source chosen by indexing like ``density["tau"]``.
+
         {common_parameters}
 
         Returns
@@ -689,11 +715,8 @@ class Density(view.Mixin):
 
         >>> calculation.density.to_quiver("kinetic_energy", a=0.3, normal="x")
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
+        return self._merge_by_source(
+            selection,
             DensityHandler.to_quiver,
             a=a,
             b=b,

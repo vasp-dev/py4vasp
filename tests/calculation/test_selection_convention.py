@@ -459,10 +459,6 @@ _LEGACY_SELECTION = {
 # so remove it from these lists together with the fix.
 _MISSING_SELECTION = frozenset(
     {
-        "Density.read",
-        "Density.to_dict",
-        "Density.to_numpy",
-        "Density.to_quiver",
         "NeighborList.to_string",
         "Structure.cartesian_positions",
         "Structure.conventional_lattice_vectors",
