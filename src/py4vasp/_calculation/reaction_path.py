@@ -184,6 +184,36 @@ class ReactionPathHandler:
                 lambda_=_suggest_lambda(points),
             )
 
+        def to_IRCCAR(self):
+            """Write the points of the path in the format of the IRCCAR file.
+
+            The IRCCAR file defines the path for the path-based collective variable of
+            a slow-growth or blue-moon simulation. Usually, you discretize the path
+            first, see :meth:`discretize`, and use the same discretized path for the
+            ICONST file, see :meth:`to_ICONST`. VASP expects the columns in the order of
+            the R lines of the ICONST file.
+
+            Returns
+            -------
+            str
+                The number of points in the first line followed by one line per point
+                with the distances in Å. Write it to a file named IRCCAR.
+
+            Examples
+            --------
+            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
+            >>> path = ReactionPathHandler.ReactionPath(
+            ...     ["C~H", "H~N"], [[1, 2], [2, 3]], [[1.07, 2.52], [2.45, 0.99]]
+            ... )
+            >>> print(path.to_IRCCAR(), end="")
+            2
+             1.070000 2.520000
+             2.450000 0.990000
+            """
+            lines = [str(len(self.coordinates))]
+            lines += ["".join(f" {x:.6f}" for x in point) for point in self.coordinates]
+            return "\n".join(lines) + "\n"
+
 
 def _raise_if_invalid(number_steps, number_points, extra_points, tolerance):
     if not 2 <= number_points <= number_steps:

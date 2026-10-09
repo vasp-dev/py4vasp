@@ -169,3 +169,21 @@ def test_discretize_raises_if_tolerance_cannot_be_met():
     coarse = ReactionPath(["x"], [[1, 2]], [[0.0], [1.0], [3.0]])
     with pytest.raises(exception.IncorrectUsage):
         coarse.discretize(3, tolerance=0.1)
+
+
+def test_to_IRCCAR_format(curve):
+    discretized = curve.discretize(5, extra_points=2, tolerance=1e-3)
+    # same text as the IRCCAR written by ircprepare3.py
+    expected = """\
+9
+ 1.017757 -0.265921
+ 1.008879 -0.132961
+ 1.000000 0.000000
+ 0.991121 0.132961
+ 0.964601 0.263714
+ 0.921097 0.389334
+ 0.861072 0.508483
+ 0.801047 0.627633
+ 0.741022 0.746783
+"""
+    assert discretized.to_IRCCAR() == expected
