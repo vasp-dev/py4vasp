@@ -109,6 +109,7 @@ _POSITIVE = (
 def _from_mapping(masses, stoichiometry):
     elements = stoichiometry.elements()
     selections = stoichiometry.read()
+    del selections[select.all]  # internal key the documentation does not offer
     parsed = {key: _parse(key) for key in masses}
     _raise_error_if_keys_are_not_in_structure(parsed, selections, elements)
     for key, item in parsed.items():
@@ -125,10 +126,26 @@ def _from_mapping(masses, stoichiometry):
         raise exception.IncorrectUsage(f"{_POSITIVE}; you provided {invalid}.")
     result = of(elements)
     indices = {key: _indices(item, selections) for key, item in parsed.items()}
+    _raise_error_if_keys_repeat(parsed, masses)
     _raise_error_if_ranges_overlap(parsed, indices, masses)
     for key in sorted(masses, key=lambda key: _specificity(parsed[key])):
         result[indices[key]] = masses[key]
     return result
+
+
+def _raise_error_if_keys_repeat(parsed, masses):
+    # keys that differ only in whitespace select the same atoms, so the order of the
+    # dictionary would decide which mass wins
+    first_key = {}
+    for key, item in parsed.items():
+        normalized = tuple(_components(item))
+        other = first_key.setdefault(normalized, key)
+        if other != key and masses[other] != masses[key]:
+            message = (
+                f"The keys {other!r} and {key!r} select the same atoms but assign "
+                "them different masses. Please keep only one of them."
+            )
+            raise exception.IncorrectUsage(message)
 
 
 def _specificity(item):
@@ -165,7 +182,7 @@ def _parse(key):
     selections = list(select.Tree.from_selection(key).selections())
     if len(selections) == 1 and len(selections[0]) == 1:
         (item,) = selections[0]
-        if isinstance(item, str) or _is_range(item):
+        if isinstance(item, str) or _is_simple_range(item):
             return item
     message = (
         f"Every key of the masses must select a single element, atom, or range of "
@@ -177,6 +194,11 @@ def _parse(key):
 
 def _is_range(item):
     return isinstance(item, select.Group) and item.separator == select.range_separator
+
+
+def _is_simple_range(item):
+    # a stepped range "1:5:2" parses as a range nested inside another one
+    return _is_range(item) and all(isinstance(end, str) for end in item.group)
 
 
 def _components(item):
@@ -202,7 +224,7 @@ def _raise_error_if_keys_are_not_in_structure(parsed, selections, elements):
     message = (
         f"You provided a mass for {', '.join(map(repr, missing))} but the structure "
         f"contains only the elements {', '.join(unique_elements)} and the atoms 1 to "
-        f"{len(elements)}. "
+        f"{len(elements)}, counted from 1. "
     )
     message += "".join(_did_you_mean(key, unique_elements) for key in missing)
     if any(_is_unknown_symbol(parsed[key]) for key in missing):

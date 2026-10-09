@@ -104,6 +104,15 @@ def test_resolve_mapping_raises_error_for_overlapping_ranges():
     assert "'2:3'" in str(error.value) and "'3:4'" in str(error.value)
 
 
+@pytest.mark.parametrize("keys", (("O", " O"), ("4", " 4")))
+def test_resolve_mapping_raises_error_for_the_same_key_written_twice(keys):
+    # otherwise the order of the dictionary would decide which mass wins
+    elements = ["Sr", "O", "O", "O"]
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({keys[0]: 18.0, keys[1]: 17.0}, stoichiometry(elements))
+    assert repr(keys[0]) in str(error.value) and repr(keys[1]) in str(error.value)
+
+
 def test_resolve_mapping_accepts_overlapping_ranges_with_the_same_mass(Assert):
     elements = ["Sr", "O", "O", "O"]
     actual = masses.resolve({"2:3": 18.0, "3:4": 18.0}, stoichiometry(elements))
@@ -146,15 +155,22 @@ def test_resolve_mapping_suggests_a_close_key():
     assert 'Did you mean "O"?' in str(error.value)
 
 
+def test_resolve_mapping_rejects_the_internal_key_for_all_atoms():
+    # it is an implementation detail of the selection, not a key the docs offer
+    with pytest.raises(exception.IncorrectUsage):
+        masses.resolve({"__all__": 18.0}, stoichiometry())
+
+
 def test_resolve_mapping_raises_error_for_atom_outside_the_structure():
     with pytest.raises(exception.IncorrectUsage) as error:
         masses.resolve({"9": 18.0}, stoichiometry())
     assert "'9'" in str(error.value) and "1 to 3" in str(error.value)
+    assert "counted from 1" in str(error.value)
     # the key is an atom index, so a hint on chemical symbols would mislead
     assert "rather than" not in str(error.value)
 
 
-@pytest.mark.parametrize("key", ("1 + 2", "Sr, 3", "1(2)", ""))
+@pytest.mark.parametrize("key", ("1 + 2", "Sr, 3", "1(2)", "", "1:5:2"))
 def test_resolve_mapping_raises_error_for_more_than_one_selection(key):
     with pytest.raises(exception.IncorrectUsage) as error:
         masses.resolve({key: 18.0}, stoichiometry())
