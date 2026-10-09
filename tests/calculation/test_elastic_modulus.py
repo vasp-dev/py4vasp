@@ -5,8 +5,13 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp._calculation.elastic_modulus import ElasticModulus, ElasticModulusHandler
+from py4vasp import exception, raw
+from py4vasp._calculation.elastic_modulus import (
+    ElasticModulus,
+    ElasticModulusHandler,
+    _voigt_matrix,
+)
+from py4vasp._demo.showcase import elastic_modulus as showcase
 from py4vasp._raw.models import ElasticModulusModel
 from py4vasp._util.tensor import symmetry_reduce
 
@@ -14,6 +19,13 @@ from py4vasp._util.tensor import symmetry_reduce
 @pytest.fixture
 def elastic_modulus(raw_data):
     return _setup_elastic_modulus(raw_data, "dft")
+
+
+@pytest.fixture
+def silicon_carbide(raw_data):
+    # the moduli require the inverse of the Voigt matrix, which does not exist for the
+    # "dft" data
+    return _setup_elastic_modulus(raw_data, "SiC")
 
 
 @pytest.fixture(params=["dft", "dft with structure", "SiC"])
@@ -183,7 +195,7 @@ def test_selections(elastic_modulus):
 
 
 def test_factory_methods(raw_data, check_factory_methods):
-    data = raw_data.elastic_modulus("dft")
+    data = raw_data.elastic_modulus("SiC")
     check_factory_methods(ElasticModulus, data, skip_methods=["selections"])
 
 
@@ -199,3 +211,121 @@ def test_read_with_selection(elastic_modulus, selection, Assert):
 def test_read_unknown_selection(elastic_modulus):
     with pytest.raises(exception.IncorrectUsage):
         elastic_modulus.read("relaxed_ion")
+
+
+def test_voigt_matrix_uses_standard_order(Assert):
+    # the rows and columns are ordered 11, 22, 33, 23, 13, 12, so that C_44 is the
+    # fourth diagonal element and C_66 the sixth; the tensor is converted to GPa
+    relaxed_ion = showcase.Sr2TiO4().relaxed_ion
+    expected = [
+        [297.0, 119.0, 86.0, 0.0, 0.0, 0.0],
+        [119.0, 297.0, 86.0, 0.0, 0.0, 0.0],
+        [86.0, 86.0, 216.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 57.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 57.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 102.0],
+    ]
+    Assert.allclose(_voigt_matrix(relaxed_ion), np.array(expected))
+
+
+@pytest.mark.parametrize(
+    "selection, key",
+    (
+        (None, "relaxed_ion"),
+        ("clamped_ion", "clamped_ion"),
+        ("relaxed_ion", "relaxed_ion"),
+        ("default(clamped_ion)", "clamped_ion"),
+    ),
+)
+def test_voigt_of_one_tensor_is_an_array(elastic_modulus, selection, key, Assert):
+    actual = elastic_modulus.voigt(selection)
+    assert isinstance(actual, np.ndarray)
+    Assert.allclose(actual, _voigt_matrix(getattr(elastic_modulus.ref, key)))
+
+
+def test_voigt_of_several_tensors_is_a_dict(elastic_modulus, Assert):
+    actual = elastic_modulus.voigt("relaxed_ion, clamped_ion")
+    assert list(actual) == ["relaxed_ion", "clamped_ion"]
+    for key in actual:
+        expected = _voigt_matrix(getattr(elastic_modulus.ref, key))
+        Assert.allclose(actual[key], expected)
+
+
+@pytest.mark.parametrize("selection", ("XX", "clamped_ion(relaxed_ion)"))
+def test_voigt_unknown_selection(elastic_modulus, selection):
+    with pytest.raises(exception.IncorrectUsage):
+        elastic_modulus.voigt(selection)
+
+
+# the clamped-ion modulus enters the database as "electronic", the relaxed-ion one as
+# "total"
+_DATABASE_PREFIX = {"clamped_ion": "electronic", "relaxed_ion": "total"}
+
+
+# maps each method computing a Hill average to its name in the database
+_HILL_AVERAGES = {
+    "bulk_modulus": "bulk_modulus",
+    "shear_modulus": "shear_modulus",
+    "youngs_modulus": "young_modulus",
+    "poisson_ratio": "poisson_ratio",
+}
+
+
+def _expected_hill_average(elastic_modulus, method, key):
+    database_key = f"{_DATABASE_PREFIX[key]}_{_HILL_AVERAGES[method]}"
+    return elastic_modulus.ref.overview_data[database_key]
+
+
+@pytest.mark.parametrize("method", _HILL_AVERAGES)
+@pytest.mark.parametrize(
+    "selection, key",
+    (
+        (None, "relaxed_ion"),
+        ("clamped_ion", "clamped_ion"),
+        ("relaxed_ion", "relaxed_ion"),
+    ),
+)
+def test_hill_average_of_one_tensor_is_a_float(silicon_carbide, method, selection, key):
+    actual = getattr(silicon_carbide, method)(selection)
+    assert isinstance(actual, float)
+    assert np.isclose(actual, _expected_hill_average(silicon_carbide, method, key))
+
+
+@pytest.mark.parametrize("method", _HILL_AVERAGES)
+def test_hill_average_of_several_tensors_is_a_dict(silicon_carbide, method):
+    actual = getattr(silicon_carbide, method)("clamped_ion, relaxed_ion")
+    assert list(actual) == ["clamped_ion", "relaxed_ion"]
+    for key, value in actual.items():
+        assert np.isclose(value, _expected_hill_average(silicon_carbide, method, key))
+
+
+@pytest.mark.parametrize("method", _HILL_AVERAGES)
+def test_hill_average_of_singular_modulus(elastic_modulus, method):
+    # the Reuss bound requires the inverse of the Voigt matrix, which does not exist
+    # for the "dft" data
+    with pytest.raises(exception.DataMismatch, match="relaxed_ion"):
+        getattr(elastic_modulus, method)("relaxed_ion")
+
+
+def _soften_along_z(voigt):
+    # a slab with vacuum along z barely resists a strain along z
+    voigt[2, :] = voigt[:, 2] = 0
+    voigt[2, 2] = 1e-12
+
+
+def _make_shear_unstable(voigt):
+    voigt[3, 3] = -voigt[3, 3]
+
+
+@pytest.mark.parametrize("method", _HILL_AVERAGES)
+@pytest.mark.parametrize("modify", (_soften_along_z, _make_shear_unstable))
+def test_hill_average_of_unstable_modulus(method, modify):
+    # np.linalg.inv succeeds for these matrices, but the Hill average of a modulus
+    # that is not positive definite is meaningless
+    voigt = np.array(showcase._CLAMPED_ION)
+    modify(voigt)
+    tensor = showcase._to_cartesian(voigt)
+    raw_modulus = raw.ElasticModulus(clamped_ion=tensor, relaxed_ion=tensor)
+    elastic_modulus = ElasticModulus.from_data(raw_modulus)
+    with pytest.raises(exception.DataMismatch, match="clamped_ion"):
+        getattr(elastic_modulus, method)("clamped_ion")

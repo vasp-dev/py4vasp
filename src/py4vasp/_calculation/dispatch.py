@@ -152,6 +152,12 @@ def _parse_selections(quantity_name, selection):
         source_name, remaining = _find_source_in_schema(sel, quantity_name)
         grouped.setdefault(source_name, [])
         grouped[source_name].append(remaining)
+    if DEFAULT_SELECTION in grouped and None in grouped:
+        # a part without a source reads the default source, so it joins the part that
+        # names the default explicitly; both results would be stored as "default"
+        unnamed = grouped.pop(None)
+        named = grouped[DEFAULT_SELECTION]
+        grouped[DEFAULT_SELECTION] = [part for part in named + unnamed if part]
     result = []
     for source_name, remaining_list in grouped.items():
         if remaining_list == [[]]:

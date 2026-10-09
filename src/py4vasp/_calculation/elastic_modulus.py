@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._raw.models import ElasticModulusModel
-from py4vasp._util import check, convert, error
+from py4vasp._util import check, convert, error, select
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -46,6 +46,34 @@ class ElasticModulusHandler:
             "clamped_ion": self._raw_elastic_modulus.clamped_ion[:],
             "relaxed_ion": self._raw_elastic_modulus.relaxed_ion[:],
         }
+
+    def to_voigt(self, selection=None) -> np.ndarray | dict:
+        return _unwrap_single_choice(self._voigt_matrices(selection))
+
+    def to_bulk_modulus(self, selection=None) -> float | dict:
+        return self._hill_average(selection, _BULK_MODULUS)
+
+    def to_shear_modulus(self, selection=None) -> float | dict:
+        return self._hill_average(selection, _SHEAR_MODULUS)
+
+    def to_youngs_modulus(self, selection=None) -> float | dict:
+        return self._hill_average(selection, _YOUNGS_MODULUS)
+
+    def to_poisson_ratio(self, selection=None) -> float | dict:
+        return self._hill_average(selection, _POISSON_RATIO)
+
+    def _voigt_matrices(self, selection):
+        return {
+            choice: _voigt_matrix(getattr(self._raw_elastic_modulus, choice)[:])
+            for choice in _parse_tensor_selection(selection)
+        }
+
+    def _hill_average(self, selection, index):
+        averages = {
+            choice: _hill_average_of_voigt_matrix(choice, voigt, index)
+            for choice, voigt in self._voigt_matrices(selection).items()
+        }
+        return _unwrap_single_choice(averages)
 
     def __str__(self) -> str:
         return f"""Elastic modulus (kBar)
@@ -258,11 +286,8 @@ class ElasticModulus:
 
         The elastic modulus is returned in kBar, the unit VASP writes it in and the one
         :py:meth:`print` uses, so the numbers agree with the OUTCAR. Divide by 10 to
-        obtain GPa; 1 GPa = 10 kBar.
-
-        :py:meth:`print` shows the tensor as a 6 x 6 matrix in the order VASP uses,
-        xx, yy, zz, xy, yz, zx. This is not the usual Voigt order, which puts yz
-        fourth, so the fourth diagonal element of the printed table is C_66, not C_44.
+        obtain GPa; 1 GPa = 10 kBar. If you want the elastic constants C_11, C_12, ...
+        in GPa, use :py:meth:`voigt` instead.
 
         Parameters
         ----------
@@ -315,8 +340,289 @@ class ElasticModulus:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection)
 
+    def voigt(self, selection: str | None = None) -> np.ndarray | dict:
+        """Read the elastic constants as 6 x 6 matrices in Voigt notation, in GPa.
+
+        Because stress and strain are symmetric, a pair of Cartesian directions can be
+        replaced by a single Voigt index: 1 = xx, 2 = yy, 3 = zz, 4 = yz, 5 = zx and
+        6 = xy. The element [m, n] of the matrix is the elastic constant C_(m+1)(n+1),
+        so C_11 is [0, 0], C_12 is [0, 1] and C_44 is [3, 3]. Unlike :py:meth:`read`
+        and :py:meth:`print`, which use kBar like VASP, this method returns GPa.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. In the clamped-ion elastic constants the ions stay at their positions
+            when the cell is strained, in the relaxed-ion ones they relax. If VASP
+            produced more than one source of the elastic modulus, select it with e.g.
+            "default(clamped_ion)".
+
+        Returns
+        -------
+        np.ndarray or dict
+            The 6 x 6 Voigt matrix in GPa. If you select both approximations, a
+            dictionary maps "clamped_ion" and "relaxed_ion" to their matrices.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        By default, you obtain the relaxed-ion elastic constants as a 6 x 6 matrix
+
+        >>> voigt = calculation.elastic_modulus.voigt()
+        >>> voigt.shape
+        (6, 6)
+
+        C_11, C_12 and C_44 of this tetragonal crystal in GPa are
+
+        >>> [float(voigt[0, 0]), float(voigt[0, 1]), float(voigt[3, 3])]
+        [297.0, 119.0, 57.0]
+
+        Select the clamped-ion elastic constants instead
+
+        >>> float(calculation.elastic_modulus.voigt("clamped_ion")[0, 0])
+        309.0
+
+        If you select both, a dictionary tells them apart
+
+        >>> sorted(calculation.elastic_modulus.voigt("clamped_ion, relaxed_ion"))
+        ['clamped_ion', 'relaxed_ion']
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_voigt,
+        )
+
+    def bulk_modulus(self, selection: str | None = None) -> float | dict:
+        """Compute the bulk modulus of a polycrystal in GPa.
+
+        The bulk modulus K measures how strongly the material resists a uniform
+        compression. For a single crystal it depends on the direction, so py4vasp
+        averages the elastic constants over all orientations of the crystallites in a
+        polycrystal. It reports the Hill average, the mean of the upper (Voigt) and
+        lower (Reuss) bound.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. If VASP produced more than one source of the elastic modulus, select
+            it with e.g. "default(clamped_ion)".
+
+        Returns
+        -------
+        float or dict
+            The bulk modulus in GPa. If you select both approximations, a dictionary
+            maps "clamped_ion" and "relaxed_ion" to their values.
+
+        Raises
+        ------
+        DataMismatch
+            If the elastic modulus is not positive definite, i.e., the crystal is
+            mechanically unstable or the modulus is (nearly) singular, e.g., for a cell
+            with vacuum. The average over a polycrystal is meaningless in that case.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        The bulk modulus with relaxed ions in GPa is
+
+        >>> round(calculation.elastic_modulus.bulk_modulus(), 1)
+        151.8
+
+        Clamping the ions makes the crystal stiffer. If you select both
+        approximations, you obtain a dictionary
+
+        >>> bulk_modulus = calculation.elastic_modulus.bulk_modulus(
+        ...     "clamped_ion, relaxed_ion"
+        ... )
+        >>> {key: round(value, 1) for key, value in bulk_modulus.items()}
+        {'clamped_ion': 159.6, 'relaxed_ion': 151.8}
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_bulk_modulus,
+        )
+
+    def shear_modulus(self, selection: str | None = None) -> float | dict:
+        """Compute the shear modulus of a polycrystal in GPa.
+
+        The shear modulus G measures how strongly the material resists a change of
+        shape at constant volume. For a single crystal it depends on the direction, so
+        py4vasp averages the elastic constants over all orientations of the
+        crystallites in a polycrystal. It reports the Hill average, the mean of the
+        upper (Voigt) and lower (Reuss) bound.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. If VASP produced more than one source of the elastic modulus, select
+            it with e.g. "default(clamped_ion)".
+
+        Returns
+        -------
+        float or dict
+            The shear modulus in GPa. If you select both approximations, a dictionary
+            maps "clamped_ion" and "relaxed_ion" to their values.
+
+        Raises
+        ------
+        DataMismatch
+            If the elastic modulus is not positive definite, i.e., the crystal is
+            mechanically unstable or the modulus is (nearly) singular, e.g., for a cell
+            with vacuum. The average over a polycrystal is meaningless in that case.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        The shear modulus with relaxed ions in GPa is
+
+        >>> round(calculation.elastic_modulus.shear_modulus(), 1)
+        75.4
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_shear_modulus,
+        )
+
+    def youngs_modulus(self, selection: str | None = None) -> float | dict:
+        """Compute Young's modulus of a polycrystal in GPa.
+
+        Young's modulus E is the ratio of stress to strain when a rod of the material
+        is stretched along its axis and may contract freely in the perpendicular
+        directions. py4vasp obtains it as E = 9KG / (3K + G) from the Hill averages of
+        the bulk modulus K and the shear modulus G, see :py:meth:`bulk_modulus` and
+        :py:meth:`shear_modulus`.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. If VASP produced more than one source of the elastic modulus, select
+            it with e.g. "default(clamped_ion)".
+
+        Returns
+        -------
+        float or dict
+            The Young's modulus in GPa. If you select both approximations, a dictionary
+            maps "clamped_ion" and "relaxed_ion" to their values.
+
+        Raises
+        ------
+        DataMismatch
+            If the elastic modulus is not positive definite, i.e., the crystal is
+            mechanically unstable or the modulus is (nearly) singular, e.g., for a cell
+            with vacuum. The average over a polycrystal is meaningless in that case.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Young's modulus with relaxed ions in GPa is
+
+        >>> round(calculation.elastic_modulus.youngs_modulus(), 1)
+        194.1
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_youngs_modulus,
+        )
+
+    def poisson_ratio(self, selection: str | None = None) -> float | dict:
+        """Compute Poisson's ratio of a polycrystal.
+
+        Poisson's ratio ν is the ratio of the transverse contraction to the axial
+        extension when a rod of the material is stretched along its axis. It has no
+        unit. py4vasp obtains it as ν = (3K - 2G) / (6K + 2G) from the Hill averages of
+        the bulk modulus K and the shear modulus G, see :py:meth:`bulk_modulus` and
+        :py:meth:`shear_modulus`.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. If VASP produced more than one source of the elastic modulus, select
+            it with e.g. "default(clamped_ion)".
+
+        Returns
+        -------
+        float or dict
+            The Poisson's ratio. If you select both approximations, a dictionary
+            maps "clamped_ion" and "relaxed_ion" to their values.
+
+        Raises
+        ------
+        DataMismatch
+            If the elastic modulus is not positive definite, i.e., the crystal is
+            mechanically unstable or the modulus is (nearly) singular, e.g., for a cell
+            with vacuum. The average over a polycrystal is meaningless in that case.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Poisson's ratio with relaxed ions is
+
+        >>> round(calculation.elastic_modulus.poisson_ratio(), 3)
+        0.287
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_poisson_ratio,
+        )
+
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
+
+        Like VASP, py4vasp prints the elastic modulus in kBar as a 6 x 6 matrix in the
+        order xx, yy, zz, xy, yz, zx, so that the numbers agree with the OUTCAR. This
+        is not the usual Voigt order, which puts yz fourth, so the fourth diagonal
+        element of the printed table is C_66, not C_44. Use :py:meth:`voigt` to obtain
+        the matrix in the usual Voigt order and in GPa.
 
         Parameters
         ----------
@@ -363,6 +669,72 @@ class ElasticModulus:
             ElasticModulusHandler.from_data,
             ElasticModulusHandler.to_database,
         )
+
+
+_TENSORS = ("clamped_ion", "relaxed_ion")
+_DEFAULT_TENSOR = "relaxed_ion"
+# position of the moduli in the result of _ElasticTensor.get_VRH
+_BULK_MODULUS, _SHEAR_MODULUS, _YOUNGS_MODULUS, _POISSON_RATIO = 0, 1, 2, 3
+
+
+def _unwrap_single_choice(results):
+    # like energy.to_numpy, a single selection returns its value and only several
+    # selections need a dictionary to tell them apart
+    if len(results) == 1:
+        return next(iter(results.values()))
+    return results
+
+
+def _parse_tensor_selection(selection):
+    if not selection:
+        return (_DEFAULT_TENSOR,)
+    choices = []
+    for choice in select.Tree.from_selection(selection).selections():
+        parts = [str(part) for part in choice]
+        if len(parts) != 1 or parts[0] not in _TENSORS:
+            message = (
+                f"The selection '{select.selections_to_string([choice])}' is not one "
+                f"of the elastic moduli {', '.join(_TENSORS)}. Select one or both of "
+                "them, separated by a comma."
+            )
+            raise exception.IncorrectUsage(message)
+        choices.append(parts[0])
+    return tuple(choices)
+
+
+# symmetry_reduce orders the pairs of directions as VASP does, xx, yy, zz, xy, yz, zx;
+# this permutation brings them into the standard Voigt order xx, yy, zz, yz, zx, xy
+_VASP_TO_VOIGT = [0, 1, 2, 4, 5, 3]
+
+
+def _voigt_matrix(tensor):
+    """Convert the rank-4 tensor in kBar into the 6 x 6 Voigt matrix in GPa."""
+    compact_tensor = symmetry_reduce(symmetry_reduce(np.asarray(tensor)).T).T
+    voigt = compact_tensor[np.ix_(_VASP_TO_VOIGT, _VASP_TO_VOIGT)]
+    return voigt * convert.KBAR_TO_GPA
+
+
+# the smallest eigenvalue of a stable Voigt matrix must exceed this fraction of the
+# largest one; below it, the Reuss bound is dominated by the inverse of a near zero
+_STABILITY_TOLERANCE = 1e-6
+
+
+def _hill_average_of_voigt_matrix(choice, voigt, index):
+    if not _is_positive_definite(voigt):
+        message = (
+            f"The {choice} elastic modulus is not positive definite, so the averages "
+            "over a polycrystal are meaningless. Either the crystal is mechanically "
+            "unstable, or the elastic modulus is (nearly) singular, e.g., because the "
+            "cell contains vacuum in one direction or the calculation did not compute "
+            "all elements of the tensor. Check the eigenvalues of the Voigt matrix."
+        )
+        raise exception.DataMismatch(message)
+    return float(_ElasticTensor.from_array(voigt).get_VRH()[index])
+
+
+def _is_positive_definite(voigt):
+    eigenvalues = np.linalg.eigvalsh(voigt)
+    return eigenvalues[0] > _STABILITY_TOLERANCE * abs(eigenvalues[-1])
 
 
 def _elastic_modulus_string(tensor, label):
