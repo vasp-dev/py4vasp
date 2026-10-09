@@ -59,14 +59,11 @@ def test_convert_graph_to_csv():
     df.to_csv.assert_called_once_with(full_path, index=False)
 
 
-def test_converting_graph_to_csv_expands_home(tmp_path, monkeypatch):
-    home = tmp_path / "home"
-    home.mkdir()
-    monkeypatch.setenv("HOME", str(home))
+def test_converting_graph_to_csv_expands_home(fake_home):
     example = ExampleGraph()
     example.to_csv(filename="~/example.csv")
     df = GRAPH.to_frame.return_value
-    df.to_csv.assert_called_once_with(home / "example.csv", index=False)
+    df.to_csv.assert_called_once_with(fake_home / "example.csv", index=False)
 
 
 def test_converting_graph_to_csv_rejects_missing_directory():
@@ -116,13 +113,10 @@ def test_converting_graph_to_image_with_absolute_filename(tmp_path):
     GRAPH.to_image.assert_called_once_with(full_path)
 
 
-def test_converting_graph_to_image_expands_home(tmp_path, monkeypatch):
-    home = tmp_path / "home"
-    home.mkdir()
-    monkeypatch.setenv("HOME", str(home))
+def test_converting_graph_to_image_expands_home(fake_home):
     example = ExampleGraph()
     example.to_image(filename="~/example.png")
-    GRAPH.to_image.assert_called_once_with(home / "example.png")
+    GRAPH.to_image.assert_called_once_with(fake_home / "example.png")
 
 
 @pytest.mark.parametrize("method", ["to_image", "to_csv"])

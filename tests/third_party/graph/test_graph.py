@@ -1348,12 +1348,11 @@ def test_to_image_accepts_uppercase_extension(parabola):
         to_plotly.return_value.write_image.assert_called_once_with(expected)
 
 
-def test_to_image_expands_home(parabola, tmp_path, monkeypatch):
-    monkeypatch.setenv("HOME", str(tmp_path))
+def test_to_image_expands_home(parabola, fake_home):
     graph = Graph(parabola)
     with patch.object(Graph, "to_plotly") as to_plotly:
         graph.to_image("~/graph.png")
-        expected = tmp_path / "graph.png"
+        expected = fake_home / "graph.png"
         to_plotly.return_value.write_image.assert_called_once_with(expected)
 
 
@@ -1365,11 +1364,10 @@ def test_to_image_rejects_missing_directory(parabola, tmp_path):
         to_plotly.assert_not_called()
 
 
-def test_to_csv_expands_home(parabola, tmp_path, monkeypatch):
+def test_to_csv_expands_home(parabola, fake_home):
     pytest.importorskip("pandas")
-    monkeypatch.setenv("HOME", str(tmp_path))
     Graph(parabola).to_csv("~/graph.csv")
-    assert (tmp_path / "graph.csv").exists()
+    assert (fake_home / "graph.csv").exists()
 
 
 def test_to_csv_rejects_missing_directory(parabola, tmp_path):
@@ -1388,10 +1386,9 @@ def test_resolve_output_path_keeps_absolute_path(tmp_path):
     assert actual == filename
 
 
-def test_resolve_output_path_expands_home(tmp_path, monkeypatch):
-    monkeypatch.setenv("HOME", str(tmp_path))
+def test_resolve_output_path_expands_home(tmp_path, fake_home):
     actual = resolve_output_path("~/image.png", tmp_path / "other")
-    assert actual == tmp_path / "image.png"
+    assert actual == fake_home / "image.png"
 
 
 def test_resolve_output_path_rejects_unknown_user(tmp_path):
