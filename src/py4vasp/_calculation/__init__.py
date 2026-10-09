@@ -767,7 +767,10 @@ class DefaultCalculationFactory:
 
     *How do I get vibrational frequencies from the force constants?* The force
     constants diagonalize into ħω in eV once the masses enter; multiply by 8065.610420
-    for cm⁻¹. ``to_molden`` writes the same modes for a molecular viewer
+    for cm⁻¹. ``to_molden`` writes the same modes for a molecular viewer. To study an
+    isotope without rerunning VASP, pass the changed masses, e.g.
+    ``frequencies(masses={"O": 17.999})`` for ¹⁸O or ``{"4": 17.999}`` for the fourth
+    atom only
 
     >>> frequencies = calculation.force_constant.frequencies()
     >>> round(float(frequencies[-1].real * 8065.610420))

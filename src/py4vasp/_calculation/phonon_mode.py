@@ -147,8 +147,8 @@ class PhononModeHandler:
         masses : Mapping[str, float] | None
             A dictionary with the mass in atomic mass units of only the atoms it
             replaces, keyed by element, by the index of a single atom counted from 1,
-            or by a range of atoms, e.g. ``{"O": 17.999}``, ``{"4": 17.999}`` or
-            ``{"4:5": 17.999}``. Defaults to the standard atomic weight of the
+            or by a range of atoms that includes both ends, e.g. ``{"O": 17.999}``,
+            ``{"4": 17.999}`` or ``{"4:5": 17.999}``. Defaults to the standard atomic weight of the
             element.
 
         Returns
@@ -182,8 +182,8 @@ class PhononModeHandler:
         masses : Mapping[str, float] | None
             A dictionary with the mass in atomic mass units of only the atoms it
             replaces, keyed by element, by the index of a single atom counted from 1,
-            or by a range of atoms, e.g. ``{"O": 17.999}``, ``{"4": 17.999}`` or
-            ``{"4:5": 17.999}``. Defaults to the standard atomic weight of the
+            or by a range of atoms that includes both ends, e.g. ``{"O": 17.999}``,
+            ``{"4": 17.999}`` or ``{"4:5": 17.999}``. Defaults to the standard atomic weight of the
             element.
         minimum_frequency : float
             The frequency ħω in eV below which a mode counts as a translation.
@@ -763,9 +763,9 @@ class PhononMode(view.Mixin):
             which is what the double well of an unstable mode requires.
         masses : Mapping[str, float] | None
             A dictionary that replaces the mass in atomic mass units of only the atoms
-            it names. Its keys follow the selection of the DOS: an element, the index
-            of a single atom counted from 1, or a range of atoms such as ``"1:3"``.
-            For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            it names. Each key names atoms like a single selection of the DOS: an
+            element, the index of one atom counted from 1, or a range such as
+            ``"1:3"`` that includes both ends. For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
             only the fourth atom. A single atom takes precedence over a range and a
             range over an element, whatever the order of the dictionary. By default
             py4vasp uses the standard atomic weight of the element listed in
@@ -914,9 +914,9 @@ class PhononMode(view.Mixin):
             mode of the zone centre.
         masses : Mapping[str, float] | None
             A dictionary that replaces the mass in atomic mass units of only the atoms
-            it names. Its keys follow the selection of the DOS: an element, the index
-            of a single atom counted from 1, or a range of atoms such as ``"1:3"``.
-            For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            it names. Each key names atoms like a single selection of the DOS: an
+            element, the index of one atom counted from 1, or a range such as
+            ``"1:3"`` that includes both ends. For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
             only the fourth atom. A single atom takes precedence over a range and a
             range over an element, whatever the order of the dictionary. By default
             py4vasp uses the standard atomic weight of the element listed in

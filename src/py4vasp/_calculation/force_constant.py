@@ -381,9 +381,9 @@ class ForceConstant:
         ----------
         masses : Mapping[str, float] | None
             A dictionary that replaces the mass in atomic mass units of only the atoms
-            it names. Its keys follow the selection of the DOS: an element, the index
-            of a single atom counted from 1, or a range of atoms such as ``"1:3"``.
-            For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            it names. Each key names atoms like a single selection of the DOS: an
+            element, the index of one atom counted from 1, or a range such as
+            ``"1:3"`` that includes both ends. For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
             only the fourth atom. A single atom takes precedence over a range and a
             range over an element, whatever the order of the dictionary. Every other
             atom keeps the default, the standard atomic weight of its element listed in
@@ -430,10 +430,10 @@ class ForceConstant:
         True
 
         To replace the mass of individual atoms, key them by their index counted from 1
-        as in the selection of the DOS, or by a range such as ``"4:5"``. A single atom
-        takes precedence over its element, so this keeps the fourth atom ¹⁶O and
-        replaces the other oxygen atoms; with fewer heavy atoms the frequencies drop
-        less
+        as in the selection of the DOS, or by a range such as ``"4:5"`` that includes
+        both ends. A single atom takes precedence over its element, so this keeps the
+        fourth atom ¹⁶O and replaces the other oxygen atoms; with fewer heavy atoms the
+        frequencies drop less
 
         >>> mixed = calculation.force_constant.frequencies({"O": 17.999, "4": 15.999})
         >>> bool(np.all(heavy_oxygen[3:].real < mixed[3:].real))
@@ -461,9 +461,9 @@ class ForceConstant:
         ----------
         masses : Mapping[str, float] | None
             A dictionary that replaces the mass in atomic mass units of only the atoms
-            it names. Its keys follow the selection of the DOS: an element, the index
-            of a single atom counted from 1, or a range of atoms such as ``"1:3"``.
-            For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            it names. Each key names atoms like a single selection of the DOS: an
+            element, the index of one atom counted from 1, or a range such as
+            ``"1:3"`` that includes both ends. For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
             only the fourth atom. A single atom takes precedence over a range and a
             range over an element, whatever the order of the dictionary. Every other
             atom keeps the default, the standard atomic weight of its element listed in
@@ -531,9 +531,9 @@ class ForceConstant:
         ----------
         masses : Mapping[str, float] | None
             A dictionary that replaces the mass in atomic mass units of only the atoms
-            it names. Its keys follow the selection of the DOS: an element, the index
-            of a single atom counted from 1, or a range of atoms such as ``"1:3"``.
-            For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            it names. Each key names atoms like a single selection of the DOS: an
+            element, the index of one atom counted from 1, or a range such as
+            ``"1:3"`` that includes both ends. For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
             only the fourth atom. A single atom takes precedence over a range and a
             range over an element, whatever the order of the dictionary. Every other
             atom keeps the default, the standard atomic weight of its element listed in

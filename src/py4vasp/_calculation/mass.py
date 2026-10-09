@@ -16,12 +16,13 @@ class Mass:
     with these values to a few parts in ten thousand unless you overwrite it, for
     example to study an isotope.
 
-    To replace the mass of some atoms, pass a dictionary whose keys follow the
-    selection of the DOS: an element, e.g. ``masses={"O": 17.999}`` for every oxygen,
-    the index of a single atom counted from 1, e.g. ``masses={"4": 17.999}``, or a
-    range of atoms such as ``"4:5"``. A single atom takes precedence over a range and
-    a range over an element, whatever the order of the dictionary. Every atom you do
-    not name keeps the standard atomic weight of its element.
+    To replace the mass of some atoms, pass a dictionary whose keys each name atoms
+    like a single selection of the DOS: an element, e.g. ``masses={"O": 17.999}`` for
+    every oxygen, the index of one atom counted from 1, e.g. ``masses={"4": 17.999}``,
+    or a range such as ``"4:5"`` that includes both ends. A single atom takes
+    precedence over a range and a range over an element, whatever the order of the
+    dictionary. Every atom you do not name keeps the standard atomic weight of its
+    element.
 
     Examples
     --------
