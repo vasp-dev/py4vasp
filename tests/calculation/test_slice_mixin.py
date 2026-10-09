@@ -198,3 +198,18 @@ def test_different_default():
     assert different_default.steps() == slice(None)
     assert different_default[-1].steps() == -1
     assert different_default[2:6].steps() == slice(2, 6)
+
+
+def test_no_docstring_shows_the_step_placeholder():
+    # the shared examples are formatted with the name of a step; a hand-written copy
+    # of them must not keep the placeholder
+    import py4vasp
+
+    calculation = py4vasp.Calculation.from_path(".")
+    leaking = [
+        name
+        for name in dir(calculation)
+        if not name.startswith("_")
+        and "{step}" in (type(getattr(calculation, name)).__doc__ or "")
+    ]
+    assert not leaking
