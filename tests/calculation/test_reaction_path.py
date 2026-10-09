@@ -208,7 +208,15 @@ def test_extra_points_do_not_change_lambda(curve, Assert):
 
 @pytest.mark.parametrize(
     "number_points, extra_points, tolerance",
-    [(1, 0, 1e-3), (102, 0, 1e-3), (6, -1, 1e-3), (6, 0, 0.0), (6, 0, -1e-3)],
+    [
+        (1, 0, 1e-3),
+        (102, 0, 1e-3),
+        (6, -1, 1e-3),
+        (6, 0, 0.0),
+        (6, 0, -1e-3),
+        (6.0, 0, 1e-3),
+        (6, 1.5, 1e-3),
+    ],
 )
 def test_discretize_raises_for_invalid_arguments(
     line, number_points, extra_points, tolerance
@@ -220,8 +228,26 @@ def test_discretize_raises_for_invalid_arguments(
 def test_discretize_raises_if_tolerance_cannot_be_met():
     # the steps are too coarse for any spacing to be met within the tolerance
     coarse = Path(["x"], [[1, 2]], [[0.0], [1.0], [3.0]])
-    with pytest.raises(exception.IncorrectUsage):
+    with pytest.raises(exception.IncorrectUsage, match="increase the tolerance"):
         coarse.discretize(3, tolerance=0.1)
+
+
+def test_discretize_raises_if_tolerance_not_below_spacing(line):
+    # the spacing of 6 points along the line is 0.45 Å, so the tolerance must be smaller
+    with pytest.raises(exception.IncorrectUsage, match="decrease the tolerance"):
+        line.discretize(6, tolerance=0.5)
+
+
+def test_discretize_raises_for_path_without_length():
+    resting = Path(["x"], [[1, 2]], [[1.0], [1.0], [1.0]])
+    with pytest.raises(exception.IncorrectUsage, match="length"):
+        resting.discretize(2, tolerance=1e-3)
+
+
+def test_discretize_accepts_numpy_integers(line):
+    assert (
+        len(line.discretize(np.int64(6), extra_points=np.int32(1), tolerance=1e-3)) == 8
+    )
 
 
 def test_to_IRCCAR_format(curve):

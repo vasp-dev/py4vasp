@@ -7,6 +7,7 @@ import collections.abc
 import copy
 import dataclasses
 import itertools
+import numbers
 
 import numpy as np
 
@@ -292,6 +293,7 @@ class ReactionPathHandler:
                 len(self.coordinates), number_points, extra_points, tolerance
             )
             increment = _path_length(self.coordinates) / (number_points - 1)
+            _raise_if_spacing_invalid(increment, tolerance)
             indices = None
             while indices is None:
                 _raise_if_tolerance_missed(increment, tolerance)
@@ -488,6 +490,13 @@ def _raise_if_gap_too_large(first, second, max_gap):
 
 
 def _raise_if_invalid(number_steps, number_points, extra_points, tolerance):
+    for name, value in (
+        ("number of points", number_points),
+        ("number of extra points", extra_points),
+    ):
+        if not isinstance(value, numbers.Integral):
+            message = f"The {name} must be an integer, but it is {value!r}."
+            raise exception.IncorrectUsage(message)
     if not 2 <= number_points <= number_steps:
         message = f"The number of points must be at least 2 and at most the number of steps of the path ({number_steps}), but it is {number_points}."
         raise exception.IncorrectUsage(message)
@@ -496,6 +505,15 @@ def _raise_if_invalid(number_steps, number_points, extra_points, tolerance):
         raise exception.IncorrectUsage(message)
     if tolerance <= 0:
         message = f"The tolerance must be positive, but it is {tolerance}."
+        raise exception.IncorrectUsage(message)
+
+
+def _raise_if_spacing_invalid(increment, tolerance):
+    if increment == 0:
+        message = "The path has no length, because all its steps are the same point. Please check that the selected pairs of atoms change along the run."
+        raise exception.IncorrectUsage(message)
+    if tolerance >= increment:
+        message = f"The tolerance of {tolerance} Å is not smaller than the spacing of {increment:.4g} Å between the points, so it cannot tell the points apart. Please decrease the tolerance or select fewer points."
         raise exception.IncorrectUsage(message)
 
 
