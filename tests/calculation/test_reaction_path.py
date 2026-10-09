@@ -516,3 +516,12 @@ def test_contains_index_count(path):
     assert there_and_back.index(point, -3, -1) == 5
     with pytest.raises(ValueError):
         path.index([9.0, 9.0, 9.0])
+
+
+def test_equality(path):
+    same = Path(list(path.labels), path.atom_pairs.tolist(), path.coordinates.copy())
+    assert path == same
+    assert path != path[::-1]
+    assert path != Path(path.labels, path.atom_pairs, path.coordinates, 50.0)
+    assert path != Path(["a", "b", "c"], path.atom_pairs, path.coordinates)
+    assert path != "not a path"

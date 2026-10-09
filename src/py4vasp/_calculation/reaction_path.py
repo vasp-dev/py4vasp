@@ -36,7 +36,8 @@ _SHRINK_INCREMENT = 0.99
 class ReactionPathHandler:
     """Computes reaction paths from a single raw.Structure object."""
 
-    @dataclasses.dataclass
+    # the generated __eq__ would compare the arrays elementwise, so define our own
+    @dataclasses.dataclass(eq=False)
     class Path(graph.Mixin, collections.abc.Sequence):
         """A path through the space of interatomic distances.
 
@@ -90,6 +91,18 @@ class ReactionPathHandler:
             if self.coordinates.ndim != 2 or self.coordinates.shape[1] != number_pairs:
                 message = f"The coordinates must have the shape (steps, {number_pairs}), one distance for each of the {number_pairs} labels at every step, but they have the shape {self.coordinates.shape}."
                 raise exception.IncorrectUsage(message)
+
+        def __eq__(self, other):
+            if not isinstance(other, type(self)):
+                return NotImplemented
+            return (
+                self.labels == other.labels
+                and np.array_equal(self.atom_pairs, other.atom_pairs)
+                and np.array_equal(self.coordinates, other.coordinates)
+                and self.lambda_ == other.lambda_
+            )
+
+        __hash__ = None
 
         def __add__(self, other):
             """Join two paths with the default checks of :meth:`join`.
