@@ -459,8 +459,6 @@ _LEGACY_SELECTION = {
 # so remove it from these lists together with the fix.
 _MISSING_SELECTION = frozenset(
     {
-        "CurrentDensity.read",
-        "CurrentDensity.to_dict",
         "Density.read",
         "Density.to_dict",
         "Density.to_numpy",

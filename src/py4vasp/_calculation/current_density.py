@@ -9,7 +9,6 @@ from py4vasp._calculation import _stoichiometry
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
-    is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -195,15 +194,6 @@ class CurrentDensity:
     def _handler_factory(self, raw):
         return CurrentDensityHandler.from_data(raw)
 
-    def _is_available(self, raw_data, selection=None, method=None) -> bool:
-        # "nmr" is the only source and the quantity defines no default one, so the
-        # methods taking a selection are the only ones that can reach the data;
-        # read and __str__ request the (nonexistent) default source and fail. Drop
-        # this restriction once current_density implements a default selection.
-        if method not in ("to_contour", "to_quiver"):
-            return False
-        return is_available_raw(self._quantity_name, raw_data, selection=selection)
-
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
 
@@ -244,25 +234,40 @@ class CurrentDensity:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the current density and structural information into a Python dictionary.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. VASP writes the current density of an NMR
+            calculation to the ``"nmr"`` source, and there is no default one, so pass
+            ``"nmr"``.
 
         Returns
         -------
         dict
             Contains all available current density data as well as structural information.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> current_density = calculation.current_density.read("nmr")
+        >>> current_density["structure"]["elements"]
+        ['Fe', 'Fe', 'Fe', 'O', 'O', 'O', 'O']
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             CurrentDensityHandler.to_dict,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_contour(
