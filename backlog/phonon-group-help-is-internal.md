@@ -11,8 +11,8 @@ Found alongside, in `phonon_mode.py`:
 
 - the "See Also" section names the private path
   `py4vasp._calculation.phonon_band.PhononBand` (`phonon_mode.py:429-431`), which a user
-  cannot type and which breaks if the module moves; refer to
-  `py4vasp.calculation.phonon.band` instead;
+  cannot type. Every "See Also" in `_calculation/` does the same, presumably so Sphinx
+  resolves the class, so this is a convention to change everywhere or not at all;
 - the `dispersion` source of `phonon.mode` is not documented anywhere a user reads, yet
   the missing-data message now recommends `selection="dispersion"`.
 

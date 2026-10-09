@@ -30,6 +30,7 @@ Things a helper should settle that the two methods leave to the user:
 - **Length of the tag.** VASP counts the elements of a tag in a
   `character(len=32767)` work buffer (`incar_reader.F:313`, used by
   `count_elements(INCAR, "PHON_BORN_CHARGES")` in `phonon.F:220`). `to_INCAR` writes
-  about 120 characters per ion, so somewhere around 270 ions in the primitive cell the
+  about 126 characters per ion (with the wider gap between the rows of each tensor), so
+  somewhere around 260 ions in the primitive cell the
   count may be truncated and VASP stops with "not divisible by 9". Not tested against
   VASP; a helper could warn, or `to_INCAR` could write fewer digits.

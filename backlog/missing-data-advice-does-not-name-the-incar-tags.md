@@ -28,7 +28,8 @@ not only tags, so the declaration should allow free text.
 - A mistyped source (`mode.read("dispersoin")`) raises "The selection 'dispersoin' is not a
   source of the quantity 'phonon_mode' and the method takes no further selections. Use
   `selections` or `is_available` …". It could list the sources or suggest the closest one;
-  "takes no further selections" is jargon. See also [cli-subcommand-suggestions].
+  "takes no further selections" is jargon. `_util/suggest.py::did_you_mean`, which the CLI
+  uses for mistyped commands and formats, would give the suggestion.
 - A misspelled projection selection (`band.plot("Sr(q)")`, or an element not in the
   structure such as `"Ba"`) lists the valid selections, which is enough, but then advises
   checking the INCAR file and the VASP version, which is a red herring for a typo.
