@@ -484,39 +484,51 @@ class PartialDensity(view.Mixin):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection)
 
-    def grid(self):
+    def grid(self, selection: str | None = None):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.grid,
         )
 
-    def bands(self):
+    def bands(self, selection: str | None = None):
         """Return the band array listing the contributing bands.
 
         [2,4,5] means that the 2nd, 4th, and 5th bands are contributing while
         [0] means that all bands are contributing.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.bands,
         )
 
-    def kpoints(self):
+    def kpoints(self, selection: str | None = None):
         """Return the k-points array listing the contributing k-points.
 
         [2,4,5] means that the 2nd, 4th, and 5th k-points are contributing with
         all weights = 1. [0] means that all k-points are contributing.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.kpoints,
         )

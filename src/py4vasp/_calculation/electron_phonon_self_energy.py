@@ -273,8 +273,14 @@ class ElectronPhononSelfEnergy(abc.Sequence):
             ElectronPhononSelfEnergyHandler.selections,
         )
 
-    def chemical_potential_mu_tag(self):
+    def chemical_potential_mu_tag(self, selection: str | None = None):
         """Return the chemical potential tag and values.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -286,7 +292,7 @@ class ElectronPhononSelfEnergy(abc.Sequence):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElectronPhononSelfEnergyHandler.chemical_potential_mu_tag,
         )
@@ -308,16 +314,27 @@ class ElectronPhononSelfEnergy(abc.Sequence):
         with self._source.access(self._quantity_name) as raw:
             return self._handler_factory(raw).select(selection)
 
-    def eigenvalues(self):
+    def eigenvalues(self, selection: str | None = None):
         """Return the eigenvalues from the raw data.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
         np.ndarray
             Array containing eigenvalues for all k-points, bands, and spin channels.
         """
-        with self._source.access(self._quantity_name) as raw:
-            return self._handler_factory(raw).eigenvalues()
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElectronPhononSelfEnergyHandler.eigenvalues,
+        )
 
     def __getitem__(self, key):
         with self._source.access(self._quantity_name) as raw:

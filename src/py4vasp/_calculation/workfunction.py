@@ -209,8 +209,14 @@ class Workfunction(graph.Mixin):
         """Public alias for read(). Check that method for examples and optional arguments."""
         return self.read(selection)
 
-    def to_graph(self) -> graph.Graph:
+    def to_graph(self, selection: str | None = None) -> graph.Graph:
         """Plot the average potential along the lattice vector selected by IDIPOL.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -235,7 +241,7 @@ class Workfunction(graph.Mixin):
         return merge_graphs(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             WorkfunctionHandler.to_graph,
         )

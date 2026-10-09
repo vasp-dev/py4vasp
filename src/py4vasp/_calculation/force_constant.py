@@ -302,12 +302,18 @@ class ForceConstant:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection)
 
-    def eigenvectors(self):
+    def eigenvectors(self, selection: str | None = None):
         """Compute the eigenvectors of the force constant matrix.
 
         The eigenvectors are the ones of the force constants themselves; the masses of
         the atoms are not taken into account, so these are not the normal modes of the
         system. :py:meth:`eigenvalues` returns the corresponding eigenvalues.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -319,7 +325,7 @@ class ForceConstant:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             ForceConstantHandler.from_data,
             ForceConstantHandler.eigenvectors,
         )
@@ -514,7 +520,7 @@ class ForceConstant:
             masses,
         )
 
-    def to_molden(self, masses=None) -> str:
+    def to_molden(self, masses=None, selection: str | None = None) -> str:
         """Convert the normal modes into molden format to animate them in a viewer.
 
         The file lists the frequency of every mode in cm⁻¹, the positions of the atoms
@@ -529,6 +535,9 @@ class ForceConstant:
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
         masses : Sequence[float] | Mapping[str, float] | None
             The mass of every atom in atomic mass units, in the order of the structure,
             or a dictionary from element to mass that replaces the mass of only the
@@ -572,7 +581,7 @@ class ForceConstant:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             ForceConstantHandler.from_data,
             ForceConstantHandler.to_molden,
             masses,

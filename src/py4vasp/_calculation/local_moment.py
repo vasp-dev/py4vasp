@@ -524,8 +524,14 @@ class LocalMoment(view.Mixin):
             supercell,
         )
 
-    def projected_charge(self):
+    def projected_charge(self, selection: str | None = None):
         """Read the orbital- and site-projected charges of the selected steps.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -558,7 +564,7 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.projected_charge,
         )
@@ -628,8 +634,14 @@ class LocalMoment(view.Mixin):
             LocalMomentHandler.projected_magnetic,
         )
 
-    def charge(self):
+    def charge(self, selection: str | None = None):
         """Read the site-projected charges of the selected steps.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -669,7 +681,7 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.charge,
         )
@@ -763,12 +775,19 @@ class LocalMoment(view.Mixin):
         sources = list(raw_module.selections(self._quantity_name))
         return {self._quantity_name: sources, **handler_selections}
 
-    def number_steps(self) -> int:
-        """Return the number of local moments in the trajectory."""
+    def number_steps(self, selection: str | None = None) -> int:
+        """Return the number of local moments in the trajectory.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.number_steps,
         )

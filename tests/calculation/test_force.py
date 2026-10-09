@@ -66,6 +66,14 @@ def test_plot(forces, steps, supercell, Assert):
     assert arrows.radius == 0.2
 
 
+def test_plot_and_number_steps_default_selection(Sr2TiO4, Assert):
+    view = Sr2TiO4.to_view(2, selection="default")
+    Assert.same_structure_view(view, Sr2TiO4.ref.structure.plot(2))
+    assert Sr2TiO4.number_steps("default") == Sr2TiO4.number_steps()
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.number_steps("unknown_source")
+
+
 def test_incorrect_access(Sr2TiO4):
     out_of_bounds = 999
     with pytest.raises(exception.IncorrectUsage):

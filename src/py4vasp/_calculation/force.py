@@ -301,7 +301,7 @@ class Force(view.Mixin):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection)
 
-    def to_view(self, supercell=None) -> view.View:
+    def to_view(self, supercell=None, selection: str | None = None) -> view.View:
         """Visualize the forces showing arrows at the atoms.
 
         This method adds arrows to the atoms in the structure sized according to the
@@ -310,6 +310,9 @@ class Force(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
@@ -360,18 +363,25 @@ class Force(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ForceHandler.to_view,
             supercell,
         )
 
-    def number_steps(self) -> int:
-        """Return the number of forces in the trajectory."""
+    def number_steps(self, selection: str | None = None) -> int:
+        """Return the number of forces in the trajectory.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ForceHandler.number_steps,
         )

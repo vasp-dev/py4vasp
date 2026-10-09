@@ -203,9 +203,15 @@ class ElectronPhononChemicalPotential:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection)
 
-    def mu_tag(self) -> Tuple[str, NDArray]:
+    def mu_tag(self, selection: str | None = None) -> Tuple[str, NDArray]:
         """
         Get the INCAR tag and value used to set the carrier density or chemical potential.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -221,16 +227,22 @@ class ElectronPhononChemicalPotential:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElectronPhononChemicalPotentialHandler.mu_tag,
         )
 
-    def label(self) -> str:
+    def label(self, selection: str | None = None) -> str:
         """
         Get a descriptive label for the electron-phonon chemical potential data.
 
         This can be useful for plotting or identifying the type of data.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -240,7 +252,7 @@ class ElectronPhononChemicalPotential:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElectronPhononChemicalPotentialHandler.label,
         )

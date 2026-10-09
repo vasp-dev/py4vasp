@@ -270,12 +270,19 @@ class Stress:
             StressHandler.to_dict,
         )
 
-    def number_steps(self) -> int:
-        """Return the number of stress components in the trajectory."""
+    def number_steps(self, selection: str | None = None) -> int:
+        """Return the number of stress components in the trajectory.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StressHandler.number_steps,
         )
