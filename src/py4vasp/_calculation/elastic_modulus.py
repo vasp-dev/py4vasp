@@ -67,7 +67,7 @@ class ElasticModulusHandler:
 
     def _hill_average(self, selection, index):
         return {
-            choice: float(_ElasticTensor.from_array(voigt).get_VRH()[index])
+            choice: _hill_average_of_voigt_matrix(choice, voigt, index)
             for choice, voigt in self.to_voigt(selection).items()
         }
 
@@ -664,6 +664,19 @@ def _voigt_matrix(tensor):
     compact_tensor = symmetry_reduce(symmetry_reduce(np.asarray(tensor)).T).T
     voigt = compact_tensor[np.ix_(_VASP_TO_VOIGT, _VASP_TO_VOIGT)]
     return voigt * convert.KBAR_TO_GPA
+
+
+def _hill_average_of_voigt_matrix(choice, voigt, index):
+    try:
+        return float(_ElasticTensor.from_array(voigt).get_VRH()[index])
+    except np.linalg.LinAlgError as error:
+        message = (
+            f"The {choice} elastic modulus is singular, so py4vasp cannot invert it to "
+            "compute the Reuss bound of the Hill average. A singular elastic modulus "
+            "occurs, e.g., if the cell contains vacuum in one direction or if the "
+            "calculation did not compute all elements of the tensor."
+        )
+        raise exception.DataMismatch(message) from error
 
 
 def _elastic_modulus_string(tensor, label):

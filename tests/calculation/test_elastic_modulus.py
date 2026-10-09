@@ -292,3 +292,11 @@ def test_hill_average_with_selection(silicon_carbide, method):
     assert list(actual) == ["relaxed_ion"]
     expected = silicon_carbide.ref.overview_data[f"total_{_HILL_AVERAGES[method]}"]
     assert np.isclose(actual["relaxed_ion"], expected)
+
+
+@pytest.mark.parametrize("method", _HILL_AVERAGES)
+def test_hill_average_of_singular_modulus(elastic_modulus, method):
+    # the Reuss bound requires the inverse of the Voigt matrix, which does not exist
+    # for the "dft" data
+    with pytest.raises(exception.DataMismatch, match="relaxed_ion"):
+        getattr(elastic_modulus, method)("relaxed_ion")
