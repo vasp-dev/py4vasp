@@ -322,3 +322,8 @@ def test_to_INCAR_dispatcher(dft_tensor, selection, tensor):
 def parse_INCAR_values(incar):
     _, values = incar.split("=")
     return np.array(values.replace("\\", " ").split(), dtype=float)
+
+
+def test_to_INCAR_names_the_tag_that_enables_it():
+    # VASP ignores PHON_DIELECTRIC unless LPHON_POLAR is set
+    assert "LPHON_POLAR" in DielectricTensor.to_INCAR.__doc__

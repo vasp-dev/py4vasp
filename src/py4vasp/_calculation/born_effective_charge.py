@@ -244,13 +244,16 @@ class BornEffectiveCharge:
         Copy the returned text into the INCAR file of that calculation together with
         :py:meth:`~py4vasp._calculation.dielectric_tensor.DielectricTensor.to_INCAR`.
         The text ends with a newline, so you can concatenate it with other INCAR tags.
+        VASP uses the tag only if the INCAR also sets ``LPHON_POLAR = .TRUE.``;
+        without it the phonons are computed without the dipole-dipole correction.
 
         Each line holds the 3x3 tensor of one ion, in the order of the ions in the
         POSCAR file of the linear-response calculation. Within a line, the nine numbers
         are the three rows of the tensor, separated by a wider gap, with the electric
         field as row index and the atomic displacement as column index, which is the
-        orientation VASP reads. You do not need to transpose anything yourself. Note that this is the transpose of the
-        array returned by :py:meth:`read`, which stores the displacement first.
+        orientation VASP reads. You do not need to transpose anything yourself. Note
+        that this is the transpose of the array returned by :py:meth:`read`, which
+        stores the displacement first.
 
         VASP expects the charges of the atoms in the primitive cell of the phonon
         calculation and stops if the number of ions does not match. So compute the

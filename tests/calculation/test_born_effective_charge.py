@@ -175,3 +175,8 @@ def test_read_dispatcher(dispatcher, Sr2TiO4, selection, Assert):
 def test_read_unknown_selection(dispatcher):
     with pytest.raises(exception.IncorrectUsage):
         dispatcher.read("relaxed_ion")
+
+
+def test_to_INCAR_names_the_tag_that_enables_it():
+    # VASP ignores PHON_BORN_CHARGES unless LPHON_POLAR is set
+    assert "LPHON_POLAR" in BornEffectiveCharge.to_INCAR.__doc__
