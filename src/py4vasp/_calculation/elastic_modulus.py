@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._raw.models import ElasticModulusModel
-from py4vasp._util import check, convert, error
+from py4vasp._util import check, convert, error, select
 from py4vasp._util.tensor import symmetry_reduce
 
 _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
@@ -45,6 +45,12 @@ class ElasticModulusHandler:
         return {
             "clamped_ion": self._raw_elastic_modulus.clamped_ion[:],
             "relaxed_ion": self._raw_elastic_modulus.relaxed_ion[:],
+        }
+
+    def to_voigt(self, selection=None) -> dict:
+        return {
+            choice: _voigt_matrix(getattr(self._raw_elastic_modulus, choice)[:])
+            for choice in _parse_tensor_selection(selection)
         }
 
     def __str__(self) -> str:
@@ -258,11 +264,8 @@ class ElasticModulus:
 
         The elastic modulus is returned in kBar, the unit VASP writes it in and the one
         :py:meth:`print` uses, so the numbers agree with the OUTCAR. Divide by 10 to
-        obtain GPa; 1 GPa = 10 kBar.
-
-        :py:meth:`print` shows the tensor as a 6 x 6 matrix in the order VASP uses,
-        xx, yy, zz, xy, yz, zx. This is not the usual Voigt order, which puts yz
-        fourth, so the fourth diagonal element of the printed table is C_66, not C_44.
+        obtain GPa; 1 GPa = 10 kBar. If you want the elastic constants C_11, C_12, ...
+        in GPa, use :py:meth:`voigt` instead.
 
         Parameters
         ----------
@@ -315,8 +318,71 @@ class ElasticModulus:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection)
 
+    def voigt(self, selection: str | None = None) -> dict:
+        """Read the elastic constants as 6 x 6 matrices in Voigt notation, in GPa.
+
+        Because stress and strain are symmetric, a pair of Cartesian directions can be
+        replaced by a single Voigt index: 1 = xx, 2 = yy, 3 = zz, 4 = yz, 5 = zx and
+        6 = xy. The element [m, n] of the matrix is the elastic constant C_(m+1)(n+1),
+        so C_11 is [0, 0], C_12 is [0, 1] and C_44 is [3, 3]. Unlike :py:meth:`read`
+        and :py:meth:`print`, which use kBar like VASP, this method returns GPa.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. In the
+            clamped-ion elastic constants the ions stay at their positions when the cell
+            is strained, in the relaxed-ion ones they relax. Without a selection, you
+            obtain both. If VASP produced more than one source of the elastic modulus,
+            select it with e.g. "default(relaxed_ion)".
+
+        Returns
+        -------
+        dict
+            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
+            6 x 6 Voigt matrix in GPa.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Select the relaxed-ion elastic constants to obtain a single 6 x 6 matrix
+
+        >>> voigt = calculation.elastic_modulus.voigt("relaxed_ion")["relaxed_ion"]
+        >>> voigt.shape
+        (6, 6)
+
+        C_11, C_12 and C_44 of this tetragonal crystal in GPa are
+
+        >>> [float(voigt[0, 0]), float(voigt[0, 1]), float(voigt[3, 3])]
+        [297.0, 119.0, 57.0]
+
+        Without a selection you obtain the clamped-ion matrix as well
+
+        >>> sorted(calculation.elastic_modulus.voigt())
+        ['clamped_ion', 'relaxed_ion']
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_voigt,
+        )
+
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
+
+        Like VASP, py4vasp prints the elastic modulus in kBar as a 6 x 6 matrix in the
+        order xx, yy, zz, xy, yz, zx, so that the numbers agree with the OUTCAR. This
+        is not the usual Voigt order, which puts yz fourth, so the fourth diagonal
+        element of the printed table is C_66, not C_44. Use :py:meth:`voigt` to obtain
+        the matrix in the usual Voigt order and in GPa.
 
         Parameters
         ----------
@@ -363,6 +429,26 @@ class ElasticModulus:
             ElasticModulusHandler.from_data,
             ElasticModulusHandler.to_database,
         )
+
+
+_TENSORS = ("clamped_ion", "relaxed_ion")
+
+
+def _parse_tensor_selection(selection):
+    if not selection:
+        return _TENSORS
+    choices = []
+    for choice in select.Tree.from_selection(selection).selections():
+        parts = [str(part) for part in choice]
+        if len(parts) != 1 or parts[0] not in _TENSORS:
+            message = (
+                f"The selection '{select.selections_to_string([choice])}' is not one "
+                f"of the elastic moduli {', '.join(_TENSORS)}. Select one or both of "
+                "them, separated by a comma."
+            )
+            raise exception.IncorrectUsage(message)
+        choices.append(parts[0])
+    return tuple(choices)
 
 
 # symmetry_reduce orders the pairs of directions as VASP does, xx, yy, zz, xy, yz, zx;

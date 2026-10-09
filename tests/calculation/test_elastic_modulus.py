@@ -219,3 +219,37 @@ def test_voigt_matrix_uses_standard_order(Assert):
         [0.0, 0.0, 0.0, 0.0, 0.0, 102.0],
     ]
     Assert.allclose(_voigt_matrix(relaxed_ion), np.array(expected))
+
+
+def test_voigt(elastic_modulus, Assert):
+    actual = elastic_modulus.voigt()
+    assert actual.keys() == {"clamped_ion", "relaxed_ion"}
+    Assert.allclose(
+        actual["clamped_ion"], _voigt_matrix(elastic_modulus.ref.clamped_ion)
+    )
+    Assert.allclose(
+        actual["relaxed_ion"], _voigt_matrix(elastic_modulus.ref.relaxed_ion)
+    )
+
+
+@pytest.mark.parametrize(
+    "selection, keys",
+    (
+        ("clamped_ion", ["clamped_ion"]),
+        ("relaxed_ion", ["relaxed_ion"]),
+        ("relaxed_ion, clamped_ion", ["relaxed_ion", "clamped_ion"]),
+        ("default(relaxed_ion)", ["relaxed_ion"]),
+    ),
+)
+def test_voigt_with_selection(elastic_modulus, selection, keys, Assert):
+    actual = elastic_modulus.voigt(selection)
+    assert list(actual) == keys
+    for key in keys:
+        expected = _voigt_matrix(getattr(elastic_modulus.ref, key))
+        Assert.allclose(actual[key], expected)
+
+
+@pytest.mark.parametrize("selection", ("XX", "clamped_ion(relaxed_ion)"))
+def test_voigt_unknown_selection(elastic_modulus, selection):
+    with pytest.raises(exception.IncorrectUsage):
+        elastic_modulus.voigt(selection)
