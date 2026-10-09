@@ -282,14 +282,17 @@ class ReactionPathHandler:
 reaction path through {self._number_steps()} steps of {self._structure._stoichiometry()}
 select pairs of atoms by their index, e.g. '1~2', or by element if it occurs once"""
 
-    def to_dict(self, selection) -> dict:
+    def to_dict(self, selection=None) -> dict:
         path = self.to_path(selection)
         return dict(zip(path.labels, path.coordinates.T))
 
-    def to_path(self, selection) -> "ReactionPathHandler.Path":
-        tree = select.Tree.from_selection(selection)
-        labels = [_selection_label(selection) for selection in tree.selections()]
-        atom_pairs = [self._atom_pair(selection) for selection in tree.selections()]
+    def to_path(self, selection=None) -> "ReactionPathHandler.Path":
+        if not selection:
+            message = "Please select the pairs of atoms whose distances define the path, e.g. '1~2, 1~3'. Use `selections` to list all pairs."
+            raise exception.IncorrectUsage(message)
+        selections = list(select.Tree.from_selection(selection).selections())
+        labels = [_selection_label(selection) for selection in selections]
+        atom_pairs = [self._atom_pair(selection) for selection in selections]
         coordinates = np.array([self._distances(*pair) for pair in atom_pairs]).T
         return self.Path(labels, atom_pairs, coordinates)
 
@@ -299,8 +302,13 @@ select pairs of atoms by their index, e.g. '1~2', or by element if it occurs onc
         return [f"{first}{select.pair_separator}{second}" for first, second in pairs]
 
     def _atom_pair(self, selection):
+        _raise_if_not_pair(selection)
         elements = self._structure._stoichiometry().elements()
-        return [_atom_index(atom, elements) for atom in selection[0].group]
+        first, second = (_atom_index(atom, elements) for atom in selection[0].group)
+        if first == second:
+            message = f"The selection '{_selection_label(selection)}' measures the distance of atom {first} to itself. Please select two different atoms."
+            raise exception.IncorrectUsage(message)
+        return [first, second]
 
     def _distances(self, first, second):
         positions = _all_steps(np.asarray(self._structure.positions()), ndim=3)
@@ -367,10 +375,38 @@ def _selection_label(selection):
     return " ".join(str(part) for part in selection)
 
 
+def _raise_if_not_pair(selection):
+    is_pair = (
+        len(selection) == 1
+        and isinstance(selection[0], select.Group)
+        and selection[0].separator == select.pair_separator
+        and len(selection[0].group) == 2
+        and all(isinstance(atom, str) for atom in selection[0].group)
+    )
+    if not is_pair:
+        message = f"The selection '{_selection_label(selection)}' is not a pair of atoms. Please join exactly two atoms with a tilde, e.g. '1~2' or 'C~H', and separate pairs with commas."
+        raise exception.IncorrectUsage(message)
+
+
 def _atom_index(atom, elements):
     if atom.isdecimal():
-        return int(atom)
-    return elements.index(atom) + 1
+        return _check_index(int(atom), len(elements))
+    indices = [index + 1 for index, element in enumerate(elements) if element == atom]
+    if len(indices) == 1:
+        return indices[0]
+    if not indices:
+        available = ", ".join(dict.fromkeys(elements))
+        message = f"The element '{atom}' is not present in the structure. The available elements are: {available}."
+    else:
+        message = f"The element '{atom}' occurs {len(indices)} times in the structure, at the atoms {indices}. Please select the atom by its index instead."
+    raise exception.IncorrectUsage(message)
+
+
+def _check_index(index, number_atoms):
+    if not 1 <= index <= number_atoms:
+        message = f"The atom index {index} is out of range. Atoms are counted from 1 in the order of the POSCAR file, and the structure has {number_atoms} atoms."
+        raise exception.IncorrectUsage(message)
+    return index
 
 
 def _all_steps(array, ndim):
@@ -444,7 +480,7 @@ class ReactionPath:
     def _handler_factory(self, raw_data):
         return ReactionPathHandler.from_data(raw_data, steps=self._steps)
 
-    def read(self, selection) -> dict:
+    def read(self, selection=None) -> dict:
         """Read the distances between the selected pairs of atoms at every step.
 
         Parameters
@@ -487,11 +523,11 @@ class ReactionPath:
             ReactionPathHandler.to_dict,
         )
 
-    def to_dict(self, selection) -> dict:
+    def to_dict(self, selection=None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection)
 
-    def to_path(self, selection) -> "ReactionPathHandler.Path":
+    def to_path(self, selection=None) -> "ReactionPathHandler.Path":
         """Map the run onto the distances between the selected pairs of atoms.
 
         Parameters

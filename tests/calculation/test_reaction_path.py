@@ -320,3 +320,34 @@ def test_factory_methods_access_structure(raw_data):
 def test_selections_lists_every_pair_of_atoms():
     selections = ReactionPath.from_data(_hcn_trajectory()).selections()
     assert selections == ["1~2", "1~3", "2~3"]
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        "Sr~Ti",  # Sr occurs twice
+        "Ti~X",  # no such element
+        "1~8",  # Sr2TiO4 has 7 atoms
+        "0~1",  # atoms are counted from 1
+        "2~2",  # same atom
+        "3",  # not a pair
+        "1:3",  # a range, not a pair
+        "1~2~3",  # three atoms
+        "Ti~O(1)",  # nested selection
+        "",  # nothing selected
+    ],
+)
+def test_selection_errors(raw_data, selection):
+    reaction_path = ReactionPath.from_data(raw_data.structure("Sr2TiO4"))
+    with pytest.raises(exception.IncorrectUsage):
+        reaction_path.read(selection)
+    with pytest.raises(exception.IncorrectUsage):
+        reaction_path.to_path(selection)
+
+
+def test_missing_selection_raises(raw_data):
+    reaction_path = ReactionPath.from_data(raw_data.structure("Sr2TiO4"))
+    with pytest.raises(exception.IncorrectUsage):
+        reaction_path.read()
+    with pytest.raises(exception.IncorrectUsage):
+        reaction_path.to_path()
