@@ -146,9 +146,10 @@ class PhononModeHandler:
         ----------
         masses : Sequence[float] | Mapping[str, float] | None
             The mass of every atom in atomic mass units, or a dictionary that replaces
-            only the atoms it names, keyed by element or by the index of a single atom
-            counted from 1, e.g. ``{"O": 17.999}`` or ``{"4": 17.999}``. Defaults to
-            the standard atomic weight of the element.
+            only the atoms it names, keyed by element, by the index of a single atom
+            counted from 1, or by a range of atoms, e.g. ``{"O": 17.999}``,
+            ``{"4": 17.999}`` or ``{"4:5": 17.999}``. Defaults to the standard atomic
+            weight of the element.
 
         Returns
         -------
@@ -180,9 +181,10 @@ class PhononModeHandler:
             harmonic energy ½ω²Q² of the mode equals ħω.
         masses : Sequence[float] | Mapping[str, float] | None
             The mass of every atom in atomic mass units, or a dictionary that replaces
-            only the atoms it names, keyed by element or by the index of a single atom
-            counted from 1, e.g. ``{"O": 17.999}`` or ``{"4": 17.999}``. Defaults to
-            the standard atomic weight of the element.
+            only the atoms it names, keyed by element, by the index of a single atom
+            counted from 1, or by a range of atoms, e.g. ``{"O": 17.999}``,
+            ``{"4": 17.999}`` or ``{"4:5": 17.999}``. Defaults to the standard atomic
+            weight of the element.
         minimum_frequency : float
             The frequency ħω in eV below which a mode counts as a translation.
 
@@ -762,10 +764,11 @@ class PhononMode(view.Mixin):
         masses : Sequence[float] | Mapping[str, float] | None
             The mass of every atom in atomic mass units, in the order of the structure,
             or a dictionary that replaces the mass of only the atoms it names. Its keys
-            are an element or the index of a single atom counted from 1, as in the
-            selection of the DOS, e.g. ``{"O": 17.999}`` changes every oxygen and
-            ``{"4": 17.999}`` only the fourth atom. By default py4vasp uses the
-            standard atomic weight of the element listed in
+            follow the selection of the DOS: an element, the index of a single atom
+            counted from 1, or a range of atoms such as ``"1:3"``. For example,
+            ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
+            fourth atom. By default py4vasp uses the standard atomic weight of the
+            element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
             this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
             if you replaced hydrogen by deuterium; it must be the mass VASP used,
@@ -912,10 +915,11 @@ class PhononMode(view.Mixin):
         masses : Sequence[float] | Mapping[str, float] | None
             The mass of every atom in atomic mass units, in the order of the structure,
             or a dictionary that replaces the mass of only the atoms it names. Its keys
-            are an element or the index of a single atom counted from 1, as in the
-            selection of the DOS, e.g. ``{"O": 17.999}`` changes every oxygen and
-            ``{"4": 17.999}`` only the fourth atom. By default py4vasp uses the
-            standard atomic weight of the element listed in
+            follow the selection of the DOS: an element, the index of a single atom
+            counted from 1, or a range of atoms such as ``"1:3"``. For example,
+            ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
+            fourth atom. By default py4vasp uses the standard atomic weight of the
+            element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
             this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
             if you replaced hydrogen by deuterium; it must be the mass VASP used,

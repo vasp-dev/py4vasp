@@ -8,6 +8,7 @@ from collections.abc import Mapping
 import numpy as np
 
 from py4vasp import exception
+from py4vasp._util import select
 
 #: Standard atomic weight of every element in atomic mass units, in the order of the
 #: atomic number. These are the conventional values IUPAC reports for the isotope
@@ -103,7 +104,8 @@ _POSITIVE = (
 def _from_mapping(masses, stoichiometry):
     elements = stoichiometry.elements()
     selections = stoichiometry.read()
-    _raise_error_if_keys_are_not_in_structure(masses, selections, elements)
+    parsed = {key: _parse(key) for key in masses}
+    _raise_error_if_keys_are_not_in_structure(parsed, selections, elements)
     if not all(_is_number(mass) for mass in masses.values()):
         message = (
             "The masses in the mapping must be numbers in atomic mass units, but you "
@@ -115,13 +117,35 @@ def _from_mapping(masses, stoichiometry):
     if invalid:
         raise exception.IncorrectUsage(f"{_POSITIVE}; you provided {invalid}.")
     result = of(elements)
+    atoms = np.arange(len(elements))
     for key, mass in masses.items():
-        result[selections[key].indices] = mass
+        result[_indices(parsed[key], selections, atoms)] = mass
     return result
 
 
-def _raise_error_if_keys_are_not_in_structure(masses, selections, elements):
-    missing = [key for key in masses if key not in selections]
+def _parse(key):
+    (selection,) = select.Tree.from_selection(key).selections()
+    (item,) = selection
+    return item
+
+
+def _components(item):
+    return item.group if isinstance(item, select.Group) else [item]
+
+
+def _indices(item, selections, atoms):
+    if isinstance(item, select.Group):
+        first, last = (atoms[selections[key].indices] for key in item.group)
+        return slice(np.min(first), np.max(last) + 1)
+    return selections[item].indices
+
+
+def _raise_error_if_keys_are_not_in_structure(parsed, selections, elements):
+    missing = [
+        key
+        for key, item in parsed.items()
+        if any(component not in selections for component in _components(item))
+    ]
     if not missing:
         return
     message = (

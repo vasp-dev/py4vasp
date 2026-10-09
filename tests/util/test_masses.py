@@ -80,6 +80,13 @@ def test_resolve_mapping_overrides_a_single_atom(elements, expected, Assert):
     Assert.allclose(masses.resolve({"4": 18.0}, stoichiometry(elements)), expected)
 
 
+@pytest.mark.parametrize("key", ("2:3", "2 : 3"))
+def test_resolve_mapping_overrides_a_range_of_atoms(key, Assert):
+    elements = ["Sr", "Ti", "O", "O"]
+    expected = [87.62, 18.0, 18.0, 15.999]
+    Assert.allclose(masses.resolve({key: 18.0}, stoichiometry(elements)), expected)
+
+
 def test_resolve_raises_error_if_masses_do_not_match_the_atoms():
     with pytest.raises(exception.IncorrectUsage) as error:
         masses.resolve([1.0, 2.0], stoichiometry())
