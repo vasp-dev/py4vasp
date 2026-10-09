@@ -102,15 +102,15 @@ class DensityHandler:
 
     def to_view(
         self,
-        component: Optional[str] = None,
+        selection: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ) -> view.View:
         _raise_error_if_no_data(self._raw_density.charge)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_density.charge)
-        component = component or _INTERNAL
-        tree = select.Tree.from_selection(component)
+        selection = selection or _INTERNAL
+        tree = select.Tree.from_selection(selection)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
         structure_handler = self._structure()
         viewer = structure_handler.to_view(supercell)
@@ -129,7 +129,7 @@ class DensityHandler:
 
     def to_contour(
         self,
-        component: Optional[str] = None,
+        selection: Optional[str] = None,
         *,
         a: Optional[float] = None,
         b: Optional[float] = None,
@@ -139,8 +139,8 @@ class DensityHandler:
     ) -> graph.Graph:
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_density.charge)
-        component = component or _INTERNAL
-        tree = select.Tree.from_selection(component)
+        selection = selection or _INTERNAL
+        tree = select.Tree.from_selection(selection)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
         visualizer = Visualizer(self._structure())
         dataDict = {
@@ -182,6 +182,7 @@ class DensityHandler:
     @property
     def _selection(self):
         selection_map = {
+            "tau": "kinetic_energy",
             "kinetic_energy": "kinetic_energy",
             "kinetic_energy_density": "kinetic_energy",
         }
@@ -377,18 +378,19 @@ class Density(view.Mixin):
     def _merge_by_source(self, selection, method, **kwargs):
         # The handler labels the density by its source, so dispatch every selected
         # source through self[source] instead of passing the selection on directly.
+        # A selection naming only components keeps the source chosen by indexing.
         results = {}
-        selection = selection or self._selection_name
         for context in _parse_selections(self._quantity_name, selection):
-            source = context.selection_name
+            source = context.selection_name or self._selection_name
+            selection_of_source = source
             if context.remaining_selection is not None:
                 remaining = context.remaining_selection
-                source = f"{source}({remaining})" if source else remaining
-            density = self[context.selection_name]
-            results[context.selection_name or DEFAULT_SELECTION] = merge_default(
+                selection_of_source = f"{source}({remaining})" if source else remaining
+            density = self[source]
+            results[source or DEFAULT_SELECTION] = merge_default(
                 density._source,
                 density._quantity_name,
-                source,
+                selection_of_source,
                 density._handler_factory,
                 method,
                 **kwargs,
@@ -558,7 +560,8 @@ class Density(view.Mixin):
             should be visualized.  For a noncollinear calculation, the density has
             4 components which can be represented in a 2x2 matrix. Specify the
             component of the density in terms of the Pauli matrices: sigma_1,
-            sigma_2, sigma_3.
+            sigma_2, sigma_3. You can also select which density VASP computed, e.g.
+            ``"kinetic_energy"``, or both at once like ``"kinetic_energy(3)"``.
 
         supercell : int | np.ndarray | None = None
             If present the data is replicated the specified number of times along each
@@ -592,15 +595,8 @@ class Density(view.Mixin):
 
         >>> calculation.density.plot("m(3)")
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.to_view,
-            selection,
-            supercell=supercell,
-            **user_options,
+        return self._merge_by_source(
+            selection, DensityHandler.to_view, supercell=supercell, **user_options
         )
 
     @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
@@ -621,8 +617,10 @@ class Density(view.Mixin):
         Parameters
         ----------
         selection : str | None = None
-            Select which component of the density you want to visualize. Please use the
-            `selections` method to get all available choices.
+            Select which component of the density you want to visualize, which
+            density VASP computed, e.g. ``"kinetic_energy"``, or both at once like
+            ``"kinetic_energy(3)"``. Please use the `selections` method to get all
+            available choices.
 
         {common_parameters}
 
@@ -650,13 +648,9 @@ class Density(view.Mixin):
 
         >>> calculation.density.to_contour("kinetic_energy", a=0.3, normal="x")
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.to_contour,
+        return self._merge_by_source(
             selection,
+            DensityHandler.to_contour,
             a=a,
             b=b,
             c=c,
@@ -727,33 +721,15 @@ class Density(view.Mixin):
 
     def is_nonpolarized(self, selection=None):
         "Returns whether the density is not spin polarized."
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.is_nonpolarized,
-        )
+        return self._merge_by_source(selection, DensityHandler.is_nonpolarized)
 
     def is_collinear(self, selection=None):
         "Returns whether the density has a collinear magnetization."
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.is_collinear,
-        )
+        return self._merge_by_source(selection, DensityHandler.is_collinear)
 
     def is_noncollinear(self, selection=None):
         "Returns whether the density has a noncollinear magnetization."
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.is_noncollinear,
-        )
+        return self._merge_by_source(selection, DensityHandler.is_noncollinear)
 
     def bader_analysis(self, selection=None, *, snap_to_atoms=True):
         """Partition the selected density into atomic Bader basins.

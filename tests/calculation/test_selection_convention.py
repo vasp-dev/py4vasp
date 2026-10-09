@@ -637,6 +637,29 @@ def test_methods_where_selection_has_no_effect_take_no_selection(cls, method_nam
     )
 
 
+def _declares_selection(cls, method_name):
+    method_node = _method_node(cls, method_name)
+    if method_node is None:
+        return False
+    arguments = method_node.args
+    return any(
+        argument.arg == "selection"
+        for argument in [*arguments.args, *arguments.kwonlyargs]
+    )
+
+
+@pytest.mark.parametrize(
+    "cls, method_name", list(_collect_methods(_declares_selection))
+)
+def test_methods_taking_selection_use_it(cls, method_name):
+    # a selection that is accepted but never read silently returns the default data
+    method_node = _method_node(cls, method_name)
+    assert any(
+        _is_selection(node) and isinstance(node.ctx, ast.Load)
+        for node in ast.walk(method_node)
+    ), f"{cls.__name__}.{method_name} takes `selection` but never uses it."
+
+
 def test_legacy_methods_exist():
     # a legacy method that is renamed or removed would silently escape rule 1
     collected = {param.id for param in _collect_methods(_is_legacy)}

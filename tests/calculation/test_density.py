@@ -135,6 +135,37 @@ def test_to_numpy_and_to_quiver_select_source(raw_data, Assert):
     assert actual.label == reference.label == "kinetic_energy"
 
 
+@pytest.mark.parametrize("source", ["tau", "kinetic_energy"])
+def test_source_name_labels_the_density(raw_data, source):
+    density = make_reference_density(raw_data, "Fe3O4 collinear")
+    assert "kinetic_energy" in density.read(source)
+    assert "kinetic_energy" in density[source].read()
+
+
+def test_plots_select_source(raw_data, Assert):
+    density = make_reference_density(raw_data, "Fe3O4 collinear")
+    expected = density["kinetic_energy"]
+    actual = density.to_contour("tau", c=0).series[0]
+    reference = expected.to_contour(c=0).series[0]
+    Assert.allclose(actual.data, reference.data)
+    assert actual.label == reference.label
+    # a component chosen on an indexed density keeps the indexed source
+    actual = density["tau"].to_contour("3", c=0).series[0]
+    reference = expected.to_contour("3", c=0).series[0]
+    Assert.allclose(actual.data, reference.data)
+    view = density.to_view("kinetic_energy")
+    Assert.allclose(
+        view.grid_scalars[0].quantity, expected.to_view().grid_scalars[0].quantity
+    )
+
+
+def test_spin_checks_select_source(raw_data):
+    density = make_reference_density(raw_data, "Fe3O4 collinear")
+    assert density.is_collinear("tau") is True
+    with pytest.raises(exception.IncorrectUsage):
+        density.is_collinear("unknown_source")
+
+
 @pytest.mark.parametrize("method", ["read", "to_numpy"])
 def test_component_is_not_a_source(raw_data, method):
     density = make_reference_density(raw_data, "Fe3O4 collinear")
