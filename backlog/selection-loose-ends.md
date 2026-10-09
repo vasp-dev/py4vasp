@@ -14,10 +14,16 @@ open.
   `"nmr"` source (`dispatch._effective_source`), but `read()` and the other methods do
   not and fail with a `FileAccessError` unless given `"nmr"`. Either let dispatch fall
   back to a sole source the same way, or let `is_available()` report `False`.
-- **A positional source on `structure.read` still lands in `ion_types`.** For
-  compatibility with 0.11.3 `selection` comes after `ion_types`, so `read("final")`
-  names the ions after the letters of "final", as it did then. A string `ion_types`
-  matching a source name could raise `IncorrectUsage` pointing to `selection=`.
+- **No page explains the sources.** A simulated user had to guess what the structure
+  sources `phonon`, `exciton`, `final` and `poscar` mean and when VASP writes them; no
+  docstring example passes a source. `selections()` lists every possible source, not
+  the ones present (only `is_available([...])` tells), and `density.selections()`
+  prints `np.str_(...)` reprs. The word "selection" also means steps in the
+  structure docstrings, and `structure[...]` slices steps while `density[...]` picks
+  a source.
+- **Missing data gives poor errors.** `structure.lattice_vectors(selection="poscar")`
+  without a POSCAR raises a bare `FileNotFoundError`, and `density.read("all_electron")`
+  blames vaspwave.h5 and LCHARGH5 even when vaspwave.h5 exists.
 
 Open question found earlier: `born_effective_charge.print()` says "cumulative output"
 where OUTCAR says "cummulative output" (`linear_response.F:967`, `pead.F:2356,2368`), so

@@ -1486,6 +1486,13 @@ def test_read_selects_source(demo_structure):
     assert renamed["names"][0].startswith("A")
 
 
+@pytest.mark.parametrize("method", ["read", "to_dict", "to_POSCAR"])
+def test_source_passed_as_ion_types_is_rejected(demo_structure, method):
+    # ion_types comes first for compatibility, so a positional source lands there
+    with pytest.raises(exception.IncorrectUsage, match="selection="):
+        getattr(demo_structure, method)("exciton")
+
+
 def test_exporters_select_source(demo_structure):
     poscar = demo_structure.to_POSCAR(selection="exciton")
     assert poscar.splitlines()[5].split() == ["Sr", "Ti", "O"]
