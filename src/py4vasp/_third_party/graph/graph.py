@@ -494,6 +494,10 @@ class Graph(Sequence):
         self._set_xaxis_options(figure)
         self._set_yaxis_options(figure)
         figure.layout.title.text = self.title
+        if not self.title:
+            # plotly reserves space for a title at the top; without one use the same
+            # margin as plotly's default on the left and bottom
+            figure.layout.margin.t = 80
         if self.xsize:
             figure.layout.width = self.xsize
         figure.layout.height = self.ysize

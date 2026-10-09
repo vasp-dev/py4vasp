@@ -495,6 +495,13 @@ def test_title(parabola):
     graph.title = "title"
     fig = graph.to_plotly()
     assert fig.layout.title.text == graph.title
+    assert fig.layout.margin.t is None  # plotly's default leaves room for the title
+
+
+def test_no_title_has_same_top_margin_as_other_sides(parabola):
+    pytest.importorskip("plotly")
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.margin.t == 80  # plotly's default left and bottom margin
 
 
 def test_merging_of_fields_of_graph(sine, parabola):
