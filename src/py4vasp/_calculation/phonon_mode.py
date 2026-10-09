@@ -144,10 +144,12 @@ class PhononModeHandler:
 
         Parameters
         ----------
-        masses : Sequence[float] | Mapping[str, float] | None
-            The mass of every atom in atomic mass units, or a dictionary from element
-            to mass that replaces only the elements it names. Defaults to the standard
-            atomic weight of the element.
+        masses : Mapping[str, float] | None
+            A dictionary with the mass in atomic mass units of only the atoms it
+            replaces, keyed by element, by the index of a single atom counted from 1,
+            or by a range of atoms that includes both ends, e.g. ``{"O": 17.999}``,
+            ``{"4": 17.999}`` or ``{"4:5": 17.999}``. Defaults to the standard atomic weight of the
+            element.
 
         Returns
         -------
@@ -177,10 +179,12 @@ class PhononModeHandler:
         amplitude : float
             The normal coordinate of the displacement in units of the one at which the
             harmonic energy ½ω²Q² of the mode equals ħω.
-        masses : Sequence[float] | Mapping[str, float] | None
-            The mass of every atom in atomic mass units, or a dictionary from element
-            to mass that replaces only the elements it names. Defaults to the standard
-            atomic weight of the element.
+        masses : Mapping[str, float] | None
+            A dictionary with the mass in atomic mass units of only the atoms it
+            replaces, keyed by element, by the index of a single atom counted from 1,
+            or by a range of atoms that includes both ends, e.g. ``{"O": 17.999}``,
+            ``{"4": 17.999}`` or ``{"4:5": 17.999}``. Defaults to the standard atomic weight of the
+            element.
         minimum_frequency : float
             The frequency ħω in eV below which a mode counts as a translation.
 
@@ -393,8 +397,7 @@ class PhononModeHandler:
         return eigenvectors.reshape(len(eigenvectors), number_atoms, 3)
 
     def _masses(self, masses) -> np.ndarray:
-        elements = self._structure()._stoichiometry().elements()
-        return mass_table.resolve(masses, elements)
+        return mass_table.resolve(masses, self._structure()._stoichiometry())
 
     def _structure(self) -> StructureHandler:
         return StructureHandler.from_data(self._raw_phonon_mode.structure)
@@ -758,11 +761,14 @@ class PhononMode(view.Mixin):
             excites the mode by that energy and one of 2 by four times as much. A
             negative amplitude moves the atoms to the other side of the equilibrium,
             which is what the double well of an unstable mode requires.
-        masses : Sequence[float] | Mapping[str, float] | None
-            The mass of every atom in atomic mass units, in the order of the structure,
-            or a dictionary from element to mass that replaces the mass of only the
-            elements it names. By default py4vasp uses the standard atomic weight of
-            the element listed in
+        masses : Mapping[str, float] | None
+            A dictionary that replaces the mass in atomic mass units of only the atoms
+            it names. Each key names atoms like a single selection of the DOS: an
+            element, the index of one atom counted from 1, or a range such as
+            ``"1:3"`` that includes both ends. For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            only the fourth atom. A single atom takes precedence over a range and a
+            range over an element, whatever the order of the dictionary. By default
+            py4vasp uses the standard atomic weight of the element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
             this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
             if you replaced hydrogen by deuterium; it must be the mass VASP used,
@@ -906,11 +912,14 @@ class PhononMode(view.Mixin):
             of phase from one cell to the next, so pass a supercell to see that wave;
             in a single cell every cell moves alike and the animation looks like a
             mode of the zone centre.
-        masses : Sequence[float] | Mapping[str, float] | None
-            The mass of every atom in atomic mass units, in the order of the structure,
-            or a dictionary from element to mass that replaces the mass of only the
-            elements it names. By default py4vasp uses the standard atomic weight of
-            the element listed in
+        masses : Mapping[str, float] | None
+            A dictionary that replaces the mass in atomic mass units of only the atoms
+            it names. Each key names atoms like a single selection of the DOS: an
+            element, the index of one atom counted from 1, or a range such as
+            ``"1:3"`` that includes both ends. For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            only the fourth atom. A single atom takes precedence over a range and a
+            range over an element, whatever the order of the dictionary. By default
+            py4vasp uses the standard atomic weight of the element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
             this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
             if you replaced hydrogen by deuterium; it must be the mass VASP used,

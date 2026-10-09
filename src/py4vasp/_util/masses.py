@@ -8,6 +8,7 @@ from collections.abc import Mapping
 import numpy as np
 
 from py4vasp import exception
+from py4vasp._util import select, suggest
 
 #: Standard atomic weight of every element in atomic mass units, in the order of the
 #: atomic number. These are the conventional values IUPAC reports for the isotope
@@ -68,18 +69,19 @@ def of(elements) -> np.ndarray:
     return np.array([_single_element(element) for element in elements])
 
 
-def resolve(masses, elements) -> np.ndarray:
+def resolve(masses, stoichiometry) -> np.ndarray:
     """Use the masses the user provides or default to the standard atomic weights.
 
     Parameters
     ----------
-    masses : Sequence[float] | Mapping[str, float] | None
-        The mass of every atom in atomic mass units, or a mapping from element to
-        mass that replaces the default of only the listed elements, or None for the
-        default.
-    elements : Sequence[str]
-        The chemical symbol of every atom, which sets the default and the number of
-        masses the user has to provide.
+    masses : Mapping[str, float] | None
+        A mapping that replaces the default of only the atoms it selects, keyed like
+        the selection of the DOS by element, by atom index counted from 1, or by a
+        range of atoms; a single atom takes precedence over a range and a range over
+        an element. None selects the default for every atom.
+    stoichiometry : StoichiometryHandler
+        The stoichiometry of the structure, which sets the default and the keys the
+        mapping may use.
 
     Returns
     -------
@@ -87,10 +89,15 @@ def resolve(masses, elements) -> np.ndarray:
         One positive mass per atom in atomic mass units.
     """
     if masses is None:
-        return of(elements)
+        return of(stoichiometry.elements())
     if isinstance(masses, Mapping):
-        return _from_mapping(masses, elements)
-    return _from_sequence(masses, elements)
+        return _from_mapping(masses, stoichiometry)
+    message = (
+        "The masses must be a dictionary that replaces the mass of only the atoms it "
+        'names, e.g. {"O": 17.999} for every oxygen or {"4": 17.999} for the fourth '
+        f"atom counted from 1, but you provided {masses!r}."
+    )
+    raise exception.IncorrectUsage(message)
 
 
 _POSITIVE = (
@@ -99,35 +106,157 @@ _POSITIVE = (
 )
 
 
-def _from_mapping(masses, elements):
-    _raise_error_if_elements_are_not_in_structure(masses, elements)
+def _from_mapping(masses, stoichiometry):
+    elements = stoichiometry.elements()
+    selections = stoichiometry.read()
+    del selections[select.all]  # internal key the documentation does not offer
+    parsed = {key: _parse(key) for key in masses}
+    _raise_error_if_keys_are_not_in_structure(parsed, selections, elements)
+    for key, item in parsed.items():
+        _raise_error_if_range_is_invalid(key, item)
     if not all(_is_number(mass) for mass in masses.values()):
         message = (
             "The masses in the mapping must be numbers in atomic mass units, but you "
             f"provided {dict(masses)} that py4vasp cannot read as numbers."
         )
         raise exception.IncorrectUsage(message)
-    masses = {element: float(mass) for element, mass in masses.items()}
-    invalid = {element: mass for element, mass in masses.items() if not _valid(mass)}
+    masses = {key: float(mass) for key, mass in masses.items()}
+    invalid = {key: mass for key, mass in masses.items() if not _valid(mass)}
     if invalid:
         raise exception.IncorrectUsage(f"{_POSITIVE}; you provided {invalid}.")
-    return np.array([_override(masses, element) for element in elements])
+    result = of(elements)
+    indices = {key: _indices(item, selections) for key, item in parsed.items()}
+    _raise_error_if_keys_repeat(parsed, masses)
+    _raise_error_if_ranges_overlap(parsed, indices, masses)
+    for key in sorted(masses, key=lambda key: _specificity(parsed[key])):
+        result[indices[key]] = masses[key]
+    return result
 
 
-def _raise_error_if_elements_are_not_in_structure(masses, elements):
-    missing = [key for key in masses if key not in elements]
+def _raise_error_if_keys_repeat(parsed, masses):
+    # keys that differ only in whitespace select the same atoms, so the order of the
+    # dictionary would decide which mass wins
+    first_key = {}
+    for key, item in parsed.items():
+        normalized = tuple(_components(item))
+        other = first_key.setdefault(normalized, key)
+        if other != key and masses[other] != masses[key]:
+            message = (
+                f"The keys {other!r} and {key!r} select the same atoms but assign "
+                "them different masses. Please keep only one of them."
+            )
+            raise exception.IncorrectUsage(message)
+
+
+def _specificity(item):
+    # a single atom overrides a range, which overrides an element
+    if _is_range(item):
+        return 1
+    return 2 if item.isdecimal() else 0
+
+
+def _raise_error_if_ranges_overlap(parsed, indices, masses):
+    ranges = [key for key, item in parsed.items() if _is_range(item)]
+    for i, first in enumerate(ranges):
+        for second in ranges[i + 1 :]:
+            start = max(indices[first].start, indices[second].start)
+            stop = min(indices[first].stop, indices[second].stop)
+            if start < stop and masses[first] != masses[second]:
+                message = (
+                    f"The ranges {first!r} and {second!r} both contain atom "
+                    f"{start + 1} but assign it different masses. Please make "
+                    "the ranges disjoint or give the shared atoms their own key."
+                )
+                raise exception.IncorrectUsage(message)
+
+
+def _parse(key):
+    if not isinstance(key, str):
+        message = (
+            f"The keys of the masses must be strings, but you provided {key!r}. Use "
+            'the chemical symbol of an element, e.g. "O", or the index of an atom '
+            'counted from 1 as in the selection of the DOS, e.g. "4" for the fourth '
+            "atom."
+        )
+        raise exception.IncorrectUsage(message)
+    selections = list(select.Tree.from_selection(key).selections())
+    if len(selections) == 1 and len(selections[0]) == 1:
+        (item,) = selections[0]
+        if isinstance(item, str) or _is_simple_range(item):
+            return item
+    message = (
+        f"Every key of the masses must select a single element, atom, or range of "
+        f"atoms such as 'O', '4', or '1:3', but you provided {key!r}. Please give "
+        "every selection its own entry in the dictionary."
+    )
+    raise exception.IncorrectUsage(message)
+
+
+def _is_range(item):
+    return isinstance(item, select.Group) and item.separator == select.range_separator
+
+
+def _is_simple_range(item):
+    # a stepped range "1:5:2" parses as a range nested inside another one
+    return _is_range(item) and all(isinstance(end, str) for end in item.group)
+
+
+def _components(item):
+    return item.group if _is_range(item) else [item]
+
+
+def _indices(item, selections):
+    if _is_range(item):
+        first, last = item.group
+        return slice(int(first) - 1, int(last))
+    return selections[item].indices
+
+
+def _raise_error_if_keys_are_not_in_structure(parsed, selections, elements):
+    missing = [
+        key
+        for key, item in parsed.items()
+        if any(component not in selections for component in _components(item))
+    ]
     if not missing:
         return
+    unique_elements = list(dict.fromkeys(elements))
     message = (
         f"You provided a mass for {', '.join(map(repr, missing))} but the structure "
-        f"contains only the elements {', '.join(dict.fromkeys(elements))}."
+        f"contains only the elements {', '.join(unique_elements)} and the atoms 1 to "
+        f"{len(elements)}, counted from 1. "
     )
-    if any(key not in TABLE for key in missing):
+    message += "".join(_did_you_mean(key, unique_elements) for key in missing)
+    if any(_is_unknown_symbol(parsed[key]) for key in missing):
         message += (
-            " Please use the chemical symbols exactly as the structure names them, "
+            "Please use the chemical symbols exactly as the structure names them, "
             "e.g. 'O' rather than 'o', and for an isotope the symbol of its element, "
             "e.g. {'H': 2.014} for deuterium."
         )
+    raise exception.IncorrectUsage(message.rstrip())
+
+
+def _did_you_mean(key, elements):
+    # difflib sees no similarity between "o" and "O", the most common misspelling
+    same_letters = [element for element in elements if element.lower() == key.lower()]
+    return suggest.did_you_mean(same_letters[0] if same_letters else key, elements)
+
+
+def _is_unknown_symbol(item):
+    return isinstance(item, str) and not item.isdecimal() and item not in TABLE
+
+
+def _raise_error_if_range_is_invalid(key, item):
+    if not _is_range(item):
+        return
+    first, last = item.group
+    if first.isdecimal() and last.isdecimal() and int(first) <= int(last):
+        return
+    message = (
+        f"The range {key!r} must go from a lower to a higher atom index, both counted "
+        "from 1, e.g. '1:3'. To change every atom of an element, use its chemical "
+        "symbol instead, e.g. 'O'."
+    )
     raise exception.IncorrectUsage(message)
 
 
@@ -138,33 +267,6 @@ def _is_number(mass):
 
 def _valid(mass):
     return np.isfinite(mass) & (mass > 0)
-
-
-def _from_sequence(masses, elements):
-    masses = np.atleast_1d(masses).ravel()
-    if not np.issubdtype(masses.dtype, np.number):
-        message = (
-            "The masses must be a sequence of numbers, one per atom, but you "
-            f"provided {type(masses.item(0)).__name__ if masses.size == 1 else 'a sequence'} "
-            "that py4vasp cannot read as numbers."
-        )
-        raise exception.IncorrectUsage(message)
-    if len(masses) != len(elements):
-        message = (
-            f"You provided {len(masses)} mass{'' if len(masses) == 1 else 'es'} but "
-            "the structure contains "
-            f"{len(elements)} atoms. Please pass one mass per atom in the order in "
-            "which the structure lists them."
-        )
-        raise exception.IncorrectUsage(message)
-    if not np.all(_valid(masses)):
-        message = f"{_POSITIVE}; you provided {[float(mass) for mass in masses]}."
-        raise exception.IncorrectUsage(message)
-    return masses
-
-
-def _override(masses, element):
-    return masses[element] if element in masses else _single_element(element)
 
 
 def _single_element(element):
