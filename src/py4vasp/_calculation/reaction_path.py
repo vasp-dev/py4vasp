@@ -17,6 +17,7 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
+from py4vasp._calculation.neighbor_list import _replica_counts
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._third_party import graph
 from py4vasp._util import select
@@ -25,8 +26,6 @@ from py4vasp._util import select
 # structure, so dispatch accesses the "structure" schema entry.
 _DATA_QUANTITY = "structure"
 
-# Offsets of the neighboring cells in which the closest image of an atom may lie.
-_NEIGHBOR_CELLS = np.array(list(itertools.product((-1, 0, 1), repeat=3)))
 
 # Factor by which the targeted distance between successive points shrinks until every
 # point of the discretized path lies at that distance within the tolerance.
@@ -403,7 +402,14 @@ select pairs of atoms by their index, e.g. '1~2', or by element if it occurs onc
         lattice_vectors = _all_steps(self._structure.lattice_vectors(), ndim=3)
         difference = positions[:, second - 1] - positions[:, first - 1]
         difference -= np.rint(difference)
-        images = difference[:, np.newaxis, :] + _NEIGHBOR_CELLS
+        # The wrapped difference is an upper bound for the closest image. In a tilted
+        # cell, closer images may lie several cells away, so search every cell whose
+        # lattice planes are within that bound.
+        wrapped = difference[:, np.newaxis, :]
+        bound = np.linalg.norm(wrapped @ lattice_vectors, axis=-1)[:, 0]
+        counts = np.max(_replica_counts(lattice_vectors, bound), axis=0)
+        cells = itertools.product(*(range(-count, count + 1) for count in counts))
+        images = wrapped + np.array(list(cells))
         cartesian = images @ lattice_vectors
         return np.min(np.linalg.norm(cartesian, axis=-1), axis=1)
 

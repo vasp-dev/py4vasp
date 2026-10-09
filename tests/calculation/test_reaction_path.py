@@ -212,17 +212,41 @@ def test_to_ICONST_without_lambda_raises(path):
 
 
 def _brute_force_distance(raw_structure, first, second):
-    # minimum over all neighboring images, evaluated step by step
+    # minimum over a generous block of periodic images, evaluated step by step; it
+    # deliberately does not wrap the difference first, so it stays independent of
+    # the implementation
     lattice = raw_structure.cell.scale[()] * raw_structure.cell.lattice_vectors
     positions = raw_structure.positions
-    images = np.array(list(itertools.product((-1, 0, 1), repeat=3)))
+    images = np.array(list(itertools.product(range(-8, 9), repeat=3)))
     distances = []
     for step in range(len(positions)):
         difference = positions[step, second - 1] - positions[step, first - 1]
-        difference -= np.rint(difference)
         cartesian = (difference + images) @ lattice[step]
         distances.append(np.min(np.linalg.norm(cartesian, axis=1)))
     return np.array(distances)
+
+
+def _sheared_structure():
+    # strongly tilted cell: wrapping the fractional difference and checking only the
+    # neighboring cells misses the closest image at 2.5 Å
+    lattice = np.array([[[4.0, 0.0, 0.0], [20.0, 3.0, 0.0], [0.0, 0.0, 10.0]]])
+    positions = np.array([[[0.0, 0.0, 0.0], [0.0, 0.5, 0.0], [0.3, 0.8, 0.4]]])
+    return raw.Structure(
+        raw.Stoichiometry(
+            number_ion_types=np.array([1, 1, 1]), ion_types=["C", "H", "N"]
+        ),
+        raw.Cell(lattice_vectors=lattice, scale=raw.VaspData(1.0)),
+        positions=positions,
+    )
+
+
+def test_read_closest_image_in_sheared_cell(Assert):
+    structure = _sheared_structure()
+    result = ReactionPath.from_data(structure).read("1~2, 1~3, 2~3")
+    Assert.allclose(result["1~2"], [2.5])
+    for first, second in [(1, 3), (2, 3)]:
+        expected = _brute_force_distance(structure, first, second)
+        Assert.allclose(result[f"{first}~{second}"], expected)
 
 
 def _hcn_trajectory():
