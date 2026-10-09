@@ -5,7 +5,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from py4vasp._third_party.graph.graph import Graph, check_image_format
+from py4vasp import exception
+from py4vasp._third_party.graph.graph import IMAGE_FORMATS, Graph, check_image_format
 from py4vasp._util import convert
 
 """Use the Mixin for all quantities that define an option to produce an x-y graph. This
@@ -99,6 +100,8 @@ class Mixin(abc.ABC):
         on to the :py:meth:`to_plotly` method. Please check the documentation of
         that method to learn which arguments are allowed.
         """
+        if filename is None:
+            _raise_error_if_filename_is_positional("to_image", args, IMAGE_FORMATS)
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
         check_image_format(filename)
@@ -155,6 +158,8 @@ class Mixin(abc.ABC):
         on to the :py:meth:`to_frame` method. Please check the documentation of
         that method to learn which arguments are allowed.
         """
+        if filename is None:
+            _raise_error_if_filename_is_positional("to_csv", args, (".csv",))
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.csv"
         if os.path.isabs(filename):
@@ -163,6 +168,19 @@ class Mixin(abc.ABC):
             writeout_path = self._path / filename
         df = self.to_frame(*args, **kwargs)
         df.to_csv(writeout_path, index=False)
+
+
+def _raise_error_if_filename_is_positional(method, args, suffixes):
+    for argument in args:
+        if (
+            isinstance(argument, (str, Path))
+            and Path(argument).suffix.lower() in suffixes
+        ):
+            message = f"""\
+The argument "{argument}" looks like a filename, but the positional arguments of
+{method} select what is plotted. Please pass the file as a keyword argument, e.g.
+{method}(filename="{argument}")."""
+            raise exception.IncorrectUsage(message)
 
 
 def _merge_graphs(graphs):
