@@ -174,6 +174,18 @@ def test_displacements_accept_custom_masses(translation_mode, Assert):
     Assert.allclose(actual, expected)
 
 
+def heavy_oxygen(translation_mode):
+    elements = Structure.from_data(translation_mode._raw_phonon_mode.structure)
+    elements = np.array(elements.read()["elements"])
+    return np.where(elements == "O", 17.999, translation_mode.ref.masses)
+
+
+def test_displacements_accept_masses_per_element(translation_mode, Assert):
+    actual = translation_mode.displacements(masses={"O": 17.999})
+    expected = translation_mode.displacements(masses=heavy_oxygen(translation_mode))
+    Assert.allclose(actual, expected)
+
+
 @pytest.fixture
 def mode_handler(raw_data):
     raw_mode = raw_data.phonon_mode("default")
@@ -555,6 +567,13 @@ def test_displace_raises_error_for_ranges_and_operations(mode_handler, selection
     assert "one by one" in str(error.value)
 
 
+def test_displace_accepts_masses_per_element(mode_handler, Assert):
+    elements = np.array(mode_handler.ref.structure.read()["elements"])
+    per_atom = np.where(elements == "O", 17.999, mode_handler.ref.masses)
+    actual = mode_handler.displace("4", 0.5, masses={"O": 17.999})
+    Assert.allclose(actual, mode_handler.displace("4", 0.5, masses=per_atom))
+
+
 def test_displace_raises_error_if_masses_do_not_match_the_atoms(mode_handler):
     with pytest.raises(exception.IncorrectUsage) as error:
         mode_handler.displace("4", 0.5, masses=[1.0, 2.0])
@@ -562,10 +581,10 @@ def test_displace_raises_error_if_masses_do_not_match_the_atoms(mode_handler):
 
 
 def test_displace_raises_error_if_masses_are_not_numbers(mode_handler):
-    # a dictionary of element to mass is a plausible guess and would otherwise be
-    # reported as a single mass rather than as the wrong kind of input
+    # passing the elements instead of their masses would otherwise be reported as the
+    # wrong number of masses rather than as the wrong kind of input
     with pytest.raises(exception.IncorrectUsage) as error:
-        mode_handler.displace("4", 0.5, masses={"Sr": 87.62, "Ti": 47.867, "O": 15.999})
+        mode_handler.displace("4", 0.5, masses=["Sr", "Ti", "O"])
     assert "numbers" in str(error.value)
 
 

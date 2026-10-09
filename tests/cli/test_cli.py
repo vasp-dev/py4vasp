@@ -14,7 +14,7 @@ import pytest
 click_testing = pytest.importorskip("click.testing")
 CliRunner = click_testing.CliRunner
 
-from py4vasp import exception
+from py4vasp import demo, exception
 from py4vasp._calculation.symmetry import _SYMPREC
 from py4vasp.cli import cli
 
@@ -65,19 +65,14 @@ _KPATH_TEXT = (
 
 
 @pytest.mark.parametrize("lammps", ("LAMMPS", "Lammps", "lammps"))
-def test_convert_lammps(mock_calculation, lammps):
-    runner = _runner()
-    result = runner.invoke(cli, ["convert", "structure", lammps])
+def test_convert_lammps_of_demo_calculation(tmp_path, monkeypatch, lammps):
+    # a real calculation instead of a mock, so that the command and Structure.to_lammps
+    # cannot drift apart; without --from the command reads the current directory
+    calculation = demo.calculation(tmp_path / "demo")
+    monkeypatch.chdir(tmp_path / "demo")
+    result = _runner().invoke(cli, ["convert", "structure", lammps])
     assert result.exit_code == 0
-    check_conversion_called(mock_calculation, result)
-
-
-@pytest.mark.parametrize("position", ("first", "middle", "last"))
-@pytest.mark.parametrize("selection", (("-s", "choice"), ("--selection", "choice")))
-def test_convert_selection(mock_calculation, position, selection):
-    runner = _runner()
-    result = invoke_runner_with_options(runner, position, selection)
-    check_conversion_called(mock_calculation, result, selection=selection[1])
+    assert result.stdout == f"{calculation.structure.to_lammps()}\n"
 
 
 @pytest.mark.parametrize("position", ("first", "middle", "last"))
@@ -91,7 +86,7 @@ def test_convert_path(mock_calculation, position, argument, path, tmp_path):
         expected_path.touch()
     runner = _runner()
     result = invoke_runner_with_options(runner, position, (argument, expected_path))
-    check_conversion_called(mock_calculation, result, expected_path=expected_path)
+    check_conversion_called(mock_calculation, result, expected_path)
 
 
 def invoke_runner_with_options(runner, position, options):
@@ -105,9 +100,7 @@ def invoke_runner_with_options(runner, position, options):
         raise NotImplementedError
 
 
-def check_conversion_called(
-    mock_calculation, result, selection=None, expected_path=pathlib.Path.cwd()
-):
+def check_conversion_called(mock_calculation, result, expected_path):
     assert result.exit_code == 0
     if expected_path.name == "filename":
         constructor = mock_calculation.from_file
@@ -115,10 +108,7 @@ def check_conversion_called(
         constructor = mock_calculation.from_path
     constructor.assert_called_once_with(expected_path)
     structure = constructor.return_value.structure
-    if selection is None:
-        structure.to_lammps.assert_called_once_with()
-    else:
-        structure.to_lammps.assert_called_once_with(selection=selection)
+    structure.to_lammps.assert_called_once_with()
     converted = structure.to_lammps.return_value
     assert f"{converted}\n" == result.stdout
 
@@ -130,6 +120,23 @@ def test_convert_help_names_supported_conversion():
     usage = result.stdout.splitlines()[0]
     assert "{structure}" in usage
     assert "lammps" in result.stdout.lower()
+    # no Structure method takes a source selection, so convert does not offer one
+    assert "--selection" not in result.stdout
+    # instead the help says which step is converted and where to get the others
+    help_text = " ".join(result.stdout.split())  # click rewraps the paragraphs
+    assert "final ionic step" in help_text
+    assert "structure[" in help_text
+
+
+@pytest.mark.parametrize("option", ("-s", "--selection"))
+def test_convert_rejects_selection(tmp_path, option):
+    demo.calculation(tmp_path / "demo")
+    arguments = ["convert", "structure", "lammps", "--from", tmp_path / "demo"]
+    result = _runner().invoke(cli, [*arguments, option, "default"])
+    assert result.exit_code == 2
+    assert "No such option" in _messages(result)
+    # a clean usage error, not an exception escaping from the conversion
+    assert isinstance(result.exception, SystemExit)
 
 
 def test_convert_wrong_quantity():

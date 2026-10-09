@@ -7,6 +7,7 @@ import warnings
 from typing import Any, List, Optional, Tuple, Union
 
 from py4vasp import exception
+from py4vasp._calculation import mass as _mass
 from py4vasp._calculation.dispatch import (
     _REGISTRY,
     INPUT_FILES,
@@ -97,6 +98,10 @@ class Calculation:
 
     >>> poscar_string = calculation.structure.to_POSCAR()
     """
+
+    # not a registered quantity, because it reads nothing VASP writes yet; a class
+    # attribute takes precedence over the registry lookup in __getattr__
+    mass = _mass.Mass
 
     def __init__(self, *args, **kwargs):
         if not kwargs.get("_internal"):

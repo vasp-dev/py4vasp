@@ -37,24 +37,22 @@ def cli():
     type=click.STRING,
     help="Directory inside the archive in which the calculation is stored.",
 )
-@click.option(
-    "-s",
-    "--selection",
-    type=click.STRING,
-    help="String to further clarify the specific source of the quantity.",
-)
-def convert(quantity, format, path, archive_path, selection):
+def convert(quantity, format, path, archive_path):
     """Convert the structure of a calculation to another format.
 
     Currently, the only supported conversion is the structure to the LAMMPS format,
     i.e., `py4vasp convert structure lammps`. The result is written to stdout.
+
+    The command converts the structure of the final ionic step, e.g., the relaxed
+    structure of a relaxation. To convert another step, use the Python interface,
+    e.g., `calculation.structure[0].to_lammps()` for the first step.
     """
     if format.lower() != "lammps":
         raise click.UsageError(f"Converting {quantity} to {format} is not implemented.")
     path = pathlib.Path.cwd() if path is None else pathlib.Path(path)
     try:
         calculation = _open_calculation(path, archive_path)
-        result = _convert_to_lammps(calculation, selection)
+        result = calculation.structure.to_lammps()
     except exception.Py4VaspError as error:
         raise click.ClickException(*error.args) from error
     print(result)
@@ -71,14 +69,6 @@ archive that py4vasp can read."""
     if path.is_file():
         return py4vasp.Calculation.from_file(path)
     return py4vasp.Calculation.from_path(path)
-
-
-def _convert_to_lammps(calculation, selection):
-    if selection is None:
-        result = calculation.structure.to_lammps()
-    else:
-        result = calculation.structure.to_lammps(selection=selection)
-    return result
 
 
 @cli.command()
