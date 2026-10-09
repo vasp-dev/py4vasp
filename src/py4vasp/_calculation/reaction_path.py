@@ -117,7 +117,7 @@ class ReactionPathHandler:
             coordinates = np.concatenate([self.coordinates, other.coordinates])
             return dataclasses.replace(self, coordinates=coordinates, lambda_=None)
 
-        def discretize(self, number_points, *, tolerance):
+        def discretize(self, number_points, *, extra_points=0, tolerance):
             """Select points spaced approximately evenly along the path.
 
             A path-based collective variable, e.g., the IS coordinate of a slow-growth
@@ -131,7 +131,12 @@ class ReactionPathHandler:
             Parameters
             ----------
             number_points : int
-                How many points the discretized path has.
+                How many points are selected along the path.
+            extra_points : int
+                How many points to add beyond each end of the path, continuing it
+                linearly from the last two points. They keep the collective variable
+                defined when the simulation runs slightly past the reactant or product.
+                They count in addition to the selected points but not for λ.
             tolerance : float
                 By how much, in Å, the distance between two successive points may
                 deviate from the targeted one. A dense path, such as an IRC, permits a
@@ -142,8 +147,9 @@ class ReactionPathHandler:
             Returns
             -------
             ReactionPath
-                The selected points, with λ = 1 / ⟨d²⟩ set from the distances d between
-                successive points. Use λ for the IS line of the ICONST file; it makes
+                The extra points before the path, the selected points, and the extra
+                points after it. λ = 1 / ⟨d²⟩ is set from the distances d between
+                successive selected points. Use λ for the IS line of the ICONST file; it makes
                 the collective variable switch smoothly from one point to the next.
 
             Examples
@@ -169,7 +175,9 @@ class ReactionPathHandler:
                 )
             points = self.coordinates[indices]
             return dataclasses.replace(
-                self, coordinates=points, lambda_=_suggest_lambda(points)
+                self,
+                coordinates=_extend(points, extra_points),
+                lambda_=_suggest_lambda(points),
             )
 
 
@@ -190,6 +198,12 @@ def _equidistant_indices(coordinates, number_points, increment, tolerance):
             return None
         indices.append(start + closest)
     return indices
+
+
+def _extend(points, extra_points):
+    before = (points[0] - points[1]) * np.arange(extra_points, 0, -1)[:, np.newaxis]
+    after = (points[-1] - points[-2]) * np.arange(1, extra_points + 1)[:, np.newaxis]
+    return np.concatenate([points[0] + before, points, points[-1] + after])
 
 
 def _suggest_lambda(points):

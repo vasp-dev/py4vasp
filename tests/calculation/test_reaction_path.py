@@ -127,3 +127,27 @@ def test_increment_shrinks_until_tolerance_met(curve, Assert):
     Assert.allclose(discretized.lambda_, 56.31446053316491)
     spacing = np.linalg.norm(np.diff(discretized.coordinates, axis=0), axis=1)
     assert np.ptp(spacing) < 2e-3
+
+
+def test_discretize_extra_points_linear(line, Assert):
+    discretized = line.discretize(6, extra_points=2, tolerance=1e-3)
+    x = np.linspace(-0.4, 1.4, 10)
+    Assert.allclose(discretized.coordinates, np.c_[x, 2 * x])
+
+
+def test_extra_points_do_not_change_lambda(curve, Assert):
+    discretized = curve.discretize(5, extra_points=2, tolerance=1e-3)
+    # the IRCCAR written by ircprepare3.py, which prints 6 decimals
+    expected = [
+        [1.017757, -0.265921],
+        [1.008879, -0.132961],
+        [1.000000, 0.000000],
+        [0.991121, 0.132961],
+        [0.964601, 0.263714],
+        [0.921097, 0.389334],
+        [0.861072, 0.508483],
+        [0.801047, 0.627633],
+        [0.741022, 0.746783],
+    ]
+    assert np.allclose(discretized.coordinates, expected, atol=1e-6)
+    Assert.allclose(discretized.lambda_, 56.31446053316491)
