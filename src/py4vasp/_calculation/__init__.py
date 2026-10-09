@@ -738,16 +738,20 @@ class DefaultCalculationFactory:
     >>> sorted(calculation.dielectric_function.read("isotropic"))
     ['energies', 'isotropic']
 
-    *Which elastic constants does my crystal have, in GPa?* Read the
-    :py:class:`~py4vasp._calculation.elastic_modulus.ElasticModulus` and divide by ten,
-    because py4vasp returns it in kBar as VASP writes it. The result is the full tensor
-    with four Cartesian indices, so C_11 is ``[0, 0, 0, 0]``, C_12 is ``[0, 0, 1, 1]``
-    and C_44 is ``[1, 2, 1, 2]``
+    *Which elastic constants does my crystal have, in GPa?* Ask the
+    :py:class:`~py4vasp._calculation.elastic_modulus.ElasticModulus` for its 6 x 6
+    Voigt matrix, in the order xx, yy, zz, yz, zx, xy, so C_11 is ``[0, 0]``, C_12 is
+    ``[0, 1]`` and C_44 is ``[3, 3]``
 
-    >>> elastic_modulus = calculation.elastic_modulus.read()["relaxed_ion"] / 10
-    >>> c11, c12, c44 = (0, 0, 0, 0), (0, 0, 1, 1), (1, 2, 1, 2)
-    >>> [float(elastic_modulus[index]) for index in (c11, c12, c44)]
+    >>> voigt = calculation.elastic_modulus.voigt("relaxed_ion")["relaxed_ion"]
+    >>> [float(voigt[index]) for index in ((0, 0), (0, 1), (3, 3))]
     [297.0, 119.0, 57.0]
+
+    The bulk, shear and Young's moduli and Poisson's ratio of a polycrystal have
+    methods of their own
+
+    >>> round(calculation.elastic_modulus.bulk_modulus("relaxed_ion")["relaxed_ion"])
+    152
 
     *How do I compare several calculations in one figure?* Add the graphs together.
     :py:meth:`~py4vasp.graph.Graph.label` names each contribution, and the axis labels
