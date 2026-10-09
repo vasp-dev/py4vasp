@@ -17,7 +17,7 @@ def examples(instance_name, function_name=None, step="step"):
 Examples
 --------
 If you access {access}, the result will depend on {depend_on} that
-you selected with the [] operator. Without any selection the results from the
+you selected with the [] operator. Without selected steps the results from the
 final {step} will be used.
 
 >>> calculation.{instance_name}.{function_name}()

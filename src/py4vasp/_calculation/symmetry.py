@@ -514,6 +514,8 @@ class Symmetry:
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------

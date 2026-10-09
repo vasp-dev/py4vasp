@@ -707,6 +707,29 @@ class DefaultCalculationFactory:
     >>> structure.to_POSCAR(supercell=(2, 2, 1)).splitlines()[6]
     '8 4 16'
 
+    *VASP wrote this quantity more than once. How do I get a particular version?* Pass
+    the source as ``selection``. ``selections`` lists every source a quantity can have,
+    ``is_available`` tells you which of them this calculation contains
+
+    >>> calculation.structure.selections()
+    {'structure': ['default', 'final', 'exciton', 'phonon', 'poscar']}
+    >>> calculation.structure.is_available(["default", "final", "exciton", "phonon"])
+    {'default': True, 'final': False, 'exciton': True, 'phonon': True}
+
+    For the structure, *default* holds the ionic steps of the run, *final* the structure
+    at its end, *exciton* the supercell of an exciton calculation, *phonon* the
+    primitive cell of a phonon calculation and *poscar* the POSCAR file next to the
+    output. Every method of the structure takes the selection, best passed by keyword
+    because some of them take other arguments first
+
+    >>> calculation.structure.lattice_vectors(selection="phonon").shape
+    (3, 3)
+
+    The density works alike, e.g. for the kinetic-energy density
+
+    >>> sorted(calculation.density.read(selection="kinetic_energy"))
+    ['kinetic_energy', 'structure']
+
     *How do I pass ε∞ and the Born effective charges to a polar phonon run?* Let the
     linear-response calculation write the INCAR tags for you. Both strings end with a
     newline, so you can join them and append them to the INCAR file of the phonon

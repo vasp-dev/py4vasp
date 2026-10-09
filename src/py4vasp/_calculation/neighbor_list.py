@@ -394,8 +394,9 @@ class NeighborList:
             The neighbor cutoff radius in Å.
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------

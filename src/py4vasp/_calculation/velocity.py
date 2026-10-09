@@ -159,7 +159,7 @@ class Velocity(view.Mixin):
     >>> calculation = demo.calculation()
 
     If you access the velocities, the result will depend on the steps that you selected
-    with the [] operator. Without any selection the results from the final step will be
+    with the [] operator. Without selected steps the results from the final step will be
     used.
 
     >>> calculation.velocity.number_steps()
@@ -215,6 +215,8 @@ class Velocity(view.Mixin):
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -266,7 +268,7 @@ class Velocity(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `read` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used. The structure is included to provide the necessary context
         for the velocities.
 
@@ -320,7 +322,7 @@ class Velocity(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `to_numpy` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.velocity.to_numpy()
@@ -379,7 +381,7 @@ class Velocity(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `to_view` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.velocity.to_view()

@@ -300,7 +300,7 @@ class LocalMoment(view.Mixin):
     >>> calculation = demo.calculation(selection="collinear")
 
     If you access the local moments, the result will depend on the steps that you
-    selected with the [] operator. Without any selection the results from the final
+    selected with the [] operator. Without selected steps the results from the final
     step will be used.
 
     >>> calculation.local_moment.number_steps()
@@ -405,7 +405,7 @@ class LocalMoment(view.Mixin):
         >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `read` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> collinear_calculation.local_moment.read()
@@ -481,7 +481,7 @@ class LocalMoment(view.Mixin):
         >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `to_view` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> collinear_calculation.local_moment.to_view()
@@ -548,7 +548,7 @@ class LocalMoment(view.Mixin):
         >>> calculation = demo.calculation(selection="collinear")
 
         If you use the `projected_charge` method, the result will depend on the steps
-        that you selected with the [] operator. Without any selection the results from
+        that you selected with the [] operator. Without selected steps the results from
         the final step will be used.
 
         >>> calculation.local_moment.projected_charge()
@@ -596,7 +596,7 @@ class LocalMoment(view.Mixin):
         >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `projected_magnetic` method, the result will depend on the steps
-        that you selected with the [] operator. Without any selection the results from
+        that you selected with the [] operator. Without selected steps the results from
         the final step will be used.
 
         >>> collinear_calculation.local_moment.projected_magnetic()
@@ -659,7 +659,7 @@ class LocalMoment(view.Mixin):
         >>> calculation = demo.calculation(selection="collinear")
 
         If you use the `charge` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.local_moment.charge()
@@ -717,7 +717,7 @@ class LocalMoment(view.Mixin):
         >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `magnetic` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> collinear_calculation.local_moment.magnetic()

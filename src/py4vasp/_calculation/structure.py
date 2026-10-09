@@ -788,7 +788,7 @@ class Structure(view.Mixin):
     >>> calculation = demo.calculation()
 
     If you access the structure, the result will depend on the steps that you selected
-    with the [] operator. Without any selection the results from the final step will be
+    with the [] operator. Without selected steps the results from the final step will be
     used.
 
     >>> calculation.structure.number_steps()
@@ -931,6 +931,8 @@ class Structure(view.Mixin):
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -983,8 +985,9 @@ class Structure(view.Mixin):
             generate different stoichiometries without modifying the underlying raw data.
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1002,7 +1005,7 @@ class Structure(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `read` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.structure.read()
@@ -1055,8 +1058,9 @@ class Structure(view.Mixin):
             generate different stoichiometries without modifying the underlying raw data.
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1072,7 +1076,7 @@ class Structure(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `to_view` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.structure.to_view()
@@ -1133,8 +1137,9 @@ class Structure(view.Mixin):
             generate different stoichiometries without modifying the underlying raw data.
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1150,7 +1155,7 @@ class Structure(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `to_ase` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.structure.to_ase()
@@ -1200,8 +1205,9 @@ class Structure(view.Mixin):
             generate different stoichiometries without modifying the underlying raw data.
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1255,8 +1261,9 @@ class Structure(view.Mixin):
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
         supercell : int or array_like of 3 int
             If present the structure is replicated the specified number of times along
             each direction. Use this to set up a calculation that needs a larger cell
@@ -1278,7 +1285,7 @@ class Structure(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `to_POSCAR` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> poscar = calculation.structure.to_POSCAR()
@@ -1334,8 +1341,9 @@ class Structure(view.Mixin):
             are a triagonal matrix.
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1351,7 +1359,7 @@ class Structure(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `to_lammps` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> print(calculation.structure.to_lammps())
@@ -1411,8 +1419,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1428,7 +1437,7 @@ class Structure(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `lattice_vectors` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.structure.lattice_vectors()
@@ -1456,8 +1465,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1473,7 +1483,7 @@ class Structure(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `positions` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.structure.positions()
@@ -1498,8 +1508,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1515,7 +1526,7 @@ class Structure(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `cartesian_positions` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.structure.cartesian_positions()
@@ -1540,8 +1551,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1557,7 +1569,7 @@ class Structure(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `volume` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.structure.volume()
@@ -1582,8 +1594,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
         """
         return merge_default(
             self._source,
@@ -1599,8 +1612,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
         """
         return merge_default(
             self._source,
@@ -1621,8 +1635,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1662,8 +1677,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1700,8 +1716,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1752,8 +1769,9 @@ class Structure(view.Mixin):
             positions.
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1826,8 +1844,9 @@ class Structure(view.Mixin):
             raise this tolerance (1e-3 is a common choice).
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1922,8 +1941,9 @@ class Structure(view.Mixin):
             raise this tolerance (1e-3 is a common choice).
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -1998,8 +2018,9 @@ class Structure(view.Mixin):
             raise this tolerance (1e-3 is a common choice).
 
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -2049,8 +2070,9 @@ class Structure(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------

@@ -130,7 +130,7 @@ class Stress:
     >>> calculation = demo.calculation()
 
     If you access the stress, the result will depend on the steps that you selected
-    with the [] operator. Without any selection the results from the final step will be
+    with the [] operator. Without selected steps the results from the final step will be
     used.
 
     >>> calculation.stress.number_steps()
@@ -184,6 +184,8 @@ class Stress:
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -237,7 +239,7 @@ class Stress:
         >>> calculation = demo.calculation()
 
         If you use the `read` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used. The structure is included to provide the necessary context for
         the stress.
 
