@@ -59,6 +59,9 @@ class ElasticModulusHandler:
     def to_shear_modulus(self, selection=None) -> dict:
         return self._hill_average(selection, _SHEAR_MODULUS)
 
+    def to_youngs_modulus(self, selection=None) -> dict:
+        return self._hill_average(selection, _YOUNGS_MODULUS)
+
     def _hill_average(self, selection, index):
         return {
             choice: float(_ElasticTensor.from_array(voigt).get_VRH()[index])
@@ -478,6 +481,52 @@ class ElasticModulus:
             ElasticModulusHandler.to_shear_modulus,
         )
 
+    def youngs_modulus(self, selection: str | None = None) -> dict:
+        """Compute Young's modulus of a polycrystal in GPa.
+
+        Young's modulus E is the ratio of stress to strain when a rod of the material
+        is stretched along its axis and may contract freely in the perpendicular
+        directions. py4vasp obtains it as E = 9KG / (3K + G) from the Hill averages of
+        the bulk modulus K and the shear modulus G, see :py:meth:`bulk_modulus` and
+        :py:meth:`shear_modulus`. This is the same value py4vasp stores in the
+        database.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. Without
+            a selection, you obtain both. If VASP produced more than one source of the
+            elastic modulus, select it with e.g. "default(relaxed_ion)".
+
+        Returns
+        -------
+        dict
+            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
+            Young's modulus in GPa.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Young's modulus with relaxed ions in GPa is
+
+        >>> youngs_modulus = calculation.elastic_modulus.youngs_modulus("relaxed_ion")
+        >>> round(youngs_modulus["relaxed_ion"], 1)
+        194.1
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_youngs_modulus,
+        )
+
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
 
@@ -536,7 +585,7 @@ class ElasticModulus:
 
 _TENSORS = ("clamped_ion", "relaxed_ion")
 # position of the moduli in the result of _ElasticTensor.get_VRH
-_BULK_MODULUS, _SHEAR_MODULUS = 0, 1
+_BULK_MODULUS, _SHEAR_MODULUS, _YOUNGS_MODULUS = 0, 1, 2
 
 
 def _parse_tensor_selection(selection):

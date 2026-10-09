@@ -271,6 +271,7 @@ _DATABASE_PREFIX = {"clamped_ion": "electronic", "relaxed_ion": "total"}
 _HILL_AVERAGES = {
     "bulk_modulus": "bulk_modulus",
     "shear_modulus": "shear_modulus",
+    "youngs_modulus": "young_modulus",
 }
 
 
