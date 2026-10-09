@@ -390,11 +390,12 @@ class NeighborList:
 
         Parameters
         ----------
+        cutoff : float
+            The neighbor cutoff radius in Å.
+
         selection : str | None
             Select the source of the data, if VASP produced more than one. Use
             :py:meth:`selections` to see which sources exist.
-        cutoff : float
-            The neighbor cutoff radius in Å.
 
         Returns
         -------

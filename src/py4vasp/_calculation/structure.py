@@ -972,12 +972,13 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         ion_types : Sequence
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
+
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1040,15 +1041,16 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
         ion_types : Sequence
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
+
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1117,15 +1119,16 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
         ion_types : Sequence
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
+
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1186,12 +1189,13 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         ion_types : Sequence
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
+
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1241,12 +1245,12 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         ion_types : Sequence
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         supercell : int or array_like of 3 int
             If present the structure is replicated the specified number of times along
             each direction. Use this to set up a calculation that needs a larger cell
@@ -1319,12 +1323,13 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         standard_form : bool
             Determines whether the structure is standardize, i.e., the lattice vectors
             are a triagonal matrix.
+
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1730,9 +1735,6 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         to_primitive : bool
             If False (default) the input cell and the number of atoms are kept and
             only the atoms are snapped onto their exact high-symmetry positions. If
@@ -1742,6 +1744,10 @@ class Structure(view.Mixin):
             Distance tolerance (in Å) spglib uses to detect the symmetry. Increase
             it to symmetrize structures that deviate more strongly from the ideal
             positions.
+
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1798,9 +1804,6 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         number_points : int
             Number of k points VASP generates along every line of the path.
         time_reversal : bool
@@ -1815,6 +1818,10 @@ class Structure(view.Mixin):
             from the wrong symmetry. The space group is stated in the first line of
             the generated file; if it is not the one you expect, write more digits or
             raise this tolerance (1e-3 is a common choice).
+
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1885,9 +1892,6 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         kspacing : float
             Density of the mesh in Å⁻¹, following the convention of VASP's KSPACING
             tag: the number of divisions along direction i is 2π|b_i| / kspacing
@@ -1910,6 +1914,10 @@ class Structure(view.Mixin):
             from the wrong symmetry. The space group is stated in the first line of
             the generated file; if it is not the one you expect, write more digits or
             raise this tolerance (1e-3 is a common choice).
+
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1974,9 +1982,6 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data, if VASP produced more than one. Use
-            :py:meth:`selections` to see which sources exist.
         symprec : float
             Distance in Å within which spglib considers two atoms symmetry
             equivalent. The default is tighter than a POSCAR written with four
@@ -1985,6 +1990,10 @@ class Structure(view.Mixin):
             from the wrong symmetry. The space group is stated in the first line of
             the generated file; if it is not the one you expect, write more digits or
             raise this tolerance (1e-3 is a common choice).
+
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------

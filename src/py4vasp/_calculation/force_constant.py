@@ -535,15 +535,16 @@ class ForceConstant:
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data. This quantity has only the default source;
-            the argument exists for compatibility with older versions of py4vasp.
         masses : Sequence[float] | Mapping[str, float] | None
             The mass of every atom in atomic mass units, in the order of the structure,
             or a dictionary from element to mass that replaces the mass of only the
             elements it names, e.g. ``{"O": 17.999}``. Every other atom keeps the
             default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
+
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------

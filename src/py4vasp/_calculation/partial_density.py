@@ -485,6 +485,26 @@ class PartialDensity(view.Mixin):
         return self.read(selection)
 
     def grid(self, selection: str | None = None):
+        """Return the number of grid points along each lattice vector.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+
+        Returns
+        -------
+        np.ndarray
+            The three numbers of grid points the partial density is stored on.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> calculation.partial_density.grid()
+        array([10, 12, 14])
+        """
         return merge_default(
             self._source,
             self._quantity_name,

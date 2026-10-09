@@ -310,12 +310,13 @@ class Force(view.Mixin):
 
         Parameters
         ----------
-        selection : str | None
-            Select the source of the data. This quantity has only the default source;
-            the argument exists for compatibility with older versions of py4vasp.
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
+
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
