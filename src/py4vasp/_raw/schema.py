@@ -65,7 +65,7 @@ class Schema:
         """
         quantity = convert.quantity_name(cls.__name__)
         self._sources.setdefault(quantity, {})
-        labels = [name] + list(np.atleast_1d(alias))
+        labels = [name] + [str(label) for label in np.atleast_1d(alias)]
         for label in labels:
             self._raise_error_if_already_in_schema(quantity, label)
             alias_for = name if label != name else None

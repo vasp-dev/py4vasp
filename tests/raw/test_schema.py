@@ -100,6 +100,16 @@ def test_length():
     assert remove_version(schema.sources) == reference
 
 
+def test_selections_are_plain_strings():
+    # numpy strings would print as np.str_('first') in the list of selections
+    schema = Schema(VERSION)
+    schema.add(Simple, foo="foo", bar="bar", alias=["first", "other"])
+    schema.add(Simple, name="second", foo="foo", bar="bar", alias="more")
+    selections = list(schema.selections("simple"))
+    assert selections == ["default", "first", "other", "second", "more"]
+    assert all(type(selection) is str for selection in selections)
+
+
 def test_alias():
     first = Simple("foo1", "bar1")
     second = Simple("foo2", "bar2")
