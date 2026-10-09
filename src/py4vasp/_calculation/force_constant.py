@@ -270,7 +270,7 @@ class ForceConstant:
             ForceConstantHandler.__str__,
         )
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read structure information and force constants into a dictionary.
 
         The structural information is added to inform about which atoms are included
@@ -278,6 +278,12 @@ class ForceConstant:
         energy with respect to atomic displacement for all atoms and directions in
         eV/Å². Note that this is the negative of the array VASP stores, see the class
         documentation for the sign convention.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -287,14 +293,14 @@ class ForceConstant:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             ForceConstantHandler.from_data,
             ForceConstantHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
     def eigenvectors(self):
         """Compute the eigenvectors of the force constant matrix.

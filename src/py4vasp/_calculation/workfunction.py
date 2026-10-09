@@ -151,13 +151,19 @@ class Workfunction(graph.Mixin):
     def _handler_factory(self, raw_data):
         return WorkfunctionHandler.from_data(raw_data)
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Reports useful information about the workfunction as a dictionary.
 
         In addition to the vacuum potential, the dictionary contains typical reference
         energies such as the valence band maximum, the conduction band minimum, and the
         Fermi energy. Furthermore you obtain the average potential, so you can use a
         different algorithm to determine the vacuum potential if desired.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -194,14 +200,14 @@ class Workfunction(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             WorkfunctionHandler.read,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Public alias for read(). Check that method for examples and optional arguments."""
-        return self.read()
+        return self.read(selection)
 
     def to_graph(self) -> graph.Graph:
         """Plot the average potential along the lattice vector selected by IDIPOL.

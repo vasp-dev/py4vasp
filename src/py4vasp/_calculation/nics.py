@@ -325,8 +325,14 @@ class Nics(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read NICS into a dictionary.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -337,14 +343,14 @@ class Nics(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             NicsHandler.to_dict,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
     def to_numpy(self, selection: Optional[str] = None):
         """Convert NICS to a numpy array.

@@ -43,6 +43,14 @@ def test_read(forces, steps, Assert):
     Assert.allclose(actual["forces"], forces.ref.forces[steps])
 
 
+@pytest.mark.parametrize("method", ["read", "to_dict"])
+def test_read_default_selection(Sr2TiO4, method, Assert):
+    actual = getattr(Sr2TiO4, method)("default")
+    Assert.allclose(actual["forces"], Sr2TiO4.ref.forces[-1])
+    with pytest.raises(exception.IncorrectUsage):
+        getattr(Sr2TiO4, method)("unknown_source")
+
+
 @pytest.mark.parametrize("supercell", [None, 2, (3, 2, 1)])
 def test_plot(forces, steps, supercell, Assert):
     structure_view = forces.ref.structure.plot(supercell)

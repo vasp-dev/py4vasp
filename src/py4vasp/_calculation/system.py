@@ -57,8 +57,14 @@ class System:
         """Create a System dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_system))
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the system tag into a dictionary.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -78,14 +84,14 @@ class System:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             SystemHandler.from_data,
             SystemHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.

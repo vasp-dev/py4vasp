@@ -240,10 +240,16 @@ class Velocity(view.Mixin):
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Return the structure and ion velocities in a dictionary.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -284,7 +290,7 @@ class Velocity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             VelocityHandler.to_dict,
         )

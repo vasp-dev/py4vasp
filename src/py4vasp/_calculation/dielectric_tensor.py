@@ -203,8 +203,14 @@ class DielectricTensor:
     def _handler_factory(self, raw_data):
         return DielectricTensorHandler.from_data(raw_data)
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the dielectric tensor into a dictionary.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -215,14 +221,14 @@ class DielectricTensor:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             DielectricTensorHandler.to_dict,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
     def to_INCAR(self, selection: str | None = None) -> str:
         """Format the dielectric tensor as the PHON_DIELECTRIC tag of an INCAR file.

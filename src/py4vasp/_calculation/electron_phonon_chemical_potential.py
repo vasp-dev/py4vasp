@@ -175,9 +175,15 @@ class ElectronPhononChemicalPotential:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self) -> Dict[str, Any]:
+    def read(self, selection: str | None = None) -> Dict[str, Any]:
         """
         Convert the electron-phonon chemical potential data to a dictionary.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -188,14 +194,14 @@ class ElectronPhononChemicalPotential:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElectronPhononChemicalPotentialHandler.to_dict,
         )
 
     def to_dict(self, selection=None) -> Dict[str, Any]:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
     def mu_tag(self) -> Tuple[str, NDArray]:
         """

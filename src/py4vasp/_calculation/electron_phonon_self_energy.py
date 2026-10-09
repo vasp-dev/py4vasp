@@ -230,8 +230,14 @@ class ElectronPhononSelfEnergy(abc.Sequence):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self):
+    def read(self, selection: str | None = None):
         """Return a dictionary that lists how many accumulators are available
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -241,14 +247,14 @@ class ElectronPhononSelfEnergy(abc.Sequence):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElectronPhononSelfEnergyHandler.to_dict,
         )
 
     def to_dict(self, selection=None):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
     def selections(self):
         """Return a dictionary describing what options are available to read the electron self-energies.

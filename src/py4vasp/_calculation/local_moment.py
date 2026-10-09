@@ -373,12 +373,18 @@ class LocalMoment(view.Mixin):
         p.text(str(self) if not cycle else "...")
 
     @documentation.format(index_note=_index_note)
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the charges and magnetization data into a dictionary.
 
         Be careful when comparing the magnetic moments to experimental data. The
         finite size of the projection sphere may influence the observed moments. Hence,
         there is no one-to-one correspondence to the experimental moments.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -434,14 +440,14 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.to_dict,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
     @documentation.format(selection=_moment_selection)
     def to_view(self, selection="total", supercell=None):

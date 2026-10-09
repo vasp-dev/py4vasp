@@ -210,11 +210,17 @@ class Stress:
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the stress and associated structural information for one or more
         selected steps of the trajectory.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -259,7 +265,7 @@ class Stress:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StressHandler.to_dict,
         )

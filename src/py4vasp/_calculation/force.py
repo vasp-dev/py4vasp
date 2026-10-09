@@ -239,13 +239,19 @@ class Force(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the forces into a dictionary.
 
         Forces and associated structural information for one or more selected steps of
         the trajectory are returned in a dictionary. This includes the lattice vectors,
         atomic positions, and atomic species in addition to the forces acting on each atom.
         The forces are in Cartesian coordinates and in units of eV/Å.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -286,14 +292,14 @@ class Force(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ForceHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
     def to_view(self, supercell=None) -> view.View:
         """Visualize the forces showing arrows at the atoms.
