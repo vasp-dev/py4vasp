@@ -2,10 +2,13 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import gc
 import warnings
+from unittest.mock import patch
 
 import pytest
 
 from py4vasp import Calculation, demo, exception
+from py4vasp._calculation.dos import Dos
+from py4vasp._third_party.graph import Graph
 
 
 def test_creating_default_calculation(tmp_path):
@@ -114,3 +117,41 @@ def test_path_of_temporary_calculation_warns_only_once():
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         calculation.path()
+
+
+@pytest.mark.parametrize(
+    "method, filename, patched",
+    [("to_image", "dos.png", "plot"), ("to_csv", "dos.csv", "to_frame")],
+)
+def test_saving_into_temporary_calculation_warns(method, filename, patched):
+    calculation = demo.calculation()
+    with patch.object(Dos, patched):
+        with pytest.warns(UserWarning, match="temporary") as record:
+            getattr(calculation.dos, method)(filename=filename)
+    assert str(calculation.dos.path) in str(record[0].message)
+    assert record[0].filename == __file__
+
+
+def test_saving_into_temporary_calculation_warns_together_with_path():
+    calculation = demo.calculation()
+    with patch.object(Dos, "plot"):
+        with pytest.warns(UserWarning):
+            calculation.dos.to_image(filename="dos.png")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        calculation.path()
+
+
+def test_saving_temporary_calculation_elsewhere_does_not_warn(tmp_path):
+    calculation = demo.calculation()
+    with patch.object(Dos, "plot"), warnings.catch_warnings():
+        warnings.simplefilter("error")
+        calculation.dos.to_image(filename=tmp_path / "dos.png")
+
+
+def test_graph_of_temporary_calculation_does_not_warn(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    graph = demo.calculation().dos.plot()
+    with patch.object(Graph, "to_plotly"), warnings.catch_warnings():
+        warnings.simplefilter("error")
+        graph.to_image("dos.png")

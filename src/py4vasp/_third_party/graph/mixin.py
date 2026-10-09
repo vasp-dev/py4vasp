@@ -89,6 +89,8 @@ class Mixin(abc.ABC):
             Path where the image will be saved. A relative path is relative to the
             directory of the calculation, not to the current working directory; pass
             an absolute path to save elsewhere. "~" is expanded to your home directory.
+            For the example data of :func:`py4vasp.demo.calculation` without a path,
+            the directory is temporary and saving there warns that it is removed.
             If None, defaults to "{classname}.png" where classname is derived from the
             class name.
         **kwargs
@@ -114,7 +116,7 @@ class Mixin(abc.ABC):
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
         check_image_format(filename)
-        path = resolve_output_path(filename, self._path)
+        path = self._output_path(filename)
         self.plot(*args, **kwargs).to_image(path)
 
     def to_frame(self, *args, **kwargs) -> "pd.DataFrame":
@@ -151,6 +153,8 @@ class Mixin(abc.ABC):
             Path where the CSV file will be saved. A relative path is relative to the
             directory of the calculation, not to the current working directory; pass
             an absolute path to save elsewhere. "~" is expanded to your home directory.
+            For the example data of :func:`py4vasp.demo.calculation` without a path,
+            the directory is temporary and saving there warns that it is removed.
             If None, defaults to "{classname}.csv" where classname is derived from the
             class name.
         **kwargs
@@ -173,9 +177,18 @@ class Mixin(abc.ABC):
             _raise_error_if_filename_is_positional("to_csv", args, (".csv",))
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.csv"
-        path = resolve_output_path(filename, self._path)
+        path = self._output_path(filename)
         df = self.to_frame(*args, **kwargs)
         df.to_csv(path, index=False)
+
+    def _output_path(self, filename):
+        # ask for the directory only if it is used, because it may warn about it
+        is_relative = not Path(filename).expanduser().is_absolute()
+        directory = self._output_directory() if is_relative else None
+        return resolve_output_path(filename, directory)
+
+    def _output_directory(self):
+        return self._path
 
 
 def _raise_error_if_filename_is_positional(method, args, suffixes):
