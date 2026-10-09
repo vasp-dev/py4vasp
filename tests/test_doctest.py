@@ -223,7 +223,12 @@ def get_graph_examples():
         + find_examples(py4vasp.graph.Contour)
         + find_examples(py4vasp.graph.Graph)
         + find_examples(py4vasp.graph.Series)
+        + _with_examples(find_examples(py4vasp._third_party.graph.mixin.Mixin))
     )
+
+
+def _with_examples(doctests):
+    return [doctest_ for doctest_ in doctests if doctest_.examples]
 
 
 @pytest.mark.parametrize(

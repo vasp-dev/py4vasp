@@ -494,6 +494,10 @@ class Graph(Sequence):
         self._set_xaxis_options(figure)
         self._set_yaxis_options(figure)
         figure.layout.title.text = self.title
+        if not self.title:
+            # plotly reserves space for a title at the top; without one use the same
+            # margin as plotly's default on the left and bottom
+            figure.layout.margin.t = 80
         if self.xsize:
             figure.layout.width = self.xsize
         figure.layout.height = self.ysize
@@ -671,7 +675,13 @@ class Graph(Sequence):
         Parameters
         ----------
         filename
-            Path to the output CSV file.
+            Path to the output CSV file. A relative path is relative to the current
+            working directory and "~" is expanded to your home directory.
+
+        Raises
+        ------
+        py4vasp.exception.FileAccessError
+            If the directory the file should be written to does not exist.
 
         Examples
         --------
@@ -726,8 +736,9 @@ class Graph(Sequence):
         2,5,0.2
         3,6,0.3
         """
+        path = resolve_output_path(filename, Path.cwd())
         df = self.to_frame()
-        df.to_csv(filename, index=False)
+        df.to_csv(path, index=False)
 
     def to_image(self, filename: str | Path) -> None:
         """Save the graph as an image file.
@@ -736,21 +747,26 @@ class Graph(Sequence):
         png, jpg (or jpeg) and webp and the vector formats svg and pdf are supported,
         in upper or lower case. The size of the image is the
         size of the figure, i.e., set :py:attr:`xsize` and :py:attr:`ysize` (in pixels)
-        to change it. This works for every graph, in particular for one combined from
-        several calculations with the ``+`` operator.
+        to change it. For a figure in print, prefer svg or pdf: a larger size enlarges
+        the canvas but not the fonts, so it does not make a raster image sharper. This
+        works for every graph, in particular for one combined from several calculations
+        with the ``+`` operator.
 
         Parameters
         ----------
         filename
             Path to the output image. Unlike the ``to_image`` method of the
             quantities, a relative path is relative to the current working directory,
-            because a graph does not know which calculation it came from.
+            because a graph does not know which calculation it came from. "~" is
+            expanded to your home directory.
 
         Raises
         ------
         py4vasp.exception.IncorrectUsage
             If the filename has no extension or one that is not a supported format,
             e.g. eps, which the image export of plotly no longer provides.
+        py4vasp.exception.FileAccessError
+            If the directory the image should be saved to does not exist.
 
         Examples
         --------
@@ -778,7 +794,8 @@ class Graph(Sequence):
         True
         """
         check_image_format(filename)
-        self.to_plotly().write_image(filename)
+        path = resolve_output_path(filename, Path.cwd())
+        self.to_plotly().write_image(path)
 
     def _create_and_populate_df(self, series):
         df = pd.DataFrame()
@@ -834,6 +851,31 @@ def _merge_field(left_graph, right_graph, field_name):
     return merge.merge_field_or_raise(
         left_field, right_field, field_name, "graphs", equal=merge.values_close
     )
+
+
+def expand_home(filename):
+    'Return filename as path with a leading "~" or "~user" expanded.'
+    try:
+        return Path(filename).expanduser()
+    except RuntimeError:
+        message = f"""\
+Cannot write to "{filename}" because its home directory is unknown. Please check the
+user name after "~" or pass the full path instead."""
+        raise exception.FileAccessError(message)
+
+
+def resolve_output_path(filename, directory):
+    """Return the path a file is written to; a relative filename is relative to
+    directory and "~" is expanded to the home directory."""
+    path = expand_home(filename)
+    if not path.is_absolute():
+        path = Path(directory) / path
+    if not path.parent.is_dir():
+        message = f"""\
+Cannot write to "{path}" because the directory "{path.parent}" does not exist. Please
+create the directory first or choose a different filename."""
+        raise exception.FileAccessError(message)
+    return path
 
 
 def check_image_format(filename):

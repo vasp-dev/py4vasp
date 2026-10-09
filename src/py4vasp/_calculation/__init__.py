@@ -157,7 +157,6 @@ instead of the constructor Calculation()."""
         calc._source = source
         calc._path = source.path
         calc._file = file
-        calc._warned_temporary = False
         return calc
 
     @classmethod
@@ -298,17 +297,12 @@ instead of the constructor Calculation()."""
 
         For the example data :func:`py4vasp.demo.calculation` generates without a path,
         this is a temporary directory and the first call warns that it is removed, with
-        every file you save there, once the calculation is no longer in use.
+        every file you save there, once the calculation is no longer in use. Saving an
+        image or csv file of a quantity there warns in the same way, but only one of
+        them warns per calculation.
         """
-        if isinstance(self._source, TemporarySource) and not self._warned_temporary:
-            self._warned_temporary = True
-            message = (
-                f"The data of this calculation is in the temporary directory "
-                f"{self._path}, which is removed together with every file you save "
-                "there as soon as the calculation is no longer in use. Pass a path to "
-                "demo.calculation() to keep the data."
-            )
-            warnings.warn(message, UserWarning, stacklevel=2)
+        if isinstance(self._source, TemporarySource):
+            self._source.warn_about_removal(stacklevel=3)
         return self._path
 
     def selections(

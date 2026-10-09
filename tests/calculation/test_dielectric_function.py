@@ -457,12 +457,12 @@ def test_ionic_to_image(ionic):
 
 
 def check_to_image(dielectric_function, filename_argument, expected_filename):
-    with patch.object(DielectricFunction, "to_plotly") as plot:
+    with patch.object(DielectricFunction, "plot") as plot:
         dielectric_function.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         expected_path = dielectric_function.path / expected_filename
-        fig.write_image.assert_called_once_with(expected_path)
+        fig.to_image.assert_called_once_with(expected_path)
 
 
 def test_electronic_selections(electronic):

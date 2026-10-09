@@ -19,6 +19,13 @@ class ExampleGraph(graph.Mixin):
         return GRAPH
 
 
+@pytest.fixture(autouse=True)
+def existing_output_directory(tmp_path, monkeypatch):
+    # the files are written to the path of the quantity, which must exist
+    monkeypatch.setattr(ExampleGraph, "_path", tmp_path)
+    monkeypatch.setattr(WithArguments, "_path", tmp_path)
+
+
 def test_is_abstract_class():
     with pytest.raises(TypeError):
         graph.Mixin()
@@ -52,11 +59,25 @@ def test_convert_graph_to_csv():
     df.to_csv.assert_called_once_with(full_path, index=False)
 
 
+def test_converting_graph_to_csv_expands_home(fake_home):
+    example = ExampleGraph()
+    example.to_csv(filename="~/example.csv")
+    df = GRAPH.to_frame.return_value
+    df.to_csv.assert_called_once_with(fake_home / "example.csv", index=False)
+
+
+def test_converting_graph_to_csv_rejects_missing_directory():
+    example = ExampleGraph()
+    GRAPH.reset_mock()
+    with pytest.raises(exception.FileAccessError):
+        example.to_csv(filename="missing/example.csv")
+    GRAPH.to_frame.assert_not_called()
+
+
 def test_converting_graph_to_image():
     example = ExampleGraph()
     example.to_image()
-    fig = GRAPH.to_plotly.return_value
-    fig.write_image.assert_called_once_with(example._path / "example_graph.png")
+    GRAPH.to_image.assert_called_once_with(example._path / "example_graph.png")
 
 
 def test_converting_graph_to_csv_with_relative_filename():
@@ -81,17 +102,36 @@ def test_converting_graph_to_csv_with_absolute_filename():
 def test_converting_graph_to_image_with_filename():
     example = ExampleGraph()
     example.to_image(filename="example.jpg")
-    fig = GRAPH.to_plotly.return_value
-    fig.write_image.assert_called_once_with(example._path / "example.jpg")
+    GRAPH.to_image.assert_called_once_with(example._path / "example.jpg")
 
 
-def test_converting_graph_to_image_with_absolute_filename():
+def test_converting_graph_to_image_with_absolute_filename(tmp_path):
     example = ExampleGraph()
-    basedir_path = example._path.absolute()
-    full_path = basedir_path / "example.jpg"
+    full_path = tmp_path / "elsewhere" / "example.jpg"
+    full_path.parent.mkdir()
     example.to_image(filename=full_path)
-    fig = GRAPH.to_plotly.return_value
-    fig.write_image.assert_called_once_with(full_path)
+    GRAPH.to_image.assert_called_once_with(full_path)
+
+
+def test_converting_graph_to_image_expands_home(fake_home):
+    example = ExampleGraph()
+    example.to_image(filename="~/example.png")
+    GRAPH.to_image.assert_called_once_with(fake_home / "example.png")
+
+
+@pytest.mark.parametrize("method", ["to_image", "to_csv"])
+def test_saving_rejects_unknown_user(method):
+    example = ExampleGraph()
+    with pytest.raises(exception.FileAccessError):
+        getattr(example, method)(filename="~nouser_py4vasp/example.png")
+
+
+def test_converting_graph_to_image_rejects_missing_directory():
+    example = ExampleGraph()
+    GRAPH.reset_mock()
+    with pytest.raises(exception.FileAccessError):
+        example.to_image(filename="missing/example.png")
+    GRAPH.to_image.assert_not_called()
 
 
 @pytest.mark.parametrize("filename", ["example", "example.txt", "example.eps"])
@@ -100,7 +140,7 @@ def test_converting_graph_to_image_rejects_unsupported_extension(filename):
     GRAPH.reset_mock()
     with pytest.raises(exception.IncorrectUsage):
         example.to_image(filename=filename)
-    GRAPH.to_plotly.assert_not_called()
+    GRAPH.to_image.assert_not_called()
 
 
 @pytest.mark.parametrize(

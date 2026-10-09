@@ -1,12 +1,17 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
-import os
 from pathlib import Path
 from typing import Optional
 
 from py4vasp import exception
-from py4vasp._third_party.graph.graph import IMAGE_FORMATS, Graph, check_image_format
+from py4vasp._third_party.graph.graph import (
+    IMAGE_FORMATS,
+    Graph,
+    check_image_format,
+    expand_home,
+    resolve_output_path,
+)
 from py4vasp._util import convert
 
 """Use the Mixin for all quantities that define an option to produce an x-y graph. This
@@ -73,44 +78,72 @@ class Mixin(abc.ABC):
         are the raster formats png, jpg (or jpeg) and webp and the vector formats svg
         and pdf.
         If no filename is provided, a default filename is deduced from the
-        name of the class and the picture has png format.
+        name of the class and the picture has png format. To change the size of the
+        image, set ``xsize`` and ``ysize`` (in pixels) of the graph that :py:meth:`plot`
+        returns and save it with its own ``to_image`` method. For a figure in print,
+        prefer svg or pdf: a larger size enlarges the canvas but not the fonts, so it
+        does not make a raster image sharper.
 
         Parameters
         ----------
         *args
-            Positional arguments passed to the :py:meth:`to_plotly` method.
+            Positional arguments passed to the :py:meth:`plot` method.
         filename
             Path where the image will be saved. A relative path is relative to the
             directory of the calculation, not to the current working directory; pass
-            an absolute path to save elsewhere. If None, defaults to "{classname}.png"
-            where classname is derived from the class name.
+            an absolute path to save elsewhere. "~" is expanded to your home directory.
+            For the example data of :func:`py4vasp.demo.calculation` without a path,
+            the directory is temporary and saving there warns that it is removed.
+            If None, defaults to "{classname}.png" where classname is derived from the
+            class name.
         **kwargs
-            Keyword arguments passed to the :py:meth:`to_plotly` method.
+            Keyword arguments passed to the :py:meth:`plot` method.
 
         Raises
         ------
         py4vasp.exception.IncorrectUsage
             If the filename has no extension or one that is not a supported format.
+        py4vasp.exception.FileAccessError
+            If the directory the image should be saved to does not exist.
 
         Notes
         -----
-        This function has a side effect or writing the image to disk at the specified
+        This function has a side effect of writing the image to disk at the specified
         location. The filename must be a keyword argument, i.e., you explicitly need to
         write ``filename="name_of_file"`` because the positional arguments are passed
-        on to the :py:meth:`to_plotly` method. Please check the documentation of
+        on to the :py:meth:`plot` method. Please check the documentation of
         that method to learn which arguments are allowed.
+
+        Examples
+        --------
+        Save the density of states of the example data in a new temporary directory,
+        which is printed so that you can look at the images
+
+        >>> import pathlib, tempfile
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> path = pathlib.Path(tempfile.mkdtemp())
+        >>> print("The images are saved to", path)
+        The images are saved to ...
+        >>> calculation.dos.to_image(filename=path / "dos.png")
+        >>> (path / "dos.png").exists()
+        True
+
+        For a figure in a paper, save a vector graphic of a larger graph
+
+        >>> graph = calculation.dos.plot()
+        >>> graph.xsize, graph.ysize = 1000, 600
+        >>> graph.to_image(path / "dos.pdf")
+        >>> (path / "dos.pdf").exists()
+        True
         """
         if filename is None:
             _raise_error_if_filename_is_positional("to_image", args, IMAGE_FORMATS)
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.png"
         check_image_format(filename)
-        fig = self.to_plotly(*args, **kwargs)
-        if os.path.isabs(filename):
-            writeout_path = filename
-        else:
-            writeout_path = self._path / filename
-        fig.write_image(writeout_path)
+        path = self._output_path(filename)
+        self.plot(*args, **kwargs).to_image(path)
 
     def to_frame(self, *args, **kwargs) -> "pd.DataFrame":
         """Convert data to pandas DataFrame.
@@ -145,10 +178,18 @@ class Mixin(abc.ABC):
         filename
             Path where the CSV file will be saved. A relative path is relative to the
             directory of the calculation, not to the current working directory; pass
-            an absolute path to save elsewhere. If None, defaults to "{classname}.csv"
-            where classname is derived from the class name.
+            an absolute path to save elsewhere. "~" is expanded to your home directory.
+            For the example data of :func:`py4vasp.demo.calculation` without a path,
+            the directory is temporary and saving there warns that it is removed.
+            If None, defaults to "{classname}.csv" where classname is derived from the
+            class name.
         **kwargs
             Keyword arguments passed to :py:meth:`to_frame`.
+
+        Raises
+        ------
+        py4vasp.exception.FileAccessError
+            If the directory the file should be written to does not exist.
 
         Notes
         -----
@@ -157,17 +198,39 @@ class Mixin(abc.ABC):
         write ``filename="name_of_file"`` because the positional arguments are passed
         on to the :py:meth:`to_frame` method. Please check the documentation of
         that method to learn which arguments are allowed.
+
+        Examples
+        --------
+        Write the density of states of the example data to a new temporary directory,
+        which is printed so that you can look at the file
+
+        >>> import pathlib, tempfile
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> path = pathlib.Path(tempfile.mkdtemp())
+        >>> print("The file is written to", path)
+        The file is written to ...
+        >>> calculation.dos.to_csv(filename=path / "dos.csv")
+        >>> print((path / "dos.csv").read_text().splitlines()[0])
+        energies,total
         """
         if filename is None:
             _raise_error_if_filename_is_positional("to_csv", args, (".csv",))
         classname = convert.quantity_name(self.__class__.__name__).strip("_")
         filename = filename if filename is not None else f"{classname}.csv"
-        if os.path.isabs(filename):
-            writeout_path = filename
-        else:
-            writeout_path = self._path / filename
+        path = self._output_path(filename)
         df = self.to_frame(*args, **kwargs)
-        df.to_csv(writeout_path, index=False)
+        df.to_csv(path, index=False)
+
+    def _output_path(self, filename):
+        is_relative = not expand_home(filename).is_absolute()
+        path = resolve_output_path(filename, self._path if is_relative else None)
+        if is_relative:
+            self._warn_about_output()
+        return path
+
+    def _warn_about_output(self):
+        "Hook for quantities to warn about files written to their directory."
 
 
 def _raise_error_if_filename_is_positional(method, args, suffixes):

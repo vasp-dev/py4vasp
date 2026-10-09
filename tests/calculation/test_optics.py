@@ -264,12 +264,12 @@ def test_to_plotly(electron):
 
 
 def check_to_image(optics, filename_argument, expected_filename):
-    with patch.object(Optics, "to_plotly") as plot:
+    with patch.object(Optics, "plot") as plot:
         optics.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         expected_path = optics.path / expected_filename
-        fig.write_image.assert_called_once_with(expected_path)
+        fig.to_image.assert_called_once_with(expected_path)
 
 
 def test_to_image(electron):

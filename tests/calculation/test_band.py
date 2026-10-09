@@ -547,11 +547,11 @@ def test_to_image(single_band):
 
 
 def check_to_image(single_band, filename_argument, expected_filename):
-    with patch.object(Band, "to_plotly") as plot:
+    with patch.object(Band, "plot") as plot:
         single_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(single_band._path / expected_filename)
+        fig.to_image.assert_called_once_with(single_band._path / expected_filename)
 
 
 def test_band_selections(with_projectors):

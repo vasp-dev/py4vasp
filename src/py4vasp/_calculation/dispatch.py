@@ -12,6 +12,7 @@ import inspect
 import pathlib
 import tempfile
 import typing
+import warnings
 
 import numpy as np
 
@@ -94,6 +95,10 @@ def quantity(name, group=None):
         cls.is_available = is_available
         if "_is_available" not in cls.__dict__:
             cls._is_available = _default_is_available
+
+        # The graph mixin calls this before it writes a file with a relative name to the
+        # directory of the quantity; for the demo data that directory is temporary.
+        cls._warn_about_output = _warn_about_output
 
         if group is None:
             _REGISTRY[name] = cls
@@ -215,7 +220,24 @@ class TemporarySource(FileSource):
 
     def __init__(self):
         self._directory = _temporary_directory()
+        self._warned = False
         super().__init__(self._directory.name)
+
+    def warn_about_removal(self, stacklevel):
+        """Warn that files saved to :attr:`path` are removed with it.
+
+        Only the first call warns; *stacklevel* is passed on to :func:`warnings.warn`.
+        """
+        if self._warned:
+            return
+        self._warned = True
+        message = (
+            f"The data of this calculation is in the temporary directory {self.path}, "
+            "which is removed together with every file you save there as soon as the "
+            "calculation is no longer in use. Pass a path to demo.calculation() to keep "
+            "the data, or save your files with an absolute filename elsewhere."
+        )
+        warnings.warn(message, UserWarning, stacklevel=stacklevel)
 
     def __deepcopy__(self, memo):
         # A copy of the directory object would point to the same directory, which the
@@ -705,6 +727,12 @@ def _availability_quantity_of(instance):
     the check to the quantity that actually holds the data.
     """
     return getattr(instance, "_availability_quantity", None) or instance._quantity_name
+
+
+def _warn_about_output(self):
+    if isinstance(self._source, TemporarySource):
+        # skip this function, the graph mixin, and its public method to reach the user
+        self._source.warn_about_removal(stacklevel=5)
 
 
 def is_available(self, selection=None, method=None):

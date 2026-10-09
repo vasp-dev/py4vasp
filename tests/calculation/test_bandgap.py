@@ -227,11 +227,11 @@ def test_to_image(bandgap):
 
 
 def check_to_image(bandgap, filename_argument, expected_filename):
-    with patch.object(Bandgap, "to_plotly") as plot:
+    with patch.object(Bandgap, "plot") as plot:
         bandgap.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(bandgap._path / expected_filename)
+        fig.to_image.assert_called_once_with(bandgap._path / expected_filename)
 
 
 def test_print_default(bandgap, steps, format_):

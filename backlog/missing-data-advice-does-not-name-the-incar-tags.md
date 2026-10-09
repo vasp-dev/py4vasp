@@ -36,9 +36,6 @@ not only tags, so the declaration should allow free text.
 - A wrong phonon mode number says "select a mode by the number print labels it with, from 1
   to 21". For the "dispersion" source `print` shows no labels at all; `print` is not
   formatted as code, so the sentence reads garbled.
-- `to_image` says a relative filename is saved "relative to the internal path"; the user
-  could not tell that this means the calculation directory and used an absolute path to
-  avoid writing into their run.
 - The advice "Use `selections` or `is_available`" leads nowhere when the quantity has no
   data: `phonon.band.selections()` on a run without a dispersion raises the very same
   `NoData` (from the reviewer notes of #349).

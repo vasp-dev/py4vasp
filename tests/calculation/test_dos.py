@@ -288,11 +288,11 @@ def test_Sr2TiO4_to_image(Sr2TiO4):
 
 
 def check_to_image(Sr2TiO4, filename_argument, expected_filename):
-    with patch.object(Dos, "to_plotly") as plot:
+    with patch.object(Dos, "plot") as plot:
         Sr2TiO4.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(Sr2TiO4._path / expected_filename)
+        fig.to_image.assert_called_once_with(Sr2TiO4._path / expected_filename)
 
 
 def test_dos_selections(Fe3O4_projectors):
