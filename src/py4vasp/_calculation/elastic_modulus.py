@@ -53,6 +53,12 @@ class ElasticModulusHandler:
             for choice in _parse_tensor_selection(selection)
         }
 
+    def to_bulk_modulus(self, selection=None) -> dict:
+        return {
+            choice: float(_ElasticTensor.from_array(voigt).get_VRH()[0])
+            for choice, voigt in self.to_voigt(selection).items()
+        }
+
     def __str__(self) -> str:
         return f"""Elastic modulus (kBar)
 Direction    XX          YY          ZZ          XY          YZ          ZX
@@ -373,6 +379,51 @@ class ElasticModulus:
             selection,
             self._handler_factory,
             ElasticModulusHandler.to_voigt,
+        )
+
+    def bulk_modulus(self, selection: str | None = None) -> dict:
+        """Compute the bulk modulus of a polycrystal in GPa.
+
+        The bulk modulus K measures how strongly the material resists a uniform
+        compression. For a single crystal it depends on the direction, so py4vasp
+        averages the elastic constants over all orientations of the crystallites in a
+        polycrystal. It reports the Hill average, the mean of the upper (Voigt) and
+        lower (Reuss) bound, the same value py4vasp stores in the database.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. Without
+            a selection, you obtain both. If VASP produced more than one source of the
+            elastic modulus, select it with e.g. "default(relaxed_ion)".
+
+        Returns
+        -------
+        dict
+            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
+            bulk modulus in GPa.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        The bulk modulus with relaxed ions in GPa is
+
+        >>> bulk_modulus = calculation.elastic_modulus.bulk_modulus("relaxed_ion")
+        >>> round(bulk_modulus["relaxed_ion"], 1)
+        151.8
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_bulk_modulus,
         )
 
     def print(self, selection: str | None = None) -> None:

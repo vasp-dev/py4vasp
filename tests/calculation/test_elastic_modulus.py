@@ -21,6 +21,13 @@ def elastic_modulus(raw_data):
     return _setup_elastic_modulus(raw_data, "dft")
 
 
+@pytest.fixture
+def silicon_carbide(raw_data):
+    # the moduli require the inverse of the Voigt matrix, which does not exist for the
+    # "dft" data
+    return _setup_elastic_modulus(raw_data, "SiC")
+
+
 @pytest.fixture(params=["dft", "dft with structure", "SiC"])
 def elastic_moduli(raw_data, request):
     return _setup_elastic_modulus(raw_data, request.param)
@@ -188,7 +195,7 @@ def test_selections(elastic_modulus):
 
 
 def test_factory_methods(raw_data, check_factory_methods):
-    data = raw_data.elastic_modulus("dft")
+    data = raw_data.elastic_modulus("SiC")
     check_factory_methods(ElasticModulus, data, skip_methods=["selections"])
 
 
@@ -253,3 +260,23 @@ def test_voigt_with_selection(elastic_modulus, selection, keys, Assert):
 def test_voigt_unknown_selection(elastic_modulus, selection):
     with pytest.raises(exception.IncorrectUsage):
         elastic_modulus.voigt(selection)
+
+
+# the clamped-ion modulus enters the database as "electronic", the relaxed-ion one as
+# "total"
+_DATABASE_PREFIX = {"clamped_ion": "electronic", "relaxed_ion": "total"}
+
+
+def test_bulk_modulus(silicon_carbide):
+    actual = silicon_carbide.bulk_modulus()
+    assert actual.keys() == {"clamped_ion", "relaxed_ion"}
+    for key, prefix in _DATABASE_PREFIX.items():
+        expected = silicon_carbide.ref.overview_data[f"{prefix}_bulk_modulus"]
+        assert np.isclose(actual[key], expected)
+
+
+def test_bulk_modulus_with_selection(silicon_carbide):
+    actual = silicon_carbide.bulk_modulus("relaxed_ion")
+    assert list(actual) == ["relaxed_ion"]
+    expected = silicon_carbide.ref.overview_data["total_bulk_modulus"]
+    assert np.isclose(actual["relaxed_ion"], expected)
