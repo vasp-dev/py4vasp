@@ -28,7 +28,11 @@ import sys
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.dispatch import _REGISTRY, _availability_quantity_of
+from py4vasp._calculation.dispatch import (
+    _REGISTRY,
+    _availability_quantity_of,
+    merge_default,
+)
 from py4vasp._raw import definition
 from py4vasp._raw.definition import schema
 from py4vasp._raw.schema import DEFAULT_SELECTION
@@ -499,12 +503,19 @@ def _collect_methods(include):
             yield pytest.param(cls, method_name, id=id_)
 
 
-def _accepts_selection(method):
-    """The method takes `selection` by keyword or forwards its arguments."""
-    parameters = inspect.signature(method).parameters.values()
+def _is_inherited_from_mixin(cls, method_name):
+    owner = next(klass for klass in cls.__mro__ if method_name in vars(klass))
+    return owner.__module__.startswith("py4vasp._third_party")
+
+
+def _accepts_selection(cls, method_name):
+    """The method takes `selection` by keyword, or it is a plotting mixin method
+    forwarding its arguments to a method of the quantity."""
+    parameters = inspect.signature(getattr(cls, method_name)).parameters.values()
     forwards = (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
     if any(parameter.kind in forwards for parameter in parameters):
-        return True
+        if _is_inherited_from_mixin(cls, method_name):
+            return True
     return any(
         parameter.name == "selection"
         and parameter.kind != inspect.Parameter.POSITIONAL_ONLY
@@ -597,7 +608,7 @@ def _selection_has_effect(cls, method_name):
 
 
 def _takes_selection(cls, method_name):
-    return _accepts_selection(getattr(cls, method_name))
+    return _accepts_selection(cls, method_name)
 
 
 @pytest.mark.parametrize("cls, method_name", list(_collect_methods(_is_legacy)))
@@ -652,12 +663,90 @@ def _declares_selection(cls, method_name):
     "cls, method_name", list(_collect_methods(_declares_selection))
 )
 def test_methods_taking_selection_use_it(cls, method_name):
-    # a selection that is accepted but never read silently returns the default data
+    # a selection that is accepted but never reaches the data silently returns the
+    # default data
+    assert _selection_flows_to_data(
+        cls, method_name
+    ), f"{cls.__name__}.{method_name} takes `selection` but does not pass it on."
+
+
+# functions that parse a selection into its sources for dispatch
+_SELECTION_PARSERS = frozenset({"_parse_selections"})
+
+
+def _mentions_selection(node):
+    return any(_is_selection(child) for child in ast.walk(node))
+
+
+def _is_call_on_handler(call):
+    # e.g. self._handler_factory(raw).select(selection)
+    function = call.func
+    return (
+        isinstance(function, ast.Attribute)
+        and isinstance(function.value, ast.Call)
+        and _is_call_of_own_method(function.value)
+        and function.value.func.attr == "_handler_factory"
+    )
+
+
+def _selection_flows_to_data(cls, method_name, seen=None):
+    """Whether `selection` reaches the source argument of a merge_* call, another
+    method of the class passing it on, a helper that also receives `self`, or a
+    method of the handler."""
+    seen = set() if seen is None else seen
+    if method_name in seen:
+        return False
+    seen.add(method_name)
     method_node = _method_node(cls, method_name)
-    assert any(
-        _is_selection(node) and isinstance(node.ctx, ast.Load)
-        for node in ast.walk(method_node)
-    ), f"{cls.__name__}.{method_name} takes `selection` but never uses it."
+    if method_node is None:
+        return False
+    for node in ast.walk(method_node):
+        if not isinstance(node, ast.Call):
+            continue
+        arguments = _call_arguments(node)
+        if not any(_mentions_selection(argument) for argument in arguments):
+            continue
+        function_name = getattr(node.func, "id", None) or getattr(
+            node.func, "attr", None
+        )
+        if function_name in MERGE_FUNCS:
+            if len(node.args) >= 3 and _mentions_selection(node.args[2]):
+                return True
+        elif function_name in _SELECTION_PARSERS or _is_call_on_handler(node):
+            return True
+        elif _is_call_of_own_method(node):
+            if _selection_flows_to_data(cls, node.func.attr, seen):
+                return True
+        elif any(
+            isinstance(argument, ast.Name) and argument.id == "self"
+            for argument in arguments
+        ):
+            return True
+    return False
+
+
+class _FakeQuantity:
+    """Patterns the AST checks must tell apart; never executed."""
+
+    def logs_selection(self, selection=None):
+        print(selection)
+        return merge_default(self._source, "fake", None, self._factory, len)
+
+    def forwards_selection(self, selection=None):
+        return self.routes_selection(selection)
+
+    def routes_selection(self, selection=None):
+        return merge_default(self._source, "fake", selection, self._factory, len)
+
+    def to_view(self, *args, **kwargs):
+        return merge_default(self._source, "fake", None, self._factory, len)
+
+
+def test_selection_must_reach_the_data():
+    assert not _selection_flows_to_data(_FakeQuantity, "logs_selection")
+    assert _selection_flows_to_data(_FakeQuantity, "forwards_selection")
+    # **kwargs on the quantity itself does not stand in for a selection parameter
+    assert not _accepts_selection(_FakeQuantity, "to_view")
 
 
 def test_legacy_methods_exist():
