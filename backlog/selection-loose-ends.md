@@ -21,9 +21,17 @@ open.
   prints `np.str_(...)` reprs. The word "selection" also means steps in the
   structure docstrings, and `structure[...]` slices steps while `density[...]` picks
   a source.
-- **Missing data gives poor errors.** `structure.lattice_vectors(selection="poscar")`
-  without a POSCAR raises a bare `FileNotFoundError`, and `density.read("all_electron")`
-  blames vaspwave.h5 and LCHARGH5 even when vaspwave.h5 exists.
+- **Missing data gives poor errors.** `density.read("all_electron")` blames
+  vaspwave.h5 and LCHARGH5 even when vaspwave.h5 exists.
+- **Docstrings list `selection` first where it is the last positional argument**, e.g.
+  `Structure.to_view(supercell, ion_types, selection)`, `to_molden(masses, selection)`
+  and the other methods that kept their arguments for compatibility; move the entry to
+  the end of Parameters. `PartialDensity.grid` has no docstring at all.
+- **Steps of a single-step source are ignored.** `structure[1:3].positions("final")`
+  returns one structure without complaint, because the handler drops the steps when
+  the source is not a trajectory.
+- **`density.to_quiver(a=0.3)` on a nonpolarized density** raises a bare
+  `ValueError: shape-mismatch for sum`; probably older than this branch.
 
 Open question found earlier: `born_effective_charge.print()` says "cumulative output"
 where OUTCAR says "cummulative output" (`linear_response.F:967`, `pead.F:2356,2368`), so
