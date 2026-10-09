@@ -136,9 +136,8 @@ PHON_BORN_CHARGES =   0.000000   3.000000   6.000000     1.000000   4.000000   7
     assert Sr2TiO4.to_INCAR() == expected
 
 
-@pytest.mark.parametrize("selection", (None, "default"))
-def test_to_INCAR_dispatcher(dispatcher, Sr2TiO4, selection):
-    assert dispatcher.to_INCAR(selection) == Sr2TiO4.to_INCAR()
+def test_to_INCAR_dispatcher(dispatcher, Sr2TiO4):
+    assert dispatcher.to_INCAR() == Sr2TiO4.to_INCAR()
 
 
 def test_Sr2TiO4_to_INCAR_orientation(Sr2TiO4, Assert):

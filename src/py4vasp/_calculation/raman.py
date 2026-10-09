@@ -681,18 +681,11 @@ class Raman(graph.Mixin):
     def _handler_factory(self, raw_data):
         return RamanHandler.from_data(raw_data)
 
-    def read(
-        self,
-        selection: str | None = None,
-        *,
-        minimum_frequency: float = _MINIMUM_FREQUENCY,
-    ) -> dict:
+    def read(self, *, minimum_frequency: float = _MINIMUM_FREQUENCY) -> dict:
         """Read the Raman tensor and the axes it is defined on into a dictionary.
 
         Parameters
         ----------
-        selection : str | None
-            Select which source of the quantity is read.
         minimum_frequency : float
             Modes with a frequency below this energy in eV are omitted. They translate
             or rotate the system instead of vibrating it, so they do not scatter light.
@@ -736,22 +729,15 @@ class Raman(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             RamanHandler.to_dict,
-            # keyword argument, because the dispatcher only passes the selection on when
-            # the user made one and would otherwise shift the positional arguments
             minimum_frequency=minimum_frequency,
         )
 
-    def to_dict(
-        self,
-        selection: str | None = None,
-        *,
-        minimum_frequency: float = _MINIMUM_FREQUENCY,
-    ) -> dict:
+    def to_dict(self, *, minimum_frequency: float = _MINIMUM_FREQUENCY) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(selection, minimum_frequency=minimum_frequency)
+        return self.read(minimum_frequency=minimum_frequency)
 
     def activity(
         self,
@@ -1101,14 +1087,8 @@ class Raman(graph.Mixin):
             minimum_frequency=minimum_frequency,
         )
 
-    def print(self, selection: str | None = None) -> None:
+    def print(self) -> None:
         """Print a string representation of this quantity.
-
-        Parameters
-        ----------
-        selection : str | None
-            Select which source of the quantity is printed. If you select multiple
-            sources, py4vasp prints one block per source.
 
         Notes
         -----
@@ -1119,7 +1099,7 @@ class Raman(graph.Mixin):
         a wavenumber and as an energy, and the activity is evaluated in the static
         limit -- use :py:meth:`activity` to choose a laser energy.
         """
-        print(self.__str__(selection))
+        print(str(self))
 
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
@@ -1139,11 +1119,11 @@ class Raman(graph.Mixin):
             "directions": directions,
         }
 
-    def __str__(self, selection: str | None = None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             RamanHandler.__str__,
         )

@@ -536,16 +536,7 @@ _MISSING_SELECTION = frozenset(
         "Workfunction.to_graph",
     }
 )
-_UNUSED_SELECTION = frozenset(
-    {
-        "BornEffectiveCharge.to_INCAR",
-        "Raman.print",
-        "Raman.read",
-        "Raman.to_dict",
-        "Symmetry.print",
-        "Symmetry.to_dict",
-    }
-)
+_UNUSED_SELECTION = frozenset()
 
 
 def _sources(cls):
