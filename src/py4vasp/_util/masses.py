@@ -68,7 +68,7 @@ def of(elements) -> np.ndarray:
     return np.array([_single_element(element) for element in elements])
 
 
-def resolve(masses, elements) -> np.ndarray:
+def resolve(masses, stoichiometry) -> np.ndarray:
     """Use the masses the user provides or default to the standard atomic weights.
 
     Parameters
@@ -77,19 +77,20 @@ def resolve(masses, elements) -> np.ndarray:
         The mass of every atom in atomic mass units, or a mapping from element to
         mass that replaces the default of only the listed elements, or None for the
         default.
-    elements : Sequence[str]
-        The chemical symbol of every atom, which sets the default and the number of
-        masses the user has to provide.
+    stoichiometry : StoichiometryHandler
+        The stoichiometry of the structure, which sets the default, the number of
+        masses the user has to provide, and the keys the mapping may use.
 
     Returns
     -------
     np.ndarray
         One positive mass per atom in atomic mass units.
     """
+    elements = stoichiometry.elements()
     if masses is None:
         return of(elements)
     if isinstance(masses, Mapping):
-        return _from_mapping(masses, elements)
+        return _from_mapping(masses, stoichiometry)
     return _from_sequence(masses, elements)
 
 
@@ -99,8 +100,10 @@ _POSITIVE = (
 )
 
 
-def _from_mapping(masses, elements):
-    _raise_error_if_elements_are_not_in_structure(masses, elements)
+def _from_mapping(masses, stoichiometry):
+    elements = stoichiometry.elements()
+    selections = stoichiometry.read()
+    _raise_error_if_keys_are_not_in_structure(masses, selections, elements)
     if not all(_is_number(mass) for mass in masses.values()):
         message = (
             "The masses in the mapping must be numbers in atomic mass units, but you "
@@ -111,11 +114,14 @@ def _from_mapping(masses, elements):
     invalid = {element: mass for element, mass in masses.items() if not _valid(mass)}
     if invalid:
         raise exception.IncorrectUsage(f"{_POSITIVE}; you provided {invalid}.")
-    return np.array([_override(masses, element) for element in elements])
+    result = of(elements)
+    for key, mass in masses.items():
+        result[selections[key].indices] = mass
+    return result
 
 
-def _raise_error_if_elements_are_not_in_structure(masses, elements):
-    missing = [key for key in masses if key not in elements]
+def _raise_error_if_keys_are_not_in_structure(masses, selections, elements):
+    missing = [key for key in masses if key not in selections]
     if not missing:
         return
     message = (
@@ -161,10 +167,6 @@ def _from_sequence(masses, elements):
         message = f"{_POSITIVE}; you provided {[float(mass) for mass in masses]}."
         raise exception.IncorrectUsage(message)
     return masses
-
-
-def _override(masses, element):
-    return masses[element] if element in masses else _single_element(element)
 
 
 def _single_element(element):

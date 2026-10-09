@@ -233,6 +233,13 @@ def test_frequencies_accept_masses_per_element(Sr2TiO4, Assert):
     Assert.allclose(Sr2TiO4.frequencies(masses={"O": 17.999}), expected)
 
 
+def test_frequencies_accept_masses_per_atom(Sr2TiO4, Assert):
+    heavy_fourth_atom = default_masses(Sr2TiO4)
+    heavy_fourth_atom[3] = 17.999
+    expected = expected_frequencies(Sr2TiO4, heavy_fourth_atom)
+    Assert.allclose(Sr2TiO4.frequencies(masses={"4": 17.999}), expected)
+
+
 def test_frequencies_raise_error_if_masses_do_not_match_the_atoms(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.frequencies(masses=[1.0, 2.0])

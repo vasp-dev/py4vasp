@@ -186,6 +186,13 @@ def test_displacements_accept_masses_per_element(translation_mode, Assert):
     Assert.allclose(actual, expected)
 
 
+def test_displacements_accept_masses_per_atom(translation_mode, Assert):
+    heavy_fourth_atom = translation_mode.ref.masses.copy()
+    heavy_fourth_atom[3] = 17.999
+    actual = translation_mode.displacements(masses={"4": 17.999})
+    Assert.allclose(actual, translation_mode.displacements(masses=heavy_fourth_atom))
+
+
 @pytest.fixture
 def mode_handler(raw_data):
     raw_mode = raw_data.phonon_mode("default")

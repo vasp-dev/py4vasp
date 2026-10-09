@@ -96,8 +96,8 @@ class ForceConstantHandler:
         return self._unpack(displacements)
 
     def _diagonalize_dynamical_matrix(self, masses):
-        elements = self._structure()._stoichiometry().elements()
-        masses = np.repeat(mass_table.resolve(masses, elements), 3)
+        stoichiometry = self._structure()._stoichiometry()
+        masses = np.repeat(mass_table.resolve(masses, stoichiometry), 3)
         inverse_sqrt_mass = 1 / np.sqrt(masses[self._free_directions().flatten()])
         weights = np.outer(inverse_sqrt_mass, inverse_sqrt_mass)
         eigenvalues, eigenvectors = np.linalg.eigh(weights * self._force_constants)
@@ -381,8 +381,10 @@ class ForceConstant:
         ----------
         masses : Sequence[float] | Mapping[str, float] | None
             The mass of every atom in atomic mass units, in the order of the structure,
-            or a dictionary from element to mass that replaces the mass of only the
-            elements it names, e.g. ``{"O": 17.999}``. Every other atom keeps the
+            or a dictionary that replaces the mass of only the atoms it names. Its keys
+            are an element or the index of a single atom counted from 1, as in the
+            selection of the DOS, e.g. ``{"O": 17.999}`` changes every oxygen and
+            ``{"4": 17.999}`` only the fourth atom. Every other atom keeps the
             default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. VASP
             uses the POMASS of the POTCAR instead, so pass those if you changed them or
@@ -458,8 +460,10 @@ class ForceConstant:
         ----------
         masses : Sequence[float] | Mapping[str, float] | None
             The mass of every atom in atomic mass units, in the order of the structure,
-            or a dictionary from element to mass that replaces the mass of only the
-            elements it names, e.g. ``{"O": 17.999}``. Every other atom keeps the
+            or a dictionary that replaces the mass of only the atoms it names. Its keys
+            are an element or the index of a single atom counted from 1, as in the
+            selection of the DOS, e.g. ``{"O": 17.999}`` changes every oxygen and
+            ``{"4": 17.999}`` only the fourth atom. Every other atom keeps the
             default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
 
@@ -525,8 +529,10 @@ class ForceConstant:
         ----------
         masses : Sequence[float] | Mapping[str, float] | None
             The mass of every atom in atomic mass units, in the order of the structure,
-            or a dictionary from element to mass that replaces the mass of only the
-            elements it names, e.g. ``{"O": 17.999}``. Every other atom keeps the
+            or a dictionary that replaces the mass of only the atoms it names. Its keys
+            are an element or the index of a single atom counted from 1, as in the
+            selection of the DOS, e.g. ``{"O": 17.999}`` changes every oxygen and
+            ``{"4": 17.999}`` only the fourth atom. Every other atom keeps the
             default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
 
