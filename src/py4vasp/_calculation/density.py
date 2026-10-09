@@ -160,6 +160,13 @@ class DensityHandler:
         normal: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
     ) -> graph.Graph:
+        if self.is_nonpolarized():
+            message = (
+                "A quiver plot shows the magnetization, but the density is not spin "
+                "polarized. Run VASP with ISPIN = 2 or a noncollinear calculation, or "
+                "use to_contour to plot the density."
+            )
+            raise exception.NoData(message)
         if self.is_collinear():
             data = self._raw_density.charge[1].T
         else:

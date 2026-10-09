@@ -165,6 +165,12 @@ def test_explicit_and_implicit_default_source_are_combined(raw_data):
     assert len(graph.series) == 2
 
 
+def test_nonpolarized_to_quiver(nonpolarized_density):
+    # there is no magnetization to draw arrows for
+    with pytest.raises(exception.NoData, match="magnetization"):
+        nonpolarized_density.to_quiver(a=0.3)
+
+
 def test_spin_checks_select_source(raw_data):
     density = make_reference_density(raw_data, "Fe3O4 collinear")
     assert density.is_collinear("tau") is True
