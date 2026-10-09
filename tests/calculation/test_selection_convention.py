@@ -457,32 +457,7 @@ _LEGACY_SELECTION = {
 
 # Known violations still to be fixed; a fixed method passes and fails the strict xfail,
 # so remove it from these lists together with the fix.
-_MISSING_SELECTION = frozenset(
-    {
-        "NeighborList.to_string",
-        "Structure.cartesian_positions",
-        "Structure.conventional_lattice_vectors",
-        "Structure.equivalent_atoms",
-        "Structure.generate_kmesh",
-        "Structure.generate_kpath",
-        "Structure.lattice_vectors",
-        "Structure.number_atoms",
-        "Structure.number_steps",
-        "Structure.positions",
-        "Structure.prototype",
-        "Structure.read",
-        "Structure.standardized_cell",
-        "Structure.symmetrize",
-        "Structure.to_ase",
-        "Structure.to_dict",
-        "Structure.to_lammps",
-        "Structure.to_mdtraj",
-        "Structure.to_POSCAR",
-        "Structure.to_view",
-        "Structure.volume",
-        "Structure.wyckoff_positions",
-    }
-)
+_MISSING_SELECTION = frozenset()
 _UNUSED_SELECTION = frozenset()
 
 

@@ -1444,8 +1444,9 @@ class TestIsAvailableInjected:
 
     def test_selection_list_returns_dict(self, tmp_path):
         calc = self._calc(tmp_path)
-        result = calc.structure.is_available(["default", "final"])
-        assert result == {"default": True, "final": False}
+        # the demo calculation writes no POSCAR file
+        result = calc.structure.is_available(["default", "poscar"])
+        assert result == {"default": True, "poscar": False}
 
     def test_selection_list_applies_method_per_source(self, tmp_path):
         calc = self._calc(tmp_path)

@@ -27,7 +27,6 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._calculation.symmetry import _SYMPREC, SymmetryHandler
 from py4vasp._raw.definition import unique_selections as _schema_unique_selections
 from py4vasp._raw.models import StoichiometryModel, StructureModel
-from py4vasp._raw.schema import DEFAULT_SELECTION
 from py4vasp._third_party import view
 from py4vasp._util import check, import_, parse
 
@@ -808,12 +807,6 @@ class Structure(view.Mixin):
         return StructureHandler.from_data(raw, steps=self._steps)
 
     def _is_available(self, raw_data, selection=None, method=None) -> bool:
-        # None of the methods takes a source selection, so the additional schema
-        # sources ("final", "exciton", "poscar") cannot be reached through the public
-        # API. They only serve other quantities that link to them, so report them as
-        # unavailable even when the underlying data exists.
-        if selection not in (None, DEFAULT_SELECTION):
-            return False
         # the symmetry-derived methods need the optional symmetry link that VASP
         # only writes for newer versions; all other methods need only the required
         # structural data.
@@ -952,7 +945,7 @@ class Structure(view.Mixin):
             StructureHandler._repr_html_,
         )
 
-    def read(self, ion_types=None):
+    def read(self, ion_types=None, selection: str | None = None):
         """Read the structural information into a dictionary.
 
         The returned dictionary contains the following keys:
@@ -966,6 +959,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         ion_types : Sequence
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
@@ -1013,17 +1009,17 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.to_dict,
             ion_types,
         )
 
-    def to_dict(self, ion_types=None):
+    def to_dict(self, ion_types=None, selection: str | None = None):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read(ion_types=ion_types)
+        return self.read(ion_types=ion_types, selection=selection)
 
-    def to_view(self, supercell=None, ion_types=None):
+    def to_view(self, supercell=None, ion_types=None, selection: str | None = None):
         """Generate a 3d representation of the structure(s).
 
         This method uses the `View` class to create a 3d visualization of the atomic
@@ -1031,6 +1027,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
@@ -1089,14 +1088,14 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.to_view,
             supercell,
             ion_types,
         )
 
-    def to_ase(self, supercell=None, ion_types=None):
+    def to_ase(self, supercell=None, ion_types=None, selection: str | None = None):
         """Convert the structure to an ASE Atoms object.
 
         ASE (the Atomic Simulation Environment) is a popular Python package for atomistic
@@ -1105,6 +1104,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
@@ -1155,14 +1157,14 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.to_ase,
             supercell,
             ion_types,
         )
 
-    def to_mdtraj(self, ion_types=None):
+    def to_mdtraj(self, ion_types=None, selection: str | None = None):
         """Convert the trajectory to mdtraj.Trajectory
 
         mdtraj is a popular Python package to analyze molecular dynamics trajectories.
@@ -1171,6 +1173,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         ion_types : Sequence
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
@@ -1205,13 +1210,15 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.to_mdtraj,
             ion_types,
         )
 
-    def to_POSCAR(self, ion_types=None, *, supercell=None):
+    def to_POSCAR(
+        self, ion_types=None, selection: str | None = None, *, supercell=None
+    ):
         """Convert the structure(s) to a POSCAR format.
 
         Use this method to generate a string in POSCAR format representing the
@@ -1221,6 +1228,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         ion_types : Sequence
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
@@ -1278,7 +1288,7 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.to_POSCAR,
             ion_types,
@@ -1287,7 +1297,7 @@ class Structure(view.Mixin):
             supercell=supercell,
         )
 
-    def to_lammps(self, standard_form=True):
+    def to_lammps(self, standard_form=True, selection: str | None = None):
         """Convert the structure to LAMMPS format.
 
         LAMMPS is a popular molecular dynamics simulation software. This method
@@ -1296,6 +1306,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         standard_form : bool
             Determines whether the structure is standardize, i.e., the lattice vectors
             are a triagonal matrix.
@@ -1362,14 +1375,20 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.to_lammps,
             standard_form,
         )
 
-    def lattice_vectors(self):
+    def lattice_vectors(self, selection: str | None = None):
         """Return the lattice vectors spanning the unit cell
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1399,16 +1418,22 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.lattice_vectors,
         )
 
-    def positions(self):
+    def positions(self, selection: str | None = None):
         """Return the direct coordinates of all ions in the unit cell.
 
         Direct or fractional coordinates measure the position of the ions in terms of
         the lattice vectors. Hence they are dimensionless quantities.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1438,13 +1463,19 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.positions,
         )
 
-    def cartesian_positions(self):
+    def cartesian_positions(self, selection: str | None = None):
         """Convert the positions from direct coordinates to cartesian ones.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1474,13 +1505,19 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.cartesian_positions,
         )
 
-    def volume(self):
+    def volume(self, selection: str | None = None):
         """Return the volume of the unit cell for the selected steps.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1510,38 +1547,58 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.volume,
         )
 
-    def number_atoms(self):
-        """Return the total number of atoms in the structure."""
+    def number_atoms(self, selection: str | None = None):
+        """Return the total number of atoms in the structure.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.number_atoms,
         )
 
-    def number_steps(self):
-        """Return the number of structures in the trajectory."""
+    def number_steps(self, selection: str | None = None):
+        """Return the number of structures in the trajectory.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.number_steps,
         )
 
-    def equivalent_atoms(self):
+    def equivalent_atoms(self, selection: str | None = None):
         """Group the atoms into orbits of the symmetry operations VASP determined.
 
         Atoms that some symmetry operation maps onto each other are equivalent and
         share an orbit index. This uses the symmetry VASP recognized for the crystal,
         so any symmetry lowering (e.g. from magnetic order) is reflected here. It
         requires the structure to carry symmetry information (VASP 6.6 or later).
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1563,12 +1620,12 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.equivalent_atoms,
         )
 
-    def wyckoff_positions(self):
+    def wyckoff_positions(self, selection: str | None = None):
         """Determine the Wyckoff positions of the atoms in the crystal.
 
         The atoms are classified into Wyckoff positions using the symmetry VASP
@@ -1577,6 +1634,12 @@ class Structure(view.Mixin):
         possibly higher symmetry the geometry alone would suggest. This requires the
         structure to carry symmetry information (VASP 6.6 or later) and the spglib
         package to be installed.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1597,18 +1660,24 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.wyckoff_positions,
         )
 
-    def standardized_cell(self):
+    def standardized_cell(self, selection: str | None = None):
         """Determine the standardized conventional cell of the crystal.
 
         spglib maps the crystal onto a standardized conventional cell. The atoms are
         labeled by their orbit under VASP's operations first, so the standardization
         respects the symmetry VASP recognized. This requires the structure to carry
         symmetry information (VASP 6.6 or later) and the spglib package.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1631,12 +1700,14 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.standardized_cell,
         )
 
-    def symmetrize(self, to_primitive=False, symprec=_SYMPREC):
+    def symmetrize(
+        self, to_primitive=False, symprec=_SYMPREC, selection: str | None = None
+    ):
         """Symmetrize the structure and return it as a new :class:`Structure`.
 
         spglib derives the symmetry from the bare geometry, so this works for any
@@ -1646,6 +1717,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         to_primitive : bool
             If False (default) the input cell and the number of atoms are kept and
             only the atoms are snapped onto their exact high-symmetry positions. If
@@ -1676,7 +1750,7 @@ class Structure(view.Mixin):
         raw_structure = merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.symmetrize,
             to_primitive,
@@ -1684,7 +1758,13 @@ class Structure(view.Mixin):
         )
         return Structure.from_data(raw_structure)
 
-    def generate_kpath(self, number_points=40, time_reversal=True, symprec=_SYMPREC):
+    def generate_kpath(
+        self,
+        number_points=40,
+        time_reversal=True,
+        symprec=_SYMPREC,
+        selection: str | None = None,
+    ):
         r"""Generate a KPOINTS file for a band structure along the recommended path.
 
         seekpath determines the high-symmetry path of the crystal following the
@@ -1705,6 +1785,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         number_points : int
             Number of k points VASP generates along every line of the path.
         time_reversal : bool
@@ -1760,7 +1843,7 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.generate_kpath,
             number_points,
@@ -1769,7 +1852,12 @@ class Structure(view.Mixin):
         )
 
     def generate_kmesh(
-        self, kspacing=None, divisions=None, shift=None, symprec=_SYMPREC
+        self,
+        kspacing=None,
+        divisions=None,
+        shift=None,
+        symprec=_SYMPREC,
+        selection: str | None = None,
     ):
         """Generate a KPOINTS file with a mesh adapted to the symmetry of the crystal.
 
@@ -1784,6 +1872,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         kspacing : float
             Density of the mesh in Å⁻¹, following the convention of VASP's KSPACING
             tag: the number of divisions along direction i is 2π|b_i| / kspacing
@@ -1843,7 +1934,7 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.generate_kmesh,
             kspacing,
@@ -1852,7 +1943,9 @@ class Structure(view.Mixin):
             symprec,
         )
 
-    def conventional_lattice_vectors(self, symprec=_SYMPREC):
+    def conventional_lattice_vectors(
+        self, symprec=_SYMPREC, selection: str | None = None
+    ):
         """Determine the lattice vectors of the standardized conventional cell.
 
         Every crystal has a conventional cell that carries the full symmetry of its
@@ -1868,6 +1961,9 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         symprec : float
             Distance in Å within which spglib considers two atoms symmetry
             equivalent. The default is tighter than a POSCAR written with four
@@ -1901,13 +1997,13 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.conventional_lattice_vectors,
             symprec,
         )
 
-    def prototype(self):
+    def prototype(self, selection: str | None = None):
         """Determine the AFLOW prototype label of the crystal.
 
         The prototype label is a compact fingerprint of the structure type combining
@@ -1921,6 +2017,12 @@ class Structure(view.Mixin):
         affine normalizer permutes Wyckoff letters, the label may use an equivalent
         letter choice rather than the AFLOW-canonical one (e.g. zinc blende comes out
         as ``AB_cF8_216_a_d`` instead of ``a_c``).
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
 
         Returns
         -------
@@ -1941,7 +2043,7 @@ class Structure(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             StructureHandler.prototype,
         )

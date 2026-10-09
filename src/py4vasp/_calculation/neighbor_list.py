@@ -382,7 +382,7 @@ class NeighborList:
             NeighborListHandler.selections,
         )
 
-    def to_string(self, cutoff=_DEFAULT_CUTOFF) -> str:
+    def to_string(self, cutoff=_DEFAULT_CUTOFF, selection: str | None = None) -> str:
         """Render the nearest-neighbor table up to *cutoff*.
 
         This is the string produced by ``print`` (which uses the default cutoff);
@@ -390,6 +390,9 @@ class NeighborList:
 
         Parameters
         ----------
+        selection : str | None
+            Select the source of the data, if VASP produced more than one. Use
+            :py:meth:`selections` to see which sources exist.
         cutoff : float
             The neighbor cutoff radius in Å.
 
@@ -417,7 +420,7 @@ class NeighborList:
         return merge_strings(
             self._source,
             _DATA_QUANTITY,
-            None,
+            selection,
             self._handler_factory,
             NeighborListHandler.to_string,
             cutoff,
