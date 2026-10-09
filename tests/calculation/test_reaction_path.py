@@ -6,7 +6,7 @@ import pytest
 from py4vasp import exception
 from py4vasp._calculation.reaction_path import ReactionPathHandler
 
-ReactionPath = ReactionPathHandler.ReactionPath
+Path = ReactionPathHandler.Path
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def path():
         [1.60, 1.20, 1.07],
         [2.45, 1.16, 0.99],
     ]
-    return ReactionPath(labels, atom_pairs, coordinates)
+    return Path(labels, atom_pairs, coordinates)
 
 
 def test_path_from_arrays(path, Assert):
@@ -49,11 +49,11 @@ def test_reversed(path, Assert):
 )
 def test_rejects_shape_mismatch(atom_pairs, coordinates):
     with pytest.raises(exception.IncorrectUsage):
-        ReactionPath(["a", "b", "c"], atom_pairs, coordinates)
+        Path(["a", "b", "c"], atom_pairs, coordinates)
 
 
 def test_add_concatenates_in_order(path, Assert):
-    other = ReactionPath(path.labels, path.atom_pairs, [[2.6, 1.15, 0.98]])
+    other = Path(path.labels, path.atom_pairs, [[2.6, 1.15, 0.98]])
     joined = path.reversed() + other
     expected = np.concatenate([path.coordinates[::-1], other.coordinates])
     Assert.allclose(joined.coordinates, expected)
@@ -63,7 +63,7 @@ def test_add_concatenates_in_order(path, Assert):
 
 
 def test_add_does_not_keep_lambda(path):
-    discretized = ReactionPath(path.labels, path.atom_pairs, path.coordinates, 50.0)
+    discretized = Path(path.labels, path.atom_pairs, path.coordinates, 50.0)
     assert (discretized + discretized).lambda_ is None
 
 
@@ -71,13 +71,13 @@ def test_add_does_not_keep_lambda(path):
     "atom_pairs", [[[1, 2], [1, 3], [3, 2]], [[1, 2], [1, 3], [2, 4]]]
 )
 def test_add_different_pairs_raises(path, atom_pairs):
-    other = ReactionPath(path.labels, atom_pairs, path.coordinates)
+    other = Path(path.labels, atom_pairs, path.coordinates)
     with pytest.raises(exception.IncorrectUsage):
         path + other
 
 
 def test_add_fewer_pairs_raises(path):
-    other = ReactionPath(["C~H"], [[1, 2]], [[1.0]])
+    other = Path(["C~H"], [[1, 2]], [[1.0]])
     with pytest.raises(exception.IncorrectUsage):
         path + other
 
@@ -94,7 +94,7 @@ def test_add_other_type_raises(path):
 @pytest.fixture
 def line():
     x = np.linspace(0, 1, 101)
-    return ReactionPath(["x", "y"], [[1, 2], [1, 3]], np.c_[x, 2 * x])
+    return Path(["x", "y"], [[1, 2], [1, 3]], np.c_[x, 2 * x])
 
 
 @pytest.fixture
@@ -102,7 +102,7 @@ def curve():
     # points along a half circle, crowded at the start of the path
     angle = np.pi * np.linspace(0, 1, 200) ** 2
     coordinates = np.c_[np.cos(angle), np.sin(angle)]
-    return ReactionPath(["x", "y"], [[1, 2], [1, 3]], coordinates)
+    return Path(["x", "y"], [[1, 2], [1, 3]], coordinates)
 
 
 def test_discretize_uniform_line(line, Assert):
@@ -166,7 +166,7 @@ def test_discretize_raises_for_invalid_arguments(
 
 def test_discretize_raises_if_tolerance_cannot_be_met():
     # the steps are too coarse for any spacing to be met within the tolerance
-    coarse = ReactionPath(["x"], [[1, 2]], [[0.0], [1.0], [3.0]])
+    coarse = Path(["x"], [[1, 2]], [[0.0], [1.0], [3.0]])
     with pytest.raises(exception.IncorrectUsage):
         coarse.discretize(3, tolerance=0.1)
 
@@ -190,7 +190,7 @@ def test_to_IRCCAR_format(curve):
 
 
 def test_to_ICONST_lines(path):
-    discretized = ReactionPath(path.labels, path.atom_pairs, path.coordinates, 49.75)
+    discretized = Path(path.labels, path.atom_pairs, path.coordinates, 49.75)
     expected = """\
 R 1 2 0
 R 1 3 0

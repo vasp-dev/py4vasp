@@ -18,7 +18,7 @@ class ReactionPathHandler:
     """Computes reaction paths from a single raw.Structure object."""
 
     @dataclasses.dataclass
-    class ReactionPath:
+    class Path:
         """A path through the space of interatomic distances.
 
         Every row of the coordinates is one point of the path, every column one pair
@@ -41,7 +41,7 @@ class ReactionPathHandler:
         Examples
         --------
         >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-        >>> path = ReactionPathHandler.ReactionPath(
+        >>> path = ReactionPathHandler.Path(
         ...     labels=["C~H", "H~N"],
         ...     atom_pairs=[[1, 2], [2, 3]],
         ...     coordinates=[[1.07, 2.52], [1.60, 1.07], [2.45, 0.99]],
@@ -76,13 +76,13 @@ class ReactionPathHandler:
 
             Returns
             -------
-            ReactionPath
+            Path
                 A new path with the order of the steps reversed.
 
             Examples
             --------
             >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-            >>> path = ReactionPathHandler.ReactionPath(
+            >>> path = ReactionPathHandler.Path(
             ...     ["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]]
             ... )
             >>> path.reversed().coordinates[:, 0]
@@ -99,10 +99,10 @@ class ReactionPathHandler:
             Examples
             --------
             >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-            >>> to_reactant = ReactionPathHandler.ReactionPath(
+            >>> to_reactant = ReactionPathHandler.Path(
             ...     ["C~H"], [[1, 2]], [[1.20], [1.07]]
             ... )
-            >>> to_product = ReactionPathHandler.ReactionPath(
+            >>> to_product = ReactionPathHandler.Path(
             ...     ["C~H"], [[1, 2]], [[1.20], [2.45]]
             ... )
             >>> path = to_reactant.reversed() + to_product
@@ -148,7 +148,7 @@ class ReactionPathHandler:
 
             Returns
             -------
-            ReactionPath
+            Path
                 The extra points before the path, the selected points, and the extra
                 points after it. λ = 1 / ⟨d²⟩ is set from the distances d between
                 successive selected points. Use λ for the IS line of the ICONST file; it makes
@@ -159,7 +159,7 @@ class ReactionPathHandler:
             >>> import numpy as np
             >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
             >>> x = np.linspace(0, 1, 101)
-            >>> path = ReactionPathHandler.ReactionPath(["C~H"], [[1, 2]], x[:, np.newaxis])
+            >>> path = ReactionPathHandler.Path(["C~H"], [[1, 2]], x[:, np.newaxis])
             >>> discretized = path.discretize(6, tolerance=1e-3)
             >>> discretized.coordinates[:, 0]
             array([0. , 0.2, 0.4, 0.6, 0.8, 1. ])
@@ -202,7 +202,7 @@ class ReactionPathHandler:
             Examples
             --------
             >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-            >>> path = ReactionPathHandler.ReactionPath(
+            >>> path = ReactionPathHandler.Path(
             ...     ["C~H", "H~N"], [[1, 2], [2, 3]], [[1.07, 2.52], [2.45, 0.99]]
             ... )
             >>> print(path.to_IRCCAR(), end="")
@@ -237,7 +237,7 @@ class ReactionPathHandler:
             >>> import numpy as np
             >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
             >>> x = np.linspace(0, 1, 101)
-            >>> path = ReactionPathHandler.ReactionPath(
+            >>> path = ReactionPathHandler.Path(
             ...     ["C~H", "H~N"], [[1, 2], [2, 3]], np.c_[x, 1 - x]
             ... )
             >>> print(path.discretize(6, tolerance=1e-3).to_ICONST(), end="")
