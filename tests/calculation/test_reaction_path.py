@@ -59,7 +59,8 @@ def test_rejects_shape_mismatch(atom_pairs, coordinates):
 
 
 def test_add_concatenates_in_order(path, Assert):
-    other = Path(path.labels, path.atom_pairs, [[2.6, 1.15, 0.98]])
+    # continues close to where the reversed path ends
+    other = Path(path.labels, path.atom_pairs, [[1.0, 1.15, 2.6], [0.9, 1.1, 2.7]])
     joined = path[::-1] + other
     expected = np.concatenate([path.coordinates[::-1], other.coordinates])
     Assert.allclose(joined.coordinates, expected)
@@ -70,7 +71,37 @@ def test_add_concatenates_in_order(path, Assert):
 
 def test_add_does_not_keep_lambda(path):
     discretized = Path(path.labels, path.atom_pairs, path.coordinates, 50.0)
-    assert (discretized + discretized).lambda_ is None
+    assert (discretized + discretized[::-1]).lambda_ is None
+
+
+def test_join_is_add(path, Assert):
+    other = Path(path.labels, path.atom_pairs, [[2.5, 1.15, 0.98]])
+    Assert.allclose(path.join(other).coordinates, (path + other).coordinates)
+
+
+def test_join_raises_for_gap(path):
+    # forgetting to reverse a branch: the second path starts far from the end of the
+    # first one, compared to the largest step within the paths (about 0.85 Å)
+    with pytest.raises(exception.IncorrectUsage, match=r"\[::-1\]"):
+        path + path
+    with pytest.raises(exception.IncorrectUsage):
+        path.join(path)
+
+
+def test_join_accepts_gap_up_to_max_gap(path, Assert):
+    joined = path.join(path, max_gap=2.1)  # the gap is 2.06 Å
+    Assert.allclose(joined.coordinates, np.concatenate(2 * [path.coordinates]))
+    joined = path.join(path, max_gap=np.inf)
+    assert len(joined) == 8
+    with pytest.raises(exception.IncorrectUsage):
+        path.join(path, max_gap=1.0)
+
+
+def test_join_single_points_without_steps():
+    # without steps, there is no scale to judge the gap by, so the default accepts it
+    first = Path(["x"], [[1, 2]], [[1.0]])
+    second = Path(["x"], [[1, 2]], [[2.0]])
+    assert len(first + second) == 2
 
 
 @pytest.mark.parametrize(
@@ -435,8 +466,9 @@ def test_contains_index_count(path):
     assert [9.0, 9.0, 9.0] not in path
     assert path.index(point) == 2
     assert path.count(point) == 1
-    assert (path + path).count(list(point)) == 2
-    assert (path + path).index(point, 3) == 6
-    assert (path + path).index(point, -3, -1) == 6
+    there_and_back = path + path[::-1]
+    assert there_and_back.count(list(point)) == 2
+    assert there_and_back.index(point, 3) == 5
+    assert there_and_back.index(point, -3, -1) == 5
     with pytest.raises(ValueError):
         path.index([9.0, 9.0, 9.0])

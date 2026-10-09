@@ -91,29 +91,68 @@ class ReactionPathHandler:
                 raise exception.IncorrectUsage(message)
 
         def __add__(self, other):
-            """Join two paths, appending the steps of the second one to the first.
-
-            Both paths must describe the same pairs of atoms in the same order. The
-            joined path is no longer discretized, so it does not keep λ.
+            """Join two paths with the default checks of :meth:`join`.
 
             Examples
             --------
-            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-            >>> to_reactant = ReactionPathHandler.Path(
-            ...     ["C~H"], [[1, 2]], [[1.20], [1.07]]
-            ... )
-            >>> to_product = ReactionPathHandler.Path(
-            ...     ["C~H"], [[1, 2]], [[1.20], [2.45]]
-            ... )
+            >>> from py4vasp import demo
+            >>> Path = demo.calculation().reaction_path.Path
+            >>> to_reactant = Path(["C~H"], [[1, 2]], [[1.20], [1.07]])
+            >>> to_product = Path(["C~H"], [[1, 2]], [[1.20], [2.45]])
             >>> path = to_reactant[::-1] + to_product
             >>> path.coordinates[:, 0]
             array([1.07, 1.2 , 1.2 , 2.45])
             """
             if not isinstance(other, type(self)):
                 return NotImplemented
+            return self.join(other)
+
+        def join(self, other, *, max_gap=None):
+            """Join two paths, appending the steps of the second one to the first.
+
+            Both paths must describe the same pairs of atoms in the same order, and the
+            second path must start where the first one ends. Joining the two branches
+            of an IRC calculation, both start at the transition state, so reverse the
+            branch toward the reactant first: ``to_reactant[::-1] + to_product``. The
+            joined path is no longer discretized, so it does not keep λ.
+
+            Parameters
+            ----------
+            other : Path
+                The path appended to this one.
+            max_gap : float or None
+                How far, in Å, the first point of the second path may lie from the last
+                point of the first one. By default, the gap may not exceed the largest
+                step within either path; if neither path has two points, any gap is
+                accepted. Pass ``np.inf`` to join paths that do not connect.
+
+            Returns
+            -------
+            Path
+                The points of this path followed by the points of the other one.
+
+            Raises
+            ------
+            IncorrectUsage
+                If the paths use different pairs of atoms or the gap between them
+                exceeds max_gap, which usually means a branch was not reversed.
+
+            Examples
+            --------
+            >>> import numpy as np
+            >>> from py4vasp import demo
+            >>> Path = demo.calculation().reaction_path.Path
+            >>> path = Path(["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]])
+            >>> path.join(path, max_gap=np.inf).coordinates[:, 0]
+            array([1.07, 1.6 , 2.45, 1.07, 1.6 , 2.45])
+            """
+            if not isinstance(other, type(self)):
+                message = f"Only a Path can be joined to a Path, but got {type(other).__name__}."
+                raise exception.IncorrectUsage(message)
             if not np.array_equal(self.atom_pairs, other.atom_pairs):
                 message = f"Only paths over the same pairs of atoms can be joined, but one path uses the pairs {self.atom_pairs.tolist()} and the other {other.atom_pairs.tolist()}. Please select the same pairs in the same order for both paths."
                 raise exception.IncorrectUsage(message)
+            _raise_if_gap_too_large(self.coordinates, other.coordinates, max_gap)
             coordinates = np.concatenate([self.coordinates, other.coordinates])
             return dataclasses.replace(self, coordinates=coordinates, lambda_=None)
 
@@ -415,6 +454,21 @@ select pairs of atoms by their index, e.g. '1~2', or by element if it occurs onc
 
     def _number_steps(self):
         return len(_all_steps(np.asarray(self._structure.positions()), ndim=3))
+
+
+def _raise_if_gap_too_large(first, second, max_gap):
+    gap = np.linalg.norm(second[0] - first[-1])
+    steps = [np.linalg.norm(np.diff(path, axis=0), axis=1) for path in (first, second)]
+    largest_step = np.max(np.concatenate(steps), initial=0.0)
+    if max_gap is None:
+        if largest_step == 0:
+            return
+        max_gap, reference = largest_step, "the largest step within the paths"
+    else:
+        reference = "max_gap"
+    if gap > max_gap:
+        message = f"The second path starts {gap:.4g} Å away from the end of the first one, more than {reference} ({max_gap:.4g} Å). Did you forget to reverse a branch with [::-1]? Both branches of an IRC calculation start at the transition state. Pass a larger max_gap to join() to join the paths anyway."
+        raise exception.IncorrectUsage(message)
 
 
 def _raise_if_invalid(number_steps, number_points, extra_points, tolerance):
