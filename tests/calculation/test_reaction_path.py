@@ -351,3 +351,18 @@ def test_missing_selection_raises(raw_data):
         reaction_path.read()
     with pytest.raises(exception.IncorrectUsage):
         reaction_path.to_path()
+
+
+def test_to_graph_series_per_pair(path, Assert):
+    graph = path.to_graph()
+    assert len(graph.series) == 3
+    for series, label, distances in zip(graph.series, path.labels, path.coordinates.T):
+        assert series.label == label
+        Assert.allclose(series.x, np.arange(4))
+        Assert.allclose(series.y, distances)
+    assert graph.xlabel == "Step"
+    assert graph.ylabel == "Distance (Å)"
+
+
+def test_plot_is_alias_of_to_graph(path):
+    assert path.plot() == path.to_graph()

@@ -17,6 +17,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._calculation.structure import StructureHandler
+from py4vasp._third_party import graph
 from py4vasp._util import select
 
 # ReactionPath owns no raw data of its own; it derives the distances from the
@@ -35,7 +36,7 @@ class ReactionPathHandler:
     """Computes reaction paths from a single raw.Structure object."""
 
     @dataclasses.dataclass
-    class Path:
+    class Path(graph.Mixin):
         """A path through the space of interatomic distances.
 
         Every row of the coordinates is one point of the path, every column one pair
@@ -269,6 +270,34 @@ class ReactionPathHandler:
             lambdas = " ".join(len(self.atom_pairs) * [str(self.lambda_)])
             lines.append(f"IS {lambdas} 0")
             return "\n".join(lines) + "\n"
+
+        def to_graph(self):
+            """Plot the distance of every pair of atoms along the path.
+
+            Use this to check how the bonds change from the reactant to the product,
+            or which points a discretization selected.
+
+            Returns
+            -------
+            Graph
+                One line per pair of atoms with the distance in Å against the index of
+                the point along the path.
+
+            Examples
+            --------
+            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
+            >>> path = ReactionPathHandler.Path(
+            ...     ["C~H", "H~N"], [[1, 2], [2, 3]], [[1.07, 2.52], [2.45, 0.99]]
+            ... )
+            >>> path.to_graph()
+            Graph(series=[Series(..., label='C~H', ...), Series(..., label='H~N', ...)], ...)
+            """
+            steps = np.arange(len(self.coordinates))
+            series = [
+                graph.Series(x=steps, y=distances, label=label)
+                for label, distances in zip(self.labels, self.coordinates.T)
+            ]
+            return graph.Graph(series, xlabel="Step", ylabel="Distance (Å)")
 
     def __init__(self, raw_structure, steps=slice(None)):
         self._structure = StructureHandler.from_data(raw_structure, steps=steps)
