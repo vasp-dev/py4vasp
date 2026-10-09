@@ -379,15 +379,14 @@ class ForceConstant:
 
         Parameters
         ----------
-        masses : Sequence[float] | Mapping[str, float] | None
-            The mass of every atom in atomic mass units, in the order of the structure,
-            or a dictionary that replaces the mass of only the atoms it names. Its keys
-            follow the selection of the DOS: an element, the index of a single atom
-            counted from 1, or a range of atoms such as ``"1:3"``. For example,
-            ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
-            fourth atom. A single atom takes precedence over a range and a range over
-            an element, whatever the order of the dictionary. Every other atom keeps the
-            default, the standard atomic weight of its element listed in
+        masses : Mapping[str, float] | None
+            A dictionary that replaces the mass in atomic mass units of only the atoms
+            it names. Its keys follow the selection of the DOS: an element, the index
+            of a single atom counted from 1, or a range of atoms such as ``"1:3"``.
+            For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            only the fourth atom. A single atom takes precedence over a range and a
+            range over an element, whatever the order of the dictionary. Every other
+            atom keeps the default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. VASP
             uses the POMASS of the POTCAR instead, so pass those if you changed them or
             need to match the OUTCAR to the last digit.
@@ -430,14 +429,14 @@ class ForceConstant:
         >>> bool(np.all(heavy_oxygen[3:].real < frequencies[3:].real))
         True
 
-        To replace the mass of individual atoms instead, pass one mass per atom.
-        Doubling every mass lowers each frequency by a factor of √2
+        To replace the mass of individual atoms, key them by their index counted from 1
+        as in the selection of the DOS, or by a range such as ``"4:5"``. A single atom
+        takes precedence over its element, so this keeps the fourth atom ¹⁶O and
+        replaces the other oxygen atoms; with fewer heavy atoms the frequencies drop
+        less
 
-        >>> weights = calculation.mass.STANDARD_ATOMIC_WEIGHTS
-        >>> elements = calculation.structure.read()["elements"]
-        >>> masses = 2 * np.array([weights[element] for element in elements])
-        >>> heavy = calculation.force_constant.frequencies(masses)
-        >>> np.allclose(heavy[3:] * np.sqrt(2), frequencies[3:])
+        >>> mixed = calculation.force_constant.frequencies({"O": 17.999, "4": 15.999})
+        >>> bool(np.all(heavy_oxygen[3:].real < mixed[3:].real))
         True
         """
         return merge_default(
@@ -460,15 +459,14 @@ class ForceConstant:
 
         Parameters
         ----------
-        masses : Sequence[float] | Mapping[str, float] | None
-            The mass of every atom in atomic mass units, in the order of the structure,
-            or a dictionary that replaces the mass of only the atoms it names. Its keys
-            follow the selection of the DOS: an element, the index of a single atom
-            counted from 1, or a range of atoms such as ``"1:3"``. For example,
-            ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
-            fourth atom. A single atom takes precedence over a range and a range over
-            an element, whatever the order of the dictionary. Every other atom keeps the
-            default, the standard atomic weight of its element listed in
+        masses : Mapping[str, float] | None
+            A dictionary that replaces the mass in atomic mass units of only the atoms
+            it names. Its keys follow the selection of the DOS: an element, the index
+            of a single atom counted from 1, or a range of atoms such as ``"1:3"``.
+            For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            only the fourth atom. A single atom takes precedence over a range and a
+            range over an element, whatever the order of the dictionary. Every other
+            atom keeps the default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
 
         Returns
@@ -531,15 +529,14 @@ class ForceConstant:
 
         Parameters
         ----------
-        masses : Sequence[float] | Mapping[str, float] | None
-            The mass of every atom in atomic mass units, in the order of the structure,
-            or a dictionary that replaces the mass of only the atoms it names. Its keys
-            follow the selection of the DOS: an element, the index of a single atom
-            counted from 1, or a range of atoms such as ``"1:3"``. For example,
-            ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
-            fourth atom. A single atom takes precedence over a range and a range over
-            an element, whatever the order of the dictionary. Every other atom keeps the
-            default, the standard atomic weight of its element listed in
+        masses : Mapping[str, float] | None
+            A dictionary that replaces the mass in atomic mass units of only the atoms
+            it names. Its keys follow the selection of the DOS: an element, the index
+            of a single atom counted from 1, or a range of atoms such as ``"1:3"``.
+            For example, ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}``
+            only the fourth atom. A single atom takes precedence over a range and a
+            range over an element, whatever the order of the dictionary. Every other
+            atom keeps the default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
 
         Returns

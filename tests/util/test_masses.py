@@ -50,12 +50,6 @@ def test_resolve_defaults_to_the_standard_atomic_weights(Assert):
     Assert.allclose(masses.resolve(None, stoichiometry()), masses.of(ELEMENTS))
 
 
-def test_resolve_keeps_the_masses_the_user_provides(Assert):
-    Assert.allclose(
-        masses.resolve([88.0, 48.0, 16.0], stoichiometry()), [88.0, 48.0, 16.0]
-    )
-
-
 def test_resolve_overrides_the_elements_in_a_mapping(Assert):
     expected = [87.62, 47.867, 18.0]
     Assert.allclose(masses.resolve({"O": 18.0}, stoichiometry()), expected)
@@ -116,38 +110,14 @@ def test_resolve_mapping_accepts_overlapping_ranges_with_the_same_mass(Assert):
     Assert.allclose(actual, [87.62, 18.0, 18.0, 18.0])
 
 
-def test_resolve_raises_error_if_masses_do_not_match_the_atoms():
+@pytest.mark.parametrize(
+    "masses_", ([88.0, 48.0, 16.0], np.ones(3), 18.0, "O", ["Sr", "Ti", "O"])
+)
+def test_resolve_raises_error_for_anything_but_a_mapping(masses_):
+    # one mass per atom used to be accepted; point to the mapping that replaced it
     with pytest.raises(exception.IncorrectUsage) as error:
-        masses.resolve([1.0, 2.0], stoichiometry())
-    assert "2" in str(error.value) and "3" in str(error.value)
-
-
-def test_resolve_raises_error_if_masses_are_not_numbers():
-    # passing the elements instead of their masses would otherwise be reported as the
-    # wrong number of masses rather than as the wrong kind of input
-    with pytest.raises(exception.IncorrectUsage) as error:
-        masses.resolve(["Sr", "Ti", "O"], stoichiometry())
-    assert "numbers" in str(error.value)
-
-
-@pytest.mark.parametrize("wrong_mass", (0.0, -1.0))
-def test_resolve_raises_error_for_nonpositive_mass(wrong_mass):
-    # dividing by the square root of the mass would fill the result with nan
-    with pytest.raises(exception.IncorrectUsage) as error:
-        masses.resolve([88.0, wrong_mass, 16.0], stoichiometry())
-    assert "positive" in str(error.value)
-
-
-def test_resolve_error_uses_singular_for_one_mass():
-    with pytest.raises(exception.IncorrectUsage) as error:
-        masses.resolve(18.0, stoichiometry())
-    assert "1 mass but" in str(error.value)
-
-
-def test_resolve_error_lists_masses_as_plain_numbers():
-    with pytest.raises(exception.IncorrectUsage) as error:
-        masses.resolve(np.array([88.0, 0.0, 16.0]), stoichiometry())
-    assert "[88.0, 0.0, 16.0]" in str(error.value)
+        masses.resolve(masses_, stoichiometry())
+    assert '{"4": 17.999}' in str(error.value)
 
 
 @pytest.mark.parametrize("key", ("o", "D", "H"))
@@ -213,13 +183,6 @@ def test_resolve_mapping_raises_error_for_nonpositive_mass(wrong_mass):
     assert "positive" in str(error.value)
     # report what the user passed rather than the expanded per-atom list
     assert "'O'" in str(error.value) and "87.62" not in str(error.value)
-
-
-@pytest.mark.parametrize("wrong_mass", (float("inf"), float("nan")))
-def test_resolve_raises_error_for_infinite_mass(wrong_mass):
-    with pytest.raises(exception.IncorrectUsage) as error:
-        masses.resolve([88.0, wrong_mass, 16.0], stoichiometry())
-    assert "positive" in str(error.value)
 
 
 @pytest.mark.parametrize("wrong_mass", ("heavy", True))

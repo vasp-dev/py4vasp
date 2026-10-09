@@ -169,9 +169,14 @@ def test_displacements_read_both_eigenvector_shapes(translation_mode, Assert):
 def test_displacements_accept_custom_masses(translation_mode, Assert):
     # with all masses equal to one, undoing the weighting leaves the eigenvectors
     number_atoms = len(translation_mode.ref.masses)
-    actual = translation_mode.displacements(masses=np.ones(number_atoms))
+    actual = translation_mode.displacements(masses={f"1:{number_atoms}": 1.0})
     expected = translation_mode.ref.eigenvectors.reshape(-1, number_atoms, 3)
     Assert.allclose(actual, expected)
+
+
+def per_atom(masses_):
+    # the mass of every atom keyed by its index counted from 1
+    return {str(i + 1): float(mass) for i, mass in enumerate(masses_)}
 
 
 def heavy_oxygen(translation_mode):
@@ -182,7 +187,9 @@ def heavy_oxygen(translation_mode):
 
 def test_displacements_accept_masses_per_element(translation_mode, Assert):
     actual = translation_mode.displacements(masses={"O": 17.999})
-    expected = translation_mode.displacements(masses=heavy_oxygen(translation_mode))
+    expected = translation_mode.displacements(
+        masses=per_atom(heavy_oxygen(translation_mode))
+    )
     Assert.allclose(actual, expected)
 
 
@@ -190,7 +197,9 @@ def test_displacements_accept_masses_per_atom(translation_mode, Assert):
     heavy_fourth_atom = translation_mode.ref.masses.copy()
     heavy_fourth_atom[3] = 17.999
     actual = translation_mode.displacements(masses={"4": 17.999})
-    Assert.allclose(actual, translation_mode.displacements(masses=heavy_fourth_atom))
+    Assert.allclose(
+        actual, translation_mode.displacements(masses=per_atom(heavy_fourth_atom))
+    )
 
 
 @pytest.fixture
@@ -350,7 +359,7 @@ def test_to_view_undoes_the_mass_weighting(translation_mode, Assert):
 
 def test_to_view_accepts_custom_masses(translation_mode, Assert):
     number_atoms = len(translation_mode.ref.masses)
-    phonon = translation_mode.to_view(masses=np.ones(number_atoms)).phonon
+    phonon = translation_mode.to_view(masses={f"1:{number_atoms}": 1.0}).phonon
     expected = translation_mode.ref.eigenvectors.reshape(-1, number_atoms, 3)
     Assert.allclose(np.array(phonon.eigenvectors)[0], expected)
 
@@ -576,32 +585,23 @@ def test_displace_raises_error_for_ranges_and_operations(mode_handler, selection
 
 def test_displace_accepts_masses_per_element(mode_handler, Assert):
     elements = np.array(mode_handler.ref.structure.read()["elements"])
-    per_atom = np.where(elements == "O", 17.999, mode_handler.ref.masses)
+    heavy_oxygen = np.where(elements == "O", 17.999, mode_handler.ref.masses)
     actual = mode_handler.displace("4", 0.5, masses={"O": 17.999})
-    Assert.allclose(actual, mode_handler.displace("4", 0.5, masses=per_atom))
+    expected = mode_handler.displace("4", 0.5, masses=per_atom(heavy_oxygen))
+    Assert.allclose(actual, expected)
 
 
-def test_displace_raises_error_if_masses_do_not_match_the_atoms(mode_handler):
+def test_displace_raises_error_for_a_list_of_masses(mode_handler):
     with pytest.raises(exception.IncorrectUsage) as error:
-        mode_handler.displace("4", 0.5, masses=[1.0, 2.0])
-    assert "2" in str(error.value) and "7" in str(error.value)
-
-
-def test_displace_raises_error_if_masses_are_not_numbers(mode_handler):
-    # passing the elements instead of their masses would otherwise be reported as the
-    # wrong number of masses rather than as the wrong kind of input
-    with pytest.raises(exception.IncorrectUsage) as error:
-        mode_handler.displace("4", 0.5, masses=["Sr", "Ti", "O"])
-    assert "numbers" in str(error.value)
+        mode_handler.displace("4", 0.5, masses=list(mode_handler.ref.masses))
+    assert '{"4": 17.999}' in str(error.value)
 
 
 @pytest.mark.parametrize("wrong_mass", (0.0, -1.0))
 def test_displace_raises_error_for_nonpositive_mass(mode_handler, wrong_mass):
     # dividing by the square root of the mass would fill the structure with nan
-    masses_ = np.ones(7)
-    masses_[2] = wrong_mass
     with pytest.raises(exception.IncorrectUsage):
-        mode_handler.displace("4", 0.5, masses=masses_)
+        mode_handler.displace("4", 0.5, masses={"3": wrong_mass})
 
 
 def test_displace_raises_error_for_unknown_element(raw_data):
@@ -635,10 +635,10 @@ def test_displace_passes_the_masses_on(phonon_mode, Assert):
     # the public class has to forward the masses; with all of them equal the atoms move
     # differently than with the standard atomic weights
     default_ = phonon_mode.displace("4", amplitude=0.5)
-    custom = phonon_mode.displace("4", amplitude=0.5, masses=np.ones(7))
+    custom = phonon_mode.displace("4", amplitude=0.5, masses={"1:7": 1.0})
     assert not np.allclose(default_.positions(), custom.positions())
     handler = PhononModeHandler.from_data(phonon_mode.ref.raw_data)
-    expected = handler.displace("4", 0.5, masses=np.ones(7))
+    expected = handler.displace("4", 0.5, masses={"1:7": 1.0})
     Assert.allclose(custom.positions(), expected.positions)
 
 

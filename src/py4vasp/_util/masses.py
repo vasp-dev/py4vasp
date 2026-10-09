@@ -74,25 +74,30 @@ def resolve(masses, stoichiometry) -> np.ndarray:
 
     Parameters
     ----------
-    masses : Sequence[float] | Mapping[str, float] | None
-        The mass of every atom in atomic mass units, or a mapping from element to
-        mass that replaces the default of only the listed elements, or None for the
-        default.
+    masses : Mapping[str, float] | None
+        A mapping that replaces the default of only the atoms it selects, keyed like
+        the selection of the DOS by element, by atom index counted from 1, or by a
+        range of atoms; a single atom takes precedence over a range and a range over
+        an element. None selects the default for every atom.
     stoichiometry : StoichiometryHandler
-        The stoichiometry of the structure, which sets the default, the number of
-        masses the user has to provide, and the keys the mapping may use.
+        The stoichiometry of the structure, which sets the default and the keys the
+        mapping may use.
 
     Returns
     -------
     np.ndarray
         One positive mass per atom in atomic mass units.
     """
-    elements = stoichiometry.elements()
     if masses is None:
-        return of(elements)
+        return of(stoichiometry.elements())
     if isinstance(masses, Mapping):
         return _from_mapping(masses, stoichiometry)
-    return _from_sequence(masses, elements)
+    message = (
+        "The masses must be a dictionary that replaces the mass of only the atoms it "
+        'names, e.g. {"O": 17.999} for every oxygen or {"4": 17.999} for the fourth '
+        f"atom counted from 1, but you provided {masses!r}."
+    )
+    raise exception.IncorrectUsage(message)
 
 
 _POSITIVE = (
@@ -240,29 +245,6 @@ def _is_number(mass):
 
 def _valid(mass):
     return np.isfinite(mass) & (mass > 0)
-
-
-def _from_sequence(masses, elements):
-    masses = np.atleast_1d(masses).ravel()
-    if not np.issubdtype(masses.dtype, np.number):
-        message = (
-            "The masses must be a sequence of numbers, one per atom, but you "
-            f"provided {type(masses.item(0)).__name__ if masses.size == 1 else 'a sequence'} "
-            "that py4vasp cannot read as numbers."
-        )
-        raise exception.IncorrectUsage(message)
-    if len(masses) != len(elements):
-        message = (
-            f"You provided {len(masses)} mass{'' if len(masses) == 1 else 'es'} but "
-            "the structure contains "
-            f"{len(elements)} atoms. Please pass one mass per atom in the order in "
-            "which the structure lists them."
-        )
-        raise exception.IncorrectUsage(message)
-    if not np.all(_valid(masses)):
-        message = f"{_POSITIVE}; you provided {[float(mass) for mass in masses]}."
-        raise exception.IncorrectUsage(message)
-    return masses
 
 
 def _single_element(element):

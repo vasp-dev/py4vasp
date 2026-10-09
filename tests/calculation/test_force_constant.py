@@ -217,10 +217,15 @@ def test_frequencies_are_imaginary_for_unstable_modes(Sr2TiO4):
     assert np.all(frequencies[~unstable].imag == 0)
 
 
+def per_atom(masses_):
+    # the mass of every atom keyed by its index counted from 1
+    return {str(i + 1): float(mass) for i, mass in enumerate(masses_)}
+
+
 def test_frequencies_accept_custom_masses(Sr2TiO4, Assert):
     custom_masses = np.linspace(1.0, 7.0, 7)
     expected = expected_frequencies(Sr2TiO4, custom_masses)
-    Assert.allclose(Sr2TiO4.frequencies(masses=custom_masses), expected)
+    Assert.allclose(Sr2TiO4.frequencies(masses=per_atom(custom_masses)), expected)
 
 
 def heavy_oxygen(Sr2TiO4):
@@ -240,9 +245,9 @@ def test_frequencies_accept_masses_per_atom(Sr2TiO4, Assert):
     Assert.allclose(Sr2TiO4.frequencies(masses={"4": 17.999}), expected)
 
 
-def test_frequencies_raise_error_if_masses_do_not_match_the_atoms(Sr2TiO4):
+def test_frequencies_raise_error_for_a_list_of_masses(Sr2TiO4):
     with pytest.raises(exception.IncorrectUsage):
-        Sr2TiO4.frequencies(masses=[1.0, 2.0])
+        Sr2TiO4.frequencies(masses=list(default_masses(Sr2TiO4)))
 
 
 def test_frequencies_agree_with_the_phonon_modes(Assert):
@@ -258,7 +263,7 @@ def test_frequencies_agree_with_the_phonon_modes(Assert):
 def test_frequencies_dispatcher(dispatcher, raw_data, Assert):
     raw_force_constant = raw_data.force_constant(dispatcher.ref.selection)
     handler = ForceConstantHandler.from_data(raw_force_constant)
-    masses_ = np.arange(1.0, 8.0)
+    masses_ = per_atom(np.arange(1.0, 8.0))
     Assert.allclose(dispatcher.frequencies(masses_), handler.frequencies(masses_))
 
 
@@ -299,7 +304,7 @@ def test_frozen_atoms_do_not_move(Sr2TiO4, Assert):
 
 def test_displacements_accept_custom_masses(Sr2TiO4, Assert):
     custom_masses = np.linspace(1.0, 7.0, 7)
-    displacements = Sr2TiO4.displacements(masses=custom_masses)
+    displacements = Sr2TiO4.displacements(masses=per_atom(custom_masses))
     weighted = custom_masses[:, np.newaxis] * displacements**2
     Assert.allclose(np.sum(weighted, axis=(1, 2)), np.ones(len(displacements)))
 
@@ -319,7 +324,7 @@ def test_displacements_agree_with_the_phonon_modes(Assert):
 def test_displacements_dispatcher(dispatcher, raw_data, Assert):
     raw_force_constant = raw_data.force_constant(dispatcher.ref.selection)
     handler = ForceConstantHandler.from_data(raw_force_constant)
-    masses_ = np.arange(1.0, 8.0)
+    masses_ = per_atom(np.arange(1.0, 8.0))
     Assert.allclose(dispatcher.displacements(masses_), handler.displacements(masses_))
 
 
@@ -378,20 +383,20 @@ def test_to_molden_vectors_are_normal_modes(Sr2TiO4, Assert):
 
 def test_to_molden_custom_masses(Sr2TiO4):
     custom_masses = np.linspace(1.0, 7.0, 7)
-    frequencies, _ = parse_molden(Sr2TiO4.to_molden(masses=custom_masses))
-    expected = signed_wavenumbers(Sr2TiO4.frequencies(custom_masses))
+    frequencies, _ = parse_molden(Sr2TiO4.to_molden(masses=per_atom(custom_masses)))
+    expected = signed_wavenumbers(Sr2TiO4.frequencies(per_atom(custom_masses)))
     np.testing.assert_allclose(frequencies, expected, atol=1e-6)
 
 
 def test_to_molden_accepts_masses_per_element(Sr2TiO4):
     actual = Sr2TiO4.to_molden(masses={"O": 17.999})
-    assert actual == Sr2TiO4.to_molden(masses=heavy_oxygen(Sr2TiO4))
+    assert actual == Sr2TiO4.to_molden(masses=per_atom(heavy_oxygen(Sr2TiO4)))
 
 
 def test_to_molden_dispatcher(dispatcher, raw_data):
     raw_force_constant = raw_data.force_constant(dispatcher.ref.selection)
     handler = ForceConstantHandler.from_data(raw_force_constant)
-    masses_ = np.arange(1.0, 8.0)
+    masses_ = per_atom(np.arange(1.0, 8.0))
     assert dispatcher.to_molden(masses_) == handler.to_molden(masses_)
 
 
