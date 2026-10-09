@@ -62,6 +62,9 @@ class ElasticModulusHandler:
     def to_youngs_modulus(self, selection=None) -> dict:
         return self._hill_average(selection, _YOUNGS_MODULUS)
 
+    def to_poisson_ratio(self, selection=None) -> dict:
+        return self._hill_average(selection, _POISSON_RATIO)
+
     def _hill_average(self, selection, index):
         return {
             choice: float(_ElasticTensor.from_array(voigt).get_VRH()[index])
@@ -527,6 +530,52 @@ class ElasticModulus:
             ElasticModulusHandler.to_youngs_modulus,
         )
 
+    def poisson_ratio(self, selection: str | None = None) -> dict:
+        """Compute Poisson's ratio of a polycrystal.
+
+        Poisson's ratio ν is the ratio of the transverse contraction to the axial
+        extension when a rod of the material is stretched along its axis. It has no
+        unit. py4vasp obtains it as ν = (3K - 2G) / (6K + 2G) from the Hill averages of
+        the bulk modulus K and the shear modulus G, see :py:meth:`bulk_modulus` and
+        :py:meth:`shear_modulus`. This is the same value py4vasp stores in the
+        database.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. Without
+            a selection, you obtain both. If VASP produced more than one source of the
+            elastic modulus, select it with e.g. "default(relaxed_ion)".
+
+        Returns
+        -------
+        dict
+            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
+            Poisson's ratio.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Poisson's ratio with relaxed ions is
+
+        >>> poisson_ratio = calculation.elastic_modulus.poisson_ratio("relaxed_ion")
+        >>> round(poisson_ratio["relaxed_ion"], 3)
+        0.287
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_poisson_ratio,
+        )
+
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
 
@@ -585,7 +634,7 @@ class ElasticModulus:
 
 _TENSORS = ("clamped_ion", "relaxed_ion")
 # position of the moduli in the result of _ElasticTensor.get_VRH
-_BULK_MODULUS, _SHEAR_MODULUS, _YOUNGS_MODULUS = 0, 1, 2
+_BULK_MODULUS, _SHEAR_MODULUS, _YOUNGS_MODULUS, _POISSON_RATIO = 0, 1, 2, 3
 
 
 def _parse_tensor_selection(selection):

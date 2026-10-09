@@ -272,6 +272,7 @@ _HILL_AVERAGES = {
     "bulk_modulus": "bulk_modulus",
     "shear_modulus": "shear_modulus",
     "youngs_modulus": "young_modulus",
+    "poisson_ratio": "poisson_ratio",
 }
 
 
