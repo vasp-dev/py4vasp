@@ -165,6 +165,15 @@ def test_explicit_and_implicit_default_source_are_combined(raw_data):
     assert len(graph.series) == 2
 
 
+def test_missing_all_electron_density_names_vaspout(raw_data):
+    raw_density = raw.Density(raw_data.structure("Sr2TiO4"), charge=raw.VaspData(None))
+    density = Density.from_data(raw_density)["all_electron"]
+    with pytest.raises(exception.NoData) as error:
+        density.read()
+    assert "vaspout.h5" in str(error.value)
+    assert "vaspwave.h5" not in str(error.value)
+
+
 def test_nonpolarized_to_quiver(nonpolarized_density):
     # there is no magnetization to draw arrows for
     with pytest.raises(exception.NoData, match="magnetization"):

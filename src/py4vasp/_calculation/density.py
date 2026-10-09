@@ -64,7 +64,7 @@ class DensityHandler:
         return cls(raw_density, selection_name=selection_name)
 
     def __str__(self) -> str:
-        _raise_error_if_no_data(self._raw_density.charge)
+        _raise_error_if_no_data(self._raw_density.charge, self._selection_name)
         grid = self._raw_density.charge.shape[1:]
         raw_stoichiometry = self._raw_density.structure.stoichiometry
         stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
@@ -81,7 +81,7 @@ class DensityHandler:
     grid: {grid[2]}, {grid[1]}, {grid[0]}"""
 
     def to_dict(self) -> dict:
-        _raise_error_if_no_data(self._raw_density.charge)
+        _raise_error_if_no_data(self._raw_density.charge, self._selection_name)
         result = {"structure": self._structure().to_dict()}
         result.update(self._read_density())
         return result
@@ -106,7 +106,7 @@ class DensityHandler:
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ) -> view.View:
-        _raise_error_if_no_data(self._raw_density.charge)
+        _raise_error_if_no_data(self._raw_density.charge, self._selection_name)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_density.charge)
         selection = selection or _INTERNAL
@@ -825,12 +825,19 @@ def _raise_is_collinear_error():
     raise exception.NoData(msg)
 
 
-def _raise_error_if_no_data(data):
-    if data.is_none():
+def _raise_error_if_no_data(data, selection_name=None):
+    if not data.is_none():
+        return
+    if selection_name == "all_electron":
+        # unlike the other densities, the all-electron density is in vaspout.h5
         raise exception.NoData(
-            "Density data was not found. Note that the density information is written "
-            "on the demand to a different file (vaspwave.h5). Please make sure that "
-            "this file exists and LCHARGH5 = T is set in the INCAR file. Another "
-            'common issue is when you create `Calculation.from_file("vaspout.h5")` '
-            "because this will overwrite the default file behavior."
+            "The all-electron density was not found in vaspout.h5. Please use "
+            "`is_available` to check which densities this calculation contains."
         )
+    raise exception.NoData(
+        "Density data was not found. Note that the density information is written "
+        "on the demand to a different file (vaspwave.h5). Please make sure that "
+        "this file exists and LCHARGH5 = T is set in the INCAR file. Another "
+        'common issue is when you create `Calculation.from_file("vaspout.h5")` '
+        "because this will overwrite the default file behavior."
+    )
