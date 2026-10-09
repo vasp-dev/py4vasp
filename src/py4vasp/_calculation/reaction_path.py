@@ -9,6 +9,10 @@ import numpy as np
 
 from py4vasp import exception
 
+# Factor by which the targeted distance between successive points shrinks until every
+# point of the discretized path lies at that distance within the tolerance.
+_SHRINK_INCREMENT = 0.99
+
 
 class ReactionPathHandler:
     """Computes reaction paths from a single raw.Structure object."""
@@ -112,3 +116,82 @@ class ReactionPathHandler:
                 raise exception.IncorrectUsage(message)
             coordinates = np.concatenate([self.coordinates, other.coordinates])
             return dataclasses.replace(self, coordinates=coordinates, lambda_=None)
+
+        def discretize(self, number_points, *, tolerance):
+            """Select points spaced approximately evenly along the path.
+
+            A path-based collective variable, e.g., the IS coordinate of a slow-growth
+            simulation, needs the path as a sequence of points that are about equally far
+            apart in the space of the distances. This method picks such points among the
+            steps of the path; it does not interpolate between them. It starts from the
+            first step, targets the total length of the path divided by the number of
+            intervals, and shrinks that target by 1% until every selected point lies at
+            the targeted distance from its predecessor within the tolerance.
+
+            Parameters
+            ----------
+            number_points : int
+                How many points the discretized path has.
+            tolerance : float
+                By how much, in Å, the distance between two successive points may
+                deviate from the targeted one. A dense path, such as an IRC, permits a
+                tight tolerance. If the tolerance is too tight for the steps of the path,
+                the targeted distance shrinks a lot and the selected points stop short of
+                the end of the path, so compare the last point to the last step.
+
+            Returns
+            -------
+            ReactionPath
+                The selected points, with λ = 1 / ⟨d²⟩ set from the distances d between
+                successive points. Use λ for the IS line of the ICONST file; it makes
+                the collective variable switch smoothly from one point to the next.
+
+            Examples
+            --------
+            >>> import numpy as np
+            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
+            >>> x = np.linspace(0, 1, 101)
+            >>> path = ReactionPathHandler.ReactionPath(["C~H"], [[1, 2]], x[:, np.newaxis])
+            >>> discretized = path.discretize(6, tolerance=1e-3)
+            >>> discretized.coordinates[:, 0]
+            array([0. , 0.2, 0.4, 0.6, 0.8, 1. ])
+            >>> round(discretized.lambda_, 6)
+            25.0
+            """
+            increment = _path_length(self.coordinates) / (number_points - 1)
+            indices = _equidistant_indices(
+                self.coordinates, number_points, increment, tolerance
+            )
+            while indices is None:
+                increment *= _SHRINK_INCREMENT
+                indices = _equidistant_indices(
+                    self.coordinates, number_points, increment, tolerance
+                )
+            points = self.coordinates[indices]
+            return dataclasses.replace(
+                self, coordinates=points, lambda_=_suggest_lambda(points)
+            )
+
+
+def _path_length(coordinates):
+    return np.sum(np.linalg.norm(np.diff(coordinates, axis=0), axis=1))
+
+
+def _equidistant_indices(coordinates, number_points, increment, tolerance):
+    """Walk along the path and pick the step closest to the targeted distance from the
+    previously picked one. Return None if any of them misses it by the tolerance."""
+    indices = [0]
+    for _ in range(number_points - 1):
+        start = indices[-1]
+        distances = np.linalg.norm(coordinates[start:] - coordinates[start], axis=1)
+        deviation = np.abs(distances - increment)
+        closest = np.argmin(deviation)
+        if deviation[closest] >= tolerance:
+            return None
+        indices.append(start + closest)
+    return indices
+
+
+def _suggest_lambda(points):
+    squared_spacing = np.sum(np.diff(points, axis=0) ** 2, axis=1)
+    return float(1 / np.mean(squared_spacing))

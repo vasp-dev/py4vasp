@@ -85,3 +85,45 @@ def test_add_fewer_pairs_raises(path):
 def test_add_other_type_raises(path):
     with pytest.raises(TypeError):
         path + 1.0
+
+
+# Reference values in the discretize tests were obtained by running the ircprepare3.py
+# script of the VASP transition-state tutorial on the same curves.
+
+
+@pytest.fixture
+def line():
+    x = np.linspace(0, 1, 101)
+    return ReactionPath(["x", "y"], [[1, 2], [1, 3]], np.c_[x, 2 * x])
+
+
+@pytest.fixture
+def curve():
+    # points along a half circle, crowded at the start of the path
+    angle = np.pi * np.linspace(0, 1, 200) ** 2
+    coordinates = np.c_[np.cos(angle), np.sin(angle)]
+    return ReactionPath(["x", "y"], [[1, 2], [1, 3]], coordinates)
+
+
+def test_discretize_uniform_line(line, Assert):
+    discretized = line.discretize(6, tolerance=1e-3)
+    Assert.allclose(discretized.coordinates, line.coordinates[::20])
+    assert discretized.labels == line.labels
+    Assert.allclose(discretized.atom_pairs, line.atom_pairs)
+    Assert.allclose(discretized.lambda_, 5.0)
+
+
+def test_discretize_nonuniform_curve(curve, Assert):
+    discretized = curve.discretize(5, tolerance=1e-2)
+    Assert.allclose(discretized.coordinates, curve.coordinates[[0, 98, 139, 170, 196]])
+    Assert.allclose(discretized.lambda_, 1.808424727155654)
+
+
+def test_increment_shrinks_until_tolerance_met(curve, Assert):
+    # A tight tolerance shrinks the increment far below the length of the curve
+    # divided by the number of points, so the selected points stop short of its end.
+    discretized = curve.discretize(5, tolerance=1e-3)
+    Assert.allclose(discretized.coordinates, curve.coordinates[[0, 41, 58, 71, 82]])
+    Assert.allclose(discretized.lambda_, 56.31446053316491)
+    spacing = np.linalg.norm(np.diff(discretized.coordinates, axis=0), axis=1)
+    assert np.ptp(spacing) < 2e-3
