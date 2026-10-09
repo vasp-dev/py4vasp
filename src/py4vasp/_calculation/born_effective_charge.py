@@ -146,6 +146,19 @@ class BornEffectiveCharge:
         selection : str | None
             Select which source of the quantity is printed. If you select multiple
             sources, py4vasp prints one block per source.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> calculation.born_effective_charge.print()
+        BORN EFFECTIVE CHARGES (including local field effects) (in |e|, cumulative output)
+        ---------------------------------------------------------------------------------
+        ion    1   Sr
+            1     2.47000     0.00000     0.00000
+            2     0.00000     2.47000     0.00000
+            3     0.00000     0.00000     2.69000
+        ...
         """
         print(self.__str__(selection))
 
@@ -178,7 +191,7 @@ class BornEffectiveCharge:
             BornEffectiveChargeHandler.__str__,
         )
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read structure information and Born effective charges into a dictionary.
 
         The structural information is added to inform about which atoms are included
@@ -190,22 +203,38 @@ class BornEffectiveCharge:
         the OUTCAR file. :py:meth:`print` and :py:meth:`to_INCAR` take care of that
         orientation for you.
 
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the Born effective charges, if VASP produced more than
+            one. Most calculations only have the default source.
+
         Returns
         -------
         dict
             Contains structural information as well as the Born effective charges.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> charges = calculation.born_effective_charge.read()
+        >>> charges["structure"]["elements"][2], charges["charge_tensors"][2]
+        ('Ti', array([[6.94, 0.  , 0.  ],
+               [0.  , 6.94, 0.  ],
+               [0.  , 0.  , 5.65]]))
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             BornEffectiveChargeHandler.from_data,
             BornEffectiveChargeHandler.read,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
     def to_INCAR(self, selection: str | None = None) -> str:
         """Format the Born effective charges as the PHON_BORN_CHARGES tag of an INCAR file.

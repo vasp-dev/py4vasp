@@ -6,6 +6,7 @@ from dataclasses import fields
 import numpy as np
 import pytest
 
+from py4vasp import exception
 from py4vasp._calculation.born_effective_charge import (
     BornEffectiveCharge,
     BornEffectiveChargeHandler,
@@ -161,3 +162,15 @@ def test_print_rows_match_to_INCAR(Sr2TiO4):
     tag_values = Sr2TiO4.to_INCAR().replace("PHON_BORN_CHARGES =", "")
     incar = np.array(tag_values.replace("\\", "").split(), dtype=float)
     assert np.array_equal(printed, incar.reshape(-1, 9))
+
+
+@pytest.mark.parametrize("selection", (None, "default"))
+def test_read_dispatcher(dispatcher, Sr2TiO4, selection, Assert):
+    actual = dispatcher.read(selection)
+    Assert.allclose(actual["charge_tensors"], Sr2TiO4.ref.charge_tensors)
+    assert dispatcher.to_dict(selection).keys() == actual.keys()
+
+
+def test_read_unknown_selection(dispatcher):
+    with pytest.raises(exception.IncorrectUsage):
+        dispatcher.read("relaxed_ion")
