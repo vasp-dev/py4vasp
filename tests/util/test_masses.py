@@ -87,6 +87,35 @@ def test_resolve_mapping_overrides_a_range_of_atoms(key, Assert):
     Assert.allclose(masses.resolve({key: 18.0}, stoichiometry(elements)), expected)
 
 
+@pytest.mark.parametrize(
+    "masses_",
+    (
+        {"O": 17.0, "3:4": 18.0, "4": 19.0},
+        {"4": 19.0, "3:4": 18.0, "O": 17.0},
+        {"3:4": 18.0, "4": 19.0, "O": 17.0},
+    ),
+)
+def test_resolve_mapping_the_more_specific_key_wins(masses_, Assert):
+    # an atom is more specific than a range, which is more specific than an element,
+    # whatever order the dictionary lists them in
+    elements = ["Sr", "O", "O", "O"]
+    expected = [87.62, 17.0, 18.0, 19.0]
+    Assert.allclose(masses.resolve(masses_, stoichiometry(elements)), expected)
+
+
+def test_resolve_mapping_raises_error_for_overlapping_ranges():
+    elements = ["Sr", "O", "O", "O"]
+    with pytest.raises(exception.IncorrectUsage) as error:
+        masses.resolve({"2:3": 18.0, "3:4": 17.0}, stoichiometry(elements))
+    assert "'2:3'" in str(error.value) and "'3:4'" in str(error.value)
+
+
+def test_resolve_mapping_accepts_overlapping_ranges_with_the_same_mass(Assert):
+    elements = ["Sr", "O", "O", "O"]
+    actual = masses.resolve({"2:3": 18.0, "3:4": 18.0}, stoichiometry(elements))
+    Assert.allclose(actual, [87.62, 18.0, 18.0, 18.0])
+
+
 def test_resolve_raises_error_if_masses_do_not_match_the_atoms():
     with pytest.raises(exception.IncorrectUsage) as error:
         masses.resolve([1.0, 2.0], stoichiometry())

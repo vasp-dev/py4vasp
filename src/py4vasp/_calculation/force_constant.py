@@ -385,7 +385,8 @@ class ForceConstant:
             follow the selection of the DOS: an element, the index of a single atom
             counted from 1, or a range of atoms such as ``"1:3"``. For example,
             ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
-            fourth atom. Every other atom keeps the
+            fourth atom. A single atom takes precedence over a range and a range over
+            an element, whatever the order of the dictionary. Every other atom keeps the
             default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. VASP
             uses the POMASS of the POTCAR instead, so pass those if you changed them or
@@ -465,7 +466,8 @@ class ForceConstant:
             follow the selection of the DOS: an element, the index of a single atom
             counted from 1, or a range of atoms such as ``"1:3"``. For example,
             ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
-            fourth atom. Every other atom keeps the
+            fourth atom. A single atom takes precedence over a range and a range over
+            an element, whatever the order of the dictionary. Every other atom keeps the
             default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
 
@@ -535,7 +537,8 @@ class ForceConstant:
             follow the selection of the DOS: an element, the index of a single atom
             counted from 1, or a range of atoms such as ``"1:3"``. For example,
             ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
-            fourth atom. Every other atom keeps the
+            fourth atom. A single atom takes precedence over a range and a range over
+            an element, whatever the order of the dictionary. Every other atom keeps the
             default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
 

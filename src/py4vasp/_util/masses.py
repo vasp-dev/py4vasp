@@ -118,9 +118,33 @@ def _from_mapping(masses, stoichiometry):
         raise exception.IncorrectUsage(f"{_POSITIVE}; you provided {invalid}.")
     result = of(elements)
     atoms = np.arange(len(elements))
-    for key, mass in masses.items():
-        result[_indices(parsed[key], selections, atoms)] = mass
+    indices = {key: _indices(item, selections, atoms) for key, item in parsed.items()}
+    _raise_error_if_ranges_overlap(parsed, indices, masses)
+    for key in sorted(masses, key=lambda key: _specificity(parsed[key])):
+        result[indices[key]] = masses[key]
     return result
+
+
+def _specificity(item):
+    # a single atom overrides a range, which overrides an element
+    if isinstance(item, select.Group):
+        return 1
+    return 2 if item.isdecimal() else 0
+
+
+def _raise_error_if_ranges_overlap(parsed, indices, masses):
+    ranges = [key for key, item in parsed.items() if isinstance(item, select.Group)]
+    for i, first in enumerate(ranges):
+        for second in ranges[i + 1 :]:
+            start = max(indices[first].start, indices[second].start)
+            stop = min(indices[first].stop, indices[second].stop)
+            if start < stop and masses[first] != masses[second]:
+                message = (
+                    f"The ranges {first!r} and {second!r} both contain atom "
+                    f"{start + 1} but assign it different masses. Please make "
+                    "the ranges disjoint or give the shared atoms their own key."
+                )
+                raise exception.IncorrectUsage(message)
 
 
 def _parse(key):

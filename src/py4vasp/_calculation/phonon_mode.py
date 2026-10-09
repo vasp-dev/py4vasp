@@ -767,8 +767,9 @@ class PhononMode(view.Mixin):
             follow the selection of the DOS: an element, the index of a single atom
             counted from 1, or a range of atoms such as ``"1:3"``. For example,
             ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
-            fourth atom. By default py4vasp uses the standard atomic weight of the
-            element listed in
+            fourth atom. A single atom takes precedence over a range and a range over
+            an element, whatever the order of the dictionary. By default py4vasp uses
+            the standard atomic weight of the element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
             this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
             if you replaced hydrogen by deuterium; it must be the mass VASP used,
@@ -918,8 +919,9 @@ class PhononMode(view.Mixin):
             follow the selection of the DOS: an element, the index of a single atom
             counted from 1, or a range of atoms such as ``"1:3"``. For example,
             ``{"O": 17.999}`` changes every oxygen and ``{"4": 17.999}`` only the
-            fourth atom. By default py4vasp uses the standard atomic weight of the
-            element listed in
+            fourth atom. A single atom takes precedence over a range and a range over
+            an element, whatever the order of the dictionary. By default py4vasp uses
+            the standard atomic weight of the element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`. Set
             this to the POMASS of your POTCAR if you overwrote it, e.g. ``{"H": 2.014}``
             if you replaced hydrogen by deuterium; it must be the mass VASP used,
