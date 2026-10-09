@@ -44,7 +44,10 @@ class ReactionPathHandler:
         of atoms, so the path can describe an IRC, an MD trajectory, or any other
         sequence of structures. The path behaves like a sequence of its points:
         ``len(path)`` counts them, ``path[i]`` returns the distances of point i, and
-        ``path[a:b]`` returns the part of the path between them as a new path.
+        ``path[a:b]`` returns the part of the path between them as a new path. In
+        particular, ``path[::-1]`` traverses the path in the opposite direction; use
+        it to join the two branches of an IRC calculation, which both start at the
+        transition state.
 
         Parameters
         ----------
@@ -88,29 +91,6 @@ class ReactionPathHandler:
                 message = f"The coordinates must have the shape (steps, {number_pairs}), one distance for each of the {number_pairs} labels at every step, but they have the shape {self.coordinates.shape}."
                 raise exception.IncorrectUsage(message)
 
-        def reversed(self):
-            """Return the same path traversed in the opposite direction.
-
-            Use this to join the two branches of an IRC calculation: both start at the
-            transition state, so one of them has to be reversed so that the joined path
-            runs from the reactant over the transition state to the product.
-
-            Returns
-            -------
-            Path
-                A new path with the order of the steps reversed.
-
-            Examples
-            --------
-            >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
-            >>> path = ReactionPathHandler.Path(
-            ...     ["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]]
-            ... )
-            >>> path.reversed().coordinates[:, 0]
-            array([2.45, 1.6 , 1.07])
-            """
-            return dataclasses.replace(self, coordinates=self.coordinates[::-1])
-
         def __add__(self, other):
             """Join two paths, appending the steps of the second one to the first.
 
@@ -126,7 +106,7 @@ class ReactionPathHandler:
             >>> to_product = ReactionPathHandler.Path(
             ...     ["C~H"], [[1, 2]], [[1.20], [2.45]]
             ... )
-            >>> path = to_reactant.reversed() + to_product
+            >>> path = to_reactant[::-1] + to_product
             >>> path.coordinates[:, 0]
             array([1.07, 1.2 , 1.2 , 2.45])
             """
@@ -203,7 +183,7 @@ class ReactionPathHandler:
             --------
             >>> from py4vasp._calculation.reaction_path import ReactionPathHandler
             >>> path = ReactionPathHandler.Path(["C~H"], [[1, 2]], [[1.07], [1.60], [2.45]])
-            >>> (path.reversed() + path).count([1.07])
+            >>> (path[::-1] + path).count([1.07])
             2
             """
             return int(np.sum(self._matches(point)))
@@ -547,7 +527,7 @@ class ReactionPath:
         to_reactant = py4vasp.Calculation.from_path("irc/m").reaction_path
         to_product = py4vasp.Calculation.from_path("irc/p").reaction_path
         pairs = "C~H, C~N, H~N"
-        path = to_reactant.to_path(pairs).reversed() + to_product.to_path(pairs)
+        path = to_reactant.to_path(pairs)[::-1] + to_product.to_path(pairs)
         discretized = path.discretize(15, extra_points=2, tolerance=5e-3)
         with open("IRCCAR", "w") as file:
             file.write(discretized.to_IRCCAR())
@@ -648,7 +628,7 @@ class ReactionPath:
         -------
         Path
             The path through the space of the selected distances with one point per
-            step. Join paths with ``+``, reverse them with ``reversed()``, and select
+            step. Join paths with ``+``, reverse them with ``[::-1]``, and select
             evenly spaced points with ``discretize()``.
 
         Examples

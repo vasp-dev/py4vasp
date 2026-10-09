@@ -34,12 +34,14 @@ def test_path_from_arrays(path, Assert):
     assert path.lambda_ is None
 
 
-def test_reversed(path, Assert):
-    reversed_path = path.reversed()
+def test_reverse_with_slice(path, Assert):
+    reversed_path = path[::-1]
     Assert.allclose(reversed_path.coordinates, path.coordinates[::-1])
     assert reversed_path.labels == path.labels
     Assert.allclose(reversed_path.atom_pairs, path.atom_pairs)
     Assert.allclose(path.coordinates[0], np.array([1.07, 1.16, 2.52]))
+    # slicing replaces a method that was easily confused with the builtin reversed
+    assert not hasattr(path, "reversed")
 
 
 @pytest.mark.parametrize(
@@ -58,7 +60,7 @@ def test_rejects_shape_mismatch(atom_pairs, coordinates):
 
 def test_add_concatenates_in_order(path, Assert):
     other = Path(path.labels, path.atom_pairs, [[2.6, 1.15, 0.98]])
-    joined = path.reversed() + other
+    joined = path[::-1] + other
     expected = np.concatenate([path.coordinates[::-1], other.coordinates])
     Assert.allclose(joined.coordinates, expected)
     assert joined.labels == path.labels
