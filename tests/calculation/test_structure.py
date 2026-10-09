@@ -1500,6 +1500,16 @@ def test_step_out_of_range_for_selected_source(demo_structure):
         demo_structure[10].positions("exciton")
 
 
+def test_steps_of_single_structure_source(demo_structure, Assert):
+    # a single structure behaves like a trajectory with one step
+    single = demo_structure.positions("phonon")
+    Assert.allclose(demo_structure[0].positions("phonon"), single)
+    with pytest.raises(exception.IncorrectUsage):
+        demo_structure[1:3].positions("phonon")
+    with pytest.raises(exception.IncorrectUsage):
+        demo_structure[5].positions("phonon")
+
+
 def test_phonon_source_is_a_single_structure(demo_structure):
     # the primitive cell of a phonon calculation is one frame for cell and positions
     assert demo_structure[:].lattice_vectors("phonon").shape == (3, 3)

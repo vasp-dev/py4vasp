@@ -91,17 +91,23 @@ class StructureHandler:
                 raise exception.IncorrectUsage(
                     f"Steps must be an integer or slice, got {type(self._steps).__name__!r}."
                 ) from error
-            self._raise_error_if_step_out_of_range()
+        if steps is not None:
+            self._raise_error_if_steps_out_of_range()
 
-    def _raise_error_if_step_out_of_range(self):
-        # the steps are chosen before the source, so check them against this source
-        if check.is_none(self._raw_structure.positions) or not self._is_trajectory:
+    def _raise_error_if_steps_out_of_range(self):
+        # the steps are chosen before the source, so check them against this source;
+        # a single structure behaves like a trajectory with one step
+        if check.is_none(self._raw_structure.positions):
             return
-        number_steps = len(self._raw_structure.positions)
-        if not -number_steps <= self._steps < number_steps:
+        number_steps = len(self._raw_structure.positions) if self._is_trajectory else 1
+        if self._is_slice:
+            out_of_range = not range(number_steps)[self._steps]
+        else:
+            out_of_range = not -number_steps <= self._steps < number_steps
+        if out_of_range:
             message = (
-                f"The step {self._steps} is out of range, the selected structure has "
-                f"{number_steps} steps."
+                f"The steps {self._steps} select nothing, the selected structure has "
+                f"{number_steps} step(s)."
             )
             raise exception.IncorrectUsage(message)
 
