@@ -58,7 +58,7 @@ ion {ion + 1:4d}   {element}
         # VASP transposes every 3x3 block after reading it and expects the field
         # direction first; vaspout.h5 stores the field direction as the last axis
         rows = np.swapaxes(charge_tensors, 1, 2).reshape(len(charge_tensors), 9)
-        return incar.tag_block("PHON_BORN_CHARGES", rows)
+        return incar.tag_block("PHON_BORN_CHARGES", rows, group=3)
 
     def to_dict(self) -> dict:
         """Read structure information and Born effective charges into a dictionary.
@@ -247,9 +247,9 @@ class BornEffectiveCharge:
 
         Each line holds the 3x3 tensor of one ion, in the order of the ions in the
         POSCAR file of the linear-response calculation. Within a line, the nine numbers
-        are the rows of the tensor with the electric field as row index and the atomic
-        displacement as column index, which is the orientation VASP reads. You do not
-        need to transpose anything yourself. Note that this is the transpose of the
+        are the three rows of the tensor, separated by a wider gap, with the electric
+        field as row index and the atomic displacement as column index, which is the
+        orientation VASP reads. You do not need to transpose anything yourself. Note that this is the transpose of the
         array returned by :py:meth:`read`, which stores the displacement first.
 
         VASP expects the charges of the atoms in the primitive cell of the phonon
@@ -279,13 +279,13 @@ class BornEffectiveCharge:
         Each of the seven ions of Sr2TiO4 gets a line of the tag
 
         >>> print(calculation.born_effective_charge.to_INCAR())
-        PHON_BORN_CHARGES =   2.470000   0.000000   0.000000   0.000000   2.470000   0.000000   0.000000   0.000000   2.690000 \\
-                              2.470000   0.000000   0.000000   0.000000   2.470000   0.000000   0.000000   0.000000   2.690000 \\
-                              6.940000   0.000000   0.000000   0.000000   6.940000   0.000000   0.000000   0.000000   5.650000 \\
-                             -2.210000   0.000000   0.000000   0.000000  -2.210000   0.000000   0.000000   0.000000  -3.815000 \\
-                             -2.210000   0.000000   0.000000   0.000000  -2.210000   0.000000   0.000000   0.000000  -3.815000 \\
-                             -1.980000   0.000000   0.000000   0.000000  -5.480000   0.000000   0.000000   0.000000  -1.700000 \\
-                             -5.480000   0.000000   0.000000   0.000000  -1.980000   0.000000   0.000000   0.000000  -1.700000
+        PHON_BORN_CHARGES =   2.470000   0.000000   0.000000     0.000000   2.470000   0.000000     0.000000   0.000000   2.690000 \\
+                              2.470000   0.000000   0.000000     0.000000   2.470000   0.000000     0.000000   0.000000   2.690000 \\
+                              6.940000   0.000000   0.000000     0.000000   6.940000   0.000000     0.000000   0.000000   5.650000 \\
+                             -2.210000   0.000000   0.000000     0.000000  -2.210000   0.000000     0.000000   0.000000  -3.815000 \\
+                             -2.210000   0.000000   0.000000     0.000000  -2.210000   0.000000     0.000000   0.000000  -3.815000 \\
+                             -1.980000   0.000000   0.000000     0.000000  -5.480000   0.000000     0.000000   0.000000  -1.700000 \\
+                             -5.480000   0.000000   0.000000     0.000000  -1.980000   0.000000     0.000000   0.000000  -1.700000
         """
         return merge_default(
             self._source,
