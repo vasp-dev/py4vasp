@@ -54,8 +54,14 @@ class ElasticModulusHandler:
         }
 
     def to_bulk_modulus(self, selection=None) -> dict:
+        return self._hill_average(selection, _BULK_MODULUS)
+
+    def to_shear_modulus(self, selection=None) -> dict:
+        return self._hill_average(selection, _SHEAR_MODULUS)
+
+    def _hill_average(self, selection, index):
         return {
-            choice: float(_ElasticTensor.from_array(voigt).get_VRH()[0])
+            choice: float(_ElasticTensor.from_array(voigt).get_VRH()[index])
             for choice, voigt in self.to_voigt(selection).items()
         }
 
@@ -426,6 +432,52 @@ class ElasticModulus:
             ElasticModulusHandler.to_bulk_modulus,
         )
 
+    def shear_modulus(self, selection: str | None = None) -> dict:
+        """Compute the shear modulus of a polycrystal in GPa.
+
+        The shear modulus G measures how strongly the material resists a change of
+        shape at constant volume. For a single crystal it depends on the direction, so
+        py4vasp averages the elastic constants over all orientations of the
+        crystallites in a polycrystal. It reports the Hill average, the mean of the
+        upper (Voigt) and lower (Reuss) bound, the same value py4vasp stores in the
+        database.
+
+        Parameters
+        ----------
+        selection : str | None
+            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. Without
+            a selection, you obtain both. If VASP produced more than one source of the
+            elastic modulus, select it with e.g. "default(relaxed_ion)".
+
+        Returns
+        -------
+        dict
+            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
+            shear modulus in GPa.
+
+        Examples
+        --------
+        Let us create some example data so that we can illustrate how to use this
+        method. Of course you can also use your own VASP calculation data if you have
+        it available.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        The shear modulus with relaxed ions in GPa is
+
+        >>> shear_modulus = calculation.elastic_modulus.shear_modulus("relaxed_ion")
+        >>> round(shear_modulus["relaxed_ion"], 1)
+        75.4
+        """
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            selection,
+            self._handler_factory,
+            ElasticModulusHandler.to_shear_modulus,
+        )
+
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
 
@@ -483,6 +535,8 @@ class ElasticModulus:
 
 
 _TENSORS = ("clamped_ion", "relaxed_ion")
+# position of the moduli in the result of _ElasticTensor.get_VRH
+_BULK_MODULUS, _SHEAR_MODULUS = 0, 1
 
 
 def _parse_tensor_selection(selection):

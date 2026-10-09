@@ -267,16 +267,26 @@ def test_voigt_unknown_selection(elastic_modulus, selection):
 _DATABASE_PREFIX = {"clamped_ion": "electronic", "relaxed_ion": "total"}
 
 
-def test_bulk_modulus(silicon_carbide):
-    actual = silicon_carbide.bulk_modulus()
+# maps each method computing a Hill average to its name in the database
+_HILL_AVERAGES = {
+    "bulk_modulus": "bulk_modulus",
+    "shear_modulus": "shear_modulus",
+}
+
+
+@pytest.mark.parametrize("method", _HILL_AVERAGES)
+def test_hill_average(silicon_carbide, method):
+    actual = getattr(silicon_carbide, method)()
     assert actual.keys() == {"clamped_ion", "relaxed_ion"}
     for key, prefix in _DATABASE_PREFIX.items():
-        expected = silicon_carbide.ref.overview_data[f"{prefix}_bulk_modulus"]
+        database_key = f"{prefix}_{_HILL_AVERAGES[method]}"
+        expected = silicon_carbide.ref.overview_data[database_key]
         assert np.isclose(actual[key], expected)
 
 
-def test_bulk_modulus_with_selection(silicon_carbide):
-    actual = silicon_carbide.bulk_modulus("relaxed_ion")
+@pytest.mark.parametrize("method", _HILL_AVERAGES)
+def test_hill_average_with_selection(silicon_carbide, method):
+    actual = getattr(silicon_carbide, method)("relaxed_ion")
     assert list(actual) == ["relaxed_ion"]
-    expected = silicon_carbide.ref.overview_data["total_bulk_modulus"]
+    expected = silicon_carbide.ref.overview_data[f"total_{_HILL_AVERAGES[method]}"]
     assert np.isclose(actual["relaxed_ion"], expected)
