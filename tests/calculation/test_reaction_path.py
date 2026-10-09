@@ -159,11 +159,25 @@ def test_discretize_nonuniform_curve(curve, Assert):
 def test_increment_shrinks_until_tolerance_met(curve, Assert):
     # A tight tolerance shrinks the increment far below the length of the curve
     # divided by the number of points, so the selected points stop short of its end.
-    discretized = curve.discretize(5, tolerance=1e-3)
+    discretized = curve.discretize(5, tolerance=1e-3, max_remainder=np.inf)
     Assert.allclose(discretized.coordinates, curve.coordinates[[0, 41, 58, 71, 82]])
     Assert.allclose(discretized.lambda_, 56.31446053316491)
     spacing = np.linalg.norm(np.diff(discretized.coordinates, axis=0), axis=1)
     assert np.ptp(spacing) < 2e-3
+
+
+def test_discretize_raises_if_points_stop_short(curve):
+    # the points stop at step 82 of 200, far more than half a spacing before the end
+    with pytest.raises(exception.IncorrectUsage, match="max_remainder"):
+        curve.discretize(5, tolerance=1e-3)
+    with pytest.raises(exception.IncorrectUsage):
+        curve.discretize(5, tolerance=1e-3, max_remainder=10.0)
+
+
+def test_discretize_accepts_remainder_up_to_max_remainder(curve, Assert):
+    # the points stop at step 82 of 200; the rest of the curve is about 15 spacings
+    discretized = curve.discretize(5, tolerance=1e-3, max_remainder=20.0)
+    Assert.allclose(discretized.coordinates, curve.coordinates[[0, 41, 58, 71, 82]])
 
 
 def test_discretize_extra_points_linear(line, Assert):
@@ -173,7 +187,9 @@ def test_discretize_extra_points_linear(line, Assert):
 
 
 def test_extra_points_do_not_change_lambda(curve, Assert):
-    discretized = curve.discretize(5, extra_points=2, tolerance=1e-3)
+    discretized = curve.discretize(
+        5, extra_points=2, tolerance=1e-3, max_remainder=np.inf
+    )
     # the IRCCAR written by ircprepare3.py, which prints 6 decimals
     expected = [
         [1.017757, -0.265921],
@@ -209,7 +225,9 @@ def test_discretize_raises_if_tolerance_cannot_be_met():
 
 
 def test_to_IRCCAR_format(curve):
-    discretized = curve.discretize(5, extra_points=2, tolerance=1e-3)
+    discretized = curve.discretize(
+        5, extra_points=2, tolerance=1e-3, max_remainder=np.inf
+    )
     # same text as the IRCCAR written by ircprepare3.py
     expected = """\
 9

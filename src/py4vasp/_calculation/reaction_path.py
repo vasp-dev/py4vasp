@@ -232,7 +232,9 @@ class ReactionPathHandler:
                 return np.zeros(len(self), dtype=bool)
             return np.all(self.coordinates == point, axis=1)
 
-        def discretize(self, number_points, *, extra_points=0, tolerance):
+        def discretize(
+            self, number_points, *, extra_points=0, tolerance, max_remainder=0.5
+        ):
             """Select points spaced approximately evenly along the path.
 
             A path-based collective variable, e.g., the IS coordinate of a slow-growth
@@ -257,9 +259,14 @@ class ReactionPathHandler:
                 deviate from the targeted one. A dense path, such as an IRC, permits a
                 tight tolerance. If the tolerance is too tight for the steps of the path,
                 the targeted distance shrinks a lot and the selected points stop short of
-                the end of the path, so compare the last point to the last step. If the
-                targeted distance shrinks below the tolerance, no evenly spaced points
-                exist and an exception is raised.
+                the end of the path, see max_remainder. If the targeted distance shrinks
+                below the tolerance, no evenly spaced points exist and an exception is
+                raised.
+            max_remainder : float
+                How much of the path may be left after the last selected point, as a
+                fraction of the spacing between the points. If more is left, an
+                exception is raised, because the points would not reach the product.
+                Pass ``np.inf`` to accept points that cover only part of the path.
 
             Returns
             -------
@@ -293,6 +300,7 @@ class ReactionPathHandler:
                 )
                 increment *= _SHRINK_INCREMENT
             points = self.coordinates[indices]
+            _raise_if_points_stop_short(self.coordinates, indices, max_remainder)
             return dataclasses.replace(
                 self,
                 coordinates=_extend(points, extra_points),
@@ -454,6 +462,14 @@ select pairs of atoms by their index, e.g. '1~2', or by element if it occurs onc
 
     def _number_steps(self):
         return len(_all_steps(np.asarray(self._structure.positions()), ndim=3))
+
+
+def _raise_if_points_stop_short(coordinates, indices, max_remainder):
+    remainder = _path_length(coordinates[indices[-1] :])
+    spacing = _path_length(coordinates[indices]) / (len(indices) - 1)
+    if remainder > max_remainder * spacing:
+        message = f"The selected points stop {remainder:.4g} Å before the end of the path, which is {remainder / spacing:.3g} times their spacing ({spacing:.4g} Å). The tolerance is too tight for the steps of the path; increase it or select fewer points. Pass a larger max_remainder to accept points that cover only part of the path."
+        raise exception.IncorrectUsage(message)
 
 
 def _raise_if_gap_too_large(first, second, max_gap):
