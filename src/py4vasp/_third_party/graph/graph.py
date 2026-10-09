@@ -671,7 +671,13 @@ class Graph(Sequence):
         Parameters
         ----------
         filename
-            Path to the output CSV file.
+            Path to the output CSV file. A relative path is relative to the current
+            working directory and "~" is expanded to your home directory.
+
+        Raises
+        ------
+        py4vasp.exception.FileAccessError
+            If the directory the file should be written to does not exist.
 
         Examples
         --------
@@ -726,8 +732,9 @@ class Graph(Sequence):
         2,5,0.2
         3,6,0.3
         """
+        path = resolve_output_path(filename, Path.cwd())
         df = self.to_frame()
-        df.to_csv(filename, index=False)
+        df.to_csv(path, index=False)
 
     def to_image(self, filename: str | Path) -> None:
         """Save the graph as an image file.
@@ -744,13 +751,16 @@ class Graph(Sequence):
         filename
             Path to the output image. Unlike the ``to_image`` method of the
             quantities, a relative path is relative to the current working directory,
-            because a graph does not know which calculation it came from.
+            because a graph does not know which calculation it came from. "~" is
+            expanded to your home directory.
 
         Raises
         ------
         py4vasp.exception.IncorrectUsage
             If the filename has no extension or one that is not a supported format,
             e.g. eps, which the image export of plotly no longer provides.
+        py4vasp.exception.FileAccessError
+            If the directory the image should be saved to does not exist.
 
         Examples
         --------
@@ -778,7 +788,8 @@ class Graph(Sequence):
         True
         """
         check_image_format(filename)
-        self.to_plotly().write_image(filename)
+        path = resolve_output_path(filename, Path.cwd())
+        self.to_plotly().write_image(path)
 
     def _create_and_populate_df(self, series):
         df = pd.DataFrame()

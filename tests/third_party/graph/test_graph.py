@@ -1310,7 +1310,8 @@ def test_to_image(parabola, filename):
     with patch.object(Graph, "to_plotly") as to_plotly:
         graph.to_image(filename)
         to_plotly.assert_called_once_with()
-        to_plotly.return_value.write_image.assert_called_once_with(filename)
+        expected = pathlib.Path.cwd() / filename
+        to_plotly.return_value.write_image.assert_called_once_with(expected)
 
 
 def test_to_image_of_combined_graph(parabola, sine):
@@ -1319,7 +1320,7 @@ def test_to_image_of_combined_graph(parabola, sine):
     with patch("plotly.graph_objs.Figure.write_image", autospec=True) as write_image:
         graph.to_image("combined.png")
         figure, filename = write_image.call_args.args
-        assert filename == "combined.png"
+        assert filename == pathlib.Path.cwd() / "combined.png"
         assert [trace.name for trace in figure.data] == [parabola.label, sine.label]
 
 
@@ -1336,7 +1337,37 @@ def test_to_image_accepts_uppercase_extension(parabola):
     graph = Graph(parabola)
     with patch.object(Graph, "to_plotly") as to_plotly:
         graph.to_image("graph.PNG")
-        to_plotly.return_value.write_image.assert_called_once_with("graph.PNG")
+        expected = pathlib.Path.cwd() / "graph.PNG"
+        to_plotly.return_value.write_image.assert_called_once_with(expected)
+
+
+def test_to_image_expands_home(parabola, tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    graph = Graph(parabola)
+    with patch.object(Graph, "to_plotly") as to_plotly:
+        graph.to_image("~/graph.png")
+        expected = tmp_path / "graph.png"
+        to_plotly.return_value.write_image.assert_called_once_with(expected)
+
+
+def test_to_image_rejects_missing_directory(parabola, tmp_path):
+    graph = Graph(parabola)
+    with patch.object(Graph, "to_plotly") as to_plotly:
+        with pytest.raises(exception.FileAccessError):
+            graph.to_image(tmp_path / "missing" / "graph.png")
+        to_plotly.assert_not_called()
+
+
+def test_to_csv_expands_home(parabola, tmp_path, monkeypatch):
+    pytest.importorskip("pandas")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    Graph(parabola).to_csv("~/graph.csv")
+    assert (tmp_path / "graph.csv").exists()
+
+
+def test_to_csv_rejects_missing_directory(parabola, tmp_path):
+    with pytest.raises(exception.FileAccessError):
+        Graph(parabola).to_csv(tmp_path / "missing" / "graph.csv")
 
 
 def test_resolve_output_path_relative_to_directory(tmp_path):
