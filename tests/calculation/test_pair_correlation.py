@@ -93,12 +93,12 @@ def test_to_image(pair_correlation):
 
 
 def check_to_image(pair_correlation, filename_argument, expected_filename):
-    with patch.object(PairCorrelation, "to_plotly") as plot:
+    with patch.object(PairCorrelation, "plot") as plot:
         pair_correlation.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
         expected_path = pair_correlation.path / expected_filename
-        fig.write_image.assert_called_once_with(expected_path)
+        fig.to_image.assert_called_once_with(expected_path)
 
 
 def test_to_database(pair_correlation, raw_data):

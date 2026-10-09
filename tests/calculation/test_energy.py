@@ -120,11 +120,11 @@ def test_to_image(MD_energy):
 
 
 def check_to_image(MD_energy, filename_argument, expected_filename):
-    with patch.object(Energy, "to_plotly") as plot:
+    with patch.object(Energy, "plot") as plot:
         MD_energy.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(MD_energy._path / expected_filename)
+        fig.to_image.assert_called_once_with(MD_energy._path / expected_filename)
 
 
 def test_selections(MD_energy, raw_data):
