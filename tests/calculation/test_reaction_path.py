@@ -151,3 +151,21 @@ def test_extra_points_do_not_change_lambda(curve, Assert):
     ]
     assert np.allclose(discretized.coordinates, expected, atol=1e-6)
     Assert.allclose(discretized.lambda_, 56.31446053316491)
+
+
+@pytest.mark.parametrize(
+    "number_points, extra_points, tolerance",
+    [(1, 0, 1e-3), (102, 0, 1e-3), (6, -1, 1e-3), (6, 0, 0.0), (6, 0, -1e-3)],
+)
+def test_discretize_raises_for_invalid_arguments(
+    line, number_points, extra_points, tolerance
+):
+    with pytest.raises(exception.IncorrectUsage):
+        line.discretize(number_points, extra_points=extra_points, tolerance=tolerance)
+
+
+def test_discretize_raises_if_tolerance_cannot_be_met():
+    # the steps are too coarse for any spacing to be met within the tolerance
+    coarse = ReactionPath(["x"], [[1, 2]], [[0.0], [1.0], [3.0]])
+    with pytest.raises(exception.IncorrectUsage):
+        coarse.discretize(3, tolerance=0.1)

@@ -142,7 +142,9 @@ class ReactionPathHandler:
                 deviate from the targeted one. A dense path, such as an IRC, permits a
                 tight tolerance. If the tolerance is too tight for the steps of the path,
                 the targeted distance shrinks a lot and the selected points stop short of
-                the end of the path, so compare the last point to the last step.
+                the end of the path, so compare the last point to the last step. If the
+                targeted distance shrinks below the tolerance, no evenly spaced points
+                exist and an exception is raised.
 
             Returns
             -------
@@ -164,21 +166,41 @@ class ReactionPathHandler:
             >>> round(discretized.lambda_, 6)
             25.0
             """
-            increment = _path_length(self.coordinates) / (number_points - 1)
-            indices = _equidistant_indices(
-                self.coordinates, number_points, increment, tolerance
+            _raise_if_invalid(
+                len(self.coordinates), number_points, extra_points, tolerance
             )
+            increment = _path_length(self.coordinates) / (number_points - 1)
+            indices = None
             while indices is None:
-                increment *= _SHRINK_INCREMENT
+                _raise_if_tolerance_missed(increment, tolerance)
                 indices = _equidistant_indices(
                     self.coordinates, number_points, increment, tolerance
                 )
+                increment *= _SHRINK_INCREMENT
             points = self.coordinates[indices]
             return dataclasses.replace(
                 self,
                 coordinates=_extend(points, extra_points),
                 lambda_=_suggest_lambda(points),
             )
+
+
+def _raise_if_invalid(number_steps, number_points, extra_points, tolerance):
+    if not 2 <= number_points <= number_steps:
+        message = f"The number of points must be at least 2 and at most the number of steps of the path ({number_steps}), but it is {number_points}."
+        raise exception.IncorrectUsage(message)
+    if extra_points < 0:
+        message = f"The number of extra points must not be negative, but it is {extra_points}."
+        raise exception.IncorrectUsage(message)
+    if tolerance <= 0:
+        message = f"The tolerance must be positive, but it is {tolerance}."
+        raise exception.IncorrectUsage(message)
+
+
+def _raise_if_tolerance_missed(increment, tolerance):
+    if increment < tolerance:
+        message = f"The steps of the path are too far apart to select points that are evenly spaced within the tolerance of {tolerance} Å. Please increase the tolerance, select fewer points, or provide a path with more steps."
+        raise exception.IncorrectUsage(message)
 
 
 def _path_length(coordinates):
