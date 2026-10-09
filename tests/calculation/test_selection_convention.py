@@ -23,11 +23,15 @@ import ast
 import importlib
 import inspect
 import pathlib
+import sys
 
 import pytest
 
-from py4vasp._calculation.dispatch import _REGISTRY
+from py4vasp import exception
+from py4vasp._calculation.dispatch import _REGISTRY, _availability_quantity_of
+from py4vasp._raw import definition
 from py4vasp._raw.definition import schema
+from py4vasp._raw.schema import DEFAULT_SELECTION
 
 # Force-import all dispatcher modules so the registry is populated.
 _CALCULATION_DIR = (
@@ -72,7 +76,7 @@ def _get_all_dispatcher_classes():
             for sub_name, cls in value.items():
                 yield sub_name, cls
         else:
-            yield key, cls
+            yield key, value
 
 
 def _get_source_file(cls):
@@ -301,3 +305,473 @@ def test_selection_convention(case):
         f"{cls_name}.{method_name}: `selection` must not be passed in *args "
         f"(dispatch auto-forwards it). Extra args: {extra_args}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Which public methods take a `selection`. Three rules decide it:
+#
+# 1. Legacy: in py4vasp 0.11.3 every method decorated with @base.data_access accepted
+#    a selection, so these methods keep it for backwards compatibility.
+# 2. Effect: a method takes a selection if its quantity has a non-default source in
+#    the schema or if it reaches a handler method that takes a selection.
+# 3. No effect: any other method takes no selection.
+#
+# Rules 2 and 3 are derived from the code; the sources are read from the schema at
+# collection time, so a new source puts its quantity under rule 2 without changing
+# this test.
+# ---------------------------------------------------------------------------
+
+# `selections` lists the sources, `is_available` is shared by all quantities, and the
+# abc.Sequence protocol fixes the signatures of `count` and `index`.
+_NOT_CHECKED = frozenset({"selections", "is_available", "count", "index"})
+
+# Public methods decorated with @base.data_access in py4vasp 0.11.3, including those
+# inherited from base.Refinery (print) and `read`, which forwarded to `to_dict`.
+_LEGACY_SELECTION = {
+    "Band": {"print", "read", "to_dict", "to_frame", "to_graph", "to_quiver"},
+    "Bandgap": {
+        "conduction_band_minimum",
+        "direct",
+        "fundamental",
+        "print",
+        "read",
+        "to_dict",
+        "to_graph",
+        "valence_band_maximum",
+    },
+    "BornEffectiveCharge": {"print", "read", "to_dict"},
+    "CurrentDensity": {"print", "read", "to_contour", "to_dict", "to_quiver"},
+    "Density": {
+        "is_collinear",
+        "is_noncollinear",
+        "is_nonpolarized",
+        "print",
+        "read",
+        "to_contour",
+        "to_dict",
+        "to_numpy",
+        "to_quiver",
+        "to_view",
+    },
+    "DielectricFunction": {"print", "read", "to_dict", "to_graph"},
+    "DielectricTensor": {"print", "read", "to_dict"},
+    "Dos": {"print", "read", "to_dict", "to_frame", "to_graph"},
+    "EffectiveCoulomb": {"print", "read", "to_dict", "to_graph"},
+    "ElasticModulus": {"print", "read", "to_dict"},
+    "ElectronPhononBandgap": {
+        "chemical_potential_mu_tag",
+        "print",
+        "read",
+        "select",
+        "to_dict",
+    },
+    "ElectronPhononChemicalPotential": {"label", "mu_tag", "print", "read", "to_dict"},
+    "ElectronPhononSelfEnergy": {
+        "chemical_potential_mu_tag",
+        "eigenvalues",
+        "print",
+        "read",
+        "select",
+        "to_dict",
+    },
+    "ElectronPhononTransport": {
+        "chemical_potential_mu_tag",
+        "print",
+        "read",
+        "select",
+        "to_dict",
+        "to_graph",
+    },
+    "ElectronicMinimization": {"is_converged", "print", "read", "to_dict"},
+    "Energy": {"print", "read", "to_dict", "to_graph", "to_numpy"},
+    "ExcitonDensity": {"print", "read", "to_dict", "to_numpy", "to_view"},
+    "ExcitonEigenvector": {"print", "read", "to_dict"},
+    "Force": {"number_steps", "print", "read", "to_dict", "to_view"},
+    "ForceConstant": {"eigenvectors", "print", "read", "to_dict", "to_molden"},
+    "InternalStrain": {"print", "read", "to_dict"},
+    "Kpoint": {
+        "distances",
+        "labels",
+        "line_length",
+        "mode",
+        "number_kpoints",
+        "number_lines",
+        "path_indices",
+        "print",
+        "read",
+        "to_dict",
+    },
+    "LocalMoment": {
+        "charge",
+        "magnetic",
+        "number_steps",
+        "print",
+        "projected_charge",
+        "projected_magnetic",
+        "read",
+        "to_dict",
+        "to_view",
+    },
+    "Nics": {"print", "read", "to_contour", "to_dict", "to_numpy", "to_view"},
+    "PairCorrelation": {"labels", "print", "read", "to_dict", "to_graph"},
+    "PartialDensity": {
+        "bands",
+        "grid",
+        "kpoints",
+        "print",
+        "read",
+        "to_dict",
+        "to_numpy",
+        "to_stm",
+        "to_view",
+    },
+    "PhononBand": {"print", "read", "to_dict", "to_graph"},
+    "PhononDos": {"print", "read", "to_dict", "to_graph"},
+    "PhononMode": {"frequencies", "print", "read", "to_dict"},
+    "PiezoelectricTensor": {"print", "read", "to_dict"},
+    "Polarization": {"print", "read", "to_dict"},
+    "Potential": {"print", "read", "to_contour", "to_dict", "to_quiver", "to_view"},
+    "Projector": {"print", "project", "read", "to_dict"},
+    "RunInfo": {"print", "read", "to_dict"},
+    "Stress": {"number_steps", "print", "read", "to_dict"},
+    "Structure": {
+        "cartesian_positions",
+        "lattice_vectors",
+        "number_atoms",
+        "number_steps",
+        "positions",
+        "print",
+        "read",
+        "to_POSCAR",
+        "to_ase",
+        "to_dict",
+        "to_lammps",
+        "to_mdtraj",
+        "to_view",
+        "volume",
+    },
+    "System": {"print", "read", "to_dict"},
+    "Velocity": {"number_steps", "print", "read", "to_dict", "to_numpy", "to_view"},
+    "Workfunction": {"print", "read", "to_dict", "to_graph"},
+}
+
+# Known violations still to be fixed; a fixed method passes and fails the strict xfail,
+# so remove it from these lists together with the fix.
+_MISSING_SELECTION = frozenset(
+    {
+        "CurrentDensity.read",
+        "CurrentDensity.to_dict",
+        "Density.read",
+        "Density.to_dict",
+        "Density.to_numpy",
+        "Density.to_quiver",
+        "DielectricTensor.read",
+        "DielectricTensor.to_dict",
+        "EffectiveCoulomb.read",
+        "EffectiveCoulomb.to_dict",
+        "ElectronicMinimization.is_converged",
+        "ElectronPhononChemicalPotential.label",
+        "ElectronPhononChemicalPotential.mu_tag",
+        "ElectronPhononChemicalPotential.read",
+        "ElectronPhononSelfEnergy.chemical_potential_mu_tag",
+        "ElectronPhononSelfEnergy.eigenvalues",
+        "ElectronPhononSelfEnergy.read",
+        "ExcitonEigenvector.read",
+        "ExcitonEigenvector.to_dict",
+        "Force.number_steps",
+        "Force.read",
+        "Force.to_view",
+        "ForceConstant.eigenvectors",
+        "ForceConstant.read",
+        "ForceConstant.to_molden",
+        "InternalStrain.read",
+        "LocalMoment.charge",
+        "LocalMoment.number_steps",
+        "LocalMoment.projected_charge",
+        "LocalMoment.read",
+        "LocalMoment.to_dict",
+        "NeighborList.to_string",
+        "Nics.read",
+        "Nics.to_dict",
+        "PairCorrelation.labels",
+        "PartialDensity.bands",
+        "PartialDensity.grid",
+        "PartialDensity.kpoints",
+        "PartialDensity.read",
+        "PartialDensity.to_dict",
+        "PiezoelectricTensor.read",
+        "Polarization.read",
+        "Potential.read",
+        "Potential.to_dict",
+        "RunInfo.read",
+        "Stress.number_steps",
+        "Stress.read",
+        "Structure.cartesian_positions",
+        "Structure.conventional_lattice_vectors",
+        "Structure.equivalent_atoms",
+        "Structure.generate_kmesh",
+        "Structure.generate_kpath",
+        "Structure.lattice_vectors",
+        "Structure.number_atoms",
+        "Structure.number_steps",
+        "Structure.positions",
+        "Structure.prototype",
+        "Structure.read",
+        "Structure.standardized_cell",
+        "Structure.symmetrize",
+        "Structure.to_ase",
+        "Structure.to_dict",
+        "Structure.to_lammps",
+        "Structure.to_mdtraj",
+        "Structure.to_POSCAR",
+        "Structure.to_view",
+        "Structure.volume",
+        "Structure.wyckoff_positions",
+        "System.read",
+        "Velocity.number_steps",
+        "Velocity.read",
+        "Velocity.to_numpy",
+        "Velocity.to_view",
+        "Workfunction.read",
+        "Workfunction.to_graph",
+    }
+)
+_UNUSED_SELECTION = frozenset(
+    {
+        "BornEffectiveCharge.to_INCAR",
+        "Raman.print",
+        "Raman.read",
+        "Raman.to_dict",
+        "Symmetry.print",
+        "Symmetry.to_dict",
+    }
+)
+
+
+def _sources(cls):
+    quantity_name = _availability_quantity_of(cls)
+    try:
+        return list(definition.unique_selections(quantity_name))
+    except exception.FileAccessError:
+        return []
+
+
+def _has_non_default_source(cls):
+    return any(source != DEFAULT_SELECTION for source in _sources(cls))
+
+
+def _public_methods(cls):
+    for name, member in inspect.getmembers(cls):
+        if name.startswith("_") or name in _NOT_CHECKED:
+            continue
+        static_member = inspect.getattr_static(cls, name)
+        if isinstance(static_member, (classmethod, staticmethod, property)):
+            continue
+        if callable(member) and not inspect.isclass(member):
+            yield name
+
+
+def _public_quantities():
+    # private quantities (leading underscore) are not reachable by the user
+    for quantity_name, cls in _get_all_dispatcher_classes():
+        if not quantity_name.startswith("_"):
+            yield cls
+
+
+def _is_legacy(cls, method_name):
+    return method_name in _LEGACY_SELECTION.get(cls.__name__, ())
+
+
+def _collect_methods(include, known_violations):
+    for cls in _public_quantities():
+        for method_name in _public_methods(cls):
+            if not include(cls, method_name):
+                continue
+            id_ = f"{cls.__name__}.{method_name}"
+            marks = []
+            if id_ in known_violations:
+                marks.append(pytest.mark.xfail(strict=True, reason="not fixed yet"))
+            yield pytest.param(cls, method_name, id=id_, marks=marks)
+
+
+def _accepts_selection(method):
+    """The method takes `selection` by keyword or forwards its arguments."""
+    parameters = inspect.signature(method).parameters.values()
+    forwards = (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+    if any(parameter.kind in forwards for parameter in parameters):
+        return True
+    return any(
+        parameter.name == "selection"
+        and parameter.kind != inspect.Parameter.POSITIONAL_ONLY
+        for parameter in parameters
+    )
+
+
+def _method_node(cls, method_name):
+    for klass in cls.__mro__:
+        try:
+            cls_node, _ = _parse_class_ast(klass)
+        except (ValueError, OSError, TypeError):
+            continue
+        for item in cls_node.body:
+            if isinstance(item, ast.FunctionDef) and item.name == method_name:
+                return item
+    return None
+
+
+def _handler_takes_selection(cls, merge_call):
+    """Whether the handler method passed to a merge_* call takes `selection`. A
+    reference that cannot be resolved counts as taking it."""
+    if len(merge_call.args) < 5:
+        return True
+    reference = merge_call.args[4]
+    if not (
+        isinstance(reference, ast.Attribute) and isinstance(reference.value, ast.Name)
+    ):
+        return True
+    module = sys.modules[cls.__module__]
+    handler_class = getattr(module, reference.value.id, None)
+    handler_method = getattr(handler_class, reference.attr, None)
+    if handler_method is None:
+        return True
+    return "selection" in inspect.signature(handler_method).parameters
+
+
+def _is_call_of_own_method(call):
+    function = call.func
+    return (
+        isinstance(function, ast.Attribute)
+        and isinstance(function.value, ast.Name)
+        and function.value.id == "self"
+    )
+
+
+def _call_arguments(call):
+    return [*call.args, *(keyword.value for keyword in call.keywords)]
+
+
+def _is_selection(node):
+    return isinstance(node, ast.Name) and node.id == "selection"
+
+
+def _reaches_handler_with_selection(cls, method_name, seen=None):
+    """Whether the method, or a method of the same class it calls, passes data to a
+    handler method that takes a selection. Any use of `selection` the trace cannot
+    follow, e.g. passing it to a helper function, counts as reaching one."""
+    seen = set() if seen is None else seen
+    if method_name in seen:
+        return False
+    seen.add(method_name)
+    method_node = _method_node(cls, method_name)
+    if method_node is None:
+        return True
+    traced = set()
+    for node in ast.walk(method_node):
+        if not isinstance(node, ast.Call):
+            continue
+        if isinstance(node.func, ast.Name) and node.func.id in MERGE_FUNCS:
+            traced.update(id(argument) for argument in _call_arguments(node)[2:3])
+            if _handler_takes_selection(cls, node):
+                return True
+        elif _is_call_of_own_method(node):
+            traced.update(id(argument) for argument in _call_arguments(node))
+            if _reaches_handler_with_selection(cls, node.func.attr, seen):
+                return True
+    return any(
+        _is_selection(node)
+        and isinstance(node.ctx, ast.Load)
+        and id(node) not in traced
+        for node in ast.walk(method_node)
+    )
+
+
+def _selection_has_effect(cls, method_name):
+    if _has_non_default_source(cls):
+        return True
+    return _reaches_handler_with_selection(cls, method_name)
+
+
+def _takes_selection(cls, method_name):
+    return _accepts_selection(getattr(cls, method_name))
+
+
+@pytest.mark.parametrize(
+    "cls, method_name", list(_collect_methods(_is_legacy, _MISSING_SELECTION))
+)
+def test_legacy_methods_take_selection(cls, method_name):
+    assert _takes_selection(cls, method_name), (
+        f"{cls.__name__}.{method_name} accepted a selection in py4vasp 0.11.3, so it "
+        "must keep taking `selection` for backwards compatibility."
+    )
+
+
+@pytest.mark.parametrize(
+    "cls, method_name",
+    list(_collect_methods(_selection_has_effect, _MISSING_SELECTION)),
+)
+def test_methods_where_selection_has_effect_take_selection(cls, method_name):
+    assert _takes_selection(cls, method_name), (
+        f"{cls.__name__}.{method_name} must take `selection`, because its quantity "
+        "has a non-default source or it calls a handler method taking a selection."
+    )
+
+
+def _selection_has_no_effect(cls, method_name):
+    return not _is_legacy(cls, method_name) and not _selection_has_effect(
+        cls, method_name
+    )
+
+
+@pytest.mark.parametrize(
+    "cls, method_name",
+    list(_collect_methods(_selection_has_no_effect, _UNUSED_SELECTION)),
+)
+def test_methods_where_selection_has_no_effect_take_no_selection(cls, method_name):
+    parameters = inspect.signature(getattr(cls, method_name)).parameters
+    assert "selection" not in parameters, (
+        f"{cls.__name__}.{method_name} takes `selection`, but its quantity has only "
+        "the default source and no handler method it calls takes a selection."
+    )
+
+
+def test_known_violations_are_checked():
+    # an entry that is never collected would silently escape its strict xfail
+    takes_selection = _is_legacy, _selection_has_effect
+    missing = {
+        param.id
+        for include in takes_selection
+        for param in _collect_methods(include, frozenset())
+    }
+    unused = {
+        param.id for param in _collect_methods(_selection_has_no_effect, frozenset())
+    }
+    assert _MISSING_SELECTION <= missing
+    assert _UNUSED_SELECTION <= unused
+    legacy = {
+        f"{cls.__name__}.{method_name}"
+        for cls in _public_quantities()
+        for method_name in _LEGACY_SELECTION.get(cls.__name__, ())
+    }
+    assert legacy <= missing  # every legacy method still exists
+
+
+def test_selection_is_traced_to_the_handler():
+    local_moment = _REGISTRY["local_moment"]
+    force = _REGISTRY["force"]
+    assert _reaches_handler_with_selection(local_moment, "to_view")  # spin component
+    assert not _reaches_handler_with_selection(force, "to_dict")  # via read()
+    assert not _reaches_handler_with_selection(force, "print")  # via __str__()
+    potential = _REGISTRY["potential"]
+    assert _reaches_handler_with_selection(potential, "bader_charge")  # via helper
+
+
+def test_quantity_with_new_source_must_take_selection(monkeypatch):
+    unique_selections = definition.unique_selections
+
+    def add_source_to_symmetry(quantity_name):
+        sources = list(unique_selections(quantity_name))
+        return sources + ["new_source"] if quantity_name == "symmetry" else sources
+
+    assert not _selection_has_effect(_REGISTRY["symmetry"], "space_group")
+    monkeypatch.setattr(definition, "unique_selections", add_source_to_symmetry)
+    assert _selection_has_effect(_REGISTRY["symmetry"], "space_group")
