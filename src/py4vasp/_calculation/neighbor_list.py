@@ -315,12 +315,11 @@ class NeighborList:
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Compute all atom pairs within a radius of 3 Å
 
@@ -366,12 +365,11 @@ class NeighborList:
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> calculation.neighbor_list.selections()
         ['Sr~Sr', 'Sr~Ti', 'Sr~O', 'Ti~Sr', 'Ti~Ti', 'Ti~O', 'O~Sr', 'O~Ti', 'O~O']
@@ -405,12 +403,11 @@ class NeighborList:
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> print(calculation.neighbor_list.to_string(cutoff=3.0))
         (neighbors within 3.0 Å)

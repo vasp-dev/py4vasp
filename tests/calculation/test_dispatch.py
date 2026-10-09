@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import contextlib
+import copy
 import dataclasses
 import gc
 import pathlib
@@ -19,6 +20,7 @@ from py4vasp._calculation.dispatch import (
     FileSource,
     Group,
     SelectionContext,
+    TemporarySource,
     _complete_sources,
     _dispatch,
     _missing_data_message,
@@ -1614,6 +1616,38 @@ class TestArchiveSource:
         del source
         gc.collect()
         assert not directory.exists()
+
+
+class TestTemporarySource:
+    def test_path_is_new_empty_directory(self):
+        source = TemporarySource()
+        assert source.path.is_dir()
+        assert list(source.path.iterdir()) == []
+        assert source.path != TemporarySource().path
+
+    def test_temporary_source_reads_like_file_source(self, tmp_path, Assert):
+        reference = FileSource(tmp_path / "calculation")
+        demo.calculation(reference.path)
+        source = TemporarySource()
+        shutil.copytree(reference.path, source.path, dirs_exist_ok=True)
+        with source.access("structure") as actual:
+            with reference.access("structure") as expected:
+                Assert.same_raw_structure(actual, expected)
+
+    def test_temporary_source_removes_directory_when_deleted(self):
+        source = TemporarySource()
+        directory = source.path
+        del source
+        gc.collect()
+        assert not directory.exists()
+
+    def test_deepcopy_of_temporary_source_keeps_directory_alive(self):
+        source = TemporarySource()
+        duplicate = copy.deepcopy(source)
+        assert duplicate.path == source.path
+        del source
+        gc.collect()
+        assert duplicate.path.is_dir()
 
 
 def _all_registered_classes():

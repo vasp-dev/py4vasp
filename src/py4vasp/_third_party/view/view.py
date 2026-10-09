@@ -315,7 +315,7 @@ class View:
     the corresponding `plot` methods on the different quantities:
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
     >>> calculation.structure.plot()
     View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=None, ...)
 
@@ -448,7 +448,7 @@ class View:
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.structure.to_view().to_ngl()
         NGLWidget(...)
         """

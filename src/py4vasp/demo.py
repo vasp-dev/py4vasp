@@ -1,5 +1,11 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+"""Generate example data, so that you can try py4vasp without a VASP calculation.
+
+Every example in the documentation of the quantities builds its data with
+:func:`calculation`, so you can copy and run them as they stand.
+"""
+
 from pathlib import Path
 from typing import Optional
 
@@ -7,6 +13,7 @@ import h5py
 
 from py4vasp import _demo, exception, raw
 from py4vasp._calculation import Calculation
+from py4vasp._calculation.dispatch import TemporarySource
 from py4vasp._demo import showcase
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_WAVEFILE
 from py4vasp._raw.write import write
@@ -14,15 +21,29 @@ from py4vasp._raw.write import write
 __all__ = ["calculation"]
 
 
-def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
+def calculation(
+    path: Optional[Path] = None, selection: Optional[str] = None
+) -> Calculation:
     """Initialize example data in the given path and return a Calculation accessing it.
+
+    The example data is written in the format VASP uses for its output, i.e., the
+    directory contains the HDF5 files vaspout.h5 and vaspwave.h5 but none of the text
+    files like INCAR or POSCAR. The numbers are made up to be consistent with each
+    other and to illustrate the features of py4vasp; they are not the result of a real
+    VASP calculation, so do not compare them to a physical reference.
 
     Parameters
     ----------
     path
-        Path where the calculation data will be generated. It must not exist. This
-        function will create the directory and create the data inside it. If a selection
-        is given the generated data will be stored in a subdirectory of the given path.
+        Path where the calculation data will be generated. Without a selection, this
+        directory must not exist yet; this function creates it and writes the data
+        inside. With a selection, the data is written to a subdirectory named after the
+        selection, so only that subdirectory must not exist yet.
+        If no path is given, the data is generated in a new temporary directory. That
+        directory is removed as soon as neither the returned calculation nor any
+        quantity taken from it, e.g. ``calculation.dos``, is in use anymore. Keep the
+        calculation around while you want to look at the files, because a path alone
+        does not keep the directory alive.
     selection
         Optional choice of which data is generated. If not provided or None some default
         data is generated that is suitable for most examples. The alternatives describe
@@ -37,15 +58,39 @@ def calculation(path: Path, selection: Optional[str] = None) -> Calculation:
     -------
     -
         A calculation that accesses the generated data.
+
+    Examples
+    --------
+    Generate the default example data in a temporary directory and print where the
+    files are, so that you can look at them
+
+    >>> from py4vasp import demo
+    >>> calculation = demo.calculation()
+    >>> print("The files are in", calculation.path())
+    The files are in ...py4vasp-...
+
+    Pick the data of a different kind of material with a selection
+
+    >>> metal = demo.calculation(selection="metal")
+    >>> metal.structure.number_atoms()
+    1
     """
     generator = _find_generator(selection)
+    if path is None:
+        source = TemporarySource()
+        _write_data_to_directory(generator, source.path)
+        return Calculation._from_source(source)
     path = _create_path_for_data(path, selection)
+    _write_data_to_directory(generator, path)
+    return Calculation.from_path(path)
+
+
+def _write_data_to_directory(generator, path):
     filename = path / DEFAULT_FILE
     wavefilename = path / DEFAULT_WAVEFILE
     with h5py.File(filename, "w") as h5f:
         with h5py.File(wavefilename, "w") as wavef:
             _write_calculation_data(generator, h5f, waveh5f=wavef)
-    return Calculation.from_path(path)
 
 
 def _find_generator(selection):
@@ -67,7 +112,11 @@ def _create_path_for_data(path, selection):
     else:
         path = Path(path) / selection
     if path.exists():
-        raise exception.IncorrectUsage(f"The path '{path}' already exists.")
+        message = f"""\
+The path '{path}' already exists. If it contains example data you generated earlier,
+reopen it with Calculation.from_path("{path}"). Otherwise choose a directory that does
+not exist yet, or call demo.calculation() without a path to use a new temporary one."""
+        raise exception.IncorrectUsage(message)
     path.mkdir(parents=True)
     return path
 

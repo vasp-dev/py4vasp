@@ -300,12 +300,11 @@ class Bandgap(graph.Mixin):
 
     Examples
     --------
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    use your own data if you have run VASP.
+    First, we create some example data so that you can follow along. Alternatively, use
+    your own data if you have run VASP.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     Without a selection you obtain the band extrema of the final step
 
@@ -353,12 +352,11 @@ class Bandgap(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Without a selection you obtain the band extrema of the final step
 
@@ -395,12 +393,11 @@ class Bandgap(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The example data describes an indirect semiconductor whose gap opens as the
         crystal relaxes, so the final step reports the widest gap
@@ -434,12 +431,11 @@ class Bandgap(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The direct gap exceeds the fundamental one whenever the band extrema lie at
         different k points, as they do here
@@ -465,12 +461,11 @@ class Bandgap(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The valence band maximum of the example data is the zero of its energy axis
 
@@ -495,12 +490,11 @@ class Bandgap(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         The conduction band minimum sits a gap above the valence band maximum
 
@@ -533,12 +527,11 @@ class Bandgap(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Plotting the whole trajectory shows the gap converging as the crystal relaxes
 

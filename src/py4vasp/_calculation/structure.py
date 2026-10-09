@@ -767,7 +767,7 @@ class Structure(view.Mixin):
     Of course you can also use your own VASP calculation data if you have it available.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     If you access the structure, the result will depend on the steps that you selected
     with the [] operator. Without any selection the results from the final step will be
@@ -983,7 +983,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `read` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -1049,7 +1049,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `to_view` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -1123,7 +1123,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `to_ase` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -1188,7 +1188,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         To convert the whole trajectory (all steps), you don't specify the array boundaries.
 
@@ -1242,7 +1242,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `to_POSCAR` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -1265,10 +1265,13 @@ class Structure(view.Mixin):
         >>> calculation.structure.to_POSCAR(supercell=(2, 2, 1)).splitlines()[6]
         '8 4 16'
 
-        The result is a string, so write it where VASP expects the file
+        The result is a string, so write it where VASP expects the file. Here, that is
+        the directory of the example data
 
         >>> from py4vasp import control
-        >>> _ = control.POSCAR.from_string(poscar, path=path)
+        >>> _ = control.POSCAR.from_string(poscar, path=calculation.path())
+        >>> print("The POSCAR is in", calculation.path())
+        The POSCAR is in ...
 
         Notice that converting multiple steps to POSCAR format is not implemented.
         """
@@ -1308,7 +1311,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `to_lammps` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -1379,7 +1382,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `lattice_vectors` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -1418,7 +1421,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `positions` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -1454,7 +1457,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `cartesian_positions` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -1490,7 +1493,7 @@ class Structure(view.Mixin):
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `volume` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final
@@ -1549,7 +1552,7 @@ class Structure(view.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "perovskite")
+        >>> calculation = demo.calculation(selection="perovskite")
 
         In cubic perovskite SrTiO3 the strontium and titanium atoms each sit on their
         own site while the three oxygen atoms are equivalent.
@@ -1583,7 +1586,7 @@ class Structure(view.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "perovskite")
+        >>> calculation = demo.calculation(selection="perovskite")
 
         In cubic perovskite SrTiO3 strontium occupies the Wyckoff position a,
         titanium the position b, and the three oxygen atoms the position c.
@@ -1616,7 +1619,7 @@ class Structure(view.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "perovskite")
+        >>> calculation = demo.calculation(selection="perovskite")
 
         For cubic perovskite SrTiO3 the conventional cell coincides with the primitive
         cell, so it contains one strontium, one titanium, and three oxygen atoms.
@@ -1661,7 +1664,7 @@ class Structure(view.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "perovskite")
+        >>> calculation = demo.calculation(selection="perovskite")
 
         Symmetrizing the cubic perovskite and reducing it to the primitive cell
         leaves the five atoms of the SrTiO3 formula unit.
@@ -1730,7 +1733,7 @@ class Structure(view.Mixin):
         available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "perovskite")
+        >>> calculation = demo.calculation(selection="perovskite")
 
         For cubic perovskite the recommended path connects Γ, X, M, and R. The label
         of a special point is the fourth field of its line, which is where VASP expects
@@ -1746,10 +1749,13 @@ class Structure(view.Mixin):
           0.00000000   0.50000000   0.00000000  X
 
         Writing the file is up to you. The labels are not ASCII, so store the file
-        as UTF-8 -- VASP reads the labels back unchanged.
+        as UTF-8 -- VASP reads the labels back unchanged. Here, it is written to the
+        directory of the example data.
 
-        >>> from pathlib import Path
-        >>> _ = Path(path / "KPOINTS_OPT").write_text(kpoints, encoding="utf-8")
+        >>> filename = calculation.path() / "KPOINTS_OPT"
+        >>> _ = filename.write_text(kpoints, encoding="utf-8")
+        >>> print("The k-point path is written to", filename)
+        The k-point path is written to ...KPOINTS_OPT
         """
         return merge_default(
             self._source,
@@ -1814,7 +1820,7 @@ class Structure(view.Mixin):
         available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "perovskite")
+        >>> calculation = demo.calculation(selection="perovskite")
 
         The cubic perovskite has a lattice constant of 4 Å, so a spacing of 0.3 Å⁻¹
         amounts to five divisions along every direction.
@@ -1883,7 +1889,7 @@ class Structure(view.Mixin):
         available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "perovskite")
+        >>> calculation = demo.calculation(selection="perovskite")
 
         For cubic perovskite the conventional cell is the cell of the calculation
 
@@ -1924,7 +1930,7 @@ class Structure(view.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "perovskite")
+        >>> calculation = demo.calculation(selection="perovskite")
 
         Cubic perovskite SrTiO3 has one strontium (Wyckoff a), one titanium (b), and
         three oxygen atoms (c) in a primitive cubic cell of five atoms.

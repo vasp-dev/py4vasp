@@ -329,12 +329,11 @@ class DielectricFunction(graph.Mixin):
 
     Examples
     --------
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    use your own data if you have run VASP.
+    First, we create some example data so that you can follow along. Alternatively, use
+    your own data if you have run VASP.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     The `selections` routine reports both kinds of selection at once
 
@@ -386,12 +385,11 @@ class DielectricFunction(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Without a selection you obtain the complete tensor
 
@@ -449,12 +447,11 @@ class DielectricFunction(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         Without a selection the isotropic average is drawn, real and imaginary part
 
@@ -490,12 +487,11 @@ class DielectricFunction(graph.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         >>> selections = calculation.dielectric_function.selections()
         >>> selections["directions"]

@@ -1,8 +1,10 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import ast
 import doctest
 import importlib
 import pathlib
+import tempfile
 from unittest.mock import patch
 
 import numpy as np
@@ -43,31 +45,6 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
 from py4vasp._third_party import numeric as _numeric
 from py4vasp._util import color as _util_color
 from py4vasp._util import import_
-
-
-def test_creating_default_calculation(tmp_path):
-    demo.calculation(tmp_path / "specific_example")
-
-
-def test_creating_perovskite_calculation(tmp_path):
-    # the "perovskite" selection pairs a structure with its symmetry so the
-    # symmetry-derived structure examples have consistent data
-    calculation = demo.calculation(tmp_path / "perovskite_example", "perovskite")
-    assert calculation.structure.number_atoms() == 5
-
-
-def test_creating_surface_calculation(tmp_path):
-    # the "surface" selection is the only one with a vacuum region, which the surface
-    # quantities need
-    calculation = demo.calculation(tmp_path / "surface_example", "surface")
-    assert calculation.structure.number_atoms() == 8
-
-
-def test_creating_metal_calculation(tmp_path):
-    # the "metal" selection is the only one with states at the Fermi energy
-    calculation = demo.calculation(tmp_path / "metal_example", "metal")
-    assert calculation.structure.number_atoms() == 1
-
 
 finder = doctest.DocTestFinder()
 
@@ -163,11 +140,14 @@ def interesting_example(example):
     return True
 
 
-def _run_calculation_example(example, tmp_path):
+def _run_example(example, tmp_path, monkeypatch):
+    # examples may change the directory or create temporary ones; both are confined to
+    # this test and undone afterwards
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
     optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
     runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["py4vasp"] = py4vasp
-    example.globs["path"] = tmp_path / example.name.replace(".", "_")
     result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0
@@ -176,16 +156,18 @@ def _run_calculation_example(example, tmp_path):
 @pytest.mark.parametrize(
     "example", get_calculation_examples(), ids=lambda example: example.name
 )
-def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path):
-    _run_calculation_example(example, tmp_path)
+def test_calculation(example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch):
+    _run_example(example, tmp_path, monkeypatch)
 
 
 @pytest.mark.parametrize(
     "example", get_full_calculation_examples(), ids=lambda example: example.name
 )
-def test_calculation_full(example: doctest.DocTest, tmp_path: pathlib.Path):
+def test_calculation_full(
+    example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch
+):
     pytest.importorskip(_FULL_INSTALL_EXAMPLES[example.name])
-    _run_calculation_example(example, tmp_path)
+    _run_example(example, tmp_path, monkeypatch)
 
 
 def get_util_examples():
@@ -202,6 +184,17 @@ def test_util(example: doctest.DocTest):
     result = runner.run(example)
     assert result.failed == 0
     assert result.attempted > 0
+
+
+def get_demo_examples():
+    return [example for example in find_examples(demo) if interesting_example(example)]
+
+
+@pytest.mark.parametrize(
+    "example", get_demo_examples(), ids=lambda example: example.name
+)
+def test_demo(example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch):
+    _run_example(example, tmp_path, monkeypatch)
 
 
 def get_broadening_examples():
@@ -236,17 +229,68 @@ def get_graph_examples():
 @pytest.mark.parametrize(
     "example", get_graph_examples(), ids=lambda example: example.name
 )
-def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path):
+def test_graph_functions(example: doctest.DocTest, tmp_path: pathlib.Path, monkeypatch):
     pytest.importorskip("plotly")
-    optionflags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
-    runner = doctest.DocTestRunner(optionflags=optionflags)
     example.globs["np"] = np
-    example.globs["py4vasp"] = py4vasp
-    example.globs["path"] = tmp_path
     with patch("plotly.graph_objs.Figure.show", return_value=None):
-        result = runner.run(example)
-    assert result.failed == 0
-    assert result.attempted > 0
+        _run_example(example, tmp_path, monkeypatch)
+
+
+def _example_from_source(source, filename):
+    parser = doctest.DocTestParser()
+    return parser.get_doctest(source, {}, "example", filename, 0)
+
+
+def _reads_undefined_path(example):
+    "Does the example use a variable `path` before it assigns one?"
+    defined = False
+    for line in example.examples:
+        tree = ast.parse(line.source)
+        names = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Name) and node.id == "path"
+        ]
+        if not defined and any(isinstance(n.ctx, ast.Load) for n in names):
+            return True
+        defined = defined or any(isinstance(n.ctx, ast.Store) for n in names)
+    return False
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    (
+        (">>> path\n", True),
+        (">>> calculation.path()\n", False),
+        (">>> f(path='folder')\n", False),
+        (">>> path = 'folder'\n>>> print(path)\n", False),
+    ),
+)
+def test_reads_undefined_path(source, expected):
+    assert _reads_undefined_path(_example_from_source(source, "x.py")) == expected
+
+
+def _every_module_with_examples():
+    # also the modules whose examples are not executed yet, because a user copies those
+    # just the same
+    directory = pathlib.Path(_calculation.__file__).parent
+    yield _calculation
+    for path in sorted(directory.glob("[a-z]*.py")):
+        yield importlib.import_module(f"py4vasp._calculation.{path.stem}")
+    yield from (demo, py4vasp._third_party.graph.graph, py4vasp._third_party.view.view)
+
+
+def test_no_example_reads_an_undefined_path():
+    # The examples used to rely on a `path` injected by this test, so they failed with
+    # a NameError when a user copied them. Nothing is injected anymore, but the
+    # examples that are not executed would not notice a regression.
+    offenders = sorted(
+        example.name
+        for module in _every_module_with_examples()
+        for example in find_examples(module)
+        if _reads_undefined_path(example)
+    )
+    assert not offenders, f"{offenders} use a variable path they never define"
 
 
 def test_examples_found_despite_missing_optional_module(monkeypatch):

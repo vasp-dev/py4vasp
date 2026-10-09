@@ -127,7 +127,7 @@ class Stress:
     Of course you can also use your own VASP calculation data if you have it available.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     If you access the stress, the result will depend on the steps that you selected
     with the [] operator. Without any selection the results from the final step will be
@@ -228,7 +228,7 @@ class Stress:
         You can also use your own VASP calculation data if you have it available.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
 
         If you use the `read` method, the result will depend on the steps that you
         selected with the [] operator. Without any selection the results from the final

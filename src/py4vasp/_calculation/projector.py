@@ -113,7 +113,7 @@ class ProjectorHandler:
 
         >>> import pprint
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, selection="collinear")
+        >>> calculation = demo.calculation(selection="collinear")
         >>> pprint.pp(calculation.projector.to_dict())
         {'atom': {'Fe': slice(0, 6, None), '1': slice(0, 1, None), ...,
             'O': slice(6, 14, None), ...},
@@ -348,7 +348,7 @@ class Projector:
 
         >>> import pprint
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, selection="collinear")
+        >>> calculation = demo.calculation(selection="collinear")
         >>> pprint.pp(calculation.projector.read())
         {'atom': {'Fe': slice(0, 6, None), '1': slice(0, 1, None), ...,
             'O': slice(6, 14, None), ...},

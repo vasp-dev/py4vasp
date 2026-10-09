@@ -300,8 +300,8 @@ class Graph(Sequence):
         contribution, because otherwise both series are called "total"
 
         >>> from py4vasp import demo
-        >>> coarse = demo.calculation(path / "mesh_4x4x4")
-        >>> dense = demo.calculation(path / "mesh_8x8x8")
+        >>> coarse = demo.calculation()
+        >>> dense = demo.calculation()
         >>> graph = coarse.dos.plot().label("coarse") + dense.dos.plot().label("dense")
         >>> [series.label for series in graph]
         ['coarse', 'dense']
@@ -311,10 +311,13 @@ class Graph(Sequence):
 
         >>> graph.show()
 
-        A combined graph is saved like any other, here as png next to the
-        calculations
+        A combined graph is saved like any other, here as png next to the coarse
+        calculation
 
-        >>> graph.to_image(path / "comparison.png")
+        >>> filename = coarse.path() / "comparison.png"
+        >>> graph.to_image(filename)
+        >>> print("The graph is saved to", filename)
+        The graph is saved to ...comparison.png
 
         For more than two, sum them. ``sum`` needs the first graph as its start value,
         because there is no empty graph to add the others to
@@ -368,7 +371,11 @@ class Graph(Sequence):
         Figure(...)
         >>> fig.show()
 
-        >>> # Example 3: Export the figure to an HTML file
+        >>> # Example 3: Export the figure to an HTML file in a new temporary directory
+        >>> import pathlib, tempfile
+        >>> path = pathlib.Path(tempfile.mkdtemp())
+        >>> print("The figure is written to", path)
+        The figure is written to ...
         >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")
         >>> fig = graph.to_plotly()
         >>> fig.write_html(path / "my_graph.html")
@@ -668,6 +675,14 @@ class Graph(Sequence):
 
         Examples
         --------
+        The files below are written to a new temporary directory, which is printed so
+        that you can look at them
+
+        >>> import pathlib, tempfile
+        >>> path = pathlib.Path(tempfile.mkdtemp())
+        >>> print("The files are written to", path)
+        The files are written to ...
+
         Export a simple graph to CSV:
 
         >>> x = np.array([1, 2, 3])
@@ -739,6 +754,14 @@ class Graph(Sequence):
 
         Examples
         --------
+        The images below are saved to a new temporary directory, which is printed so
+        that you can look at them
+
+        >>> import pathlib, tempfile
+        >>> path = pathlib.Path(tempfile.mkdtemp())
+        >>> print("The images are saved to", path)
+        The images are saved to ...
+
         Save a simple graph as png:
 
         >>> graph = py4vasp.plot(x=[1, 2, 3], y=[4, 5, 6], label="my data")

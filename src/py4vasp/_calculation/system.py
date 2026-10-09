@@ -43,7 +43,7 @@ class System:
     Print the system tag of a calculation:
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
     >>> print(calculation.system)
     Sr2TiO4 calculation
     """
@@ -71,7 +71,7 @@ class System:
         Read the system tag of a calculation:
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> calculation.system.read()
         {'system': 'Sr2TiO4 calculation'}
         """

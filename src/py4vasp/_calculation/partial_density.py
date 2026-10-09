@@ -353,16 +353,15 @@ class PartialDensity(view.Mixin):
 
     Examples
     --------
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    use your own data if you have run VASP.
+    First, we create some example data so that you can follow along. Alternatively, use
+    your own data if you have run VASP.
 
     The partial charge of the example data describes a graphite surface, because that
     is what a partial charge is usually used for: only a cell with a vacuum region
     above the surface can be scanned with a simulated microscope.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path, "surface")
+    >>> calculation = demo.calculation(selection="surface")
 
     For your own postprocessing, you can read the data into a Python dictionary:
 
@@ -536,12 +535,11 @@ class PartialDensity(view.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "surface")
+        >>> calculation = demo.calculation(selection="surface")
 
         >>> calculation.partial_density.to_numpy().shape
         (21, 21, 239)
@@ -594,12 +592,11 @@ class PartialDensity(view.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "surface")
+        >>> calculation = demo.calculation(selection="surface")
 
         >>> calculation.partial_density.to_view()
         View(..., grid_scalars=[GridQuantity(..., label='total', ...)], ...)
@@ -657,12 +654,11 @@ class PartialDensity(view.Mixin):
 
         Examples
         --------
-        First, we create some example data so that you can follow along. Please define a
-        variable `path` with the path to a directory that does not exist yet.
-        Alternatively, use your own data if you have run VASP.
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
 
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path, "surface")
+        >>> calculation = demo.calculation(selection="surface")
 
         The image of the graphite surface in the example data shows one maximum per
         surface cell rather than the honeycomb of its atoms. That is what a microscope
@@ -726,7 +722,7 @@ class PartialDensity(view.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> basins = calculation.density.bader_analysis()
         >>> calculation.partial_density.bader_charge(bader_analysis=basins)
         {...}

@@ -103,12 +103,11 @@ class ExcitonDensity(view.Mixin):
 
     Examples
     --------
-    First, we create some example data so that you can follow along. Please define a
-    variable `path` with the path to a directory that does not exist yet. Alternatively,
-    you can use your own data if you have run VASP and construct `calculation` from it.
+    First, we create some example data so that you can follow along. Alternatively, you
+    can use your own data if you have run VASP and construct `calculation` from it.
 
     >>> from py4vasp import demo
-    >>> calculation = demo.calculation(path)
+    >>> calculation = demo.calculation()
 
     For your own postprocessing, you can read the exciton density data into a Python
     dictionary:
@@ -300,7 +299,7 @@ class ExcitonDensity(view.Mixin):
         Examples
         --------
         >>> from py4vasp import demo
-        >>> calculation = demo.calculation(path)
+        >>> calculation = demo.calculation()
         >>> basins = calculation.density.bader_analysis()
         >>> calculation.exciton.density.bader_charge(bader_analysis=basins)
         {...}
