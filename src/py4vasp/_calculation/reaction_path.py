@@ -3,11 +3,28 @@
 """Project trajectories onto interatomic distances and discretize the resulting path,
 e.g., to prepare the IRCCAR and ICONST files for a slow-growth simulation."""
 
+import copy
 import dataclasses
+import itertools
 
 import numpy as np
 
 from py4vasp import exception
+from py4vasp._calculation.dispatch import (
+    DataSource,
+    merge_default,
+    merge_strings,
+    quantity,
+)
+from py4vasp._calculation.structure import StructureHandler
+from py4vasp._util import select
+
+# ReactionPath owns no raw data of its own; it derives the distances from the
+# structure, so dispatch accesses the "structure" schema entry.
+_DATA_QUANTITY = "structure"
+
+# Offsets of the neighboring cells in which the closest image of an atom may lie.
+_NEIGHBOR_CELLS = np.array(list(itertools.product((-1, 0, 1), repeat=3)))
 
 # Factor by which the targeted distance between successive points shrinks until every
 # point of the discretized path lies at that distance within the tolerance.
@@ -253,6 +270,50 @@ class ReactionPathHandler:
             lines.append(f"IS {lambdas} 0")
             return "\n".join(lines) + "\n"
 
+    def __init__(self, raw_structure, steps=slice(None)):
+        self._structure = StructureHandler.from_data(raw_structure, steps=steps)
+
+    @classmethod
+    def from_data(cls, raw_structure, steps=slice(None)) -> "ReactionPathHandler":
+        return cls(raw_structure, steps=steps)
+
+    def __str__(self) -> str:
+        return f"""\
+reaction path through {self._number_steps()} steps of {self._structure._stoichiometry()}
+select pairs of atoms by their index, e.g. '1~2', or by element if it occurs once"""
+
+    def to_dict(self, selection) -> dict:
+        path = self.to_path(selection)
+        return dict(zip(path.labels, path.coordinates.T))
+
+    def to_path(self, selection) -> "ReactionPathHandler.Path":
+        tree = select.Tree.from_selection(selection)
+        labels = [_selection_label(selection) for selection in tree.selections()]
+        atom_pairs = [self._atom_pair(selection) for selection in tree.selections()]
+        coordinates = np.array([self._distances(*pair) for pair in atom_pairs]).T
+        return self.Path(labels, atom_pairs, coordinates)
+
+    def selections(self) -> list:
+        number_atoms = self._structure.number_atoms()
+        pairs = itertools.combinations(range(1, number_atoms + 1), 2)
+        return [f"{first}{select.pair_separator}{second}" for first, second in pairs]
+
+    def _atom_pair(self, selection):
+        elements = self._structure._stoichiometry().elements()
+        return [_atom_index(atom, elements) for atom in selection[0].group]
+
+    def _distances(self, first, second):
+        positions = _all_steps(np.asarray(self._structure.positions()), ndim=3)
+        lattice_vectors = _all_steps(self._structure.lattice_vectors(), ndim=3)
+        difference = positions[:, second - 1] - positions[:, first - 1]
+        difference -= np.rint(difference)
+        images = difference[:, np.newaxis, :] + _NEIGHBOR_CELLS
+        cartesian = images @ lattice_vectors
+        return np.min(np.linalg.norm(cartesian, axis=-1), axis=1)
+
+    def _number_steps(self):
+        return len(_all_steps(np.asarray(self._structure.positions()), ndim=3))
+
 
 def _raise_if_invalid(number_steps, number_points, extra_points, tolerance):
     if not 2 <= number_points <= number_steps:
@@ -300,3 +361,226 @@ def _extend(points, extra_points):
 def _suggest_lambda(points):
     squared_spacing = np.sum(np.diff(points, axis=0) ** 2, axis=1)
     return float(1 / np.mean(squared_spacing))
+
+
+def _selection_label(selection):
+    return " ".join(str(part) for part in selection)
+
+
+def _atom_index(atom, elements):
+    if atom.isdecimal():
+        return int(atom)
+    return elements.index(atom) + 1
+
+
+def _all_steps(array, ndim):
+    # a single selected step lacks the leading axis of the steps
+    return array if array.ndim == ndim else array[np.newaxis]
+
+
+@quantity("reaction_path")
+class ReactionPath:
+    """The reaction path follows the distances between pairs of atoms through a run.
+
+    Use it to prepare a slow-growth or blue-moon simulation along the intrinsic
+    reaction coordinate (IRC). Every VASP run with IBRION = 40 follows the IRC from the
+    transition state to one of the minima. Map each of the two runs onto the
+    distances that define the reaction, join them into one path from the reactant
+    over the transition state to the product, select evenly spaced points, and write
+    the IRCCAR and ICONST files. The data is taken from the structures of the run, so
+    the same works for the trajectory of a molecular-dynamics run.
+
+    Atoms are counted from 1 in the order of the POSCAR file, as in the ICONST file.
+    Distances are in Å and take the closest periodic image of the second atom.
+
+    Examples
+    --------
+    Prepare the IRCCAR and ICONST files from the two branches of an IRC calculation in
+    the directories irc/m and irc/p, here for the HCN → HNC isomerization with the
+    atoms C, H, and N::
+
+        import py4vasp
+        to_reactant = py4vasp.Calculation.from_path("irc/m").reaction_path
+        to_product = py4vasp.Calculation.from_path("irc/p").reaction_path
+        pairs = "C~H, C~N, H~N"
+        path = to_reactant.to_path(pairs).reversed() + to_product.to_path(pairs)
+        discretized = path.discretize(15, extra_points=2, tolerance=5e-3)
+        with open("IRCCAR", "w") as file:
+            file.write(discretized.to_IRCCAR())
+        with open("ICONST", "w") as file:
+            file.write(discretized.to_ICONST())
+
+    Both runs start at the transition state, so the run toward the reactant is
+    reversed before the run toward the product is appended.
+
+    See Also
+    --------
+    py4vasp._calculation.structure.Structure :
+        The positions and the cell the distances are derived from.
+    py4vasp._calculation.neighbor_list.NeighborList :
+        All pairs of atoms within a cutoff for a single step.
+    """
+
+    Path = ReactionPathHandler.Path
+
+    # is_available checks the structure, which is where the data actually lives.
+    _availability_quantity = _DATA_QUANTITY
+
+    def __init__(self, source, quantity_name: str = "reaction_path", steps=slice(None)):
+        self._source = source
+        self._quantity_name = quantity_name
+        self._steps = steps
+
+    @classmethod
+    def from_data(cls, raw_structure) -> "ReactionPath":
+        """Create a ReactionPath from raw structure data, e.g., to test it."""
+        return cls(source=DataSource(raw_structure))
+
+    def __getitem__(self, steps) -> "ReactionPath":
+        new = copy.copy(self)
+        new._steps = steps
+        return new
+
+    def _handler_factory(self, raw_data):
+        return ReactionPathHandler.from_data(raw_data, steps=self._steps)
+
+    def read(self, selection) -> dict:
+        """Read the distances between the selected pairs of atoms at every step.
+
+        Parameters
+        ----------
+        selection : str
+            The pairs of atoms joined by a tilde, e.g. '1~2', separated by commas. Give
+            an atom by its index counted from 1 in the order of the POSCAR file, or by
+            its element if the structure contains only one atom of that element.
+
+        Returns
+        -------
+        dict
+            For every selected pair, the distance in Å at every step. Index the
+            quantity to restrict the steps, e.g. ``reaction_path[10:20]``; all steps
+            are used by default.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Read the distance between the Ti atom (index 3) and the first O atom (index 4)
+
+        >>> calculation.reaction_path.read("3~4")
+        {'3~4': array([...])}
+
+        Atoms that occur only once can be selected by their element instead
+
+        >>> calculation.reaction_path[0:2].read("Ti~4")
+        {'Ti~4': array([..., ...])}
+        """
+        return merge_default(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            ReactionPathHandler.to_dict,
+        )
+
+    def to_dict(self, selection) -> dict:
+        """Convenient alias for :py:meth:`read`. Please read the documentation there."""
+        return self.read(selection)
+
+    def to_path(self, selection) -> "ReactionPathHandler.Path":
+        """Map the run onto the distances between the selected pairs of atoms.
+
+        Parameters
+        ----------
+        selection : str
+            The pairs of atoms, see :py:meth:`read`. Their order sets the order of the
+            columns of the IRCCAR file and of the R lines of the ICONST file.
+
+        Returns
+        -------
+        Path
+            The path through the space of the selected distances with one point per
+            step. Join paths with ``+``, reverse them with ``reversed()``, and select
+            evenly spaced points with ``discretize()``.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Map the run onto two distances; the path has one point per step
+
+        >>> path = calculation.reaction_path.to_path("3~4, 1~2")
+        >>> path.labels
+        ('3~4', '1~2')
+        >>> path.coordinates.shape
+        (..., 2)
+        """
+        return merge_default(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            ReactionPathHandler.to_path,
+        )
+
+    def selections(self) -> list:
+        """Return every pair of atoms that can be selected.
+
+        Each entry is a valid ``selection`` argument for :py:meth:`read` and
+        :py:meth:`to_path`. Atoms that occur only once can also be selected by their
+        element, e.g. 'C~H'.
+
+        Returns
+        -------
+        list
+            All pairs of atoms as '1~2' strings with atoms counted from 1.
+
+        Examples
+        --------
+        First, we create some example data so that you can follow along. Alternatively,
+        use your own data if you have run VASP.
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        >>> calculation.reaction_path.selections()
+        ['1~2', '1~3', '1~4', ...]
+        """
+        return merge_default(
+            self._source,
+            _DATA_QUANTITY,
+            None,
+            self._handler_factory,
+            ReactionPathHandler.selections,
+        )
+
+    def print(self, selection: str | None = None) -> None:
+        """Print a string representation of this quantity.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select which source of the quantity is printed. If you select multiple
+            sources, py4vasp prints one block per source.
+        """
+        print(self.__str__(selection))
+
+    def __str__(self, selection=None) -> str:
+        return merge_strings(
+            self._source,
+            _DATA_QUANTITY,
+            selection,
+            self._handler_factory,
+            ReactionPathHandler.__str__,
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text(str(self) if not cycle else "...")

@@ -1,10 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import itertools
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp._calculation.reaction_path import ReactionPathHandler
+from py4vasp import exception, raw
+from py4vasp._calculation.reaction_path import ReactionPath, ReactionPathHandler
 
 Path = ReactionPathHandler.Path
 
@@ -203,3 +206,117 @@ IS 49.75 49.75 49.75 0
 def test_to_ICONST_without_lambda_raises(path):
     with pytest.raises(exception.IncorrectUsage):
         path.to_ICONST()
+
+
+def _brute_force_distance(raw_structure, first, second):
+    # minimum over all neighboring images, evaluated step by step
+    lattice = raw_structure.cell.scale[()] * raw_structure.cell.lattice_vectors
+    positions = raw_structure.positions
+    images = np.array(list(itertools.product((-1, 0, 1), repeat=3)))
+    distances = []
+    for step in range(len(positions)):
+        difference = positions[step, second - 1] - positions[step, first - 1]
+        difference -= np.rint(difference)
+        cartesian = (difference + images) @ lattice[step]
+        distances.append(np.min(np.linalg.norm(cartesian, axis=1)))
+    return np.array(distances)
+
+
+def _hcn_trajectory():
+    # H moves from C to N; atoms near the cell boundary test the minimum image
+    lattice = np.array(2 * [10.0 * np.eye(3)])
+    positions = np.array(
+        [
+            [[0.05, 0.0, 0.0], [0.95, 0.0, 0.0], [0.17, 0.0, 0.0]],
+            [[0.05, 0.0, 0.0], [0.11, 0.05, 0.0], [0.17, 0.0, 0.0]],
+        ]
+    )
+    return raw.Structure(
+        raw.Stoichiometry(
+            number_ion_types=np.array([1, 1, 1]), ion_types=["C", "H", "N"]
+        ),
+        raw.Cell(lattice_vectors=lattice, scale=raw.VaspData(1.0)),
+        positions=positions,
+    )
+
+
+def test_read_distances_per_step(raw_data, Assert):
+    structure = raw_data.structure("Sr2TiO4")
+    result = ReactionPath.from_data(structure).read("3~4, 1~2")
+    assert list(result) == ["3~4", "1~2"]
+    Assert.allclose(result["3~4"], _brute_force_distance(structure, 3, 4))
+    Assert.allclose(result["1~2"], _brute_force_distance(structure, 1, 2))
+    assert len(result["3~4"]) == len(structure.positions)
+
+
+def test_read_minimum_image(Assert):
+    result = ReactionPath.from_data(_hcn_trajectory()).read("1~2, 2~3")
+    Assert.allclose(result["1~2"], [1.0, np.sqrt(0.36 + 0.25)])
+    Assert.allclose(result["2~3"], [2.2, np.sqrt(0.36 + 0.25)])
+
+
+def test_read_selected_steps(raw_data, Assert):
+    structure = raw_data.structure("Sr2TiO4")
+    result = ReactionPath.from_data(structure)[1:3].read("3~4")
+    Assert.allclose(result["3~4"], _brute_force_distance(structure, 3, 4)[1:3])
+
+
+def test_read_element_pair(Assert):
+    reaction_path = ReactionPath.from_data(_hcn_trajectory())
+    by_element = reaction_path.read("C~H, H~N")
+    by_index = reaction_path.read("1~2, 2~3")
+    Assert.allclose(by_element["C~H"], by_index["1~2"])
+    Assert.allclose(by_element["H~N"], by_index["2~3"])
+
+
+def test_to_dict_is_alias_of_read(raw_data, Assert):
+    reaction_path = ReactionPath.from_data(raw_data.structure("Sr2TiO4"))
+    from_read = reaction_path.read("3~4")
+    from_dict = reaction_path.to_dict("3~4")
+    Assert.allclose(from_dict["3~4"], from_read["3~4"])
+
+
+def test_to_path_returns_path(Assert):
+    reaction_path = ReactionPath.from_data(_hcn_trajectory())
+    path = reaction_path.to_path("C~H, C~N, H~N")
+    assert isinstance(path, ReactionPath.Path)
+    assert path.labels == ("C~H", "C~N", "H~N")
+    Assert.allclose(path.atom_pairs, np.array([[1, 2], [1, 3], [2, 3]]))
+    distances = reaction_path.read("C~H, C~N, H~N")
+    Assert.allclose(path.coordinates, np.array(list(distances.values())).T)
+    assert path.lambda_ is None
+
+
+def test_Path_is_exposed_on_quantity():
+    assert ReactionPath.Path is ReactionPathHandler.Path
+
+
+def test_print(raw_data, format_):
+    reaction_path = ReactionPath.from_data(raw_data.structure("Sr2TiO4"))
+    actual, _ = format_(reaction_path)
+    expected = """\
+reaction path through 4 steps of Sr2TiO4
+select pairs of atoms by their index, e.g. '1~2', or by element if it occurs once"""
+    assert actual == {"text/plain": expected}
+
+
+def test_factory_methods_access_structure(raw_data):
+    data = raw_data.structure("Sr2TiO4")
+    instances = (ReactionPath.from_path(), ReactionPath.from_file("vaspout.h5"))
+    calls = (
+        lambda quantity: quantity.read("1~2"),
+        lambda quantity: quantity.to_path("1~2"),
+        lambda quantity: str(quantity),
+    )
+    for reaction_path in instances:
+        for call in calls:
+            with patch("py4vasp.raw.access") as mock_access:
+                mock_access.return_value.__enter__.return_value = data
+                call(reaction_path)
+                mock_access.assert_called_once()
+                assert mock_access.call_args.args[0] == "structure"
+
+
+def test_selections_lists_every_pair_of_atoms():
+    selections = ReactionPath.from_data(_hcn_trajectory()).selections()
+    assert selections == ["1~2", "1~3", "2~3"]
