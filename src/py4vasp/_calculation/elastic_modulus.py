@@ -365,6 +365,18 @@ class ElasticModulus:
         )
 
 
+# symmetry_reduce orders the pairs of directions as VASP does, xx, yy, zz, xy, yz, zx;
+# this permutation brings them into the standard Voigt order xx, yy, zz, yz, zx, xy
+_VASP_TO_VOIGT = [0, 1, 2, 4, 5, 3]
+
+
+def _voigt_matrix(tensor):
+    """Convert the rank-4 tensor in kBar into the 6 x 6 Voigt matrix in GPa."""
+    compact_tensor = symmetry_reduce(symmetry_reduce(np.asarray(tensor)).T).T
+    voigt = compact_tensor[np.ix_(_VASP_TO_VOIGT, _VASP_TO_VOIGT)]
+    return voigt * convert.KBAR_TO_GPA
+
+
 def _elastic_modulus_string(tensor, label):
     compact_tensor = symmetry_reduce(symmetry_reduce(tensor).T).T
     line = lambda dir_, vec: dir_ + 6 * " " + " ".join(f"{x:11.4f}" for x in vec)

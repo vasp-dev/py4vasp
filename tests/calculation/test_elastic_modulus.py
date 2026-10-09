@@ -6,7 +6,12 @@ import numpy as np
 import pytest
 
 from py4vasp import exception
-from py4vasp._calculation.elastic_modulus import ElasticModulus, ElasticModulusHandler
+from py4vasp._calculation.elastic_modulus import (
+    ElasticModulus,
+    ElasticModulusHandler,
+    _voigt_matrix,
+)
+from py4vasp._demo.showcase import elastic_modulus as showcase
 from py4vasp._raw.models import ElasticModulusModel
 from py4vasp._util.tensor import symmetry_reduce
 
@@ -199,3 +204,18 @@ def test_read_with_selection(elastic_modulus, selection, Assert):
 def test_read_unknown_selection(elastic_modulus):
     with pytest.raises(exception.IncorrectUsage):
         elastic_modulus.read("relaxed_ion")
+
+
+def test_voigt_matrix_uses_standard_order(Assert):
+    # the rows and columns are ordered 11, 22, 33, 23, 13, 12, so that C_44 is the
+    # fourth diagonal element and C_66 the sixth; the tensor is converted to GPa
+    relaxed_ion = showcase.Sr2TiO4().relaxed_ion
+    expected = [
+        [297.0, 119.0, 86.0, 0.0, 0.0, 0.0],
+        [119.0, 297.0, 86.0, 0.0, 0.0, 0.0],
+        [86.0, 86.0, 216.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 57.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 57.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 102.0],
+    ]
+    Assert.allclose(_voigt_matrix(relaxed_ion), np.array(expected))
