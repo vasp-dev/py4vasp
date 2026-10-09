@@ -228,30 +228,25 @@ def test_voigt_matrix_uses_standard_order(Assert):
     Assert.allclose(_voigt_matrix(relaxed_ion), np.array(expected))
 
 
-def test_voigt(elastic_modulus, Assert):
-    actual = elastic_modulus.voigt()
-    assert actual.keys() == {"clamped_ion", "relaxed_ion"}
-    Assert.allclose(
-        actual["clamped_ion"], _voigt_matrix(elastic_modulus.ref.clamped_ion)
-    )
-    Assert.allclose(
-        actual["relaxed_ion"], _voigt_matrix(elastic_modulus.ref.relaxed_ion)
-    )
-
-
 @pytest.mark.parametrize(
-    "selection, keys",
+    "selection, key",
     (
-        ("clamped_ion", ["clamped_ion"]),
-        ("relaxed_ion", ["relaxed_ion"]),
-        ("relaxed_ion, clamped_ion", ["relaxed_ion", "clamped_ion"]),
-        ("default(relaxed_ion)", ["relaxed_ion"]),
+        (None, "relaxed_ion"),
+        ("clamped_ion", "clamped_ion"),
+        ("relaxed_ion", "relaxed_ion"),
+        ("default(clamped_ion)", "clamped_ion"),
     ),
 )
-def test_voigt_with_selection(elastic_modulus, selection, keys, Assert):
+def test_voigt_of_one_tensor_is_an_array(elastic_modulus, selection, key, Assert):
     actual = elastic_modulus.voigt(selection)
-    assert list(actual) == keys
-    for key in keys:
+    assert isinstance(actual, np.ndarray)
+    Assert.allclose(actual, _voigt_matrix(getattr(elastic_modulus.ref, key)))
+
+
+def test_voigt_of_several_tensors_is_a_dict(elastic_modulus, Assert):
+    actual = elastic_modulus.voigt("relaxed_ion, clamped_ion")
+    assert list(actual) == ["relaxed_ion", "clamped_ion"]
+    for key in actual:
         expected = _voigt_matrix(getattr(elastic_modulus.ref, key))
         Assert.allclose(actual[key], expected)
 
@@ -276,22 +271,32 @@ _HILL_AVERAGES = {
 }
 
 
-@pytest.mark.parametrize("method", _HILL_AVERAGES)
-def test_hill_average(silicon_carbide, method):
-    actual = getattr(silicon_carbide, method)()
-    assert actual.keys() == {"clamped_ion", "relaxed_ion"}
-    for key, prefix in _DATABASE_PREFIX.items():
-        database_key = f"{prefix}_{_HILL_AVERAGES[method]}"
-        expected = silicon_carbide.ref.overview_data[database_key]
-        assert np.isclose(actual[key], expected)
+def _expected_hill_average(elastic_modulus, method, key):
+    database_key = f"{_DATABASE_PREFIX[key]}_{_HILL_AVERAGES[method]}"
+    return elastic_modulus.ref.overview_data[database_key]
 
 
 @pytest.mark.parametrize("method", _HILL_AVERAGES)
-def test_hill_average_with_selection(silicon_carbide, method):
-    actual = getattr(silicon_carbide, method)("relaxed_ion")
-    assert list(actual) == ["relaxed_ion"]
-    expected = silicon_carbide.ref.overview_data[f"total_{_HILL_AVERAGES[method]}"]
-    assert np.isclose(actual["relaxed_ion"], expected)
+@pytest.mark.parametrize(
+    "selection, key",
+    (
+        (None, "relaxed_ion"),
+        ("clamped_ion", "clamped_ion"),
+        ("relaxed_ion", "relaxed_ion"),
+    ),
+)
+def test_hill_average_of_one_tensor_is_a_float(silicon_carbide, method, selection, key):
+    actual = getattr(silicon_carbide, method)(selection)
+    assert isinstance(actual, float)
+    assert np.isclose(actual, _expected_hill_average(silicon_carbide, method, key))
+
+
+@pytest.mark.parametrize("method", _HILL_AVERAGES)
+def test_hill_average_of_several_tensors_is_a_dict(silicon_carbide, method):
+    actual = getattr(silicon_carbide, method)("clamped_ion, relaxed_ion")
+    assert list(actual) == ["clamped_ion", "relaxed_ion"]
+    for key, value in actual.items():
+        assert np.isclose(value, _expected_hill_average(silicon_carbide, method, key))
 
 
 @pytest.mark.parametrize("method", _HILL_AVERAGES)

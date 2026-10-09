@@ -47,29 +47,33 @@ class ElasticModulusHandler:
             "relaxed_ion": self._raw_elastic_modulus.relaxed_ion[:],
         }
 
-    def to_voigt(self, selection=None) -> dict:
+    def to_voigt(self, selection=None) -> np.ndarray | dict:
+        return _unwrap_single_choice(self._voigt_matrices(selection))
+
+    def to_bulk_modulus(self, selection=None) -> float | dict:
+        return self._hill_average(selection, _BULK_MODULUS)
+
+    def to_shear_modulus(self, selection=None) -> float | dict:
+        return self._hill_average(selection, _SHEAR_MODULUS)
+
+    def to_youngs_modulus(self, selection=None) -> float | dict:
+        return self._hill_average(selection, _YOUNGS_MODULUS)
+
+    def to_poisson_ratio(self, selection=None) -> float | dict:
+        return self._hill_average(selection, _POISSON_RATIO)
+
+    def _voigt_matrices(self, selection):
         return {
             choice: _voigt_matrix(getattr(self._raw_elastic_modulus, choice)[:])
             for choice in _parse_tensor_selection(selection)
         }
 
-    def to_bulk_modulus(self, selection=None) -> dict:
-        return self._hill_average(selection, _BULK_MODULUS)
-
-    def to_shear_modulus(self, selection=None) -> dict:
-        return self._hill_average(selection, _SHEAR_MODULUS)
-
-    def to_youngs_modulus(self, selection=None) -> dict:
-        return self._hill_average(selection, _YOUNGS_MODULUS)
-
-    def to_poisson_ratio(self, selection=None) -> dict:
-        return self._hill_average(selection, _POISSON_RATIO)
-
     def _hill_average(self, selection, index):
-        return {
+        averages = {
             choice: _hill_average_of_voigt_matrix(choice, voigt, index)
-            for choice, voigt in self.to_voigt(selection).items()
+            for choice, voigt in self._voigt_matrices(selection).items()
         }
+        return _unwrap_single_choice(averages)
 
     def __str__(self) -> str:
         return f"""Elastic modulus (kBar)
@@ -336,7 +340,7 @@ class ElasticModulus:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection)
 
-    def voigt(self, selection: str | None = None) -> dict:
+    def voigt(self, selection: str | None = None) -> np.ndarray | dict:
         """Read the elastic constants as 6 x 6 matrices in Voigt notation, in GPa.
 
         Because stress and strain are symmetric, a pair of Cartesian directions can be
@@ -348,17 +352,17 @@ class ElasticModulus:
         Parameters
         ----------
         selection : str | None
-            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. In the
-            clamped-ion elastic constants the ions stay at their positions when the cell
-            is strained, in the relaxed-ion ones they relax. Without a selection, you
-            obtain both. If VASP produced more than one source of the elastic modulus,
-            select it with e.g. "default(relaxed_ion)".
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. In the clamped-ion elastic constants the ions stay at their positions
+            when the cell is strained, in the relaxed-ion ones they relax. If VASP
+            produced more than one source of the elastic modulus, select it with e.g.
+            "default(clamped_ion)".
 
         Returns
         -------
-        dict
-            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
-            6 x 6 Voigt matrix in GPa.
+        np.ndarray or dict
+            The 6 x 6 Voigt matrix in GPa. If you select both approximations, a
+            dictionary maps "clamped_ion" and "relaxed_ion" to their matrices.
 
         Examples
         --------
@@ -369,9 +373,9 @@ class ElasticModulus:
         >>> from py4vasp import demo
         >>> calculation = demo.calculation()
 
-        Select the relaxed-ion elastic constants to obtain a single 6 x 6 matrix
+        By default, you obtain the relaxed-ion elastic constants as a 6 x 6 matrix
 
-        >>> voigt = calculation.elastic_modulus.voigt("relaxed_ion")["relaxed_ion"]
+        >>> voigt = calculation.elastic_modulus.voigt()
         >>> voigt.shape
         (6, 6)
 
@@ -380,9 +384,14 @@ class ElasticModulus:
         >>> [float(voigt[0, 0]), float(voigt[0, 1]), float(voigt[3, 3])]
         [297.0, 119.0, 57.0]
 
-        Without a selection you obtain the clamped-ion matrix as well
+        Select the clamped-ion elastic constants instead
 
-        >>> sorted(calculation.elastic_modulus.voigt())
+        >>> float(calculation.elastic_modulus.voigt("clamped_ion")[0, 0])
+        309.0
+
+        If you select both, a dictionary tells them apart
+
+        >>> sorted(calculation.elastic_modulus.voigt("clamped_ion, relaxed_ion"))
         ['clamped_ion', 'relaxed_ion']
         """
         return merge_default(
@@ -393,7 +402,7 @@ class ElasticModulus:
             ElasticModulusHandler.to_voigt,
         )
 
-    def bulk_modulus(self, selection: str | None = None) -> dict:
+    def bulk_modulus(self, selection: str | None = None) -> float | dict:
         """Compute the bulk modulus of a polycrystal in GPa.
 
         The bulk modulus K measures how strongly the material resists a uniform
@@ -405,15 +414,15 @@ class ElasticModulus:
         Parameters
         ----------
         selection : str | None
-            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. Without
-            a selection, you obtain both. If VASP produced more than one source of the
-            elastic modulus, select it with e.g. "default(relaxed_ion)".
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. If VASP produced more than one source of the elastic modulus, select
+            it with e.g. "default(clamped_ion)".
 
         Returns
         -------
-        dict
-            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
-            bulk modulus in GPa.
+        float or dict
+            The bulk modulus in GPa. If you select both approximations, a dictionary
+            maps "clamped_ion" and "relaxed_ion" to their values.
 
         Raises
         ------
@@ -433,9 +442,17 @@ class ElasticModulus:
 
         The bulk modulus with relaxed ions in GPa is
 
-        >>> bulk_modulus = calculation.elastic_modulus.bulk_modulus("relaxed_ion")
-        >>> round(bulk_modulus["relaxed_ion"], 1)
+        >>> round(calculation.elastic_modulus.bulk_modulus(), 1)
         151.8
+
+        Clamping the ions makes the crystal stiffer. If you select both
+        approximations, you obtain a dictionary
+
+        >>> bulk_modulus = calculation.elastic_modulus.bulk_modulus(
+        ...     "clamped_ion, relaxed_ion"
+        ... )
+        >>> {key: round(value, 1) for key, value in bulk_modulus.items()}
+        {'clamped_ion': 159.6, 'relaxed_ion': 151.8}
         """
         return merge_default(
             self._source,
@@ -445,7 +462,7 @@ class ElasticModulus:
             ElasticModulusHandler.to_bulk_modulus,
         )
 
-    def shear_modulus(self, selection: str | None = None) -> dict:
+    def shear_modulus(self, selection: str | None = None) -> float | dict:
         """Compute the shear modulus of a polycrystal in GPa.
 
         The shear modulus G measures how strongly the material resists a change of
@@ -457,15 +474,15 @@ class ElasticModulus:
         Parameters
         ----------
         selection : str | None
-            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. Without
-            a selection, you obtain both. If VASP produced more than one source of the
-            elastic modulus, select it with e.g. "default(relaxed_ion)".
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. If VASP produced more than one source of the elastic modulus, select
+            it with e.g. "default(clamped_ion)".
 
         Returns
         -------
-        dict
-            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
-            shear modulus in GPa.
+        float or dict
+            The shear modulus in GPa. If you select both approximations, a dictionary
+            maps "clamped_ion" and "relaxed_ion" to their values.
 
         Raises
         ------
@@ -485,8 +502,7 @@ class ElasticModulus:
 
         The shear modulus with relaxed ions in GPa is
 
-        >>> shear_modulus = calculation.elastic_modulus.shear_modulus("relaxed_ion")
-        >>> round(shear_modulus["relaxed_ion"], 1)
+        >>> round(calculation.elastic_modulus.shear_modulus(), 1)
         75.4
         """
         return merge_default(
@@ -497,7 +513,7 @@ class ElasticModulus:
             ElasticModulusHandler.to_shear_modulus,
         )
 
-    def youngs_modulus(self, selection: str | None = None) -> dict:
+    def youngs_modulus(self, selection: str | None = None) -> float | dict:
         """Compute Young's modulus of a polycrystal in GPa.
 
         Young's modulus E is the ratio of stress to strain when a rod of the material
@@ -509,15 +525,15 @@ class ElasticModulus:
         Parameters
         ----------
         selection : str | None
-            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. Without
-            a selection, you obtain both. If VASP produced more than one source of the
-            elastic modulus, select it with e.g. "default(relaxed_ion)".
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. If VASP produced more than one source of the elastic modulus, select
+            it with e.g. "default(clamped_ion)".
 
         Returns
         -------
-        dict
-            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
-            Young's modulus in GPa.
+        float or dict
+            The Young's modulus in GPa. If you select both approximations, a dictionary
+            maps "clamped_ion" and "relaxed_ion" to their values.
 
         Raises
         ------
@@ -537,8 +553,7 @@ class ElasticModulus:
 
         Young's modulus with relaxed ions in GPa is
 
-        >>> youngs_modulus = calculation.elastic_modulus.youngs_modulus("relaxed_ion")
-        >>> round(youngs_modulus["relaxed_ion"], 1)
+        >>> round(calculation.elastic_modulus.youngs_modulus(), 1)
         194.1
         """
         return merge_default(
@@ -549,7 +564,7 @@ class ElasticModulus:
             ElasticModulusHandler.to_youngs_modulus,
         )
 
-    def poisson_ratio(self, selection: str | None = None) -> dict:
+    def poisson_ratio(self, selection: str | None = None) -> float | dict:
         """Compute Poisson's ratio of a polycrystal.
 
         Poisson's ratio ν is the ratio of the transverse contraction to the axial
@@ -561,15 +576,15 @@ class ElasticModulus:
         Parameters
         ----------
         selection : str | None
-            Choose "clamped_ion", "relaxed_ion" or both, separated by a comma. Without
-            a selection, you obtain both. If VASP produced more than one source of the
-            elastic modulus, select it with e.g. "default(relaxed_ion)".
+            Choose "relaxed_ion" (the default), "clamped_ion" or both, separated by a
+            comma. If VASP produced more than one source of the elastic modulus, select
+            it with e.g. "default(clamped_ion)".
 
         Returns
         -------
-        dict
-            Maps each selected approximation ("clamped_ion" or "relaxed_ion") to its
-            Poisson's ratio.
+        float or dict
+            The Poisson's ratio. If you select both approximations, a dictionary
+            maps "clamped_ion" and "relaxed_ion" to their values.
 
         Raises
         ------
@@ -589,8 +604,7 @@ class ElasticModulus:
 
         Poisson's ratio with relaxed ions is
 
-        >>> poisson_ratio = calculation.elastic_modulus.poisson_ratio("relaxed_ion")
-        >>> round(poisson_ratio["relaxed_ion"], 3)
+        >>> round(calculation.elastic_modulus.poisson_ratio(), 3)
         0.287
         """
         return merge_default(
@@ -658,13 +672,22 @@ class ElasticModulus:
 
 
 _TENSORS = ("clamped_ion", "relaxed_ion")
+_DEFAULT_TENSOR = "relaxed_ion"
 # position of the moduli in the result of _ElasticTensor.get_VRH
 _BULK_MODULUS, _SHEAR_MODULUS, _YOUNGS_MODULUS, _POISSON_RATIO = 0, 1, 2, 3
 
 
+def _unwrap_single_choice(results):
+    # like energy.to_numpy, a single selection returns its value and only several
+    # selections need a dictionary to tell them apart
+    if len(results) == 1:
+        return next(iter(results.values()))
+    return results
+
+
 def _parse_tensor_selection(selection):
     if not selection:
-        return _TENSORS
+        return (_DEFAULT_TENSOR,)
     choices = []
     for choice in select.Tree.from_selection(selection).selections():
         parts = [str(part) for part in choice]
