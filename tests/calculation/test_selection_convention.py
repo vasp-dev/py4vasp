@@ -455,11 +455,6 @@ _LEGACY_SELECTION = {
     "Workfunction": {"print", "read", "to_dict", "to_graph"},
 }
 
-# Known violations still to be fixed; a fixed method passes and fails the strict xfail,
-# so remove it from these lists together with the fix.
-_MISSING_SELECTION = frozenset()
-_UNUSED_SELECTION = frozenset()
-
 
 def _sources(cls):
     quantity_name = _availability_quantity_of(cls)
@@ -495,16 +490,13 @@ def _is_legacy(cls, method_name):
     return method_name in _LEGACY_SELECTION.get(cls.__name__, ())
 
 
-def _collect_methods(include, known_violations):
+def _collect_methods(include):
     for cls in _public_quantities():
         for method_name in _public_methods(cls):
             if not include(cls, method_name):
                 continue
             id_ = f"{cls.__name__}.{method_name}"
-            marks = []
-            if id_ in known_violations:
-                marks.append(pytest.mark.xfail(strict=True, reason="not fixed yet"))
-            yield pytest.param(cls, method_name, id=id_, marks=marks)
+            yield pytest.param(cls, method_name, id=id_)
 
 
 def _accepts_selection(method):
@@ -608,9 +600,7 @@ def _takes_selection(cls, method_name):
     return _accepts_selection(getattr(cls, method_name))
 
 
-@pytest.mark.parametrize(
-    "cls, method_name", list(_collect_methods(_is_legacy, _MISSING_SELECTION))
-)
+@pytest.mark.parametrize("cls, method_name", list(_collect_methods(_is_legacy)))
 def test_legacy_methods_take_selection(cls, method_name):
     assert _takes_selection(cls, method_name), (
         f"{cls.__name__}.{method_name} accepted a selection in py4vasp 0.11.3, so it "
@@ -620,7 +610,7 @@ def test_legacy_methods_take_selection(cls, method_name):
 
 @pytest.mark.parametrize(
     "cls, method_name",
-    list(_collect_methods(_selection_has_effect, _MISSING_SELECTION)),
+    list(_collect_methods(_selection_has_effect)),
 )
 def test_methods_where_selection_has_effect_take_selection(cls, method_name):
     assert _takes_selection(cls, method_name), (
@@ -637,7 +627,7 @@ def _selection_has_no_effect(cls, method_name):
 
 @pytest.mark.parametrize(
     "cls, method_name",
-    list(_collect_methods(_selection_has_no_effect, _UNUSED_SELECTION)),
+    list(_collect_methods(_selection_has_no_effect)),
 )
 def test_methods_where_selection_has_no_effect_take_no_selection(cls, method_name):
     parameters = inspect.signature(getattr(cls, method_name)).parameters
@@ -647,25 +637,15 @@ def test_methods_where_selection_has_no_effect_take_no_selection(cls, method_nam
     )
 
 
-def test_known_violations_are_checked():
-    # an entry that is never collected would silently escape its strict xfail
-    takes_selection = _is_legacy, _selection_has_effect
-    missing = {
-        param.id
-        for include in takes_selection
-        for param in _collect_methods(include, frozenset())
-    }
-    unused = {
-        param.id for param in _collect_methods(_selection_has_no_effect, frozenset())
-    }
-    assert _MISSING_SELECTION <= missing
-    assert _UNUSED_SELECTION <= unused
+def test_legacy_methods_exist():
+    # a legacy method that is renamed or removed would silently escape rule 1
+    collected = {param.id for param in _collect_methods(_is_legacy)}
     legacy = {
         f"{cls.__name__}.{method_name}"
         for cls in _public_quantities()
         for method_name in _LEGACY_SELECTION.get(cls.__name__, ())
     }
-    assert legacy <= missing  # every legacy method still exists
+    assert legacy == collected
 
 
 def test_selection_is_traced_to_the_handler():
