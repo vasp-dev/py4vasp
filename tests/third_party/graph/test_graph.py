@@ -12,6 +12,7 @@ import pytest
 
 from py4vasp import _config, exception
 from py4vasp._third_party.graph import Contour, Graph, Marker, Series
+from py4vasp._third_party.graph.graph import resolve_output_path
 from py4vasp._util import import_, slicing
 
 px = import_.optional("plotly.express")
@@ -494,6 +495,13 @@ def test_title(parabola):
     graph.title = "title"
     fig = graph.to_plotly()
     assert fig.layout.title.text == graph.title
+    assert fig.layout.margin.t is None  # plotly's default leaves room for the title
+
+
+def test_no_title_has_same_top_margin_as_other_sides(parabola):
+    pytest.importorskip("plotly")
+    fig = Graph(parabola).to_plotly()
+    assert fig.layout.margin.t == 80  # plotly's default left and bottom margin
 
 
 def test_merging_of_fields_of_graph(sine, parabola):
@@ -1309,7 +1317,8 @@ def test_to_image(parabola, filename):
     with patch.object(Graph, "to_plotly") as to_plotly:
         graph.to_image(filename)
         to_plotly.assert_called_once_with()
-        to_plotly.return_value.write_image.assert_called_once_with(filename)
+        expected = pathlib.Path.cwd() / filename
+        to_plotly.return_value.write_image.assert_called_once_with(expected)
 
 
 def test_to_image_of_combined_graph(parabola, sine):
@@ -1318,7 +1327,7 @@ def test_to_image_of_combined_graph(parabola, sine):
     with patch("plotly.graph_objs.Figure.write_image", autospec=True) as write_image:
         graph.to_image("combined.png")
         figure, filename = write_image.call_args.args
-        assert filename == "combined.png"
+        assert filename == pathlib.Path.cwd() / "combined.png"
         assert [trace.name for trace in figure.data] == [parabola.label, sine.label]
 
 
@@ -1335,4 +1344,58 @@ def test_to_image_accepts_uppercase_extension(parabola):
     graph = Graph(parabola)
     with patch.object(Graph, "to_plotly") as to_plotly:
         graph.to_image("graph.PNG")
-        to_plotly.return_value.write_image.assert_called_once_with("graph.PNG")
+        expected = pathlib.Path.cwd() / "graph.PNG"
+        to_plotly.return_value.write_image.assert_called_once_with(expected)
+
+
+def test_to_image_expands_home(parabola, fake_home):
+    graph = Graph(parabola)
+    with patch.object(Graph, "to_plotly") as to_plotly:
+        graph.to_image("~/graph.png")
+        expected = fake_home / "graph.png"
+        to_plotly.return_value.write_image.assert_called_once_with(expected)
+
+
+def test_to_image_rejects_missing_directory(parabola, tmp_path):
+    graph = Graph(parabola)
+    with patch.object(Graph, "to_plotly") as to_plotly:
+        with pytest.raises(exception.FileAccessError):
+            graph.to_image(tmp_path / "missing" / "graph.png")
+        to_plotly.assert_not_called()
+
+
+def test_to_csv_expands_home(parabola, fake_home):
+    pytest.importorskip("pandas")
+    Graph(parabola).to_csv("~/graph.csv")
+    assert (fake_home / "graph.csv").exists()
+
+
+def test_to_csv_rejects_missing_directory(parabola, tmp_path):
+    with pytest.raises(exception.FileAccessError):
+        Graph(parabola).to_csv(tmp_path / "missing" / "graph.csv")
+
+
+def test_resolve_output_path_relative_to_directory(tmp_path):
+    actual = resolve_output_path("image.png", tmp_path)
+    assert actual == tmp_path / "image.png"
+
+
+def test_resolve_output_path_keeps_absolute_path(tmp_path):
+    filename = tmp_path / "image.png"
+    actual = resolve_output_path(filename, tmp_path / "other")
+    assert actual == filename
+
+
+def test_resolve_output_path_expands_home(tmp_path, fake_home):
+    actual = resolve_output_path("~/image.png", tmp_path / "other")
+    assert actual == fake_home / "image.png"
+
+
+def test_resolve_output_path_rejects_unknown_user(tmp_path):
+    with pytest.raises(exception.FileAccessError, match="nouser"):
+        resolve_output_path("~nouser_py4vasp/image.png", tmp_path)
+
+
+def test_resolve_output_path_rejects_missing_directory(tmp_path):
+    with pytest.raises(exception.FileAccessError, match="missing"):
+        resolve_output_path("missing/image.png", tmp_path)

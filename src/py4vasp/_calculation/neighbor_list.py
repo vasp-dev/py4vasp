@@ -56,20 +56,26 @@ def _replica_counts(lattice_vectors, cutoff):
     Parameters
     ----------
     lattice_vectors : np.ndarray
-        The (3, 3) matrix whose rows are the lattice vectors in Å.
-    cutoff : float
-        The neighbor cutoff radius in Å.
+        The (3, 3) matrix whose rows are the lattice vectors in Å, or a stack of
+        such matrices, e.g. one per step of a trajectory.
+    cutoff : float or np.ndarray
+        The neighbor cutoff radius in Å, or one radius per stacked matrix.
 
     Returns
     -------
     np.ndarray
-        Three integers, the replica count along each lattice direction.
+        Three integers, the replica count along each lattice direction, with the
+        same leading axes as the stacked matrices.
     """
     lattice_vectors = np.asarray(lattice_vectors)
-    volume = np.abs(np.linalg.det(lattice_vectors))
+    volume = np.abs(np.linalg.det(lattice_vectors))[..., np.newaxis]
     # cross products of the other two vectors: a1xa2, a2xa0, a0xa1
-    cross = np.cross(lattice_vectors[[1, 2, 0]], lattice_vectors[[2, 0, 1]])
-    perpendicular_width = volume / np.linalg.norm(cross, axis=1)
+    first, second = (
+        lattice_vectors[..., [1, 2, 0], :],
+        lattice_vectors[..., [2, 0, 1], :],
+    )
+    perpendicular_width = volume / np.linalg.norm(np.cross(first, second), axis=-1)
+    cutoff = np.asarray(cutoff)[..., np.newaxis]
     return np.ceil(cutoff / perpendicular_width - _REPLICA_TOL).astype(int)
 
 

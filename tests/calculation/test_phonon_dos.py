@@ -105,11 +105,11 @@ def test_phonon_dos_to_image(phonon_dos):
 
 
 def check_to_image(phonon_dos, filename_argument, expected_filename):
-    with patch.object(PhononDos, "to_plotly") as plot:
+    with patch.object(PhononDos, "plot") as plot:
         phonon_dos.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(phonon_dos._path / expected_filename)
+        fig.to_image.assert_called_once_with(phonon_dos._path / expected_filename)
 
 
 def test_selections(phonon_dos):

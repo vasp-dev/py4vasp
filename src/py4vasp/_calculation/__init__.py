@@ -157,7 +157,6 @@ instead of the constructor Calculation()."""
         calc._source = source
         calc._path = source.path
         calc._file = file
-        calc._warned_temporary = False
         return calc
 
     @classmethod
@@ -298,17 +297,12 @@ instead of the constructor Calculation()."""
 
         For the example data :func:`py4vasp.demo.calculation` generates without a path,
         this is a temporary directory and the first call warns that it is removed, with
-        every file you save there, once the calculation is no longer in use.
+        every file you save there, once the calculation is no longer in use. Saving an
+        image or csv file of a quantity there warns in the same way, but only one of
+        them warns per calculation.
         """
-        if isinstance(self._source, TemporarySource) and not self._warned_temporary:
-            self._warned_temporary = True
-            message = (
-                f"The data of this calculation is in the temporary directory "
-                f"{self._path}, which is removed together with every file you save "
-                "there as soon as the calculation is no longer in use. Pass a path to "
-                "demo.calculation() to keep the data."
-            )
-            warnings.warn(message, UserWarning, stacklevel=2)
+        if isinstance(self._source, TemporarySource):
+            self._source.warn_about_removal(stacklevel=3)
         return self._path
 
     def selections(
@@ -761,16 +755,20 @@ class DefaultCalculationFactory:
     >>> sorted(calculation.dielectric_function.read("isotropic"))
     ['energies', 'isotropic']
 
-    *Which elastic constants does my crystal have, in GPa?* Read the
-    :py:class:`~py4vasp._calculation.elastic_modulus.ElasticModulus` and divide by ten,
-    because py4vasp returns it in kBar as VASP writes it. The result is the full tensor
-    with four Cartesian indices, so C_11 is ``[0, 0, 0, 0]``, C_12 is ``[0, 0, 1, 1]``
-    and C_44 is ``[1, 2, 1, 2]``
+    *Which elastic constants does my crystal have, in GPa?* Ask the
+    :py:class:`~py4vasp._calculation.elastic_modulus.ElasticModulus` for its relaxed-ion
+    6 x 6 Voigt matrix, in the order xx, yy, zz, yz, zx, xy, so C_11 is ``[0, 0]``,
+    C_12 is ``[0, 1]`` and C_44 is ``[3, 3]``
 
-    >>> elastic_modulus = calculation.elastic_modulus.read()["relaxed_ion"] / 10
-    >>> c11, c12, c44 = (0, 0, 0, 0), (0, 0, 1, 1), (1, 2, 1, 2)
-    >>> [float(elastic_modulus[index]) for index in (c11, c12, c44)]
+    >>> voigt = calculation.elastic_modulus.voigt()
+    >>> [float(voigt[index]) for index in ((0, 0), (0, 1), (3, 3))]
     [297.0, 119.0, 57.0]
+
+    The bulk, shear and Young's moduli and Poisson's ratio of a polycrystal have
+    methods of their own
+
+    >>> round(calculation.elastic_modulus.bulk_modulus())
+    152
 
     *How do I compare several calculations in one figure?* Add the graphs together.
     :py:meth:`~py4vasp.graph.Graph.label` names each contribution, and the axis labels
@@ -790,7 +788,10 @@ class DefaultCalculationFactory:
 
     *How do I get vibrational frequencies from the force constants?* The force
     constants diagonalize into ħω in eV once the masses enter; multiply by 8065.610420
-    for cm⁻¹. ``to_molden`` writes the same modes for a molecular viewer
+    for cm⁻¹. ``to_molden`` writes the same modes for a molecular viewer. To study an
+    isotope without rerunning VASP, pass the changed masses, e.g.
+    ``frequencies(masses={"O": 17.999})`` for ¹⁸O or ``{"4": 17.999}`` for the fourth
+    atom only
 
     >>> frequencies = calculation.force_constant.frequencies()
     >>> round(float(frequencies[-1].real * 8065.610420))
@@ -819,6 +820,26 @@ class DefaultCalculationFactory:
     Pass a laser energy in eV to see how the lines change as it approaches an
     electronic transition, and a temperature to get the intensity a spectrometer
     measures rather than the bare activity.
+
+    *How do I prepare the IRCCAR and ICONST files for a slow-growth run along the
+    IRC?* Map each IRC run onto the distances that define the reaction with
+    :py:class:`~py4vasp._calculation.reaction_path.ReactionPath`. Every run gives a
+    path with one point per step
+
+    >>> path = calculation.reaction_path.to_path("3~4, 1~2")
+    >>> path.labels
+    ('3~4', '1~2')
+
+    Both branches of an IRC calculation start at the transition state, so reverse the
+    one toward the reactant before you join them, then select evenly spaced points and
+    write the files::
+
+        to_reactant = py4vasp.Calculation.from_path("irc/m").reaction_path
+        to_product = py4vasp.Calculation.from_path("irc/p").reaction_path
+        pairs = "C~H, C~N, H~N"
+        path = to_reactant.to_path(pairs)[::-1] + to_product.to_path(pairs)
+        discretized = path.discretize(15, extra_points=2, tolerance=5e-3)
+        irccar, iconst = discretized.to_IRCCAR(), discretized.to_ICONST()
     """
 
     def __getattr__(self, attr):

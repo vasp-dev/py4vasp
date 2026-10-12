@@ -35,6 +35,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     phonon_mode,
     projector,
     raman,
+    reaction_path,
     stress,
     structure,
     symmetry,
@@ -82,6 +83,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.phonon_mode)
         + find_examples(_calculation.projector)
         + find_examples(_calculation.raman)
+        + find_examples(_calculation.reaction_path)
         + find_examples(_calculation.stress)
         + find_examples(_calculation.structure)
         + find_examples(_calculation.symmetry)
@@ -223,7 +225,12 @@ def get_graph_examples():
         + find_examples(py4vasp.graph.Contour)
         + find_examples(py4vasp.graph.Graph)
         + find_examples(py4vasp.graph.Series)
+        + _with_examples(find_examples(py4vasp._third_party.graph.mixin.Mixin))
     )
+
+
+def _with_examples(doctests):
+    return [doctest_ for doctest_ in doctests if doctest_.examples]
 
 
 @pytest.mark.parametrize(

@@ -135,16 +135,6 @@ class TestParseSelections:
             result = _parse_selections("test_qty", "bar(baz)")
         assert result == [SelectionContext(None, "bar(baz)")]
 
-    def test_explicit_and_implicit_default_are_grouped(self):
-        # both select the default source; separate contexts would share the result
-        # key "default" and the second would overwrite the first
-        with patch(
-            "py4vasp._calculation.dispatch.schema_selections",
-            return_value=["default", "foo"],
-        ):
-            result = _parse_selections("test_qty", "default(bar), baz")
-        assert result == [SelectionContext("default", "bar, baz")]
-
     def test_bare_default_with_implicit_default_is_ambiguous(self):
         with patch(
             "py4vasp._calculation.dispatch.schema_selections",
@@ -202,6 +192,17 @@ class TestParseSelections:
         ):
             result = _parse_selections("test_qty", "bar:baz(foo)")
         assert result == [SelectionContext("foo", "bar:baz")]
+
+    def test_explicit_default_groups_with_unnamed_source(self):
+        # a part without a source reads the default source, so both parts must end
+        # up in one context; otherwise their results share the key "default" and one
+        # silently overwrites the other
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections",
+            return_value=["default", "foo"],
+        ):
+            result = _parse_selections("test_qty", "default(bar), baz")
+        assert result == [SelectionContext("default", "bar, baz")]
 
     def test_selection_context_is_named_tuple(self):
         ctx = SelectionContext("source", "remainder")

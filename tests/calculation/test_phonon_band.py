@@ -130,11 +130,11 @@ def test_to_image(phonon_band):
 
 
 def check_to_image(phonon_band, filename_argument, expected_filename):
-    with patch.object(PhononBand, "to_plotly") as plot:
+    with patch.object(PhononBand, "plot") as plot:
         phonon_band.to_image("args", filename=filename_argument, key="word")
         plot.assert_called_once_with("args", key="word")
         fig = plot.return_value
-        fig.write_image.assert_called_once_with(phonon_band._path / expected_filename)
+        fig.to_image.assert_called_once_with(phonon_band._path / expected_filename)
 
 
 def test_selections(phonon_band):

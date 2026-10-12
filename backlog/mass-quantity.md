@@ -11,9 +11,8 @@ Turn `Mass` into a quantity:
 
 - `raw.Mass` linking `stoichiometry` (sources `default` and `phonon`, the primitive
   cell of the dispersion), plus the POMASS once VASP writes it to vaspout.h5;
-- `calculation.mass.read()` returning the element and mass of every atom, so a
-  site-specific substitution starts from `read()["masses"]`; `print` with one line
-  per ion type;
+- `calculation.mass.read()` returning the element and mass of every atom; `print`
+  with one line per ion type;
 - once POMASS is available, make it the default of `masses=` so py4vasp matches the
   OUTCAR without the user typing anything.
 

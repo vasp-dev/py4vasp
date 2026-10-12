@@ -128,6 +128,16 @@ def Assert():
     return _Assert
 
 
+@pytest.fixture
+def fake_home(tmp_path, monkeypatch):
+    "Make '~' expand to a new empty directory; Windows reads USERPROFILE, not HOME."
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    return home
+
+
 class RawDataFactory:
     @staticmethod
     def band(selection):
