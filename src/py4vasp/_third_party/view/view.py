@@ -370,7 +370,7 @@ class View:
     elements: npt.ArrayLike
     """Elements for all structures in the trajectory. Expected shape is (number of steps, number of ions)."""
     lattice_vectors: npt.ArrayLike
-    """Lattice vectors for all structures in the trajectory. Expected shape is (number of steps, 3, 3)."""
+    """Lattice vectors for all structures in the trajectory, one vector per row in Cartesian coordinates in Å. The scaling factor of the POSCAR is already applied, so the vectors span the actual cell. Expected shape is (number of steps, 3, 3)."""
     positions: npt.ArrayLike
     """Ion positions for all structures in the trajectory, in Direct coordinates. Expected shape is (number of steps, number of ions, 3)."""
     grid_scalars: Optional[Sequence[GridQuantity]] = None
