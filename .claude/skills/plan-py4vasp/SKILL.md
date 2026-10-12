@@ -91,8 +91,8 @@ function, method, class, property and CLI command the change adds or changes —
 Public API
   Structure.to_POSCAR(ion_types: list[str] | None = None, *,
                       supercell: int | ArrayLike | None = None) -> str   (changed)
-  ReactionPath.to_path(selection: str) -> Path                           (new)
-  py4vasp symmetrize FILE [--primitive] [--symprec FLOAT]                (new CLI)
+  Structure.to_cif(ion_types: list[str] | None = None) -> str            (new)
+  py4vasp symmetrize FILE [--standardize]                                (changed CLI)
 ```
 
 The chunks spread the API across several steps; this list is what the reviewer
@@ -126,13 +126,14 @@ coverage". Coverage is a property of every chunk, not a phase.
 
 ## 6. Present the plan, then stop
 
-Put the chunk list in the todo list, present it, and **wait for sign-off before
-any code is written.**
+Present the public API and the chunk list (the chunks go into the todo list),
+and **wait for sign-off before any code is written.**
 
 If **plan mode** is active, this chunk list *is* the plan you hand to
 `ExitPlanMode` — the public API, the ordered chunks with tests named, and the
-design decisions and open questions. Approval of the plan is the sign-off. Do not describe the
-tdd-py4vasp loop as a final step of the plan; it is how each chunk gets done.
+design decisions and open questions. Approval of the plan is the sign-off. Do not
+describe the tdd-py4vasp loop as a final step of the plan; it is how each chunk
+gets done.
 
 ## 7. Hand the chunks over
 

@@ -3,7 +3,7 @@ name: simulate-user-py4vasp
 description: >-
   Validate a py4vasp change from the outside by dispatching a subagent to
   role-play a user who may read only the documentation, never the source. Use
-  before pushing or opening a MR for anything that touches the user interface —
+  before pushing or opening a PR for anything that touches the user interface —
   a public method of a quantity class, a CLI command, or the docs — and whenever
   asked to "simulate a user", "test this like a user would", or "check the
   usability" of a py4vasp feature. Returns ranked findings, a verdict on whether
@@ -60,7 +60,7 @@ capability, never the command or method names:
 > you** — both for a band structure along the high-symmetry path and for a regular
 > k-mesh — and that it works from the command line as well as from Python.
 
-Derive that sentence from the MR description, not from the diff. If you catch
+Derive that sentence from the PR description, not from the diff. If you catch
 yourself writing `generate_kpath`, delete it.
 
 ## Step 2 — dispatch
@@ -163,8 +163,8 @@ implementation rather than the documentation. Re-dispatch a fresh agent.
 Present the report to the user and classify with them:
 
 - **Blockers** — anything that stopped the simulated user, and anything that
-  produced a silently wrong result. These are fixed before the MR.
-- **Documentation gaps** — fixed before the MR, or, if the gap is bigger than the
+  produced a silently wrong result. These are fixed before the PR.
+- **Documentation gaps** — fixed before the PR, or, if the gap is bigger than the
   change (a missing reference page for a whole interface, say), recorded in
   `backlog/` as a short markdown file.
 - **Annoyances** — fixed if cheap, otherwise recorded in the reviewer comment on
@@ -193,11 +193,11 @@ user should have known", the documentation is the thing that failed.
   method the docs never mention, and flagged that as borderline itself. Allow it,
   and treat "I only found this by tab-completion" as a documentation finding.
 - **Budget.** Expect roughly 25-30 tool calls, ~80 k tokens and a few minutes for
-  a two-command feature. Cheap next to the MR it validates.
+  a two-command feature. Cheap next to the PR it validates.
 
 ## Human path
 
 There is no app to launch — this is a workflow skill. The human equivalent is
-handing the branch to a colleague who has not read the code, with the MR summary
+handing the branch to a colleague who has not read the code, with the PR summary
 and nothing else, and asking them to use the feature and say where they got
 stuck.
