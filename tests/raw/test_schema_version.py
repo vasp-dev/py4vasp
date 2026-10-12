@@ -157,6 +157,15 @@ def test_fingerprint_records_why_the_counter_moved_without_a_model_change():
     assert "GPa" in changes["4"]
 
 
+def test_fingerprint_records_the_phonon_energies_moving_to_eV():
+    # the change landed while the counter was 2 and rode along with the bump to 3,
+    # which changed fields as well, so only this entry tells a consumer about it
+    change = models.schema_fingerprint()["changes"]["3"]
+    assert "PhononBandModel" in change
+    assert "PhononDosModel" in change
+    assert "eV instead of THz" in change
+
+
 def test_fingerprint_includes_all_models_but_not_the_base():
     model_names = models.schema_fingerprint()["models"]
     for name in (
