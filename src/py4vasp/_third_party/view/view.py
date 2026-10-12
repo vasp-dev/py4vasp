@@ -161,7 +161,8 @@ class IonArrow:
     color: str
     """Color with which the arrows should be drawn. For example, '#2FB5AB' or 'red'."""
     radius: float
-    """Radius of the arrows"""
+    """Radius of the arrows in Å, used by NGL only. VASP Viewer sizes the arrows from
+    their width mode and the Scale in its panel instead."""
 
 
 @dataclass
@@ -503,7 +504,6 @@ class View:
                     "label": arrow.label,
                     "quantity": self._convert_to_list(arrow.quantity),
                     "base_color": arrow.color,
-                    "base_radius": arrow.radius,
                 }
                 for arrow in self.ion_arrows
             ]

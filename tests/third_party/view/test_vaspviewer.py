@@ -271,31 +271,7 @@ def test_fail_isosurface(view):
 @pytest.mark.parametrize("is_structure", [True, False])
 def test_ion_arrows(is_structure, Assert):
     inputs = base_input_view(is_structure)
-    view = View(
-        **inputs,
-        ion_arrows=[
-            IonArrow(
-                np.random.rand(
-                    len(inputs["positions"]),
-                    len(inputs["positions"][0]),
-                    3,
-                ),
-                label="Magnetization",
-                color="#00FFFF",
-                radius=0.25,
-            ),
-            IonArrow(
-                np.random.rand(
-                    len(inputs["positions"]),
-                    len(inputs["positions"][0]),
-                    3,
-                ),
-                label="Velocities",
-                color="#84FF00",
-                radius=0.13,
-            ),
-        ],
-    )
+    view = View(**inputs, ion_arrows=_ion_arrows(inputs))
     state = view.to_vasp_viewer().get_state()
     for arrow_group_view, arrow_group_state in zip(
         view.ion_arrows, state["_ion_arrow_groups"]
@@ -307,7 +283,27 @@ def test_ion_arrows(is_structure, Assert):
         )
         assert arrow_group_view.label == arrow_group_state["label"]
         assert arrow_group_view.color == arrow_group_state["base_color"]
-        assert arrow_group_view.radius == arrow_group_state["base_radius"]
+
+
+def _ion_arrows(inputs):
+    shape = (len(inputs["positions"]), len(inputs["positions"][0]), 3)
+    return [
+        IonArrow(
+            np.random.rand(*shape), label="Magnetization", color="#00FFFF", radius=0.25
+        ),
+        IonArrow(
+            np.random.rand(*shape), label="Velocities", color="#84FF00", radius=0.13
+        ),
+    ]
+
+
+@pytest.mark.parametrize("is_structure", [True, False])
+def test_arrow_group_config_has_no_radius(is_structure):
+    # the radius sizes an arrow in NGL, VASP Viewer sizes it from its width mode instead
+    inputs = base_input_view(is_structure)
+    view = View(**inputs, ion_arrows=_ion_arrows(inputs))
+    for group in view.to_vasp_viewer_config()["ion_arrow_groups"]:
+        assert "base_radius" not in group
 
 
 @hasVaspView
