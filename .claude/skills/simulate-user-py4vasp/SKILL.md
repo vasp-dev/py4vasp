@@ -167,8 +167,9 @@ Present the report to the user and classify with them:
 - **Documentation gaps** — fixed before the MR, or, if the gap is bigger than the
   change (a missing reference page for a whole interface, say), recorded in
   `backlog/` as a short markdown file.
-- **Annoyances** — fixed if cheap, otherwise recorded in the PR message so the
-  human reviewer inherits them rather than rediscovering them.
+- **Annoyances** — fixed if cheap, otherwise recorded in the reviewer comment on
+  the PR (see push-py4vasp) so the human reviewer inherits them rather than
+  rediscovering them.
 
 Never fix a finding by editing only the report's wording. If the answer is "the
 user should have known", the documentation is the thing that failed.
