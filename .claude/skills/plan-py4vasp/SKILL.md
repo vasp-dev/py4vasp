@@ -81,7 +81,25 @@ remembers to chunk it.
   into two rounds; fewer than two and you likely do not need a plan at all —
   go straight to **tdd-py4vasp**.
 
-## 3. Write each chunk in this shape
+## 3. State the public API in one place
+
+Before the chunks, give a short `Public API` section listing every public
+function, method, class, property and CLI command the change adds or changes —
+**signatures with types only**, no prose and no implementation:
+
+```
+Public API
+  Structure.to_POSCAR(ion_types: list[str] | None = None, *,
+                      supercell: int | ArrayLike | None = None) -> str   (changed)
+  Structure.to_cif(ion_types: list[str] | None = None) -> str            (new)
+  py4vasp symmetrize FILE [--standardize]                                (changed CLI)
+```
+
+The chunks spread the API across several steps; this list is what the reviewer
+signs off on as the interface. If the change adds no public API, say so in one
+line.
+
+## 4. Write each chunk in this shape
 
 Numbered, and for every chunk state all four:
 
@@ -95,7 +113,7 @@ N. <behavior, one line>
 That `Also:` line is where py4vasp plans usually go wrong — see the facts
 below. If a chunk has no `Test:` line you have not finished planning it.
 
-## 4. The shape to avoid
+## 5. The shape to avoid
 
 Do **not** produce a plan that describes the implementation in full and then
 carries a trailing `## Tests` section listing the test files to add. That is an
@@ -106,17 +124,18 @@ tests belong *inside* each chunk, named before its implementation.
 Equally: no chunk whose description is "write the tests" or "add test
 coverage". Coverage is a property of every chunk, not a phase.
 
-## 5. Present the plan, then stop
+## 6. Present the plan, then stop
 
-Put the chunk list in the todo list, present it, and **wait for sign-off before
-any code is written.**
+Present the public API and the chunk list (the chunks go into the todo list),
+and **wait for sign-off before any code is written.**
 
 If **plan mode** is active, this chunk list *is* the plan you hand to
-`ExitPlanMode` — ordered chunks with tests named, plus the design decisions and
-open questions. Approval of the plan is the sign-off. Do not describe the
-tdd-py4vasp loop as a final step of the plan; it is how each chunk gets done.
+`ExitPlanMode` — the public API, the ordered chunks with tests named, and the
+design decisions and open questions. Approval of the plan is the sign-off. Do not
+describe the tdd-py4vasp loop as a final step of the plan; it is how each chunk
+gets done.
 
-## 6. Hand the chunks over
+## 7. Hand the chunks over
 
 Once approved, execute **one chunk at a time** with the **tdd-py4vasp** skill,
 starting at chunk 1 and returning to it for each subsequent chunk. Do not batch

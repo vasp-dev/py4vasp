@@ -12,9 +12,11 @@ It prints the decisions the push workflow needs:
   2. Whether a code review is required (any code changes present).
   3. Whether a user simulation is required (the diff touches the user
      interface: a public method of a quantity class, the CLI, or docs/).
-  4. A suggested descriptive branch name derived from the commit subjects.
-  5. The GitHub PR "compare" URL for origin.
-  6. A draft PR message (title + summary bullets) to copy/paste.
+  4. The backlog files the branch adds, deletes, or edits.
+  5. A suggested descriptive branch name derived from the commit subjects.
+  6. The GitHub PR "compare" URL for origin.
+  7. A draft PR message (title + summary bullets) to rewrite into the commit
+     message the squash merge will use.
 
 This tool decides nothing side-effectful. The agent orchestrates review,
 formatting, and the actual push per SKILL.md.
@@ -137,6 +139,21 @@ def user_interface_reasons(root, base, files):
     return reasons
 
 
+def backlog_changes(root, base, files):
+    """Label each changed backlog file as added, deleted, or edited."""
+    changes = []
+    for path in files:
+        if not path.startswith("backlog/"):
+            continue
+        if not (pathlib.Path(root) / path).is_file():
+            changes.append(f"deleted: {path}")
+        elif not git(root, "ls-tree", "--name-only", base, path):
+            changes.append(f"added  : {path}")
+        else:
+            changes.append(f"edited : {path}")
+    return changes
+
+
 def commit_subjects(root, base):
     log = git(root, "log", "--format=%s", f"{base}..HEAD")
     return [l for l in log.splitlines() if l.strip()]
@@ -226,22 +243,28 @@ def main():
     else:
         print("USER SIMULATION REQUIRED: NO - no public method, CLI, or docs change.")
 
-    print("\n" + "=" * 60 + "\n4. SUGGESTED BRANCH NAME\n" + "=" * 60)
+    print("\n" + "=" * 60 + "\n4. BACKLOG CHANGES\n" + "=" * 60)
+    backlog = backlog_changes(root, base, files)
+    print(*(["  " + change for change in backlog] or ["  (none)"]), sep="\n")
+    print("  (Is the backlog item this work came from deleted or trimmed? Any")
+    print("  follow-ups to record? See Step 3 of SKILL.md.)")
+
+    print("\n" + "=" * 60 + "\n5. SUGGESTED BRANCH NAME\n" + "=" * 60)
     print(f"  {branch}")
     print("  (Derive a fresh descriptive name; refine this if it misses the point.)")
 
-    print("\n" + "=" * 60 + "\n5. PR COMPARE URL (origin)\n" + "=" * 60)
+    print("\n" + "=" * 60 + "\n6. PR COMPARE URL (origin)\n" + "=" * 60)
     print(f"  {compare_url}")
     print("  (Replace the branch segment if you push under a different name.)")
 
-    print("\n" + "=" * 60 + "\n6. DRAFT PR MESSAGE\n" + "=" * 60)
+    print("\n" + "=" * 60 + "\n7. DRAFT PR MESSAGE\n" + "=" * 60)
+    print("(Becomes the squash commit: rewrite into a summary of the change;")
+    print("verification and reviewer notes go into a PR comment.)\n")
     title = subjects[0] if subjects else branch
     print(f"Title: {title}\n")
     print("## Summary")
     for s in subjects or ["(no commits ahead of base — describe the change)"]:
         print(f"- {s}")
-    print("\n## Notes")
-    print('- Mention the related issue (e.g. "Fixes #123").')
     return 0
 
 
