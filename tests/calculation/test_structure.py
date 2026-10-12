@@ -783,10 +783,9 @@ def test_is_available_default_and_other_methods(perovskite, raw_data):
     assert without_symmetry.is_available("default", method="to_view") is True
 
 
-def test_is_available_only_reports_selectable_sources(tmp_path):
-    """The extra structure sources exist for other quantities that link to them, but
-    no Structure method takes a source selection. Even with the data present they are
-    therefore reported as unavailable instead of promising access that is not there."""
+def test_is_available_reports_every_source(tmp_path, Assert):
+    """Every Structure method takes a source selection, so a source is available
+    whenever its data is present."""
     import h5py
 
     import py4vasp
@@ -800,12 +799,13 @@ def test_is_available_only_reports_selectable_sources(tmp_path):
     sources = ["default", "final", "exciton", "poscar"]
     assert structure.is_available(sources) == {
         "default": False,  # no intermediate/ion_dynamics data in this file
-        "final": False,
+        "final": True,
         "exciton": False,
-        "poscar": False,
+        "poscar": True,
     }
-    # the data of the unselectable sources is present -- the database collection that
-    # accesses the sources internally still picks it up
+    Assert.allclose(
+        structure.lattice_vectors("final"), structure.lattice_vectors("poscar")
+    )
     assert set(structure._to_database()["structure"]) == {"final"}
 
 
@@ -1454,3 +1454,76 @@ def test_to_POSCAR_supercell_is_keyword_only(Sr2TiO4):
     # the first positional argument is ion_types, so a number there is a mistake
     with pytest.raises(TypeError):
         Sr2TiO4.to_POSCAR(2)
+
+
+@pytest.fixture(scope="module")
+def demo_structure(tmp_path_factory):
+    from py4vasp import demo
+
+    path = tmp_path_factory.mktemp("structure") / "example"
+    return demo.calculation(path).structure
+
+
+@pytest.mark.parametrize(
+    "method", ["lattice_vectors", "positions", "volume", "number_atoms"]
+)
+def test_accessor_selects_source(demo_structure, method, Assert):
+    default = getattr(demo_structure, method)()
+    Assert.allclose(getattr(demo_structure, method)("default"), default)
+    phonon = getattr(demo_structure, method)("phonon")
+    assert np.shape(phonon) == np.shape(default)
+    with pytest.raises(exception.IncorrectUsage):
+        getattr(demo_structure, method)("unknown_source")
+
+
+def test_read_selects_source(demo_structure):
+    phonon = demo_structure.read(selection="phonon")
+    assert phonon["names"] == demo_structure.read()["names"]
+    both = demo_structure.read(selection="default, phonon")
+    assert both.keys() == {"default", "phonon"}
+    # ion_types keeps its position, so existing positional calls do not change
+    renamed = demo_structure.read(["A", "B", "C"], "phonon")
+    assert renamed["names"][0].startswith("A")
+
+
+@pytest.mark.parametrize("method", ["read", "to_dict", "to_POSCAR"])
+def test_source_passed_as_ion_types_is_rejected(demo_structure, method):
+    # ion_types comes first for compatibility, so a positional source lands there
+    with pytest.raises(exception.IncorrectUsage, match="selection="):
+        getattr(demo_structure, method)("exciton")
+
+
+def test_step_out_of_range_for_selected_source(demo_structure):
+    # the default trajectory has more steps than the exciton one
+    assert demo_structure[10].positions().shape == (7, 3)
+    with pytest.raises(exception.IncorrectUsage):
+        demo_structure[10].positions("exciton")
+
+
+def test_steps_of_single_structure_source(demo_structure, Assert):
+    # a single structure behaves like a trajectory with one step
+    single = demo_structure.positions("phonon")
+    Assert.allclose(demo_structure[0].positions("phonon"), single)
+    with pytest.raises(exception.IncorrectUsage):
+        demo_structure[1:3].positions("phonon")
+    with pytest.raises(exception.IncorrectUsage):
+        demo_structure[5].positions("phonon")
+
+
+def test_phonon_source_is_a_single_structure(demo_structure):
+    # the primitive cell of a phonon calculation is one frame for cell and positions
+    assert demo_structure[:].lattice_vectors("phonon").shape == (3, 3)
+    poscar = demo_structure.to_POSCAR(selection="phonon")
+    assert poscar.splitlines()[5].split() == ["Sr", "Ti", "O"]
+
+
+def test_exporters_select_source(demo_structure):
+    poscar = demo_structure.to_POSCAR(selection="exciton")
+    assert poscar.splitlines()[5].split() == ["Sr", "Ti", "O"]
+    assert demo_structure.to_view(2, selection="exciton") is not None
+
+
+def test_other_sources_are_available(demo_structure):
+    assert demo_structure.is_available("phonon") is True
+    assert demo_structure.is_available("exciton") is True
+    assert demo_structure.is_available("poscar") is False

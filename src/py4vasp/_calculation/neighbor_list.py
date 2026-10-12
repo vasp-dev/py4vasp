@@ -388,7 +388,7 @@ class NeighborList:
             NeighborListHandler.selections,
         )
 
-    def to_string(self, cutoff=_DEFAULT_CUTOFF) -> str:
+    def to_string(self, cutoff=_DEFAULT_CUTOFF, selection: str | None = None) -> str:
         """Render the nearest-neighbor table up to *cutoff*.
 
         This is the string produced by ``print`` (which uses the default cutoff);
@@ -398,6 +398,11 @@ class NeighborList:
         ----------
         cutoff : float
             The neighbor cutoff radius in Å.
+
+        selection : str | None
+            Select the source of the structure, e.g. ``"final"`` for the structure at
+            the end of the run. :py:meth:`selections` lists all sources and
+            :py:meth:`is_available` the ones this calculation contains.
 
         Returns
         -------
@@ -423,7 +428,7 @@ class NeighborList:
         return merge_strings(
             self._source,
             _DATA_QUANTITY,
-            None,
+            selection,
             self._handler_factory,
             NeighborListHandler.to_string,
             cutoff,

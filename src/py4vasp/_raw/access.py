@@ -68,8 +68,11 @@ class _State:
         path = self._path / pathlib.Path(filename)
         if source.data is not None:
             return self._access_data_from_hdf5(quantity, source, path)
-        else:
+        try:
             return source.data_factory(path)
+        except FileNotFoundError:
+            message = f"{path} could not be opened. Please make sure the file exists."
+            raise exception.FileAccessError(message) from None
 
     def _get_source(self, quantity, source):
         source = source or DEFAULT_SOURCE

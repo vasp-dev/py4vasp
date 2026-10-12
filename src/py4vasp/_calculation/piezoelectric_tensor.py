@@ -261,13 +261,19 @@ class PiezoelectricTensor:
         """Create a PiezoelectricTensor dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_piezoelectric_tensor))
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the ionic and electronic contribution to the piezoelectric tensor
         into a dictionary.
 
         It will combine both terms as the total piezoelectric tensor (relaxed_ion)
         but also give the pure electronic contribution, so that you can separate the
         parts.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -277,14 +283,14 @@ class PiezoelectricTensor:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             PiezoelectricTensorHandler.from_data,
             PiezoelectricTensorHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
@@ -303,6 +309,8 @@ class PiezoelectricTensor:
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------

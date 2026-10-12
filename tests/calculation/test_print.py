@@ -37,11 +37,16 @@ def test_every_quantity_defines(cls, method):
 
 
 @pytest.mark.parametrize("cls", CLASSES, ids=IDS)
-def test_str_takes_an_optional_selection(cls):
-    # print forwards its selection to __str__, so every quantity must accept one
+def test_str_takes_an_optional_selection_if_print_does(cls):
+    # print forwards its selection to __str__; whether print takes one at all is
+    # decided in test_selection_convention.py
+    print_parameter = inspect.signature(cls.print).parameters.get("selection")
     parameter = inspect.signature(cls.__str__).parameters.get("selection")
-    assert parameter is not None, f"{cls.__name__}.__str__ takes no selection"
-    assert parameter.default is None
+    if print_parameter is None:
+        assert parameter is None, f"{cls.__name__}.__str__ takes an unused selection"
+    else:
+        assert parameter is not None, f"{cls.__name__}.__str__ takes no selection"
+        assert parameter.default is None
 
 
 def _public_quantities():

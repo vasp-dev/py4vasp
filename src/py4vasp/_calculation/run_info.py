@@ -237,19 +237,26 @@ class RunInfo:
         """Create a RunInfo dispatcher from raw data (convenience for testing)."""
         return cls(source=DataSource(raw_run_info))
 
-    def read(self) -> dict:
-        "Convert the run information to a dictionary."
+    def read(self, selection: str | None = None) -> dict:
+        """Convert the run information to a dictionary.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             RunInfoHandler.from_data,
             RunInfoHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
@@ -268,6 +275,8 @@ class RunInfo:
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------

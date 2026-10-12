@@ -162,7 +162,17 @@ def _parse_selections(quantity_name, selection):
         # names the default explicitly; both results would be stored as "default"
         unnamed = grouped.pop(None)
         named = grouped[DEFAULT_SELECTION]
-        grouped[DEFAULT_SELECTION] = [part for part in named + unnamed if part]
+        if [] in named:
+            # a bare "default" asks for the default of the handler, which cannot be
+            # written next to another part; dropping it would lose that result
+            message = (
+                f"The selection '{selection}' asks for the default source twice, once "
+                "without further selection. Please name what you want from the "
+                "default source explicitly, e.g. 'default(1, 2)' instead of "
+                "'default, 2'."
+            )
+            raise exception.IncorrectUsage(message)
+        grouped[DEFAULT_SELECTION] = named + unnamed
     result = []
     for source_name, remaining_list in grouped.items():
         if remaining_list == [[]]:
@@ -436,8 +446,10 @@ def _dispatch(
                 "which sources exist."
             )
             raise exception.IncorrectUsage(message)
+        # a quantity without a default source uses its sole source, as is_available
+        selection_name = _effective_source(quantity_name, ctx.selection_name)
         try:
-            with source.access(quantity_name, selection=ctx.selection_name) as raw:
+            with source.access(quantity_name, selection=selection_name) as raw:
                 handler = handler_factory(raw)
                 if handler_wants_selection:
                     if ctx.remaining_selection is None and selection_has_default:
@@ -453,7 +465,7 @@ def _dispatch(
         except exception._DatasetNotFound:
             # The generic error only says that some data is absent. A source that
             # suppresses errors (database collection) never gets here.
-            message = _explain_missing_data(source, quantity_name, ctx.selection_name)
+            message = _explain_missing_data(source, quantity_name, selection_name)
             if message is None:
                 raise
             raise exception.NoData(message) from None

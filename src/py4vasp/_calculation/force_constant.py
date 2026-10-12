@@ -247,6 +247,8 @@ class ForceConstant:
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -270,7 +272,7 @@ class ForceConstant:
             ForceConstantHandler.__str__,
         )
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read structure information and force constants into a dictionary.
 
         The structural information is added to inform about which atoms are included
@@ -278,6 +280,12 @@ class ForceConstant:
         energy with respect to atomic displacement for all atoms and directions in
         eV/Å². Note that this is the negative of the array VASP stores, see the class
         documentation for the sign convention.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -287,21 +295,27 @@ class ForceConstant:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             ForceConstantHandler.from_data,
             ForceConstantHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
-    def eigenvectors(self):
+    def eigenvectors(self, selection: str | None = None):
         """Compute the eigenvectors of the force constant matrix.
 
         The eigenvectors are the ones of the force constants themselves; the masses of
         the atoms are not taken into account, so these are not the normal modes of the
         system. :py:meth:`eigenvalues` returns the corresponding eigenvalues.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -313,7 +327,7 @@ class ForceConstant:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             ForceConstantHandler.from_data,
             ForceConstantHandler.eigenvectors,
         )
@@ -514,7 +528,7 @@ class ForceConstant:
             masses,
         )
 
-    def to_molden(self, masses=None) -> str:
+    def to_molden(self, masses=None, selection: str | None = None) -> str:
         """Convert the normal modes into molden format to animate them in a viewer.
 
         The file lists the frequency of every mode in cm⁻¹, the positions of the atoms
@@ -538,6 +552,10 @@ class ForceConstant:
             range over an element, whatever the order of the dictionary. Every other
             atom keeps the default, the standard atomic weight of its element listed in
             :py:attr:`~py4vasp._calculation.mass.Mass.STANDARD_ATOMIC_WEIGHTS`.
+
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -575,7 +593,7 @@ class ForceConstant:
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             ForceConstantHandler.from_data,
             ForceConstantHandler.to_molden,
             masses,

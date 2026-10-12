@@ -373,7 +373,7 @@ class Symmetry:
             SymmetryHandler.read,
         )
 
-    def to_dict(self, selection: str | None = None) -> dict:
+    def to_dict(self) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read()
 
@@ -504,16 +504,9 @@ class Symmetry:
             SymmetryHandler.pearson_symbol,
         )
 
-    def print(self, selection: str | None = None) -> None:
-        """Print a string representation of this quantity.
-
-        Parameters
-        ----------
-        selection : str | None
-            Select which source of the quantity is printed. If you select multiple
-            sources, py4vasp prints one block per source.
-        """
-        print(self.__str__(selection))
+    def print(self) -> None:
+        """Print a string representation of this quantity."""
+        print(str(self))
 
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
@@ -521,6 +514,8 @@ class Symmetry:
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -532,11 +527,11 @@ class Symmetry:
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             self._handler_factory,
             SymmetryHandler.__str__,
         )

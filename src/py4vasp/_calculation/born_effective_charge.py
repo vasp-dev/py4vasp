@@ -168,6 +168,8 @@ class BornEffectiveCharge:
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -236,7 +238,7 @@ class BornEffectiveCharge:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection)
 
-    def to_INCAR(self, selection: str | None = None) -> str:
+    def to_INCAR(self) -> str:
         """Format the Born effective charges as the PHON_BORN_CHARGES tag of an INCAR file.
 
         A phonon calculation of a polar material needs the Born effective charges to
@@ -259,12 +261,6 @@ class BornEffectiveCharge:
         calculation and stops if the number of ions does not match. So compute the
         Born effective charges for the primitive cell, and build the supercell of the
         phonon calculation from that same POSCAR so that the order of the ions agrees.
-
-        Parameters
-        ----------
-        selection : str | None
-            Select the source of the Born effective charges, if VASP produced more than
-            one. Most calculations only have the default source.
 
         Returns
         -------
@@ -293,7 +289,7 @@ class BornEffectiveCharge:
         return merge_default(
             self._source,
             self._quantity_name,
-            selection,
+            None,
             BornEffectiveChargeHandler.from_data,
             BornEffectiveChargeHandler.to_INCAR,
         )

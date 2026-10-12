@@ -229,8 +229,8 @@ def test_factory_methods(raw_data, check_factory_methods):
 
 
 def test_is_available(tmp_path):
-    """Only the methods taking a selection can reach the "nmr" source; read and
-    __str__ ask for the default source that current_density does not define."""
+    """current_density has no default source, so without a selection every method
+    uses its sole source "nmr", as is_available does."""
     from py4vasp import demo
 
     calc = demo.calculation(tmp_path / "example")
@@ -238,7 +238,18 @@ def test_is_available(tmp_path):
     for method in ("to_contour", "to_quiver"):
         assert current_density.is_available("nmr", method=method) is True
         assert getattr(current_density, method)("nmr", a=0) is not None
-    assert current_density.is_available("nmr") is False
-    assert current_density.is_available("nmr", method="read") is False
-    with pytest.raises(exception.Py4VaspError):
-        current_density.read()
+        assert getattr(current_density, method)(a=0) is not None
+    assert current_density.is_available("nmr") is True
+    assert current_density.is_available() is True
+    assert current_density.read().keys() == current_density.read("nmr").keys()
+    assert "current density" in str(current_density)
+
+
+@pytest.mark.parametrize("method", ["read", "to_dict"])
+def test_read_nmr(tmp_path, method):
+    from py4vasp import demo
+
+    current_density = demo.calculation(tmp_path / "example").current_density
+    actual = getattr(current_density, method)("nmr")
+    assert "structure" in actual
+    assert any(key.startswith("current_") for key in actual)

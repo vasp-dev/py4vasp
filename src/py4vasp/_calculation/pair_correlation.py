@@ -296,8 +296,14 @@ class PairCorrelation(graph.Mixin):
             PairCorrelationHandler.to_graph,
         )
 
-    def labels(self) -> tuple:
+    def labels(self, selection: str | None = None) -> tuple:
         """Return all possible labels for the selection string.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Examples
         --------
@@ -313,7 +319,7 @@ class PairCorrelation(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PairCorrelationHandler.labels,
         )
@@ -335,6 +341,8 @@ class PairCorrelation(graph.Mixin):
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------

@@ -419,7 +419,7 @@ class EffectiveCoulomb(graph.Mixin):
             return len(raw_data.frequencies) > 1
         return True
 
-    def read(self) -> dict[str, np.ndarray]:
+    def read(self, selection: str | None = None) -> dict[str, np.ndarray]:
         """Convert the effective Coulomb object to a dictionary representation.
 
         The integrals are evaluated over 4 Wannier functions. For the bare Coulomb
@@ -429,6 +429,12 @@ class EffectiveCoulomb(graph.Mixin):
         values than the bare Coulomb potential. If you set :tag:`TWO_CENTER` = `.TRUE.`
         in the INCAR file, the Coulomb interactions are evaluated also at neighboring
         cells.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -441,14 +447,14 @@ class EffectiveCoulomb(graph.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             EffectiveCoulombHandler.to_dict,
         )
 
-    def to_dict(self) -> dict[str, np.ndarray]:
+    def to_dict(self, selection: str | None = None) -> dict[str, np.ndarray]:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
     def to_graph(
         self,

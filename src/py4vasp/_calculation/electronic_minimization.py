@@ -426,12 +426,19 @@ class ElectronicMinimization(graph.Mixin):
             ElectronicMinimizationHandler.to_graph,
         )
 
-    def is_converged(self) -> np.ndarray:
-        """Return whether the electronic minimization converged."""
+    def is_converged(self, selection: str | None = None) -> np.ndarray:
+        """Return whether the electronic minimization converged.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ElectronicMinimizationHandler.is_converged,
         )
@@ -453,6 +460,8 @@ class ElectronicMinimization(graph.Mixin):
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------

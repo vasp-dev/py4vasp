@@ -300,7 +300,7 @@ class LocalMoment(view.Mixin):
     >>> calculation = demo.calculation(selection="collinear")
 
     If you access the local moments, the result will depend on the steps that you
-    selected with the [] operator. Without any selection the results from the final
+    selected with the [] operator. Without selected steps the results from the final
     step will be used.
 
     >>> calculation.local_moment.number_steps()
@@ -373,12 +373,18 @@ class LocalMoment(view.Mixin):
         p.text(str(self) if not cycle else "...")
 
     @documentation.format(index_note=_index_note)
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the charges and magnetization data into a dictionary.
 
         Be careful when comparing the magnetic moments to experimental data. The
         finite size of the projection sphere may influence the observed moments. Hence,
         there is no one-to-one correspondence to the experimental moments.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -399,7 +405,7 @@ class LocalMoment(view.Mixin):
         >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `read` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> collinear_calculation.local_moment.read()
@@ -434,14 +440,14 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.to_dict,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
     @documentation.format(selection=_moment_selection)
     def to_view(self, selection="total", supercell=None):
@@ -475,7 +481,7 @@ class LocalMoment(view.Mixin):
         >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `to_view` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> collinear_calculation.local_moment.to_view()
@@ -518,8 +524,14 @@ class LocalMoment(view.Mixin):
             supercell,
         )
 
-    def projected_charge(self):
+    def projected_charge(self, selection: str | None = None):
         """Read the orbital- and site-projected charges of the selected steps.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -536,7 +548,7 @@ class LocalMoment(view.Mixin):
         >>> calculation = demo.calculation(selection="collinear")
 
         If you use the `projected_charge` method, the result will depend on the steps
-        that you selected with the [] operator. Without any selection the results from
+        that you selected with the [] operator. Without selected steps the results from
         the final step will be used.
 
         >>> calculation.local_moment.projected_charge()
@@ -552,7 +564,7 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.projected_charge,
         )
@@ -584,7 +596,7 @@ class LocalMoment(view.Mixin):
         >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `projected_magnetic` method, the result will depend on the steps
-        that you selected with the [] operator. Without any selection the results from
+        that you selected with the [] operator. Without selected steps the results from
         the final step will be used.
 
         >>> collinear_calculation.local_moment.projected_magnetic()
@@ -622,8 +634,14 @@ class LocalMoment(view.Mixin):
             LocalMomentHandler.projected_magnetic,
         )
 
-    def charge(self):
+    def charge(self, selection: str | None = None):
         """Read the site-projected charges of the selected steps.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -641,7 +659,7 @@ class LocalMoment(view.Mixin):
         >>> calculation = demo.calculation(selection="collinear")
 
         If you use the `charge` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.local_moment.charge()
@@ -663,7 +681,7 @@ class LocalMoment(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.charge,
         )
@@ -699,7 +717,7 @@ class LocalMoment(view.Mixin):
         >>> noncollinear_calculation = demo.calculation(selection="noncollinear")
 
         If you use the `magnetic` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> collinear_calculation.local_moment.magnetic()
@@ -757,12 +775,19 @@ class LocalMoment(view.Mixin):
         sources = list(raw_module.selections(self._quantity_name))
         return {self._quantity_name: sources, **handler_selections}
 
-    def number_steps(self) -> int:
-        """Return the number of local moments in the trajectory."""
+    def number_steps(self, selection: str | None = None) -> int:
+        """Return the number of local moments in the trajectory.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             LocalMomentHandler.number_steps,
         )

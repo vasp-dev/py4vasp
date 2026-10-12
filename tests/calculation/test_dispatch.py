@@ -135,6 +135,14 @@ class TestParseSelections:
             result = _parse_selections("test_qty", "bar(baz)")
         assert result == [SelectionContext(None, "bar(baz)")]
 
+    def test_bare_default_with_implicit_default_is_ambiguous(self):
+        with patch(
+            "py4vasp._calculation.dispatch.schema_selections",
+            return_value=["default", "foo"],
+        ):
+            with pytest.raises(exception.IncorrectUsage):
+                _parse_selections("test_qty", "default, baz")
+
     def test_multiple_children_are_grouped(self):
         # "foo(bar,baz)" yields two tuples from Tree that both resolve to source
         # "foo"; they must be grouped into one SelectionContext.
@@ -1455,8 +1463,9 @@ class TestIsAvailableInjected:
 
     def test_selection_list_returns_dict(self, tmp_path):
         calc = self._calc(tmp_path)
-        result = calc.structure.is_available(["default", "final"])
-        assert result == {"default": True, "final": False}
+        # the demo calculation writes no POSCAR file
+        result = calc.structure.is_available(["default", "poscar"])
+        assert result == {"default": True, "poscar": False}
 
     def test_selection_list_applies_method_per_source(self, tmp_path):
         calc = self._calc(tmp_path)

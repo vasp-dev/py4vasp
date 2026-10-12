@@ -11,6 +11,7 @@ from py4vasp import raw as raw_module
 from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
+    _parse_selections,
     is_available_raw,
     merge_default,
     merge_strings,
@@ -18,6 +19,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
+from py4vasp._raw.schema import DEFAULT_SELECTION
 from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
@@ -62,7 +64,7 @@ class DensityHandler:
         return cls(raw_density, selection_name=selection_name)
 
     def __str__(self) -> str:
-        _raise_error_if_no_data(self._raw_density.charge)
+        _raise_error_if_no_data(self._raw_density.charge, self._selection_name)
         grid = self._raw_density.charge.shape[1:]
         raw_stoichiometry = self._raw_density.structure.stoichiometry
         stoichiometry = _stoichiometry.Stoichiometry.from_data(raw_stoichiometry)
@@ -79,7 +81,7 @@ class DensityHandler:
     grid: {grid[2]}, {grid[1]}, {grid[0]}"""
 
     def to_dict(self) -> dict:
-        _raise_error_if_no_data(self._raw_density.charge)
+        _raise_error_if_no_data(self._raw_density.charge, self._selection_name)
         result = {"structure": self._structure().to_dict()}
         result.update(self._read_density())
         return result
@@ -100,15 +102,15 @@ class DensityHandler:
 
     def to_view(
         self,
-        component: Optional[str] = None,
+        selection: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ) -> view.View:
-        _raise_error_if_no_data(self._raw_density.charge)
+        _raise_error_if_no_data(self._raw_density.charge, self._selection_name)
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_density.charge)
-        component = component or _INTERNAL
-        tree = select.Tree.from_selection(component)
+        selection = selection or _INTERNAL
+        tree = select.Tree.from_selection(selection)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
         structure_handler = self._structure()
         viewer = structure_handler.to_view(supercell)
@@ -127,7 +129,7 @@ class DensityHandler:
 
     def to_contour(
         self,
-        component: Optional[str] = None,
+        selection: Optional[str] = None,
         *,
         a: Optional[float] = None,
         b: Optional[float] = None,
@@ -137,8 +139,8 @@ class DensityHandler:
     ) -> graph.Graph:
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_density.charge)
-        component = component or _INTERNAL
-        tree = select.Tree.from_selection(component)
+        selection = selection or _INTERNAL
+        tree = select.Tree.from_selection(selection)
         selections = list(self._filter_noncollinear_magnetization_from_selections(tree))
         visualizer = Visualizer(self._structure())
         dataDict = {
@@ -158,6 +160,13 @@ class DensityHandler:
         normal: Optional[str] = None,
         supercell: Optional[Union[int, np.ndarray]] = None,
     ) -> graph.Graph:
+        if self.is_nonpolarized():
+            message = (
+                "A quiver plot shows the magnetization, but the density is not spin "
+                "polarized. Run VASP with ISPIN = 2 or a noncollinear calculation, or "
+                "use to_contour to plot the density."
+            )
+            raise exception.NoData(message)
         if self.is_collinear():
             data = self._raw_density.charge[1].T
         else:
@@ -180,6 +189,7 @@ class DensityHandler:
     @property
     def _selection(self):
         selection_map = {
+            "tau": "kinetic_energy",
             "kinetic_energy": "kinetic_energy",
             "kinetic_energy_density": "kinetic_energy",
         }
@@ -372,6 +382,30 @@ class Density(view.Mixin):
     def _handler_factory(self, raw):
         return DensityHandler.from_data(raw, selection_name=self._selection_name)
 
+    def _merge_by_source(self, selection, method, **kwargs):
+        # The handler labels the density by its source, so dispatch every selected
+        # source through self[source] instead of passing the selection on directly.
+        # A selection naming only components keeps the source chosen by indexing.
+        results = {}
+        for context in _parse_selections(self._quantity_name, selection):
+            source = context.selection_name or self._selection_name
+            selection_of_source = source
+            if context.remaining_selection is not None:
+                remaining = context.remaining_selection
+                selection_of_source = f"{source}({remaining})" if source else remaining
+            density = self[source]
+            results[source or DEFAULT_SELECTION] = merge_default(
+                density._source,
+                density._quantity_name,
+                selection_of_source,
+                density._handler_factory,
+                method,
+                **kwargs,
+            )
+        if len(results) == 1:
+            return next(iter(results.values()))
+        return results
+
     def _is_available(self, raw_data, selection=None, method=None) -> bool:
         # to_quiver visualizes the magnetization, which only exists for collinear or
         # noncollinear calculations (the leading dimension of charge is 2 or 4).
@@ -404,15 +438,17 @@ class Density(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the density into a dictionary.
 
         Parameters
         ----------
-        selection : str
+        selection : str | None
             VASP computes different densities depending on the INCAR settings. With this
-            parameter, you can control which one of them is returned. Please use the
-            `selections` routine to get a list of all possible choices.
+            parameter, you can control which one of them is returned, e.g.
+            ``"kinetic_energy"``; it takes precedence over a source chosen by indexing
+            like ``density["tau"]``. Please use the `selections` routine to get a list
+            of all possible choices.
 
         Returns
         -------
@@ -420,17 +456,11 @@ class Density(view.Mixin):
             Contains the structure information as well as the density represented
             on a grid in the unit cell.
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.to_dict,
-        )
+        return self._merge_by_source(selection, DensityHandler.to_dict)
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
     @documentation.format(
         component0=_join_with_emphasis(_COMPONENTS[0]),
@@ -502,25 +532,25 @@ class Density(view.Mixin):
         result["density"] = list(raw_module.selections(self._quantity_name))
         return result
 
-    def to_numpy(self):
+    def to_numpy(self, selection: str | None = None):
         """Convert the density to a numpy array.
 
         The number of components is 1 for nonpolarized calculations, 2 for collinear
         calculations, and 4 for noncollinear calculations. Each component is 3
         dimensional according to the grid VASP uses for the FFTs.
 
+        Parameters
+        ----------
+        selection : str | None
+            Select which density VASP computed is converted, e.g. ``"kinetic_energy"``.
+            It takes precedence over a source chosen by indexing like ``density["tau"]``.
+
         Returns
         -------
         np.ndarray
             All components of the selected density.
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.to_numpy,
-        )
+        return self._merge_by_source(selection, DensityHandler.to_numpy)
 
     def to_view(
         self,
@@ -537,7 +567,8 @@ class Density(view.Mixin):
             should be visualized.  For a noncollinear calculation, the density has
             4 components which can be represented in a 2x2 matrix. Specify the
             component of the density in terms of the Pauli matrices: sigma_1,
-            sigma_2, sigma_3.
+            sigma_2, sigma_3. You can also select which density VASP computed, e.g.
+            ``"kinetic_energy"``, or both at once like ``"kinetic_energy(3)"``.
 
         supercell : int | np.ndarray | None = None
             If present the data is replicated the specified number of times along each
@@ -571,15 +602,8 @@ class Density(view.Mixin):
 
         >>> calculation.density.plot("m(3)")
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.to_view,
-            selection,
-            supercell=supercell,
-            **user_options,
+        return self._merge_by_source(
+            selection, DensityHandler.to_view, supercell=supercell, **user_options
         )
 
     @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
@@ -600,8 +624,10 @@ class Density(view.Mixin):
         Parameters
         ----------
         selection : str | None = None
-            Select which component of the density you want to visualize. Please use the
-            `selections` method to get all available choices.
+            Select which component of the density you want to visualize, which
+            density VASP computed, e.g. ``"kinetic_energy"``, or both at once like
+            ``"kinetic_energy(3)"``. Please use the `selections` method to get all
+            available choices.
 
         {common_parameters}
 
@@ -629,13 +655,9 @@ class Density(view.Mixin):
 
         >>> calculation.density.to_contour("kinetic_energy", a=0.3, normal="x")
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.to_contour,
+        return self._merge_by_source(
             selection,
+            DensityHandler.to_contour,
             a=a,
             b=b,
             c=c,
@@ -646,6 +668,7 @@ class Density(view.Mixin):
     @documentation.format(plane=slicing.PLANE, common_parameters=_COMMON_PARAMETERS)
     def to_quiver(
         self,
+        selection: Optional[str] = None,
         *,
         a: Optional[float] = None,
         b: Optional[float] = None,
@@ -663,6 +686,10 @@ class Density(view.Mixin):
 
         Parameters
         ----------
+        selection : str | None = None
+            Select which density VASP computed is shown, e.g. ``"kinetic_energy"``.
+            It takes precedence over a source chosen by indexing like ``density["tau"]``.
+
         {common_parameters}
 
         Returns
@@ -689,11 +716,8 @@ class Density(view.Mixin):
 
         >>> calculation.density.to_quiver("kinetic_energy", a=0.3, normal="x")
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
+        return self._merge_by_source(
+            selection,
             DensityHandler.to_quiver,
             a=a,
             b=b,
@@ -704,33 +728,15 @@ class Density(view.Mixin):
 
     def is_nonpolarized(self, selection=None):
         "Returns whether the density is not spin polarized."
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.is_nonpolarized,
-        )
+        return self._merge_by_source(selection, DensityHandler.is_nonpolarized)
 
     def is_collinear(self, selection=None):
         "Returns whether the density has a collinear magnetization."
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.is_collinear,
-        )
+        return self._merge_by_source(selection, DensityHandler.is_collinear)
 
     def is_noncollinear(self, selection=None):
         "Returns whether the density has a noncollinear magnetization."
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            self._selection_name,
-            self._handler_factory,
-            DensityHandler.is_noncollinear,
-        )
+        return self._merge_by_source(selection, DensityHandler.is_noncollinear)
 
     def bader_analysis(self, selection=None, *, snap_to_atoms=True):
         """Partition the selected density into atomic Bader basins.
@@ -819,12 +825,19 @@ def _raise_is_collinear_error():
     raise exception.NoData(msg)
 
 
-def _raise_error_if_no_data(data):
-    if data.is_none():
+def _raise_error_if_no_data(data, selection_name=None):
+    if not data.is_none():
+        return
+    if selection_name == "all_electron":
+        # unlike the other densities, the all-electron density is in vaspout.h5
         raise exception.NoData(
-            "Density data was not found. Note that the density information is written "
-            "on the demand to a different file (vaspwave.h5). Please make sure that "
-            "this file exists and LCHARGH5 = T is set in the INCAR file. Another "
-            'common issue is when you create `Calculation.from_file("vaspout.h5")` '
-            "because this will overwrite the default file behavior."
+            "The all-electron density was not found in vaspout.h5. Please use "
+            "`is_available` to check which densities this calculation contains."
         )
+    raise exception.NoData(
+        "Density data was not found. Note that the density information is written "
+        "on the demand to a different file (vaspwave.h5). Please make sure that "
+        "this file exists and LCHARGH5 = T is set in the INCAR file. Another "
+        'common issue is when you create `Calculation.from_file("vaspout.h5")` '
+        "because this will overwrite the default file behavior."
+    )

@@ -429,6 +429,8 @@ class PartialDensity(view.Mixin):
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -457,8 +459,14 @@ class PartialDensity(view.Mixin):
         """Return the default STM settings."""
         return self.STM_settings()
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Store the partial charges in a dictionary.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -469,48 +477,80 @@ class PartialDensity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.to_dict,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
-    def grid(self):
+    def grid(self, selection: str | None = None):
+        """Return the number of grid points along each lattice vector.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+
+        Returns
+        -------
+        np.ndarray
+            The three numbers of grid points the partial density is stored on.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> calculation.partial_density.grid()
+        array([10, 12, 14])
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.grid,
         )
 
-    def bands(self):
+    def bands(self, selection: str | None = None):
         """Return the band array listing the contributing bands.
 
         [2,4,5] means that the 2nd, 4th, and 5th bands are contributing while
         [0] means that all bands are contributing.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.bands,
         )
 
-    def kpoints(self):
+    def kpoints(self, selection: str | None = None):
         """Return the k-points array listing the contributing k-points.
 
         [2,4,5] means that the 2nd, 4th, and 5th k-points are contributing with
         all weights = 1. [0] means that all k-points are contributing.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
         """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             PartialDensityHandler.kpoints,
         )

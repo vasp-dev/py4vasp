@@ -159,7 +159,7 @@ class Velocity(view.Mixin):
     >>> calculation = demo.calculation()
 
     If you access the velocities, the result will depend on the steps that you selected
-    with the [] operator. Without any selection the results from the final step will be
+    with the [] operator. Without selected steps the results from the final step will be
     used.
 
     >>> calculation.velocity.number_steps()
@@ -215,6 +215,8 @@ class Velocity(view.Mixin):
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -240,10 +242,16 @@ class Velocity(view.Mixin):
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
-        return self.read()
+        return self.read(selection)
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Return the structure and ion velocities in a dictionary.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -260,7 +268,7 @@ class Velocity(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `read` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used. The structure is included to provide the necessary context
         for the velocities.
 
@@ -284,15 +292,21 @@ class Velocity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             VelocityHandler.to_dict,
         )
 
-    def to_numpy(self) -> np.ndarray:
+    def to_numpy(self, selection: str | None = None) -> np.ndarray:
         """Convert the ion velocities for the selected steps into a numpy array.
 
         The velocities are given in units of Å/fs.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -308,7 +322,7 @@ class Velocity(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `to_numpy` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.velocity.to_numpy()
@@ -331,12 +345,12 @@ class Velocity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             VelocityHandler.to_numpy,
         )
 
-    def to_view(self, supercell=None) -> view.View:
+    def to_view(self, supercell=None, selection: str | None = None) -> view.View:
         """Plot the velocities as vectors in the structure.
 
         This method adds arrows to the atoms in the structure sized according to the
@@ -348,6 +362,10 @@ class Velocity(view.Mixin):
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
+
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -363,7 +381,7 @@ class Velocity(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `to_view` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.velocity.to_view()
@@ -394,18 +412,25 @@ class Velocity(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             VelocityHandler.to_view,
             supercell,
         )
 
-    def number_steps(self) -> int:
-        """Return the number of velocities in the trajectory."""
+    def number_steps(self, selection: str | None = None) -> int:
+        """Return the number of velocities in the trajectory.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             VelocityHandler.number_steps,
         )

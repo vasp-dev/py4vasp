@@ -43,6 +43,14 @@ def test_read(forces, steps, Assert):
     Assert.allclose(actual["forces"], forces.ref.forces[steps])
 
 
+@pytest.mark.parametrize("method", ["read", "to_dict"])
+def test_read_default_selection(Sr2TiO4, method, Assert):
+    actual = getattr(Sr2TiO4, method)("default")
+    Assert.allclose(actual["forces"], Sr2TiO4.ref.forces[-1])
+    with pytest.raises(exception.IncorrectUsage):
+        getattr(Sr2TiO4, method)("unknown_source")
+
+
 @pytest.mark.parametrize("supercell", [None, 2, (3, 2, 1)])
 def test_plot(forces, steps, supercell, Assert):
     structure_view = forces.ref.structure.plot(supercell)
@@ -56,6 +64,14 @@ def test_plot(forces, steps, supercell, Assert):
     assert arrows.label == "forces"
     assert arrows.color == _config.VASP_COLORS["purple"]
     assert arrows.radius == 0.2
+
+
+def test_plot_and_number_steps_default_selection(Sr2TiO4, Assert):
+    view = Sr2TiO4.to_view(2, selection="default")
+    Assert.same_structure_view(view, Sr2TiO4.ref.structure.plot(2))
+    assert Sr2TiO4.number_steps("default") == Sr2TiO4.number_steps()
+    with pytest.raises(exception.IncorrectUsage):
+        Sr2TiO4.number_steps("unknown_source")
 
 
 def test_incorrect_access(Sr2TiO4):

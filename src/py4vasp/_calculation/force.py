@@ -159,7 +159,7 @@ class Force(view.Mixin):
     >>> calculation = demo.calculation()
 
     If you access the forces, the result will depend on the steps that you selected
-    with the [] operator. Without any selection the results from the final step will be
+    with the [] operator. Without selected steps the results from the final step will be
     used.
 
     >>> calculation.force.number_steps()
@@ -215,6 +215,8 @@ class Force(view.Mixin):
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -239,13 +241,19 @@ class Force(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
 
-    def read(self) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the forces into a dictionary.
 
         Forces and associated structural information for one or more selected steps of
         the trajectory are returned in a dictionary. This includes the lattice vectors,
         atomic positions, and atomic species in addition to the forces acting on each atom.
         The forces are in Cartesian coordinates and in units of eV/Å.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -262,7 +270,7 @@ class Force(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `read` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used. The structure is included to provide the necessary context for
         the forces.
 
@@ -286,16 +294,16 @@ class Force(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ForceHandler.to_dict,
         )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
-        return self.read()
+        return self.read(selection)
 
-    def to_view(self, supercell=None) -> view.View:
+    def to_view(self, supercell=None, selection: str | None = None) -> view.View:
         """Visualize the forces showing arrows at the atoms.
 
         This method adds arrows to the atoms in the structure sized according to the
@@ -307,6 +315,10 @@ class Force(view.Mixin):
         supercell : int or np.ndarray
             If present the structure is replicated the specified number of times
             along each direction.
+
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
 
         Returns
         -------
@@ -323,7 +335,7 @@ class Force(view.Mixin):
         >>> calculation = demo.calculation()
 
         If you use the `to_view` method, the result will depend on the steps that you
-        selected with the [] operator. Without any selection the results from the final
+        selected with the [] operator. Without selected steps the results from the final
         step will be used.
 
         >>> calculation.force.to_view()
@@ -354,18 +366,25 @@ class Force(view.Mixin):
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ForceHandler.to_view,
             supercell,
         )
 
-    def number_steps(self) -> int:
-        """Return the number of forces in the trajectory."""
+    def number_steps(self, selection: str | None = None) -> int:
+        """Return the number of forces in the trajectory.
+
+        Parameters
+        ----------
+        selection : str | None
+            Select the source of the data. This quantity has only the default source;
+            the argument exists for compatibility with older versions of py4vasp.
+        """
         return merge_default(
             self._source,
             self._quantity_name,
-            None,
+            selection,
             self._handler_factory,
             ForceHandler.number_steps,
         )

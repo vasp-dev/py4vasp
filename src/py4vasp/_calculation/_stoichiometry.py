@@ -129,6 +129,7 @@ class StoichiometryHandler:
         )
 
     def _create_repr(self, number_suffix, dummy_type, ion_types=None):
+        _raise_error_if_string(ion_types)
         ion_string = lambda ion, number: f"{ion}{number_suffix(number)}"
         if ion_types is None and check.is_none(self._raw_stoichiometry.ion_types):
             number_ion_types = range(len(self._raw_stoichiometry.number_ion_types))
@@ -162,6 +163,7 @@ class StoichiometryHandler:
         return zip(self._ion_types(ion_types), self._raw_stoichiometry.number_ion_types)
 
     def _ion_types(self, ion_types):
+        _raise_error_if_string(ion_types)
         ion_types = (
             self._raw_stoichiometry.ion_types if ion_types is None else ion_types
         )
@@ -209,6 +211,8 @@ class Stoichiometry:
         The returned dictionary contains a single item with the name of the quantity
         mapping to all possible selections. Each of these selections may be passed to
         the other methods of this quantity to choose which output of VASP is used.
+        Not every calculation contains every source; use :py:meth:`is_available` to
+        check which ones this calculation contains.
 
         Returns
         -------
@@ -481,3 +485,15 @@ def _is_slice(indices):
 
 def _to_slice(indices):
     return slice(indices[0], indices[-1] + 1)
+
+
+def _raise_error_if_string(ion_types):
+    # a string would be split into its letters; most likely the user meant to select
+    # a source, which comes after ion_types in the argument list
+    if isinstance(ion_types, str):
+        message = (
+            f"The ion types must be a list of names, not the string '{ion_types}'. "
+            f"If you want to select a source of the structure, pass it as keyword, "
+            f'e.g. selection="{ion_types}".'
+        )
+        raise exception.IncorrectUsage(message)

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from py4vasp import exception
+from py4vasp._calculation.dispatch import _effective_source
 from py4vasp._util import convert, import_
 
 formatters = import_.optional("IPython.core.formatters")
@@ -75,7 +76,10 @@ def check_method_accesses_data(quantity, data, method_under_test, file, **kwargs
         mock_access.return_value.__enter__.side_effect = lambda *_: data
         if not execute_method(method_under_test, **kwargs):
             return  # optional package missing, cannot verify data access
-        check_mock_called(mock_access, quantity, file)
+        # a quantity without a default source opens its sole source
+        check_mock_called(
+            mock_access, quantity, file, _effective_source(quantity, None)
+        )
         mock_access.reset_mock()
         if "selection" in kwargs:
             kwargs = kwargs.copy()
