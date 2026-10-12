@@ -5,20 +5,19 @@ description: >-
   the branch, ship the changes, or open a pull request for py4vasp. Reviews code
   changes first (dispatches /review-py4vasp to a subagent unless already done),
   runs the user-simulation gate for interface changes, checks the backlog,
-  applies black + isort, pushes a fresh descriptive branch to origin, and opens
-  the PR with gh (or hands back a compare link and the PR message where gh is
-  missing).
+  applies black + isort, pushes a fresh descriptive branch to origin, and hands
+  back a PR compare link plus the PR message and reviewer notes.
 ---
 
 # Push py4vasp to origin
 
 Orchestrates the last mile: review → backlog → format → push → PR. The
 deterministic prep (classify changes, decide if review is needed, list backlog
-changes, suggest a branch name, check for `gh`, draft the PR message) is done by
+changes, suggest a branch name, build the PR URL and draft message) is done by
 the read-only driver
 `.claude/skills/push-py4vasp/push_prep.py`; the side-effecting steps (dispatch
-review, apply fixes, commit backlog changes, format, push, open the PR) are
-orchestrated here. `origin` is the **main**
+review, apply fixes, commit backlog changes, format, push) are orchestrated
+here. `origin` is the **main**
 repo `vasp-dev/py4vasp`, so pushing publishes to upstream. Paths are relative to
 the repo/worktree root.
 
@@ -31,8 +30,7 @@ python .claude/skills/push-py4vasp/push_prep.py
 It prints: changed files split into **CODE** (`*.py` under `src/` or `tests/`) vs
 non-code (docs/CI/tooling); whether a review is required; whether a **user
 simulation** is required (and why); the backlog files the branch adds, deletes
-or edits; a suggested branch name; whether `gh` can open the PR (else the compare
-URL); and a draft PR message. Read this first — it drives every decision below.
+or edits; a suggested branch name; the PR compare URL; and a draft PR message. Read this first — it drives every decision below.
 
 ## Step 1 — review gate (only if CODE changed)
 
@@ -95,7 +93,7 @@ the user at the confirm step.
 
 Draft the PR title and body by the rules in Step 7, show them and the backlog
 changes to the user, then STOP and ask for confirmation before formatting,
-pushing and opening the PR. Pushing publishes the branch to `origin`
+and pushing. Pushing publishes the branch to `origin`
 (`vasp-dev/py4vasp`) — do not proceed without an explicit go-ahead.
 
 ## Step 5 — format
@@ -135,7 +133,7 @@ git switch -c feat/<descriptive-name>
 git push -u origin feat/<descriptive-name>
 ```
 
-## Step 7 — open the PR
+## Step 7 — PR link + message
 
 The PR is squash-merged, so **the PR title and body become the commit message on
 `master`**. Write them for someone reading the history a year from now, starting
@@ -153,25 +151,10 @@ Anything the reviewer should know — verification, known annoyances, deliberate
 deviations from a rule — goes into a PR comment instead, so it never reaches the
 commit.
 
-If the driver reports `gh` as available, write the body and the reviewer notes to
-two files in the scratchpad and open the PR. `gh pr create` prints the PR URL;
-pass it to `gh pr comment` and give it to the user:
-
-```bash
-gh pr create --repo vasp-dev/py4vasp --base master --head <branch> --title "<title>" --body-file <body>
-```
-
-```bash
-gh pr comment <url> --body-file <notes>
-```
-
-If `gh pr create` fails, use the fallback below; if only the comment fails, give
-the user the notes as a block to post.
-
-If `gh` is missing or not logged in, hand the user the compare URL from the
-driver (swap the branch segment if you renamed the branch) and the PR message in
-a copy-paste block, with the reviewer notes in a second block for them to post
-as a comment.
+Hand the user the compare URL from the driver (swap the branch segment if you
+renamed the branch), which opens GitHub's "Open a pull request" page, and the PR
+title and message in a copy-paste block. Put the reviewer notes in a second block
+for them to post as a comment.
 
 ## Gotchas
 
@@ -179,13 +162,14 @@ as a comment.
   Pushing goes straight to the main repo (the user is a maintainer). A fork
   remote `private` (`martin-schlipf/py4vasp`) also exists — only use it if the
   user asks.
+- **Do not open the PR with `gh`.** It is installed, but its token may not create
+  pull requests on `vasp-dev/py4vasp`; hand over the compare URL instead.
 - **Non-code = review-skipped, but not necessarily gate-free.** A CI/tooling
   change skips Steps 1–2 but still gets the backlog check. A **docs** change
   skips the code review yet still requires the user simulation — the
   documentation is precisely what that gate reads.
 - **The driver is read-only.** `push_prep.py` never pushes, commits, or edits;
-  re-run it freely. The only publishing actions are `git push` in Step 6 and
-  `gh pr create` / `gh pr comment` in Step 7.
+  re-run it freely. The only publishing action is `git push` in Step 6.
 - **Worktree note:** run inside the worktree you actually changed; the driver
   reports the checkout path so you can confirm.
 
@@ -193,4 +177,4 @@ as a comment.
 
 A developer does the same by hand: review the diff, tidy `backlog/`, `uv run
 --active black src tests && uv run --active isort src tests`, `git push -u origin
-<branch>`, then `gh pr create` or open the compare URL in a browser.
+<branch>`, then open the compare URL in a browser.

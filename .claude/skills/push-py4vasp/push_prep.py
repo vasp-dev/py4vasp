@@ -14,7 +14,7 @@ It prints the decisions the push workflow needs:
      interface: a public method of a quantity class, the CLI, or docs/).
   4. The backlog files the branch adds, deletes, or edits.
   5. A suggested descriptive branch name derived from the commit subjects.
-  6. Whether gh can open the PR; otherwise the GitHub "compare" URL for origin.
+  6. The GitHub PR "compare" URL for origin.
   7. A draft PR message (title + summary bullets) to rewrite into the commit
      message the squash merge will use.
 
@@ -25,7 +25,6 @@ formatting, and the actual push per SKILL.md.
 import ast
 import pathlib
 import re
-import shutil
 import subprocess
 import sys
 
@@ -155,12 +154,6 @@ def backlog_changes(root, base, files):
     return changes
 
 
-def gh_ready():
-    if not shutil.which("gh"):
-        return False
-    return subprocess.run(["gh", "auth", "status"], capture_output=True).returncode == 0
-
-
 def commit_subjects(root, base):
     log = git(root, "log", "--format=%s", f"{base}..HEAD")
     return [l for l in log.splitlines() if l.strip()]
@@ -260,13 +253,9 @@ def main():
     print(f"  {branch}")
     print("  (Derive a fresh descriptive name; refine this if it misses the point.)")
 
-    print("\n" + "=" * 60 + "\n6. OPEN THE PR\n" + "=" * 60)
-    if gh_ready():
-        print("  gh is available and logged in - open the PR with `gh pr create`.")
-    else:
-        print("  gh is missing or not logged in - hand over this compare URL:")
-        print(f"  {compare_url}")
-        print("  (Replace the branch segment if you push under a different name.)")
+    print("\n" + "=" * 60 + "\n6. PR COMPARE URL (origin)\n" + "=" * 60)
+    print(f"  {compare_url}")
+    print("  (Replace the branch segment if you push under a different name.)")
 
     print("\n" + "=" * 60 + "\n7. DRAFT PR MESSAGE\n" + "=" * 60)
     print("(Becomes the squash commit: rewrite into a summary of the change;")
