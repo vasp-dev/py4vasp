@@ -161,8 +161,27 @@ class IonArrow:
     color: str
     """Color with which the arrows should be drawn. For example, '#2FB5AB' or 'red'."""
     radius: float
-    """Radius of the arrows in Å, used by NGL only. VASP Viewer sizes the arrows from
-    their width mode and the Scale in its panel instead."""
+    """Radius of the arrows in Å, used by NGL only."""
+    length_mode: Optional[str] = None
+    """Viewer setting for the length of the arrows (NGL ignores it and draws each
+    arrow as long as its vector):
+
+    - 'physical': each arrow is as long as its vector in Å.
+    - 'normalized': every arrow of the group gets the same length, from the largest
+      atom an arrow is drawn on.
+    - 'relative': each arrow's length is proportional to the radius of its own atom.
+
+    None leaves the choice to the viewer."""
+    width_mode: Optional[str] = None
+    """Viewer setting for the width of the arrows (NGL ignores it and uses the radius):
+
+    - 'atom': each arrow is as wide as the atom it marks allows, so the atom is never
+      hidden behind its own arrow.
+    - 'global': one width for the whole group, from the smallest atom on screen.
+    - 'length': each arrow's width follows its own length, so all arrows keep the same
+      shape.
+
+    None leaves the choice to the viewer."""
 
 
 @dataclass
@@ -504,6 +523,8 @@ class View:
                     "label": arrow.label,
                     "quantity": self._convert_to_list(arrow.quantity),
                     "base_color": arrow.color,
+                    "length_mode": arrow.length_mode,
+                    "width_mode": arrow.width_mode,
                 }
                 for arrow in self.ion_arrows
             ]

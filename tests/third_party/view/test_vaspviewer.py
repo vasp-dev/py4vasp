@@ -306,6 +306,21 @@ def test_arrow_group_config_has_no_radius(is_structure):
         assert "base_radius" not in group
 
 
+@pytest.mark.parametrize(
+    "modes", [{}, {"length_mode": "physical", "width_mode": "atom"}]
+)
+def test_arrow_group_config_forwards_the_modes(modes):
+    # an unset mode is sent as None, so the viewer falls back to its own default
+    inputs = base_input_view(is_structure=True)
+    arrow = IonArrow(
+        np.zeros((1, 5, 3)), label="forces", color="purple", radius=0.2, **modes
+    )
+    view = View(**inputs, ion_arrows=[arrow])
+    (group,) = view.to_vasp_viewer_config()["ion_arrow_groups"]
+    assert group["length_mode"] == modes.get("length_mode")
+    assert group["width_mode"] == modes.get("width_mode")
+
+
 @hasVaspView
 @pytest.mark.parametrize("is_structure", [True, False])
 def test_supercell(is_structure, Assert):
