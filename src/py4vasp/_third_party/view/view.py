@@ -101,7 +101,7 @@ class GridQuantity:
     >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
     >>> isosurface = Isosurface(isolevel=0.1, color='red', opacity=0.5)
     >>> GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
-    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)], sign_mode='continuous')
+    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)], signed=False, ...)
     """
 
     quantity: npt.ArrayLike
@@ -110,13 +110,13 @@ class GridQuantity:
     """Name of the quantity"""
     isosurfaces: Sequence[Isosurface] = None
     """Sequence of isosurfaces to be plotted for this quantity."""
-    sign_mode: str = "continuous"
-    """How the viewer should interpret negative values of this field. ``"continuous"``
-    (the default) treats the field as a single continuous spectrum where negative
-    isovalues carry no special meaning. ``"mixed"`` marks a signed field whose positive
-    and negative lobes represent opposite phenomena (e.g. spin up/down magnetization or
-    NICS shielding/deshielding); the viewer then constrains each isosurface to the lobe
-    matching its isovalue sign."""
+    signed: bool = False
+    """Viewer setting that marks negative values as the opposite phenomenon rather than
+    just lower ones, e.g. spin down in a magnetization or deshielding in a NICS map.
+    NGL ignores it."""
+    symmetric: bool = False
+    """Draw every isosurface at +isolevel and at -isolevel, so each isolevel is a
+    magnitude. Requires :attr:`signed`. NGL draws the two surfaces as well."""
 
 
 @dataclass
@@ -349,7 +349,7 @@ class View:
     View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=None, ...)
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...), ...], sign_mode='mixed')], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...), ...], signed=True, ...)], ...)
 
     But you can also create :class:`~py4vasp.view.View` objects directly. For example:
 
@@ -393,7 +393,7 @@ class View:
     >>> grid_quantity = GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
     >>> view.grid_scalars = [grid_quantity]
     >>> view
-    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)], sign_mode='continuous')], ...)
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)], signed=False, ...)], ...)
     """
 
     elements: npt.ArrayLike
@@ -699,24 +699,21 @@ class View:
             )
 
     def _volume_dataset(self, grid_quantity):
-        # The field is sent ONCE; each isosurface becomes a separate volume on the
-        # viewer side sharing this data. The dataset-level sign_mode tells the viewer
-        # how to interpret negative values: "continuous" renders the raw field, while
-        # "mixed" marks a signed field (e.g. NICS +v / -v or spin up/down) so the
-        # viewer constrains each isosurface to the lobe matching its isovalue sign.
+        # The field is sent ONCE; each isosurface becomes a shell of this volume on the
+        # viewer side sharing its data. The volume says how to read negative values: a
+        # signed field's negative values are the opposite phenomenon, and a symmetric
+        # one draws each shell at +level and -level. Every key is sent, and a volume
+        # without isosurfaces sends None, because the viewer rejects an empty list.
         data, grid = self._volume_data_and_grid(grid_quantity)
-        entry = {
+        isosurfaces = grid_quantity.isosurfaces or []
+        return {
             "label": grid_quantity.label,
             "data": data,
             "grid": grid,
-            "sign_mode": grid_quantity.sign_mode,
+            "signed": grid_quantity.signed,
+            "symmetric": grid_quantity.symmetric,
+            "isosurfaces": [self._isosurface_entry(iso) for iso in isosurfaces] or None,
         }
-        isosurfaces = grid_quantity.isosurfaces or []
-        if len(isosurfaces) > 0:
-            entry["isosurfaces"] = [
-                self._isosurface_entry(isosurface) for isosurface in isosurfaces
-            ]
-        return entry
 
     def _isosurface_entry(self, isosurface):
         # every key is sent, unset ones as None, so each shell has the same keys
