@@ -297,6 +297,17 @@ def test_fail_isosurface(view_multiple_grid_scalars):
         widget = view.to_ngl()
 
 
+@pytest.mark.parametrize("number_arrows", [1, 7])
+def test_ngl_draws_arrows_that_do_not_match_the_ions(number_arrows):
+    # NGL cycles fewer arrows over the ions and drops extra ones; users rely on that
+    pytest.importorskip("nglview")
+    arrows = np.linspace(-1, 1, 3 * number_arrows).reshape(1, number_arrows, 3)
+    view = View(
+        **base_input_view(True), ion_arrows=[IonArrow(arrows, "a", "#FF0000", 0.2)]
+    )
+    view.to_ngl()
+
+
 def test_fail_phonon_in_ngl():
     pytest.importorskip("nglview")
     phonon = PhononDispersion(

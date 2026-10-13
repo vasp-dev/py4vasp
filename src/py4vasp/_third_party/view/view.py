@@ -506,7 +506,7 @@ class View:
         added to a dictionary with which to initialize a VASP Viewer widget.
         """
         self._raise_error_if_grid_domains_not_implemented()
-        self._verify()
+        self._verify("vasp_viewer")
         structure: dict = {
             "atoms_trajectory": self._convert_to_list(self.positions),
             "atoms_types": self._convert_to_list(self.elements),
@@ -629,6 +629,19 @@ class View:
         self._raise_error_if_phonon_not_supported(mode)
         self._raise_error_if_number_steps_inconsistent()
         self._raise_error_if_any_shape_is_incorrect()
+        if mode == "vasp_viewer":
+            # checks of rules only VASP Viewer has; NGL must keep drawing what it drew
+            self._raise_error_if_not_one_arrow_per_ion()
+
+    def _raise_error_if_not_one_arrow_per_ion(self):
+        number_ions = np.shape(self.positions)[1]
+        for arrow in self.ion_arrows or ():
+            number_arrows = np.shape(arrow.quantity)[-2]
+            if number_arrows != number_ions:
+                raise exception.IncorrectUsage(
+                    f"The ion arrows '{arrow.label}' contain {number_arrows} arrows, "
+                    f"but the structure has {number_ions} ions. Pass one arrow per ion."
+                )
 
     def _raise_error_if_phonon_not_supported(self, mode=None):
         if mode == "ngl" and self.phonon is not None:

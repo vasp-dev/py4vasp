@@ -423,6 +423,15 @@ def test_incorrect_shape_raises_error(view):
         View(view.elements, incorrect_unit_cell, view.positions)
 
 
+def test_vasp_viewer_needs_one_arrow_per_ion():
+    # only VASP Viewer refuses the mismatch; NGL keeps cycling the arrows over the ions
+    inputs = base_input_view(is_structure=True)  # 5 ions
+    arrow = IonArrow(np.zeros((1, 4, 3)), "forces", "#FF0000", 0.2)
+    view = View(**inputs, ion_arrows=[arrow])
+    with pytest.raises(exception.IncorrectUsage):
+        view.to_vasp_viewer_config()
+
+
 def _crystal_symmetry():
     return CrystalSymmetry(
         space_group=225,
