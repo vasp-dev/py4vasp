@@ -10,7 +10,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import _config, exception
 from py4vasp._third_party.view import View
 from py4vasp._third_party.view import view as view_module
 from py4vasp._third_party.view.view import (
@@ -321,6 +321,55 @@ def test_ngl_draws_arrows_that_do_not_match_the_ions(number_arrows):
 def test_grid_quantity_leaves_the_sign_rules_to_vasp_viewer(options, isosurface):
     # only VASP Viewer checks how the sign settings combine, so NGL stays as it was
     GridQuantity(np.zeros((1, 2, 2, 2)), "q", [isosurface], **options)
+
+
+def _ngl_surfaces(grid_quantity):
+    view = View(**base_input_view(True), grid_scalars=[grid_quantity])
+    messages = view.to_ngl().get_state()["_ngl_msg_archive"]
+    return [message["kwargs"] for message in messages if message["args"] == ["surface"]]
+
+
+def test_symmetric_isosurfaces_in_ngl_match_the_pair_drawn_before():
+    # NGL draws a symmetric isosurface exactly as the +/- pair py4vasp used to send
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    blue, red = _config.VASP_COLORS["blue"], _config.VASP_COLORS["red"]
+    pair = [Isosurface(0.2, blue, 0.6), Isosurface(-0.2, red, 0.6)]
+    options = {"signed": True, "symmetric": True, "negative_color": red}
+    symmetric = GridQuantity(data, "m", [Isosurface(0.2, blue, 0.6)], **options)
+    assert _ngl_surfaces(symmetric) == _ngl_surfaces(GridQuantity(data, "m", pair))
+
+
+def test_negative_symmetric_isolevel_in_ngl_takes_the_colors_by_sign():
+    # the sign of a symmetric isolevel does not matter: the isosurface's color is drawn
+    # at the positive level and the negative color at the negative one
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    options = {"signed": True, "symmetric": True, "negative_color": "#FF0000"}
+    grid = GridQuantity(data, "m", [Isosurface(-0.2, "#0000FF", 0.6)], **options)
+    surfaces = _ngl_surfaces(grid)
+    assert [surface["isolevel"] for surface in surfaces] == [0.2, -0.2]
+    assert [surface["color"] for surface in surfaces] == ["#0000FF", "#FF0000"]
+
+
+@pytest.mark.parametrize(
+    "quantity_color, isosurface_color, expected",
+    [
+        ("#FF0000", None, "#FF0000"),
+        ("#FF0000", "#FF8800", "#FF8800"),
+        (None, None, _config.VASP_COLORS["red"]),
+    ],
+)
+def test_negative_color_of_symmetric_isosurfaces_in_ngl(
+    quantity_color, isosurface_color, expected
+):
+    pytest.importorskip("nglview")
+    isosurface = Isosurface(0.2, "#0000FF", 0.6, negative_color=isosurface_color)
+    options = {"signed": True, "symmetric": True, "negative_color": quantity_color}
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    surfaces = _ngl_surfaces(GridQuantity(data, "m", [isosurface], **options))
+    assert [surface["isolevel"] for surface in surfaces] == [0.2, -0.2]
+    assert [surface["color"] for surface in surfaces] == ["#0000FF", expected]
 
 
 def test_fail_phonon_in_ngl():

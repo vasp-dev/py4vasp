@@ -10,7 +10,7 @@ from typing import NamedTuple, Optional, Sequence
 import numpy as np
 import numpy.typing as npt
 
-from py4vasp import exception
+from py4vasp import _config, exception
 from py4vasp._util import import_, merge
 from py4vasp._util.color import Color
 
@@ -88,7 +88,7 @@ class Isosurface:
     negative_color: Optional[str] = None
     """Color of the surface at -isolevel of a symmetric
     :class:`~py4vasp.view.GridQuantity`, overriding the quantity's own negative color.
-    NGL ignores it."""
+    NGL draws that surface in this color as well."""
 
 
 @dataclass
@@ -119,11 +119,14 @@ class GridQuantity:
     just lower ones, e.g. spin down in a magnetization or deshielding in a NICS map.
     NGL ignores it."""
     symmetric: bool = False
-    """Draw every isosurface at +isolevel and at -isolevel, so each isolevel is a
-    magnitude. Requires :attr:`signed`. NGL draws the two surfaces as well."""
+    """Draw every isosurface at +isolevel in its color and at -isolevel in the negative
+    color, so the sign of the isolevel does not matter. NGL draws both surfaces as well;
+    VASP Viewer requires :attr:`signed` for it."""
     negative_color: Optional[str] = None
     """Color of the surfaces at negative values of a signed quantity, e.g. spin down,
-    unless an isosurface names its own. Requires :attr:`signed`. NGL ignores it."""
+    unless an isosurface names its own. VASP Viewer requires :attr:`signed` for it. NGL
+    draws the surfaces at -isolevel of a symmetric quantity in this color as well, or in
+    red without one."""
 
 
 @dataclass
@@ -821,12 +824,8 @@ class View:
                 ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=quantity)
                 component = widget.add_component(filename)
             for isosurface in grid_scalar.isosurfaces:
-                isosurface_options = {
-                    "isolevel": isosurface.isolevel,
-                    "color": isosurface.color,
-                    "opacity": isosurface.opacity,
-                }
-                component.add_surface(**isosurface_options)
+                for surface in _ngl_surfaces(grid_scalar, isosurface):
+                    component.add_surface(**surface)
 
     def _shift_quantity(self, quantity):
         if self.shift is None:
@@ -874,6 +873,33 @@ def _raise_error_if_vasp_viewer_cannot_draw_the_signs(grid_quantity):
                 f"An isosurface of the grid quantity '{label}' sets a negative color, "
                 "but only a symmetric quantity draws a surface at -isolevel."
             )
+
+
+def _ngl_surfaces(grid_quantity, isosurface):
+    # NGL keeps drawing what py4vasp sent before the viewer learned about signs: a
+    # symmetric quantity's isosurface is the pair at +isolevel and -isolevel, and the
+    # settings only VASP Viewer knows (signed, cap) are left out
+    opacity = isosurface.opacity
+    if not grid_quantity.symmetric:
+        yield {
+            "isolevel": isosurface.isolevel,
+            "color": isosurface.color,
+            "opacity": opacity,
+        }
+        return
+    # the colors follow the sign of the surface, whatever the sign of the isolevel
+    isolevel = abs(isosurface.isolevel)
+    negative_color = _negative_color(grid_quantity, isosurface)
+    yield {"isolevel": isolevel, "color": isosurface.color, "opacity": opacity}
+    yield {"isolevel": -isolevel, "color": negative_color, "opacity": opacity}
+
+
+def _negative_color(grid_quantity, isosurface):
+    return (
+        isosurface.negative_color
+        or grid_quantity.negative_color
+        or _config.VASP_COLORS["red"]
+    )
 
 
 def _merge_view_fields(left_view, right_view):
