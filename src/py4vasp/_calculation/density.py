@@ -115,15 +115,7 @@ class DensityHandler:
         structure_handler = self._structure()
         viewer = structure_handler.to_view(supercell)
         viewer.grid_scalars = [
-            view.GridQuantity(
-                quantity=selector[sel].T[np.newaxis],
-                label=self._label(selector.label(sel)),
-                isosurfaces=self._grid_quantity_properties(
-                    selector, sel, map_, user_options
-                ),
-                signed=self._is_signed(selector, sel, map_),
-            )
-            for sel in selections
+            self._grid_quantity(selector, sel, map_, user_options) for sel in selections
         ]
         return viewer
 
@@ -254,18 +246,21 @@ class DensityHandler:
         for key in _MAGNETIZATION:
             map_[key] = 1
 
-    def _grid_quantity_properties(self, selector, selection, map_, user_options):
+    def _grid_quantity(self, selector, selection, map_, user_options):
+        # Spin up and down are opposite phenomena, so a magnetization component is a
+        # signed, symmetric field: each isolevel is drawn in blue and mirrored in red at
+        # -isolevel. The charge density is a continuous, sign-agnostic field.
         component_label = selector.label(selection)
         component = map_.get(component_label, -1)
-        return self._isosurfaces(component, **user_options)
-
-    def _is_signed(self, selector, selection, map_):
-        # Magnetization components use the symmetric ±isolevel (blue/red) lobes, so
-        # the viewer should treat positive/negative as opposite phenomena (signed).
-        # The charge density is a continuous, sign-agnostic field.
-        component_label = selector.label(selection)
-        component = map_.get(component_label, -1)
-        return self._use_symmetric_isosurface(component)
+        symmetric = self._use_symmetric_isosurface(component)
+        return view.GridQuantity(
+            quantity=selector[selection].T[np.newaxis],
+            label=self._label(component_label),
+            isosurfaces=self._isosurfaces(component, **user_options),
+            signed=symmetric,
+            symmetric=symmetric,
+            negative_color=_config.VASP_COLORS["red"] if symmetric else None,
+        )
 
     def _label(self, component_label):
         if component_label == _INTERNAL:
@@ -278,10 +273,7 @@ class DensityHandler:
     def _isosurfaces(self, component, isolevel=0.2, color=None, opacity=0.6):
         if self._use_symmetric_isosurface(component):
             _raise_error_if_color_is_specified(color)
-            return [
-                view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity),
-                view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
-            ]
+            return [view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity)]
         else:
             color = color or _config.VASP_COLORS["cyan"]
             return [view.Isosurface(isolevel, color, opacity)]
@@ -577,7 +569,9 @@ class Density(view.Mixin):
         user_options : dict
             Further arguments with keyword that get directly passed on to the
             visualizer. Most importantly, you can set isolevel to adjust the
-            value at which the isosurface is drawn.
+            value at which the isosurface is drawn. For a magnetization the surface
+            at +isolevel is drawn in blue and the one at -isolevel in red, so the sign
+            of the isolevel does not matter.
 
         Returns
         -------

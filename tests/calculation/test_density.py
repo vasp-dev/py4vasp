@@ -50,6 +50,7 @@ class Expectation:
     label: str
     density: np.ndarray
     isosurfaces: list
+    symmetric: bool = False
 
 
 def make_reference_density(raw_data, selection, source=None):
@@ -233,6 +234,11 @@ def check_view(density, expected, Assert, **kwargs):
     Assert.allclose(grid_scalar.quantity, expected.density)
     assert len(grid_scalar.isosurfaces) == len(expected.isosurfaces)
     assert grid_scalar.isosurfaces == expected.isosurfaces
+    # a magnetization is signed and symmetric, spin down drawn in red at -isolevel
+    assert grid_scalar.signed == expected.symmetric
+    assert grid_scalar.symmetric == expected.symmetric
+    red = _config.VASP_COLORS["red"]
+    assert grid_scalar.negative_color == (red if expected.symmetric else None)
 
 
 def test_accessing_spin_raises_error(nonpolarized_density):
@@ -247,24 +253,36 @@ def test_collinear_plot(selection, collinear_density, Assert):
     source = collinear_density.ref.source
     isosurfaces = [
         Isosurface(isolevel=0.1, color=_config.VASP_COLORS["blue"], opacity=0.6),
-        Isosurface(isolevel=-0.1, color=_config.VASP_COLORS["red"], opacity=0.6),
     ]
     if source == "charge":
         expected = Expectation(
             label=selection,
             density=collinear_density.ref.output["magnetization"],
             isosurfaces=isosurfaces,
+            symmetric=True,
         )
     else:
         expected = Expectation(
             label=f"{source}({selection})",
             density=collinear_density.ref.output[source][1],
             isosurfaces=isosurfaces,
+            symmetric=True,
         )
         if selection in ("magnetization", "mag", "m"):
             # magnetization not allowed for kinetic_energy
             return
     check_view(collinear_density, expected, Assert, selection=selection, isolevel=0.1)
+
+
+def test_magnetization_keeps_a_negative_isolevel(collinear_density):
+    # the sign does not matter: blue is drawn at +0.1 and red at -0.1 either way
+    view = collinear_density.plot("3", isolevel=-0.1)
+    (grid_scalar,) = view.grid_scalars
+    blue = _config.VASP_COLORS["blue"]
+    assert grid_scalar.isosurfaces == [
+        Isosurface(isolevel=-0.1, color=blue, opacity=0.6)
+    ]
+    assert grid_scalar.symmetric
 
 
 def test_accessing_noncollinear_element_raises_error(collinear_density):
@@ -302,10 +320,9 @@ def test_plotting_noncollinear_density(selections, noncollinear_density, Assert)
             return
     isosurfaces = [
         Isosurface(isolevel=0.2, color=_config.VASP_COLORS["blue"], opacity=0.3),
-        Isosurface(isolevel=-0.2, color=_config.VASP_COLORS["red"], opacity=0.3),
     ]
     for selection, density, label in zip(selections, expected_density, expected_labels):
-        expected = Expectation(label, density, isosurfaces)
+        expected = Expectation(label, density, isosurfaces, symmetric=True)
         kwargs = {"selection": selection, "opacity": 0.3}
         check_view(noncollinear_density, expected, Assert, **kwargs)
 
