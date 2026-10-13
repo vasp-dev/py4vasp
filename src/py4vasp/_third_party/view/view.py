@@ -67,7 +67,7 @@ class Isosurface:
 
     >>> from py4vasp.view import Isosurface
     >>> Isosurface(isolevel=0.1, color='red', opacity=0.5)
-    Isosurface(isolevel=0.1, color='red', opacity=0.5, cap=None)
+    Isosurface(isolevel=0.1, color='red', opacity=0.5, cap=None, negative_color=None)
     """
 
     isolevel: float
@@ -85,6 +85,10 @@ class Isosurface:
     - 'off': paints nothing.
 
     None leaves the choice to the viewer."""
+    negative_color: Optional[str] = None
+    """Color of the surface at -isolevel of a symmetric
+    :class:`~py4vasp.view.GridQuantity`, overriding the quantity's own negative color.
+    NGL ignores it."""
 
 
 @dataclass
@@ -117,6 +121,9 @@ class GridQuantity:
     symmetric: bool = False
     """Draw every isosurface at +isolevel and at -isolevel, so each isolevel is a
     magnitude. Requires :attr:`signed`. NGL draws the two surfaces as well."""
+    negative_color: Optional[str] = None
+    """Color of the surfaces at negative values of a signed quantity, e.g. spin down,
+    unless an isosurface names its own. Requires :attr:`signed`. NGL ignores it."""
 
 
 @dataclass
@@ -712,6 +719,7 @@ class View:
             "grid": grid,
             "signed": grid_quantity.signed,
             "symmetric": grid_quantity.symmetric,
+            "color_negative": grid_quantity.negative_color,
             "isosurfaces": [self._isosurface_entry(iso) for iso in isosurfaces] or None,
         }
 
@@ -722,6 +730,7 @@ class View:
             "color_surface": isosurface.color,
             "opacity": isosurface.opacity,
             "cap": isosurface.cap,
+            "color_negative": isosurface.negative_color,
         }
 
     def _volume_data_and_grid(self, grid_quantity):

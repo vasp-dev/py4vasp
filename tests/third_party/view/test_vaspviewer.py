@@ -224,7 +224,7 @@ def test_isosurfaces_sent_once_with_the_field():
     )
     datasets = view.to_vasp_viewer_config()["volume_datasets"]
     assert len(datasets) == 1  # one field, not one dataset per isolevel
-    common = {"opacity": 0.6, "cap": None}
+    common = {"opacity": 0.6, "cap": None, "color_negative": None}
     assert datasets[0]["isosurfaces"] == [
         {"iso_value": 1.0, "color_surface": "#0000ff", **common},
         {"iso_value": -1.0, "color_surface": "#ff0000", **common},
@@ -251,6 +251,18 @@ def test_volume_config_marks_signed_and_symmetric_fields(options):
     assert dataset["signed"] == options.get("signed", False)
     assert dataset["symmetric"] == options.get("symmetric", False)
     assert "sign_mode" not in dataset  # the viewer rejects the replaced key
+
+
+@pytest.mark.parametrize("colors", [(None, None), ("#ff0000", "#ff8800")])
+def test_volume_config_forwards_the_negative_colors(colors):
+    # the volume's negative color holds for every isosurface that names none
+    volume_color, isosurface_color = colors
+    isosurface = Isosurface(1.0, "#0000ff", 0.6, negative_color=isosurface_color)
+    options = {"signed": True, "symmetric": True, "negative_color": volume_color}
+    view = _single_grid_view([isosurface], **options)
+    dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
+    assert dataset["color_negative"] == volume_color
+    assert dataset["isosurfaces"][0]["color_negative"] == isosurface_color
 
 
 def test_volume_without_isosurfaces_sends_none():
