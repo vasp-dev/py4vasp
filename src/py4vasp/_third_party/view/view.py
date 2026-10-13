@@ -648,6 +648,8 @@ class View:
         if mode == "vasp_viewer":
             # checks of rules only VASP Viewer has; NGL must keep drawing what it drew
             self._raise_error_if_not_one_arrow_per_ion()
+            for grid_quantity in self.grid_scalars or ():
+                _raise_error_if_vasp_viewer_cannot_draw_the_signs(grid_quantity)
 
     def _raise_error_if_not_one_arrow_per_ion(self):
         number_ions = np.shape(self.positions)[1]
@@ -720,18 +722,27 @@ class View:
             "signed": grid_quantity.signed,
             "symmetric": grid_quantity.symmetric,
             "color_negative": grid_quantity.negative_color,
-            "isosurfaces": [self._isosurface_entry(iso) for iso in isosurfaces] or None,
+            "isosurfaces": [
+                self._isosurface_entry(grid_quantity, isosurface)
+                for isosurface in isosurfaces
+            ]
+            or None,
         }
 
-    def _isosurface_entry(self, isosurface):
+    def _isosurface_entry(self, grid_quantity, isosurface):
         # every key is sent, unset ones as None, so each shell has the same keys
-        return {
+        entry = {
             "iso_value": isosurface.isolevel,
             "color_surface": isosurface.color,
             "opacity": isosurface.opacity,
             "cap": isosurface.cap,
             "color_negative": isosurface.negative_color,
         }
+        if grid_quantity.symmetric:
+            # the viewer takes a symmetric isolevel as a magnitude; the colors follow
+            # the sign of the surface either way
+            entry["iso_value"] = abs(isosurface.isolevel)
+        return entry
 
     def _volume_data_and_grid(self, grid_quantity):
         # The VASP Viewer uploads the flat data buffer into a 3D texture whose
@@ -837,6 +848,32 @@ class View:
                     transformation,
                 )
                 widget.shape.add_arrow(*(arrow_3d.to_serializable()))
+
+
+def _raise_error_if_vasp_viewer_cannot_draw_the_signs(grid_quantity):
+    label = grid_quantity.label
+    if not grid_quantity.signed and grid_quantity.symmetric:
+        raise exception.IncorrectUsage(
+            f"The grid quantity '{label}' is symmetric but not signed. Only a signed "
+            "field, whose negative values are the opposite phenomenon, can draw every "
+            "isosurface at +isolevel and -isolevel in VASP Viewer."
+        )
+    if not grid_quantity.signed and grid_quantity.negative_color is not None:
+        raise exception.IncorrectUsage(
+            f"The grid quantity '{label}' sets a negative color but is not signed. Set "
+            "signed=True to draw its negative values in that color in VASP Viewer."
+        )
+    for isosurface in grid_quantity.isosurfaces or ():
+        if grid_quantity.symmetric and isosurface.isolevel == 0:
+            raise exception.IncorrectUsage(
+                f"VASP Viewer draws the isosurfaces of the symmetric grid quantity "
+                f"'{label}' at +isolevel and -isolevel, so an isolevel cannot be 0."
+            )
+        if not grid_quantity.symmetric and isosurface.negative_color is not None:
+            raise exception.IncorrectUsage(
+                f"An isosurface of the grid quantity '{label}' sets a negative color, "
+                "but only a symmetric quantity draws a surface at -isolevel."
+            )
 
 
 def _merge_view_fields(left_view, right_view):

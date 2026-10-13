@@ -308,6 +308,21 @@ def test_ngl_draws_arrows_that_do_not_match_the_ions(number_arrows):
     view.to_ngl()
 
 
+@pytest.mark.parametrize(
+    "options, isosurface",
+    [
+        ({"symmetric": True}, Isosurface(0.1, "#0000FF", 0.6)),
+        ({"signed": True, "symmetric": True}, Isosurface(-0.1, "#0000FF", 0.6)),
+        ({"signed": True, "symmetric": True}, Isosurface(0.0, "#0000FF", 0.6)),
+        ({"negative_color": "#FF0000"}, Isosurface(0.1, "#0000FF", 0.6)),
+        ({"signed": True}, Isosurface(0.1, "#0000FF", 0.6, negative_color="#FF0000")),
+    ],
+)
+def test_grid_quantity_leaves_the_sign_rules_to_vasp_viewer(options, isosurface):
+    # only VASP Viewer checks how the sign settings combine, so NGL stays as it was
+    GridQuantity(np.zeros((1, 2, 2, 2)), "q", [isosurface], **options)
+
+
 def test_fail_phonon_in_ngl():
     pytest.importorskip("nglview")
     phonon = PhononDispersion(

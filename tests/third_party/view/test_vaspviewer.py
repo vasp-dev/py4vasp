@@ -10,7 +10,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import _config, exception
 from py4vasp._third_party.view import View
 from py4vasp._third_party.view.view import (
     CrystalSymmetry,
@@ -263,6 +263,38 @@ def test_volume_config_forwards_the_negative_colors(colors):
     dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
     assert dataset["color_negative"] == volume_color
     assert dataset["isosurfaces"][0]["color_negative"] == isosurface_color
+
+
+@pytest.mark.parametrize(
+    "options, isosurface",
+    [
+        ({"symmetric": True}, Isosurface(0.1, "#0000ff", 0.6)),
+        ({"negative_color": "#ff0000"}, Isosurface(0.1, "#0000ff", 0.6)),
+        ({"signed": True}, Isosurface(0.1, "#0000ff", 0.6, negative_color="#ff0000")),
+        ({"signed": True, "symmetric": True}, Isosurface(0.0, "#0000ff", 0.6)),
+    ],
+)
+def test_volume_config_rejects_signs_vasp_viewer_cannot_draw(options, isosurface):
+    # symmetric and a negative color need a signed field, only a symmetric field draws
+    # an isosurface at -isolevel, and a symmetric isosurface at 0 has no magnitude
+    view = _single_grid_view([isosurface], **options)
+    with pytest.raises(exception.IncorrectUsage):
+        view.to_vasp_viewer_config()
+
+
+@pytest.mark.parametrize("isosurface_color", [None, "#ff8800"])
+def test_negative_symmetric_isolevel_is_sent_as_a_magnitude(isosurface_color):
+    # VASP Viewer takes a symmetric isolevel as a magnitude, and the colors follow the
+    # sign of the surface: the isosurface's color at +0.2, the negative one at -0.2
+    isosurface = Isosurface(-0.2, "#0000ff", 0.6, negative_color=isosurface_color)
+    options = {"signed": True, "symmetric": True, "negative_color": "#ff0000"}
+    view = _single_grid_view([isosurface], **options)
+    dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
+    (entry,) = dataset["isosurfaces"]
+    assert entry["iso_value"] == 0.2
+    assert entry["color_surface"] == "#0000ff"
+    assert entry["color_negative"] == isosurface_color
+    assert dataset["color_negative"] == "#ff0000"
 
 
 def test_volume_without_isosurfaces_sends_none():
