@@ -359,7 +359,7 @@ class View:
     View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=None, ...)
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...), ...], signed=True, ...)], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)], signed=True, symmetric=True, ...)], ...)
 
     But you can also create :class:`~py4vasp.view.View` objects directly. For example:
 

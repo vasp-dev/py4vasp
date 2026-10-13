@@ -184,18 +184,19 @@ nucleus-independent chemical shift:
         {tensor_string}"""
 
     def _make_grid_quantity(self, key, quantity, user_options):
+        # shielding and deshielding are opposite phenomena, so each isolevel is drawn
+        # in blue and mirrored in red at -isolevel
         return view.GridQuantity(
             quantity=quantity[np.newaxis],
             label=f"{key} NICS",
             isosurfaces=self._isosurfaces(**user_options),
             signed=True,
+            symmetric=True,
+            negative_color=_config.VASP_COLORS["red"],
         )
 
     def _isosurfaces(self, isolevel=1.0, opacity=0.6):
-        return [
-            view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity),
-            view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
-        ]
+        return [view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity)]
 
     def _make_contour(self, key, data, plane, fraction, supercell):
         grid_scalar = slicing.grid_scalar(data, plane, fraction)
@@ -250,7 +251,7 @@ class Nics(view.Mixin):
     You can also visualize a 3d isosurface of the chemical shift:
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)], signed=True, ...)], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)], signed=True, symmetric=True, ...)], ...)
 
     Alternatively, you can visualize a contour plot of the chemical shift in a plane:
 
@@ -400,7 +401,9 @@ class Nics(view.Mixin):
         user_options
             Further arguments with keyword that get directly passed on to the
             visualizer. Most importantly, you can set isolevel to adjust the
-            value at which the isosurface is drawn.
+            value at which the isosurface is drawn. The surface at +isolevel is drawn
+            in blue and the one at -isolevel in red, so the sign of the isolevel does
+            not matter.
 
         Returns
         -------

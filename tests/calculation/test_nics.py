@@ -407,11 +407,14 @@ def test_plot(nics_on_a_grid, selection, Assert):
         assert grid_scalar.label == (f"{s} NICS" if s else "isotropic NICS")
         assert grid_scalar.quantity.ndim == 4
         Assert.allclose(grid_scalar.quantity, e)
-        assert len(grid_scalar.isosurfaces) == 2
+        # shielding and deshielding are opposite phenomena, so the field is signed and
+        # symmetric: one blue isosurface per isolevel, mirrored in red at -isolevel
         assert grid_scalar.isosurfaces == [
             view.Isosurface(1.0, _config.VASP_COLORS["blue"], 0.6),
-            view.Isosurface(-1.0, _config.VASP_COLORS["red"], 0.6),
         ]
+        assert grid_scalar.signed
+        assert grid_scalar.symmetric
+        assert grid_scalar.negative_color == _config.VASP_COLORS["red"]
 
 
 @pytest.mark.parametrize("supercell", (2, (3, 1, 2)))
@@ -424,10 +427,17 @@ def test_plot_user_options(nics_on_a_grid):
     view = nics_on_a_grid.plot(isolevel=0.9, opacity=0.2)
     assert len(view.grid_scalars) == 1
     grid_scalar = view.grid_scalars[0]
-    assert len(grid_scalar.isosurfaces) == 2
-    for idx, isosurface in enumerate(grid_scalar.isosurfaces):
-        assert isosurface.isolevel == (-1.0) ** (idx) * 0.9
-        assert isosurface.opacity == 0.2
+    (isosurface,) = grid_scalar.isosurfaces
+    assert isosurface.isolevel == 0.9
+    assert isosurface.opacity == 0.2
+
+
+def test_plot_keeps_a_negative_isolevel(nics_on_a_grid):
+    # the sign does not matter: blue is drawn at +0.9 and red at -0.9 either way
+    (grid_scalar,) = nics_on_a_grid.plot(isolevel=-0.9).grid_scalars
+    (isosurface,) = grid_scalar.isosurfaces
+    assert isosurface.isolevel == -0.9
+    assert grid_scalar.symmetric
 
 
 @pytest.mark.parametrize(
