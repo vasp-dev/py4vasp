@@ -224,10 +224,20 @@ def test_isosurfaces_sent_once_without_per_surface_sign_mode():
     )
     datasets = view.to_vasp_viewer_config()["volume_datasets"]
     assert len(datasets) == 1  # one field, not one dataset per isolevel
+    common = {"opacity": 0.6, "cap": None}
     assert datasets[0]["isosurfaces"] == [
-        {"iso_value": 1.0, "color_surface": "#0000ff"},
-        {"iso_value": -1.0, "color_surface": "#ff0000"},
+        {"iso_value": 1.0, "color_surface": "#0000ff", **common},
+        {"iso_value": -1.0, "color_surface": "#ff0000", **common},
     ]
+
+
+@pytest.mark.parametrize("cap", [None, "off"])
+def test_isosurface_config_carries_opacity_and_cap(cap):
+    # an unset cap is sent as None, so the viewer falls back to its own default
+    view = _single_grid_view([Isosurface(0.5, "#0000ff", 0.3, cap=cap)])
+    (isosurface,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert isosurface["opacity"] == 0.3
+    assert isosurface["cap"] == cap
 
 
 def test_default_sign_mode_is_continuous():

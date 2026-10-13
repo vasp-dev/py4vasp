@@ -67,7 +67,7 @@ class Isosurface:
 
     >>> from py4vasp.view import Isosurface
     >>> Isosurface(isolevel=0.1, color='red', opacity=0.5)
-    Isosurface(isolevel=0.1, color='red', opacity=0.5)
+    Isosurface(isolevel=0.1, color='red', opacity=0.5, cap=None)
     """
 
     isolevel: float
@@ -76,6 +76,15 @@ class Isosurface:
     """Color with which the isosurface should be drawn. For example, '#2FB5AB' or 'red'."""
     opacity: float
     """Amount of light blocked by the isosurface. Must be a value between 0 and 1, where 0 means fully transparent and 1 means fully opaque."""
+    cap: Optional[str] = None
+    """Viewer setting for the faces that close the isosurface where the cell boundary or
+    the cut plane opens it (NGL ignores it and draws no caps):
+
+    - 'away_from_zero': paints the side without zero, i.e., the inside of a lobe.
+    - 'toward_zero': paints the side with zero.
+    - 'off': paints nothing.
+
+    None leaves the choice to the viewer."""
 
 
 @dataclass
@@ -705,13 +714,18 @@ class View:
         isosurfaces = grid_quantity.isosurfaces or []
         if len(isosurfaces) > 0:
             entry["isosurfaces"] = [
-                {
-                    "iso_value": isosurface.isolevel,
-                    "color_surface": isosurface.color,
-                }
-                for isosurface in isosurfaces
+                self._isosurface_entry(isosurface) for isosurface in isosurfaces
             ]
         return entry
+
+    def _isosurface_entry(self, isosurface):
+        # every key is sent, unset ones as None, so each shell has the same keys
+        return {
+            "iso_value": isosurface.isolevel,
+            "color_surface": isosurface.color,
+            "opacity": isosurface.opacity,
+            "cap": isosurface.cap,
+        }
 
     def _volume_data_and_grid(self, grid_quantity):
         # The VASP Viewer uploads the flat data buffer into a 3D texture whose
