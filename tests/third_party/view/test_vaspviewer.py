@@ -297,6 +297,32 @@ def test_negative_symmetric_isolevel_is_sent_as_a_magnitude(isosurface_color):
     assert dataset["color_negative"] == "#ff0000"
 
 
+def _view_of_volume(volume):
+    grid_quantity = GridQuantity(volume, "q", [Isosurface(0.5, "#0000ff", 0.6)])
+    return View(
+        elements=[["Si"]],
+        lattice_vectors=[np.eye(3)],
+        positions=[[[0.0, 0.0, 0.0]]],
+        grid_scalars=[grid_quantity],
+    )
+
+
+def test_volume_config_rejects_nan():
+    # VASP Viewer cannot draw a volume containing NaN
+    volume = np.ones((1, 2, 2, 2))
+    volume[0, 1, 0, 1] = np.nan
+    with pytest.raises(exception.IncorrectUsage):
+        _view_of_volume(volume).to_vasp_viewer_config()
+
+
+def test_volume_config_passes_infinite_values_on():
+    volume = np.ones((1, 2, 2, 2))
+    volume[0, 1, 0, 1] = np.inf
+    volume[0, 0, 1, 0] = -np.inf
+    data = _view_of_volume(volume).to_vasp_viewer_config()["volume_datasets"][0]["data"]
+    assert np.sum(np.isinf(np.asarray(data))) == 2
+
+
 def test_volume_without_isosurfaces_sends_none():
     # the viewer rejects an empty list, and every volume is sent with the same keys
     dataset = _single_grid_view(None).to_vasp_viewer_config()["volume_datasets"][0]

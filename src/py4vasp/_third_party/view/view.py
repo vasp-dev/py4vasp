@@ -653,6 +653,7 @@ class View:
             self._raise_error_if_not_one_arrow_per_ion()
             for grid_quantity in self.grid_scalars or ():
                 _raise_error_if_vasp_viewer_cannot_draw_the_signs(grid_quantity)
+                _raise_error_if_volume_contains_nan(grid_quantity)
 
     def _raise_error_if_not_one_arrow_per_ion(self):
         number_ions = np.shape(self.positions)[1]
@@ -847,6 +848,16 @@ class View:
                     transformation,
                 )
                 widget.shape.add_arrow(*(arrow_3d.to_serializable()))
+
+
+def _raise_error_if_volume_contains_nan(grid_quantity):
+    # only the first step is sent to the viewer, so only that one is checked
+    if np.isnan(np.asarray(grid_quantity.quantity)[0]).any():
+        raise exception.IncorrectUsage(
+            f"The grid quantity '{grid_quantity.label}' contains NaN values, which VASP "
+            "Viewer cannot draw. Replace them before plotting, e.g. with "
+            "numpy.nan_to_num."
+        )
 
 
 def _raise_error_if_vasp_viewer_cannot_draw_the_signs(grid_quantity):

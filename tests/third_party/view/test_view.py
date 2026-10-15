@@ -372,6 +372,15 @@ def test_negative_color_of_symmetric_isosurfaces_in_ngl(
     assert [surface["color"] for surface in surfaces] == ["#0000FF", expected]
 
 
+def test_ngl_draws_volumes_with_nan():
+    # only VASP Viewer refuses NaN; NGL keeps drawing what it drew
+    pytest.importorskip("nglview")
+    volume = np.ones((1, 2, 2, 2))
+    volume[0, 1, 0, 1] = np.nan
+    grid_quantity = GridQuantity(volume, "q", [Isosurface(0.5, "#0000FF", 0.6)])
+    View(**base_input_view(True), grid_scalars=[grid_quantity]).to_ngl()
+
+
 def test_fail_phonon_in_ngl():
     pytest.importorskip("nglview")
     phonon = PhononDispersion(
