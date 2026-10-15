@@ -567,7 +567,7 @@ class Density(view.Mixin):
             Further arguments with keyword that get directly passed on to the
             visualizer. Most importantly, you can set isolevel to adjust the
             value at which the isosurface is drawn. For a magnetization the surface
-            at +isolevel is drawn in red and the one at -isolevel in blue, so the sign
+            at +isolevel is drawn in blue and the one at -isolevel in red, so the sign
             of the isolevel does not matter.
 
         Returns
