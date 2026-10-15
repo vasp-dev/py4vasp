@@ -297,6 +297,14 @@ def test_negative_symmetric_isolevel_is_sent_as_a_magnitude(isosurface_color):
     assert dataset["color_negative"] == "#ff0000"
 
 
+@pytest.mark.parametrize("options", [{}, {"color_scheme": "diverging"}])
+def test_volume_config_forwards_the_color_scheme(options):
+    # the viewer picks the colors from the scheme and resolves "auto" from the data
+    view = _single_grid_view([Isosurface(0.5, "#0000ff", 0.6)], **options)
+    dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
+    assert dataset["color_scheme"] == options.get("color_scheme", "auto")
+
+
 def _view_of_volume(volume):
     grid_quantity = GridQuantity(volume, "q", [Isosurface(0.5, "#0000ff", 0.6)])
     return View(

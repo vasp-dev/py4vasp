@@ -372,6 +372,15 @@ def test_negative_color_of_symmetric_isosurfaces_in_ngl(
     assert [surface["color"] for surface in surfaces] == ["#0000FF", expected]
 
 
+def test_ngl_ignores_the_color_scheme():
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    isosurfaces = [Isosurface(0.2, "#0000FF", 0.6)]
+    plain = GridQuantity(data, "q", isosurfaces)
+    with_scheme = GridQuantity(data, "q", isosurfaces, color_scheme="monochrome")
+    assert _ngl_surfaces(with_scheme) == _ngl_surfaces(plain)
+
+
 def test_ngl_draws_volumes_with_nan():
     # only VASP Viewer refuses NaN; NGL keeps drawing what it drew
     pytest.importorskip("nglview")

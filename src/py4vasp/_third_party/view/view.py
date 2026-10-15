@@ -122,6 +122,22 @@ class GridQuantity:
     """Draw every isosurface at +isolevel in its color and at -isolevel in the negative
     color, so the sign of the isolevel does not matter. NGL draws both surfaces as well;
     VASP Viewer requires :attr:`signed` for it."""
+    color_scheme: str = "auto"
+    """Color mapping strategy for the visualization in VASP Viewer, which picks the
+    colors of the isosurfaces from it. NGL ignores it.
+
+    Available options:
+    - "auto" (default): Automatically select based on data range:
+        * "diverging" if data spans negative and positive values
+        * "positive" if all values are non-negative
+        * "negative" if all values are non-positive
+        * "default" otherwise
+    - "monochrome" or "stm": Single-color gradient (suitable for STM images)
+    - "sequential": Perceptually uniform progression (Viridis)
+    - "positive": Red gradient for non-negative data
+    - "negative": Reverse blue gradient for non-positive data
+    - "diverging": Red-white-blue for data crossing zero (RdBu_r)
+    """
     negative_color: Optional[str] = None
     """Color of the surfaces at negative values of a signed quantity, e.g. spin down,
     unless an isosurface names its own. VASP Viewer requires :attr:`signed` for it. NGL
@@ -725,6 +741,7 @@ class View:
             "grid": grid,
             "signed": grid_quantity.signed,
             "symmetric": grid_quantity.symmetric,
+            "color_scheme": grid_quantity.color_scheme,
             "color_negative": grid_quantity.negative_color,
             "isosurfaces": [
                 self._isosurface_entry(grid_quantity, isosurface)
