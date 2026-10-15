@@ -154,9 +154,9 @@ def _phonon_dispersion():
     n_qpoints, n_bands, n_atoms_prim = 4, 6, 2
     size = n_qpoints * n_bands * n_atoms_prim * 3
     real = np.arange(size, dtype=float).reshape(n_qpoints, n_bands, n_atoms_prim, 3)
-    eigenvectors = real + 1j * real[::-1]
+    displacements = real + 1j * real[::-1]
     return PhononDispersion(
-        eigenvectors=eigenvectors,
+        displacements=displacements,
         frequencies=np.arange(n_qpoints * n_bands, dtype=float).reshape(
             n_qpoints, n_bands
         ),
@@ -179,10 +179,10 @@ def _phonon_view(phonon):
 def test_phonon_dispersion_serialized_to_config():
     phonon = _phonon_dispersion()
     config = _phonon_view(phonon).to_vasp_viewer_config()
-    eigenvectors = np.asarray(phonon.eigenvectors)
+    displacements = np.asarray(phonon.displacements)
     Assert = np.testing.assert_allclose
-    Assert(np.asarray(config["phonon_eigenvectors_re"]), eigenvectors.real)
-    Assert(np.asarray(config["phonon_eigenvectors_im"]), eigenvectors.imag)
+    Assert(np.asarray(config["phonon_displacements_re"]), displacements.real)
+    Assert(np.asarray(config["phonon_displacements_im"]), displacements.imag)
     Assert(np.asarray(config["phonon_frequencies"]), np.asarray(phonon.frequencies))
     Assert(np.asarray(config["phonon_qpoints"]), np.asarray(phonon.qpoints))
     Assert(

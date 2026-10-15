@@ -419,7 +419,7 @@ def test_ngl_draws_volumes_with_nan():
 def test_fail_phonon_in_ngl():
     pytest.importorskip("nglview")
     phonon = PhononDispersion(
-        eigenvectors=np.zeros((1, 6, 2, 3), dtype=complex),
+        displacements=np.zeros((1, 6, 2, 3), dtype=complex),
         frequencies=np.zeros((1, 6)),
         qpoints=np.zeros((1, 3)),
         supercell_matrix=np.eye(3),

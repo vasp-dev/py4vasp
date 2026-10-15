@@ -226,8 +226,8 @@ class IonArrow:
 class PhononDispersion:
     """Dataclass storing a phonon dispersion for interactive visualization.
 
-    The eigenvectors are defined on the primitive cell for each **q** point along
-    a path through the Brillouin zone. Together with the ``supercell_matrix`` and
+    The displacement patterns are defined on the primitive cell for each **q** point
+    along a path through the Brillouin zone. Together with the ``supercell_matrix`` and
     ``primitive_index`` mapping, the viewer reconstructs the atomic displacements
     in the displayed cell and animates the selected mode, while the frequencies
     drive the interactive dispersion plot.
@@ -236,19 +236,20 @@ class PhononDispersion:
     --------
     >>> import numpy as np
     >>> from py4vasp.view import PhononDispersion
-    >>> eigenvectors = np.zeros((1, 6, 2, 3), dtype=complex)
+    >>> displacements = np.zeros((1, 6, 2, 3), dtype=complex)
     >>> PhononDispersion(
-    ...     eigenvectors=eigenvectors,
+    ...     displacements=displacements,
     ...     frequencies=np.zeros((1, 6)),
     ...     qpoints=np.zeros((1, 3)),
     ...     supercell_matrix=np.eye(3),
     ...     primitive_index=[0, 1],
     ... )
-    PhononDispersion(eigenvectors=array([[[[...]]]]...), ...)
+    PhononDispersion(displacements=array([[[[...]]]]...), ...)
     """
 
-    eigenvectors: npt.ArrayLike
-    """Complex eigenvectors of the primitive cell. Expected shape is
+    displacements: npt.ArrayLike
+    """Complex displacement patterns of the atoms in the primitive cell, in any
+    normalization. Expected shape is
     (number of q-points, number of bands, number of primitive atoms, 3)."""
     frequencies: npt.ArrayLike
     """Phonon energies ħω in eV, where an unstable mode is negative so that its branch
@@ -636,10 +637,10 @@ class View:
         }
 
     def _phonon_config(self, phonon):
-        eigenvectors = np.asarray(phonon.eigenvectors)
+        displacements = np.asarray(phonon.displacements)
         config = {
-            "phonon_eigenvectors_re": self._convert_to_list(eigenvectors.real),
-            "phonon_eigenvectors_im": self._convert_to_list(eigenvectors.imag),
+            "phonon_displacements_re": self._convert_to_list(displacements.real),
+            "phonon_displacements_im": self._convert_to_list(displacements.imag),
             "phonon_frequencies": self._convert_to_list(np.asarray(phonon.frequencies)),
             "phonon_qpoints": self._convert_to_list(np.asarray(phonon.qpoints)),
             "phonon_supercell_matrix": self._convert_to_list(
