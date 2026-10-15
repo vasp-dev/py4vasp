@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import _config, exception, raw
+from py4vasp import exception, raw
 from py4vasp._calculation import bader
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
@@ -89,8 +89,8 @@ class ExcitonDensityHandler:
         num_excitons = self._raw_exciton_density.exciton_charge.shape[0]
         return {str(choice + 1): choice for choice in range(num_excitons)}
 
-    def _isosurfaces(self, isolevel=0.8, color=None, opacity=0.6):
-        color = color or _config.VASP_COLORS["cyan"]
+    def _isosurfaces(self, isolevel=0.8, color=None, opacity=None):
+        # the backend picks color and opacity unless the user did
         return [view.Isosurface(isolevel, color, opacity)]
 
 

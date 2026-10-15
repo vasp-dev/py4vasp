@@ -6,7 +6,6 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import _config
 from py4vasp._calculation.partial_density import PartialDensity
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._util.bader import BaderAnalysis
@@ -163,8 +162,8 @@ def test_plot(PolarizedNonSplitPartialDensity, selection, Assert):
     assert len(grid_scalar.isosurfaces) == 1
     isosurface = grid_scalar.isosurfaces[0]
     assert isosurface.isolevel == 0.2
-    assert isosurface.color == _config.VASP_COLORS["cyan"]
-    assert isosurface.opacity == 0.6
+    assert isosurface.color is None  # the backend picks it
+    assert isosurface.opacity is None
 
 
 def test_plot_with_options(NonSplitPartialDensity, Assert):

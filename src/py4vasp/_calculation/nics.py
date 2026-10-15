@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import _config, exception
+from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
@@ -185,18 +185,17 @@ nucleus-independent chemical shift:
 
     def _make_grid_quantity(self, key, quantity, user_options):
         # shielding and deshielding are opposite phenomena, so each isolevel is drawn
-        # in blue and mirrored in red at -isolevel
+        # at +isolevel and -isolevel; the colors are left to the backend
         return view.GridQuantity(
             quantity=quantity[np.newaxis],
             label=f"{key} NICS",
             isosurfaces=self._isosurfaces(**user_options),
             signed=True,
             symmetric=True,
-            negative_color=_config.VASP_COLORS["red"],
         )
 
-    def _isosurfaces(self, isolevel=1.0, opacity=0.6):
-        return [view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity)]
+    def _isosurfaces(self, isolevel=1.0, opacity=None):
+        return [view.Isosurface(isolevel, opacity=opacity)]
 
     def _make_contour(self, key, data, plane, fraction, supercell):
         grid_scalar = slicing.grid_scalar(data, plane, fraction)
@@ -402,7 +401,7 @@ class Nics(view.Mixin):
             Further arguments with keyword that get directly passed on to the
             visualizer. Most importantly, you can set isolevel to adjust the
             value at which the isosurface is drawn. The surface at +isolevel is drawn
-            in blue and the one at -isolevel in red, so the sign of the isolevel does
+            in red and the one at -isolevel in blue, so the sign of the isolevel does
             not matter.
 
         Returns

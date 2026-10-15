@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import _config, exception, raw
+from py4vasp import exception, raw
 from py4vasp._calculation.density import Density
 from py4vasp._calculation.dispatch import DictSource
 from py4vasp._calculation.structure import Structure, StructureHandler
@@ -203,8 +203,7 @@ def test_empty_density(empty_density):
 @pytest.mark.parametrize("selection", [None, "0", "unity", "sigma_0", "scalar"])
 def test_charge_plot(selection, reference_density, Assert):
     source = reference_density.ref.source
-    color = _config.VASP_COLORS["cyan"]
-    isosurfaces = [Isosurface(isolevel=0.2, color=color, opacity=0.6)]
+    isosurfaces = [Isosurface(isolevel=0.2)]
     if source == "charge":
         expected = Expectation(
             label=selection if selection else "charge",
@@ -237,8 +236,7 @@ def check_view(density, expected, Assert, **kwargs):
     # a magnetization is signed and symmetric, spin down drawn in red at -isolevel
     assert grid_scalar.signed == expected.symmetric
     assert grid_scalar.symmetric == expected.symmetric
-    red = _config.VASP_COLORS["red"]
-    assert grid_scalar.negative_color == (red if expected.symmetric else None)
+    assert grid_scalar.negative_color is None  # the backend picks it
 
 
 def test_accessing_spin_raises_error(nonpolarized_density):
@@ -252,7 +250,7 @@ def test_accessing_spin_raises_error(nonpolarized_density):
 def test_collinear_plot(selection, collinear_density, Assert):
     source = collinear_density.ref.source
     isosurfaces = [
-        Isosurface(isolevel=0.1, color=_config.VASP_COLORS["blue"], opacity=0.6),
+        Isosurface(isolevel=0.1),
     ]
     if source == "charge":
         expected = Expectation(
@@ -275,14 +273,31 @@ def test_collinear_plot(selection, collinear_density, Assert):
 
 
 def test_magnetization_keeps_a_negative_isolevel(collinear_density):
-    # the sign does not matter: blue is drawn at +0.1 and red at -0.1 either way
+    # the sign does not matter: the positive color is drawn at +0.1 either way
     view = collinear_density.plot("3", isolevel=-0.1)
     (grid_scalar,) = view.grid_scalars
-    blue = _config.VASP_COLORS["blue"]
-    assert grid_scalar.isosurfaces == [
-        Isosurface(isolevel=-0.1, color=blue, opacity=0.6)
-    ]
+    assert grid_scalar.isosurfaces == [Isosurface(isolevel=-0.1)]
     assert grid_scalar.symmetric
+
+
+def test_magnetization_leaves_the_colors_to_vasp_viewer(collinear_density):
+    # the viewer picks the colors and the opacity from the color scheme
+    config = collinear_density.plot("3").to_vasp_viewer_config()
+    (dataset,) = config["volume_datasets"]
+    assert dataset["signed"] and dataset["symmetric"]
+    assert dataset["color_scheme"] == "auto"
+    assert dataset["color_negative"] is None
+    (isosurface,) = dataset["isosurfaces"]
+    assert isosurface["color_surface"] is None
+    assert isosurface["opacity"] is None
+
+
+@pytest.mark.parametrize("options", [{}, {"color": "red", "opacity": 0.3}])
+def test_charge_sends_color_and_opacity_only_when_given(reference_density, options):
+    config = reference_density.plot(**options).to_vasp_viewer_config()
+    (isosurface,) = config["volume_datasets"][0]["isosurfaces"]
+    assert isosurface["color_surface"] == options.get("color")
+    assert isosurface["opacity"] == options.get("opacity")
 
 
 def test_accessing_noncollinear_element_raises_error(collinear_density):
@@ -319,7 +334,7 @@ def test_plotting_noncollinear_density(selections, noncollinear_density, Assert)
         if "(" in selections[0]:  # magnetization not allowed for kinetic_energy
             return
     isosurfaces = [
-        Isosurface(isolevel=0.2, color=_config.VASP_COLORS["blue"], opacity=0.3),
+        Isosurface(isolevel=0.2, opacity=0.3),
     ]
     for selection, density, label in zip(selections, expected_density, expected_labels):
         expected = Expectation(label, density, isosurfaces, symmetric=True)
@@ -335,11 +350,10 @@ def test_adding_components(noncollinear_density, Assert):
     else:
         expected_label = f"{source}(1 + 2)"
         expected_density = noncollinear_density.ref.output[source][1:]
-    color = _config.VASP_COLORS["cyan"]
     expected = Expectation(
         label=expected_label,
         density=expected_density[0] + expected_density[1],
-        isosurfaces=[Isosurface(isolevel=0.4, color=color, opacity=0.6)],
+        isosurfaces=[Isosurface(isolevel=0.4)],
     )
     check_view(noncollinear_density, expected, Assert, selection="1 + 2", isolevel=0.4)
 
@@ -347,8 +361,7 @@ def test_adding_components(noncollinear_density, Assert):
 @pytest.mark.parametrize("supercell", [2, (3, 2, 1)])
 def test_plotting_supercell(supercell, reference_density, Assert):
     source = reference_density.ref.source
-    color = _config.VASP_COLORS["cyan"]
-    isosurfaces = [Isosurface(isolevel=0.2, color=color, opacity=0.6)]
+    isosurfaces = [Isosurface(isolevel=0.2)]
     if source == "charge":
         expected = Expectation(
             label=source,

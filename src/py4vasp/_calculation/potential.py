@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import _config, exception
+from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
@@ -222,8 +222,8 @@ class PotentialHandler:
             for choice in choices
         }
 
-    def _create_isosurface(self, isolevel=0, color=None, opacity=0.6):
-        color = color or _config.VASP_COLORS["cyan"]
+    def _create_isosurface(self, isolevel=0, color=None, opacity=None):
+        # the backend picks color and opacity unless the user did
         return view.Isosurface(isolevel, color, opacity)
 
     def _generate_items(self, kind):
