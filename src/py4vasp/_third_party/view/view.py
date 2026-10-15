@@ -72,9 +72,11 @@ class Isosurface:
 
     isolevel: float
     """The isosurface moves through points where the interpolated data has this value. For example, if the quantity is a charge density, an isolevel of 0.1 means that the isosurface will be drawn through points where the charge density has a value of 0.1."""
-    color: str
-    """Color with which the isosurface should be drawn. For example, '#2FB5AB' or 'red'."""
-    opacity: float
+    color: Optional[str] = None
+    """Color with which the isosurface should be drawn. For example, '#2FB5AB' or 'red'.
+    None lets VASP Viewer pick the color from the quantity's color scheme. NGL then draws
+    cyan, or red at +isolevel of a symmetric quantity."""
+    opacity: float = 0.6
     """Amount of light blocked by the isosurface. Must be a value between 0 and 1, where 0 means fully transparent and 1 means fully opaque."""
     cap: Optional[str] = None
     """Viewer setting for the faces that close the isosurface where the cell boundary or
@@ -140,9 +142,9 @@ class GridQuantity:
     """
     negative_color: Optional[str] = None
     """Color of the surfaces at negative values of a signed quantity, e.g. spin down,
-    unless an isosurface names its own. VASP Viewer requires :attr:`signed` for it. NGL
-    draws the surfaces at -isolevel of a symmetric quantity in this color as well, or in
-    red without one."""
+    overriding the one VASP Viewer picks from :attr:`color_scheme`, unless an isosurface
+    names its own. VASP Viewer requires :attr:`signed` for it. NGL draws the surfaces at
+    -isolevel of a symmetric quantity in this color as well, or in blue without one."""
 
 
 @dataclass
@@ -907,18 +909,18 @@ def _ngl_surfaces(grid_quantity, isosurface):
     # NGL keeps drawing what py4vasp sent before the viewer learned about signs: a
     # symmetric quantity's isosurface is the pair at +isolevel and -isolevel, and the
     # settings only VASP Viewer knows (signed, cap) are left out
+    # without a color NGL draws cyan, or red up and blue down like the diverging scheme
+    # of the 2D contour plots for a symmetric field
     opacity = isosurface.opacity
     if not grid_quantity.symmetric:
-        yield {
-            "isolevel": isosurface.isolevel,
-            "color": isosurface.color,
-            "opacity": opacity,
-        }
+        color = isosurface.color or _config.VASP_COLORS["cyan"]
+        yield {"isolevel": isosurface.isolevel, "color": color, "opacity": opacity}
         return
     # the colors follow the sign of the surface, whatever the sign of the isolevel
     isolevel = abs(isosurface.isolevel)
+    color = isosurface.color or _config.VASP_COLORS["red"]
     negative_color = _negative_color(grid_quantity, isosurface)
-    yield {"isolevel": isolevel, "color": isosurface.color, "opacity": opacity}
+    yield {"isolevel": isolevel, "color": color, "opacity": opacity}
     yield {"isolevel": -isolevel, "color": negative_color, "opacity": opacity}
 
 
@@ -926,7 +928,7 @@ def _negative_color(grid_quantity, isosurface):
     return (
         isosurface.negative_color
         or grid_quantity.negative_color
-        or _config.VASP_COLORS["red"]
+        or _config.VASP_COLORS["blue"]
     )
 
 

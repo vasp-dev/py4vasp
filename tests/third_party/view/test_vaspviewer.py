@@ -305,6 +305,14 @@ def test_volume_config_forwards_the_color_scheme(options):
     assert dataset["color_scheme"] == options.get("color_scheme", "auto")
 
 
+@pytest.mark.parametrize("color", [None, "#00ff00"])
+def test_isosurface_color_is_sent_only_when_set(color):
+    # without a color the viewer picks one from the color scheme
+    view = _single_grid_view([Isosurface(0.5, color=color)])
+    (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert entry["color_surface"] == color
+
+
 def _view_of_volume(volume):
     grid_quantity = GridQuantity(volume, "q", [Isosurface(0.5, "#0000ff", 0.6)])
     return View(

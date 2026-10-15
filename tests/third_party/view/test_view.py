@@ -357,7 +357,7 @@ def test_negative_symmetric_isolevel_in_ngl_takes_the_colors_by_sign():
     [
         ("#FF0000", None, "#FF0000"),
         ("#FF0000", "#FF8800", "#FF8800"),
-        (None, None, _config.VASP_COLORS["red"]),
+        (None, None, _config.VASP_COLORS["blue"]),
     ],
 )
 def test_negative_color_of_symmetric_isosurfaces_in_ngl(
@@ -370,6 +370,25 @@ def test_negative_color_of_symmetric_isosurfaces_in_ngl(
     surfaces = _ngl_surfaces(GridQuantity(data, "m", [isosurface], **options))
     assert [surface["isolevel"] for surface in surfaces] == [0.2, -0.2]
     assert [surface["color"] for surface in surfaces] == ["#0000FF", expected]
+
+
+@pytest.mark.parametrize(
+    "options, expected",
+    [
+        ({}, [_config.VASP_COLORS["cyan"]]),
+        (
+            {"signed": True, "symmetric": True},
+            [_config.VASP_COLORS["red"], _config.VASP_COLORS["blue"]],
+        ),
+    ],
+)
+def test_ngl_fills_in_the_default_colors(options, expected):
+    # without a color NGL draws cyan, or red up and blue down for a symmetric field,
+    # as the diverging scheme of the 2D contour plots does
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    grid_quantity = GridQuantity(data, "q", [Isosurface(0.2)], **options)
+    assert [surface["color"] for surface in _ngl_surfaces(grid_quantity)] == expected
 
 
 def test_ngl_ignores_the_color_scheme():
