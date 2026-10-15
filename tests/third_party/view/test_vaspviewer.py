@@ -313,6 +313,15 @@ def test_isosurface_color_is_sent_only_when_set(color):
     assert entry["color_surface"] == color
 
 
+@pytest.mark.parametrize("opacity", [None, 0.3])
+def test_isosurface_opacity_is_sent_only_when_set(opacity):
+    # without an opacity the viewer draws the isosurface opaque
+    options = {} if opacity is None else {"opacity": opacity}
+    view = _single_grid_view([Isosurface(0.5, **options)])
+    (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert entry["opacity"] == opacity
+
+
 def _view_of_volume(volume):
     grid_quantity = GridQuantity(volume, "q", [Isosurface(0.5, "#0000ff", 0.6)])
     return View(

@@ -391,6 +391,13 @@ def test_ngl_fills_in_the_default_colors(options, expected):
     assert [surface["color"] for surface in _ngl_surfaces(grid_quantity)] == expected
 
 
+def test_ngl_fills_in_the_default_opacity():
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    (surface,) = _ngl_surfaces(GridQuantity(data, "q", [Isosurface(0.2)]))
+    assert surface["opacity"] == 0.6
+
+
 def test_ngl_ignores_the_color_scheme():
     pytest.importorskip("nglview")
     data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)

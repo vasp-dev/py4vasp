@@ -76,8 +76,9 @@ class Isosurface:
     """Color with which the isosurface should be drawn. For example, '#2FB5AB' or 'red'.
     None lets VASP Viewer pick the color from the quantity's color scheme. NGL then draws
     cyan, or red at +isolevel of a symmetric quantity."""
-    opacity: float = 0.6
-    """Amount of light blocked by the isosurface. Must be a value between 0 and 1, where 0 means fully transparent and 1 means fully opaque."""
+    opacity: Optional[float] = None
+    """Amount of light blocked by the isosurface. Must be a value between 0 and 1, where 0 means fully transparent and 1 means fully opaque.
+    None draws the isosurface opaque in VASP Viewer and with an opacity of 0.6 in NGL."""
     cap: Optional[str] = None
     """Viewer setting for the faces that close the isosurface where the cell boundary or
     the cut plane opens it (NGL ignores it and draws no caps):
@@ -911,7 +912,7 @@ def _ngl_surfaces(grid_quantity, isosurface):
     # settings only VASP Viewer knows (signed, cap) are left out
     # without a color NGL draws cyan, or red up and blue down like the diverging scheme
     # of the 2D contour plots for a symmetric field
-    opacity = isosurface.opacity
+    opacity = 0.6 if isosurface.opacity is None else isosurface.opacity
     if not grid_quantity.symmetric:
         color = isosurface.color or _config.VASP_COLORS["cyan"]
         yield {"isolevel": isosurface.isolevel, "color": color, "opacity": opacity}
