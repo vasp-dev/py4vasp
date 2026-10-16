@@ -333,6 +333,35 @@ def test_volume_config_checks_a_grid_without_the_step_axis_for_nan():
         _view_of_volume(volume).to_vasp_viewer_config()
 
 
+@pytest.mark.parametrize(
+    "quantity",
+    [
+        [[[[1.0, None], [0.0, 1.0]], [[0.0, 1.0], [1.0, 0.0]]]],  # not a number
+        [[[[1.0, 2.0], [0.0]], [[0.0, 1.0], [1.0, 0.0]]]],  # ragged
+        np.ones((2, 2)),  # not a grid
+    ],
+)
+def test_volume_config_rejects_malformed_grids(quantity):
+    with pytest.raises(exception.IncorrectUsage):
+        _view_of_volume(quantity).to_vasp_viewer_config()
+
+
+@pytest.mark.parametrize(
+    "quantity",
+    [
+        np.ones(3),  # no ions
+        [[[1, 0, 0], [0, 1]]],  # ragged
+        np.ones((1, 5, 2)),  # not three components
+    ],
+)
+def test_vasp_viewer_rejects_malformed_arrows(quantity):
+    inputs = base_input_view(is_structure=True)  # 5 ions
+    arrow = IonArrow(quantity, "forces", "#FF0000", 0.2)
+    view = View(**inputs, ion_arrows=[arrow])
+    with pytest.raises(exception.IncorrectUsage):
+        view.to_vasp_viewer_config()
+
+
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
 def test_volume_config_rejects_non_finite_values(value):
     # VASP Viewer only draws finite values

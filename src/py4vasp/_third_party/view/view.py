@@ -680,7 +680,7 @@ class View:
     def _raise_error_if_not_one_arrow_per_ion(self):
         number_ions = np.shape(self.positions)[1]
         for arrow in self.ion_arrows or ():
-            number_arrows = np.shape(arrow.quantity)[-2]
+            _, number_arrows, _ = _shape_of_arrows(arrow)
             if number_arrows != number_ions:
                 raise exception.IncorrectUsage(
                     f"The ion arrows '{arrow.label}' contain {number_arrows} arrows, "
@@ -862,10 +862,34 @@ class View:
                 widget.shape.add_arrow(*(arrow_3d.to_serializable()))
 
 
+def _shape_of_arrows(arrow):
+    quantity = _as_float_array(arrow.quantity)
+    if quantity is None or quantity.ndim != 3 or quantity.shape[-1] != 3:
+        raise exception.IncorrectUsage(
+            f"The ion arrows '{arrow.label}' must be numbers of the shape (number of "
+            "steps, number of ions, 3), i.e. one Cartesian vector per ion and step."
+        )
+    return quantity.shape
+
+
 def _step_sent_to_vasp_viewer(grid_quantity):
     # only the first step is sent; a single grid without the step axis is that step
-    quantity = np.asarray(grid_quantity.quantity)
+    quantity = _as_float_array(grid_quantity.quantity)
+    if quantity is None or quantity.ndim not in (3, 4):
+        raise exception.IncorrectUsage(
+            f"The grid quantity '{grid_quantity.label}' must be numbers of the shape "
+            "(number of steps, grid size x, grid size y, grid size z), or of the shape "
+            "(grid size x, grid size y, grid size z) for a single grid."
+        )
     return quantity if quantity.ndim == 3 else quantity[0]
+
+
+def _as_float_array(values):
+    # None, strings or ragged nesting make numpy raise; the caller explains the shape
+    try:
+        return np.asarray(values, dtype=float)
+    except (TypeError, ValueError):
+        return None
 
 
 def _raise_error_if_volume_is_not_finite(grid_quantity):
