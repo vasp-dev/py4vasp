@@ -663,7 +663,7 @@ class View:
             # checks of rules only VASP Viewer has; NGL must keep drawing what it drew
             self._raise_error_if_not_one_arrow_per_ion()
             for grid_quantity in self.grid_scalars or ():
-                _raise_error_if_volume_contains_nan(grid_quantity)
+                _raise_error_if_volume_is_not_finite(grid_quantity)
 
     def _raise_error_if_not_one_arrow_per_ion(self):
         number_ions = np.shape(self.positions)[1]
@@ -852,13 +852,13 @@ class View:
                 widget.shape.add_arrow(*(arrow_3d.to_serializable()))
 
 
-def _raise_error_if_volume_contains_nan(grid_quantity):
+def _raise_error_if_volume_is_not_finite(grid_quantity):
     # only the first step is sent to the viewer, so only that one is checked
-    if np.isnan(np.asarray(grid_quantity.quantity)[0]).any():
+    if not np.isfinite(np.asarray(grid_quantity.quantity)[0]).all():
         raise exception.IncorrectUsage(
-            f"The grid quantity '{grid_quantity.label}' contains NaN values, which VASP "
-            "Viewer cannot draw. Replace them before plotting, e.g. with "
-            "numpy.nan_to_num."
+            f"The grid quantity '{grid_quantity.label}' contains NaN or infinite "
+            "values, which VASP Viewer cannot draw. Replace them before plotting, e.g. "
+            "with numpy.nan_to_num."
         )
 
 

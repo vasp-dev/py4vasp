@@ -396,11 +396,12 @@ def test_ngl_ignores_the_colormap():
     assert _ngl_surfaces(with_colormap) == _ngl_surfaces(plain)
 
 
-def test_ngl_draws_volumes_with_nan():
-    # only VASP Viewer refuses NaN; NGL keeps drawing what it drew
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_ngl_draws_volumes_with_non_finite_values(value):
+    # only VASP Viewer refuses them; NGL keeps drawing what it drew
     pytest.importorskip("nglview")
     volume = np.ones((1, 2, 2, 2))
-    volume[0, 1, 0, 1] = np.nan
+    volume[0, 1, 0, 1] = value
     grid_quantity = GridQuantity(volume, "q", [Isosurface(0.5, "#0000FF", 0.6)])
     View(**base_input_view(True), grid_scalars=[grid_quantity]).to_ngl()
 

@@ -313,20 +313,13 @@ def _view_of_volume(volume):
     )
 
 
-def test_volume_config_rejects_nan():
-    # VASP Viewer cannot draw a volume containing NaN
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_volume_config_rejects_non_finite_values(value):
+    # VASP Viewer only draws finite values
     volume = np.ones((1, 2, 2, 2))
-    volume[0, 1, 0, 1] = np.nan
+    volume[0, 1, 0, 1] = value
     with pytest.raises(exception.IncorrectUsage):
         _view_of_volume(volume).to_vasp_viewer_config()
-
-
-def test_volume_config_passes_infinite_values_on():
-    volume = np.ones((1, 2, 2, 2))
-    volume[0, 1, 0, 1] = np.inf
-    volume[0, 0, 1, 0] = -np.inf
-    data = _view_of_volume(volume).to_vasp_viewer_config()["volume_datasets"][0]["data"]
-    assert np.sum(np.isinf(np.asarray(data))) == 2
 
 
 def test_volume_without_isosurfaces_sends_none():
