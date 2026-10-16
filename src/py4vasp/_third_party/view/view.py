@@ -59,6 +59,26 @@ class Isosurface:
     This class does not hold the data for the isosurface itself, only the settings for how
     an isosurface should be plotted as a :class:`~py4vasp.view.GridQuantity`.
 
+    Attributes
+    ----------
+    isolevel : float
+        The value at which the isosurface is drawn. A "symmetric" quantity draws it at
+        +isolevel and -isolevel, so there its sign does not matter.
+    color : str or None
+        Color of the isosurface, e.g. "red" or "#2FB5AB". None lets the viewer pick it:
+        NGL draws cyan, or blue at +isolevel of a symmetric quantity, while VASP Viewer
+        picks it from the quantity's scheme.
+    opacity : float or None
+        From 0 (transparent) to 1 (opaque). None draws 0.6 in NGL and opaque in VASP
+        Viewer.
+    cap : str or None
+        How VASP Viewer closes the isosurface where the cell or the cut plane opens it:
+        "away_from_zero" paints the inside of a lobe, "toward_zero" the side with zero,
+        "off" nothing. None lets VASP Viewer decide; NGL draws no caps.
+    color_opposite : str or None
+        Second color, for the opposite side of a "symmetric" or "diverging" quantity.
+        None lets the viewer pick it; NGL draws red at -isolevel of a symmetric quantity.
+
     Examples
     --------
     Each :class:`~py4vasp.view.GridQuantity` object needs matching
@@ -77,8 +97,9 @@ class Isosurface:
     """The isosurface moves through points where the interpolated data has this value. For example, if the quantity is a charge density, an isolevel of 0.1 means that the isosurface will be drawn through points where the charge density has a value of 0.1."""
     color: Optional[str] = None
     """Color with which the isosurface should be drawn. For example, '#2FB5AB' or 'red'.
-    None lets VASP Viewer pick the color from the quantity's color scheme. NGL then draws
-    cyan, or blue at +isolevel of a symmetric quantity."""
+    None lets VASP Viewer pick the color from the quantity's
+    :attr:`~py4vasp.view.GridQuantity.scheme`. NGL then draws cyan, or blue at +isolevel
+    of a symmetric quantity."""
     opacity: Optional[float] = None
     """Amount of light blocked by the isosurface. Must be a value between 0 and 1, where 0 means fully transparent and 1 means fully opaque.
     None draws the isosurface opaque in VASP Viewer and with an opacity of 0.6 in NGL."""
@@ -101,6 +122,28 @@ class Isosurface:
 @dataclass
 class GridQuantity:
     """Dataclass to store a quantity defined on a grid and the settings for the isosurfaces to be plotted for this quantity.
+
+    Attributes
+    ----------
+    quantity : np.ndarray
+        The values on the grid, of the shape (number of steps, grid size x, grid size y,
+        grid size z). VASP Viewer also takes a single grid without the step axis; NGL
+        needs the step axis. VASP Viewer refuses NaN and infinite values.
+    label : str
+        Name of the quantity.
+    isosurfaces : Sequence[Isosurface] or None
+        The isosurfaces to be drawn.
+    scheme : str
+        What the values are; VASP Viewer picks its colors from it. "positive" (>= 0,
+        e.g. a density), "negative" (<= 0), "diverging" (one quantity that rises or falls
+        from zero, e.g. a density difference), "symmetric" (two opposite phenomena of
+        one magnitude, e.g. a magnetization), "sequential" (a ramp whose zero means
+        nothing, e.g. a potential) or "auto" (the default, unknown). Only "symmetric"
+        draws each isosurface at +isolevel and -isolevel, in NGL as well; to see both
+        signs of another quantity, add an isosurface at the negative level.
+    colormap : str or None
+        Colormap of the slices and the volume rendering in VASP Viewer. None lets VASP
+        Viewer pick it from the scheme; NGL ignores it.
 
     Examples
     --------
@@ -546,6 +589,31 @@ class View:
         This method creates a dictionary with the configuration required to view a
         structure, isosurfaces and arrows at atom centers. The attributes of View are
         added to a dictionary with which to initialize a VASP Viewer widget.
+
+        Returns
+        -------
+        dict
+            The configuration VASP Viewer is initialized with, e.g. the atoms under
+            "atoms_trajectory" and "atoms_types", and the isosurfaces under
+            "volume_datasets".
+
+        Raises
+        ------
+        IncorrectUsage
+            If an arrow group does not hold one Cartesian vector per ion, or if a grid
+            quantity does not hold finite numbers of a grid's shape, since VASP Viewer
+            cannot draw either.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> config = calculation.density.to_view().to_vasp_viewer_config()
+        >>> config["atoms_types"]
+        [['Sr', 'Sr', 'Ti', 'O', 'O', 'O', 'O']]
+        >>> volume = config["volume_datasets"][0]
+        >>> volume["label"], volume["scheme"], volume["grid"]
+        ('charge', 'positive', (10, 12, 14))
         """
         self._raise_error_if_grid_domains_not_implemented()
         self._verify("vasp_viewer")
