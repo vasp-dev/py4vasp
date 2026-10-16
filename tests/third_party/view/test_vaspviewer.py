@@ -251,6 +251,13 @@ def test_volume_config_sends_the_scheme(scheme):
         assert replaced_key not in dataset  # the viewer refuses them
 
 
+@pytest.mark.parametrize("colormap", [None, "viridis"])
+def test_volume_config_forwards_the_colormap(colormap):
+    # an override for hand-built views; the viewer uses it for slices and DVR
+    view = _single_grid_view([Isosurface(1.0)], colormap=colormap)
+    assert view.to_vasp_viewer_config()["volume_datasets"][0]["colormap"] == colormap
+
+
 @pytest.mark.parametrize("color_opposite", [None, "#ff8800"])
 def test_isosurface_config_forwards_the_opposite_color(color_opposite):
     # the second color of a symmetric or diverging quantity overrides the viewer's

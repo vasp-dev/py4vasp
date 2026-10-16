@@ -134,6 +134,9 @@ class GridQuantity:
     - "auto" (default): unknown; VASP Viewer picks "diverging", "positive" or
       "negative" from the smallest and largest value.
     """
+    colormap: Optional[str] = None
+    """Colormap VASP Viewer uses for the slices and the volume rendering of this
+    quantity, overriding the one it picks from :attr:`scheme`. NGL ignores it."""
 
 
 @dataclass
@@ -729,6 +732,7 @@ class View:
             "data": data,
             "grid": grid,
             "scheme": grid_quantity.scheme,
+            "colormap": grid_quantity.colormap,
             "isosurfaces": [
                 self._isosurface_entry(isosurface) for isosurface in isosurfaces
             ]

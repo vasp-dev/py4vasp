@@ -387,6 +387,15 @@ def test_ngl_draws_one_surface_unless_the_scheme_is_symmetric(scheme):
     assert _ngl_surfaces(with_scheme) == _ngl_surfaces(plain)
 
 
+def test_ngl_ignores_the_colormap():
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    isosurfaces = [Isosurface(0.2, "#0000FF", 0.6)]
+    plain = GridQuantity(data, "q", isosurfaces)
+    with_colormap = GridQuantity(data, "q", isosurfaces, colormap="viridis")
+    assert _ngl_surfaces(with_colormap) == _ngl_surfaces(plain)
+
+
 def test_ngl_draws_volumes_with_nan():
     # only VASP Viewer refuses NaN; NGL keeps drawing what it drew
     pytest.importorskip("nglview")
