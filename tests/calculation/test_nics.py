@@ -8,7 +8,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from py4vasp import exception, raw
+from py4vasp import _config, exception, raw
 from py4vasp._calculation.nics import Nics, NicsHandler
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.models import NicsModel
@@ -413,6 +413,19 @@ def test_plot(nics_on_a_grid, selection, Assert):
             view.Isosurface(1.0),
         ]
         assert grid_scalar.scheme == "symmetric"
+
+
+@pytest.mark.parametrize("selection", ["span", "asymmetry"])
+def test_plot_never_negative_selection_is_positive(nics_on_a_grid, selection):
+    # span and asymmetry are never negative, so VASP Viewer gets them as positive;
+    # NGL keeps drawing the blue and red pair it always drew for them
+    (grid_scalar,) = nics_on_a_grid.plot(selection, opacity=0.3).grid_scalars
+    assert grid_scalar.scheme == "positive"
+    blue, red = _config.VASP_COLORS["blue"], _config.VASP_COLORS["red"]
+    assert grid_scalar.isosurfaces == [
+        view.Isosurface(1.0, blue, 0.3),
+        view.Isosurface(-1.0, red, 0.3),
+    ]
 
 
 @pytest.mark.parametrize("supercell", (2, (3, 1, 2)))

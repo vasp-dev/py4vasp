@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import exception
+from py4vasp import _config, exception
 from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
@@ -23,6 +23,7 @@ from py4vasp._third_party import graph, view
 from py4vasp._util import check, documentation, import_, index, select, slicing
 
 _DEFAULT_SELECTION: str = "isotropic"
+_NEVER_NEGATIVE = ("span", "asymmetry")
 
 
 class NicsHandler:
@@ -184,17 +185,26 @@ nucleus-independent chemical shift:
         {tensor_string}"""
 
     def _make_grid_quantity(self, key, quantity, user_options):
-        # shielding and deshielding are opposite phenomena, so each isolevel is drawn
-        # at +isolevel and -isolevel; the colors are left to the backend
+        # Shielding and deshielding are opposite phenomena, so each isolevel is drawn
+        # at +isolevel and -isolevel and the colors are left to the backend. Span and
+        # asymmetry are never negative; NGL keeps drawing the blue and red pair it
+        # always drew for them.
+        never_negative = key in _NEVER_NEGATIVE
         return view.GridQuantity(
             quantity=quantity[np.newaxis],
             label=f"{key} NICS",
-            isosurfaces=self._isosurfaces(**user_options),
-            scheme="symmetric",
+            isosurfaces=self._isosurfaces(never_negative, **user_options),
+            scheme="positive" if never_negative else "symmetric",
         )
 
-    def _isosurfaces(self, isolevel=1.0, opacity=None):
-        return [view.Isosurface(isolevel, opacity=opacity)]
+    def _isosurfaces(self, never_negative, isolevel=1.0, opacity=None):
+        if not never_negative:
+            return [view.Isosurface(isolevel, opacity=opacity)]
+        blue, red = _config.VASP_COLORS["blue"], _config.VASP_COLORS["red"]
+        return [
+            view.Isosurface(isolevel, blue, opacity),
+            view.Isosurface(-isolevel, red, opacity),
+        ]
 
     def _make_contour(self, key, data, plane, fraction, supercell):
         grid_scalar = slicing.grid_scalar(data, plane, fraction)
