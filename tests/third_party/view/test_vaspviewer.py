@@ -226,8 +226,8 @@ def test_isosurfaces_sent_once_with_the_field():
     assert len(datasets) == 1  # one field, not one dataset per isolevel
     common = {"opacity": 0.6, "cap": None, "color_opposite": None}
     assert datasets[0]["isosurfaces"] == [
-        {"isolevel": 1.0, "color": "#0000ff", **common},
-        {"isolevel": -1.0, "color": "#ff0000", **common},
+        {"level": 1.0, "color": "#0000ff", **common},
+        {"level": -1.0, "color": "#ff0000", **common},
     ]
 
 
@@ -272,7 +272,7 @@ def test_volume_config_sends_a_symmetric_isolevel_of_zero():
     # every combination of scheme and isolevel draws something in VASP Viewer
     view = _single_grid_view([Isosurface(0.0, "#0000ff", 0.6)], scheme="symmetric")
     (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
-    assert entry["isolevel"] == 0.0
+    assert entry["level"] == 0.0
 
 
 def test_negative_symmetric_isolevel_is_sent_as_given():
@@ -281,7 +281,7 @@ def test_negative_symmetric_isolevel_is_sent_as_given():
     isosurface = Isosurface(-0.2, "#0000ff", 0.6, color_opposite="#ff8800")
     view = _single_grid_view([isosurface], scheme="symmetric")
     (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
-    assert entry["isolevel"] == -0.2
+    assert entry["level"] == -0.2
     assert entry["color"] == "#0000ff"
     assert entry["color_opposite"] == "#ff8800"
 

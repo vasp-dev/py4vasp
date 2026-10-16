@@ -740,10 +740,10 @@ class View:
         }
 
     def _isosurface_entry(self, isosurface):
-        # every key is sent, unset ones as None, so each shell has the same keys
-        # the viewer ignores the sign of a symmetric isolevel
+        # every key is sent, unset ones as None, so each shell has the same keys; the
+        # viewer calls the isolevel "level" and ignores its sign on a symmetric quantity
         return {
-            "isolevel": isosurface.isolevel,
+            "level": isosurface.isolevel,
             "color": isosurface.color,
             "color_opposite": isosurface.color_opposite,
             "opacity": isosurface.opacity,
