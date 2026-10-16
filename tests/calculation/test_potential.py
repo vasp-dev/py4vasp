@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import _config, exception, raw
+from py4vasp import exception, raw
 from py4vasp._calculation.density import Density
 from py4vasp._calculation.potential import VALID_KINDS, Potential, PotentialHandler
 from py4vasp._calculation.structure import Structure, StructureHandler
@@ -121,11 +121,10 @@ def test_read(reference_potential, Assert):
 
 def test_plot_total_potential(reference_potential, Assert):
     view = reference_potential.plot()
-    color = _config.VASP_COLORS["cyan"]
     expectation = Expectation(
         label="total potential",
         potential=reference_potential.ref.output["total"],
-        isosurface=Isosurface(isolevel=0, color=color, opacity=0.6),
+        isosurface=Isosurface(isolevel=0),
     )
     check_view(reference_potential, view, [expectation], Assert)
 
@@ -136,11 +135,10 @@ def test_plot_selected_potential(reference_potential, Assert):
     else:
         selection = "total"
     view = reference_potential.plot(selection, isolevel=0.2)
-    color = _config.VASP_COLORS["cyan"]
     expectation = Expectation(
         label=f"{selection} potential",
         potential=reference_potential.ref.output[selection],
-        isosurface=Isosurface(isolevel=0.2, color=color, opacity=0.6),
+        isosurface=Isosurface(isolevel=0.2),
     )
     check_view(reference_potential, view, [expectation], Assert)
 
@@ -149,11 +147,10 @@ def test_plot_selected_potential(reference_potential, Assert):
 def test_plot_spin_potential(raw_data, selection, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "total")
     view = potential.plot(selection, opacity=0.3)
-    color = _config.VASP_COLORS["cyan"]
     expectation = Expectation(
         label=f"total potential({selection})",
         potential=potential.ref.output[f"total_{selection}"],
-        isosurface=Isosurface(isolevel=0.0, color=color, opacity=0.3),
+        isosurface=Isosurface(isolevel=0.0, opacity=0.3),
     )
     check_view(potential, view, [expectation], Assert)
 
@@ -161,8 +158,7 @@ def test_plot_spin_potential(raw_data, selection, Assert):
 def test_plot_multiple_selections(raw_data, Assert):
     potential = make_reference_potential(raw_data, "Fe3O4 collinear", "all")
     view = potential.plot("up(total) hartree xc(down)")
-    color = _config.VASP_COLORS["cyan"]
-    isosurface = Isosurface(isolevel=0.0, color=color, opacity=0.6)
+    isosurface = Isosurface(isolevel=0.0)
     expectations = [
         Expectation(
             label="total potential(up)",
@@ -183,15 +179,31 @@ def test_plot_multiple_selections(raw_data, Assert):
     check_view(potential, view, expectations, Assert)
 
 
+@pytest.mark.parametrize(
+    "magnetism, selection",
+    [("collinear", "xc(sigma_z) total(3) hartree"), ("noncollinear", "xc(x) hartree")],
+)
+def test_plot_magnetic_component_is_diverging(raw_data, magnetism, selection):
+    # a magnetic component is the difference of the spin channels, so its zero means
+    # that up and down feel the same potential; every other potential is only fixed
+    # up to a constant
+    potential = make_reference_potential(raw_data, f"Fe3O4 {magnetism}", "all")
+    view = potential.plot(selection)
+    *magnetic, hartree = view.grid_scalars
+    assert [grid_scalar.scheme for grid_scalar in magnetic] == ["diverging"] * len(
+        magnetic
+    )
+    assert hartree.scheme == "sequential"
+
+
 @pytest.mark.parametrize("supercell", [2, (3, 2, 1)])
 def test_plot_supercell(raw_data, supercell, Assert):
     potential = make_reference_potential(raw_data, "Sr2TiO4", "total")
     view = potential.plot(supercell=supercell)
-    color = _config.VASP_COLORS["cyan"]
     expectation = Expectation(
         label="total potential",
         potential=potential.ref.output[f"total"],
-        isosurface=Isosurface(isolevel=0, color=color, opacity=0.6),
+        isosurface=Isosurface(isolevel=0),
     )
     check_view(potential, view, [expectation], Assert, supercell=supercell)
 
@@ -206,6 +218,8 @@ def check_view(potential, view, expectations, Assert, supercell=None):
         Assert.allclose(grid_scalar.quantity, expected.potential)
         assert len(grid_scalar.isosurfaces) == 1
         assert grid_scalar.isosurfaces[0] == expected.isosurface
+        # a potential is a ramp whose zero means nothing
+        assert grid_scalar.scheme == "sequential"
 
 
 def test_incorrect_selection(reference_potential):
@@ -481,3 +495,11 @@ def test_is_available_without_potential(raw_data):
     potential = Potential.from_data(raw_potential)
     assert potential.is_available("default") is False
     assert potential.is_available("default", method="to_view") is False
+
+
+def test_plot_rejects_unknown_options(reference_potential):
+    # the error names the options the plot takes rather than an internal function
+    with pytest.raises(
+        exception.IncorrectUsage, match="'isolevel'.*'color'.*'opacity'"
+    ):
+        reference_potential.plot(isovalue=0.0)

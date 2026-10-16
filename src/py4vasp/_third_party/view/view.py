@@ -10,7 +10,7 @@ from typing import NamedTuple, Optional, Sequence
 import numpy as np
 import numpy.typing as npt
 
-from py4vasp import exception
+from py4vasp import _config, exception
 from py4vasp._util import import_, merge
 from py4vasp._util.color import Color
 
@@ -49,12 +49,35 @@ def _rotate(arrow: _Arrow3d, transformation: npt.ArrayLike) -> _Arrow3d:
     )
 
 
+_SCHEMES = ("auto", "positive", "negative", "diverging", "symmetric", "sequential")
+
+
 @dataclass
 class Isosurface:
     """Dataclass to store the settings for an isosurface to be plotted for a grid quantity.
 
     This class does not hold the data for the isosurface itself, only the settings for how
     an isosurface should be plotted as a :class:`~py4vasp.view.GridQuantity`.
+
+    Attributes
+    ----------
+    isolevel : float
+        The value at which the isosurface is drawn. A "symmetric" quantity draws it at
+        +isolevel and -isolevel, so there its sign does not matter.
+    color : str or None
+        Color of the isosurface, e.g. "red" or "#2FB5AB". None lets the viewer pick it:
+        NGL draws cyan, or blue at +isolevel of a symmetric quantity, while VASP Viewer
+        picks it from the quantity's scheme.
+    opacity : float or None
+        From 0 (transparent) to 1 (opaque). None draws 0.6 in NGL and opaque in VASP
+        Viewer.
+    cap : str or None
+        How VASP Viewer closes the isosurface where the cell or the cut plane opens it:
+        "away_from_zero" paints the inside of a lobe, "toward_zero" the side with zero,
+        "off" nothing. None lets VASP Viewer decide; NGL draws no caps.
+    color_opposite : str or None
+        Second color, for the opposite side of a "symmetric" or "diverging" quantity.
+        None lets the viewer pick it; NGL draws red at -isolevel of a symmetric quantity.
 
     Examples
     --------
@@ -67,20 +90,60 @@ class Isosurface:
 
     >>> from py4vasp.view import Isosurface
     >>> Isosurface(isolevel=0.1, color='red', opacity=0.5)
-    Isosurface(isolevel=0.1, color='red', opacity=0.5)
+    Isosurface(isolevel=0.1, color='red', opacity=0.5, cap=None, color_opposite=None)
     """
 
     isolevel: float
     """The isosurface moves through points where the interpolated data has this value. For example, if the quantity is a charge density, an isolevel of 0.1 means that the isosurface will be drawn through points where the charge density has a value of 0.1."""
-    color: str
-    """Color with which the isosurface should be drawn. For example, '#2FB5AB' or 'red'."""
-    opacity: float
-    """Amount of light blocked by the isosurface. Must be a value between 0 and 1, where 0 means fully transparent and 1 means fully opaque."""
+    color: Optional[str] = None
+    """Color with which the isosurface should be drawn. For example, '#2FB5AB' or 'red'.
+    None lets VASP Viewer pick the color from the quantity's
+    :attr:`~py4vasp.view.GridQuantity.scheme`. NGL then draws cyan, or blue at +isolevel
+    of a symmetric quantity."""
+    opacity: Optional[float] = None
+    """Amount of light blocked by the isosurface. Must be a value between 0 and 1, where 0 means fully transparent and 1 means fully opaque.
+    None draws the isosurface opaque in VASP Viewer and with an opacity of 0.6 in NGL."""
+    cap: Optional[str] = None
+    """Viewer setting for the faces that close the isosurface where the cell boundary or
+    the cut plane opens it (NGL ignores it and draws no caps):
+
+    - 'away_from_zero': paints the side without zero, i.e., the inside of a lobe.
+    - 'toward_zero': paints the side with zero.
+    - 'off': paints nothing.
+
+    None leaves the choice to the viewer."""
+    color_opposite: Optional[str] = None
+    """Second color of the isosurface, for the opposite side of a "symmetric" or
+    "diverging" :class:`~py4vasp.view.GridQuantity`. None lets VASP Viewer pick it from
+    the scheme. NGL draws the surface at -isolevel of a symmetric quantity in this
+    color, or in red without one."""
 
 
 @dataclass
 class GridQuantity:
     """Dataclass to store a quantity defined on a grid and the settings for the isosurfaces to be plotted for this quantity.
+
+    Attributes
+    ----------
+    quantity : np.ndarray
+        The values on the grid, of the shape (number of steps, grid size x, grid size y,
+        grid size z). VASP Viewer also takes a single grid without the step axis; NGL
+        needs the step axis. VASP Viewer refuses NaN and infinite values.
+    label : str
+        Name of the quantity.
+    isosurfaces : Sequence[Isosurface] or None
+        The isosurfaces to be drawn.
+    scheme : str
+        What the values are; VASP Viewer picks its colors from it. "positive" (>= 0,
+        e.g. a density), "negative" (<= 0), "diverging" (one quantity that rises or falls
+        from zero, e.g. a density difference), "symmetric" (two opposite phenomena of
+        one magnitude, e.g. a magnetization), "sequential" (a ramp whose zero means
+        nothing, e.g. a potential) or "auto" (the default, unknown). Only "symmetric"
+        draws each isosurface at +isolevel and -isolevel, in NGL as well; to see both
+        signs of another quantity, add an isosurface at the negative level.
+    colormap : str or None
+        Colormap of the slices and the volume rendering in VASP Viewer. None lets VASP
+        Viewer pick it from the scheme; NGL ignores it.
 
     Examples
     --------
@@ -92,22 +155,43 @@ class GridQuantity:
     >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
     >>> isosurface = Isosurface(isolevel=0.1, color='red', opacity=0.5)
     >>> GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
-    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)], sign_mode='continuous')
+    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)], scheme='auto', ...)
     """
 
     quantity: npt.ArrayLike
-    """The quantity which is to be plotted as an isosurface. Expected shape is (number of steps, grid size x, grid size y, grid size z)."""
+    """The quantity which is to be plotted as an isosurface. Expected shape is (number of steps, grid size x, grid size y, grid size z).
+    VASP Viewer also takes a single grid without the step axis; NGL needs the step axis."""
     label: str
     """Name of the quantity"""
     isosurfaces: Sequence[Isosurface] = None
     """Sequence of isosurfaces to be plotted for this quantity."""
-    sign_mode: str = "continuous"
-    """How the viewer should interpret negative values of this field. ``"continuous"``
-    (the default) treats the field as a single continuous spectrum where negative
-    isovalues carry no special meaning. ``"mixed"`` marks a signed field whose positive
-    and negative lobes represent opposite phenomena (e.g. spin up/down magnetization or
-    NICS shielding/deshielding); the viewer then constrains each isosurface to the lobe
-    matching its isovalue sign."""
+    scheme: str = "auto"
+    """How to read the values. VASP Viewer picks the colors of the quantity from it. NGL
+    draws every isosurface of a "symmetric" quantity at +isolevel and -isolevel and
+    ignores the other schemes.
+
+    - "positive": the values are >= 0 and zero is the baseline, e.g. a density.
+    - "negative": the values are <= 0 and zero is the baseline.
+    - "diverging": one quantity that rises or falls from zero, e.g. a density
+      difference.
+    - "symmetric": two opposite phenomena of one magnitude, e.g. a magnetization.
+      Every isosurface is drawn at +isolevel and -isolevel, so the sign of the
+      isolevel does not matter.
+    - "sequential": a ramp whose zero means nothing, e.g. a potential.
+    - "auto" (default): unknown; VASP Viewer picks "diverging", "positive" or
+      "negative" from the smallest and largest value.
+    """
+    colormap: Optional[str] = None
+    """Colormap VASP Viewer uses for the slices and the volume rendering of this
+    quantity, overriding the one it picks from :attr:`scheme`. NGL ignores it."""
+
+    def __post_init__(self):
+        # a misspelled scheme would silently change what both viewers draw
+        if self.scheme not in _SCHEMES:
+            raise exception.IncorrectUsage(
+                f"The scheme {self.scheme!r} of the grid quantity '{self.label}' is "
+                "not known. Choose one of " + ", ".join(map(repr, _SCHEMES)) + "."
+            )
 
 
 @dataclass
@@ -161,15 +245,35 @@ class IonArrow:
     color: str
     """Color with which the arrows should be drawn. For example, '#2FB5AB' or 'red'."""
     radius: float
-    """Radius of the arrows"""
+    """Radius of the arrows in Å, used by NGL only."""
+    length_mode: Optional[str] = None
+    """Viewer setting for the length of the arrows (NGL ignores it and draws each
+    arrow as long as its vector):
+
+    - 'physical': each arrow is as long as its vector in Å.
+    - 'normalized': every arrow of the group gets the same length, from the largest
+      atom an arrow is drawn on.
+    - 'relative': each arrow's length is proportional to the radius of its own atom.
+
+    None leaves the choice to the viewer."""
+    width_mode: Optional[str] = None
+    """Viewer setting for the width of the arrows (NGL ignores it and uses the radius):
+
+    - 'atom': each arrow is as wide as the atom it marks allows, so the atom is never
+      hidden behind its own arrow.
+    - 'global': one width for the whole group, from the smallest atom on screen.
+    - 'length': each arrow's width follows its own length, so all arrows keep the same
+      shape.
+
+    None leaves the choice to the viewer."""
 
 
 @dataclass
 class PhononDispersion:
     """Dataclass storing a phonon dispersion for interactive visualization.
 
-    The eigenvectors are defined on the primitive cell for each **q** point along
-    a path through the Brillouin zone. Together with the ``supercell_matrix`` and
+    The displacement patterns are defined on the primitive cell for each **q** point
+    along a path through the Brillouin zone. Together with the ``supercell_matrix`` and
     ``primitive_index`` mapping, the viewer reconstructs the atomic displacements
     in the displayed cell and animates the selected mode, while the frequencies
     drive the interactive dispersion plot.
@@ -178,19 +282,20 @@ class PhononDispersion:
     --------
     >>> import numpy as np
     >>> from py4vasp.view import PhononDispersion
-    >>> eigenvectors = np.zeros((1, 6, 2, 3), dtype=complex)
+    >>> displacements = np.zeros((1, 6, 2, 3), dtype=complex)
     >>> PhononDispersion(
-    ...     eigenvectors=eigenvectors,
+    ...     displacements=displacements,
     ...     frequencies=np.zeros((1, 6)),
     ...     qpoints=np.zeros((1, 3)),
     ...     supercell_matrix=np.eye(3),
     ...     primitive_index=[0, 1],
     ... )
-    PhononDispersion(eigenvectors=array([[[[...]]]]...), ...)
+    PhononDispersion(displacements=array([[[[...]]]]...), ...)
     """
 
-    eigenvectors: npt.ArrayLike
-    """Complex eigenvectors of the primitive cell. Expected shape is
+    displacements: npt.ArrayLike
+    """Complex displacement patterns of the atoms in the primitive cell, in any
+    normalization. Expected shape is
     (number of q-points, number of bands, number of primitive atoms, 3)."""
     frequencies: npt.ArrayLike
     """Phonon energies ħω in eV, where an unstable mode is negative so that its branch
@@ -320,7 +425,7 @@ class View:
     View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=None, ...)
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...), ...], sign_mode='mixed')], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)], scheme='symmetric', ...)], ...)
 
     But you can also create :class:`~py4vasp.view.View` objects directly. For example:
 
@@ -364,13 +469,13 @@ class View:
     >>> grid_quantity = GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
     >>> view.grid_scalars = [grid_quantity]
     >>> view
-    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)], sign_mode='continuous')], ...)
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)], scheme='auto', ...)], ...)
     """
 
     elements: npt.ArrayLike
     """Elements for all structures in the trajectory. Expected shape is (number of steps, number of ions)."""
     lattice_vectors: npt.ArrayLike
-    """Lattice vectors for all structures in the trajectory. Expected shape is (number of steps, 3, 3)."""
+    """Lattice vectors for all structures in the trajectory, one vector per row in Cartesian coordinates in Å. The scaling factor of the POSCAR is already applied, so the vectors span the actual cell. Expected shape is (number of steps, 3, 3)."""
     positions: npt.ArrayLike
     """Ion positions for all structures in the trajectory, in Direct coordinates. Expected shape is (number of steps, number of ions, 3)."""
     grid_scalars: Optional[Sequence[GridQuantity]] = None
@@ -484,9 +589,34 @@ class View:
         This method creates a dictionary with the configuration required to view a
         structure, isosurfaces and arrows at atom centers. The attributes of View are
         added to a dictionary with which to initialize a VASP Viewer widget.
+
+        Returns
+        -------
+        dict
+            The configuration VASP Viewer is initialized with, e.g. the atoms under
+            "atoms_trajectory" and "atoms_types", and the isosurfaces under
+            "volume_datasets".
+
+        Raises
+        ------
+        IncorrectUsage
+            If an arrow group does not hold one Cartesian vector per ion, or if a grid
+            quantity does not hold finite numbers of a grid's shape, since VASP Viewer
+            cannot draw either.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> config = calculation.density.to_view().to_vasp_viewer_config()
+        >>> config["atoms_types"]
+        [['Sr', 'Sr', 'Ti', 'O', 'O', 'O', 'O']]
+        >>> volume = config["volume_datasets"][0]
+        >>> volume["label"], volume["scheme"], volume["grid"]
+        ('charge', 'positive', (10, 12, 14))
         """
         self._raise_error_if_grid_domains_not_implemented()
-        self._verify()
+        self._verify("vasp_viewer")
         structure: dict = {
             "atoms_trajectory": self._convert_to_list(self.positions),
             "atoms_types": self._convert_to_list(self.elements),
@@ -503,7 +633,8 @@ class View:
                     "label": arrow.label,
                     "quantity": self._convert_to_list(arrow.quantity),
                     "base_color": arrow.color,
-                    "base_radius": arrow.radius,
+                    "length_mode": arrow.length_mode,
+                    "width_mode": arrow.width_mode,
                 }
                 for arrow in self.ion_arrows
             ]
@@ -577,10 +708,10 @@ class View:
         }
 
     def _phonon_config(self, phonon):
-        eigenvectors = np.asarray(phonon.eigenvectors)
+        displacements = np.asarray(phonon.displacements)
         config = {
-            "phonon_eigenvectors_re": self._convert_to_list(eigenvectors.real),
-            "phonon_eigenvectors_im": self._convert_to_list(eigenvectors.imag),
+            "phonon_displacements_re": self._convert_to_list(displacements.real),
+            "phonon_displacements_im": self._convert_to_list(displacements.imag),
             "phonon_frequencies": self._convert_to_list(np.asarray(phonon.frequencies)),
             "phonon_qpoints": self._convert_to_list(np.asarray(phonon.qpoints)),
             "phonon_supercell_matrix": self._convert_to_list(
@@ -608,6 +739,21 @@ class View:
         self._raise_error_if_phonon_not_supported(mode)
         self._raise_error_if_number_steps_inconsistent()
         self._raise_error_if_any_shape_is_incorrect()
+        if mode == "vasp_viewer":
+            # checks of rules only VASP Viewer has; NGL must keep drawing what it drew
+            self._raise_error_if_not_one_arrow_per_ion()
+            for grid_quantity in self.grid_scalars or ():
+                _raise_error_if_volume_is_not_finite(grid_quantity)
+
+    def _raise_error_if_not_one_arrow_per_ion(self):
+        number_ions = np.shape(self.positions)[1]
+        for arrow in self.ion_arrows or ():
+            _, number_arrows, _ = _shape_of_arrows(arrow)
+            if number_arrows != number_ions:
+                raise exception.IncorrectUsage(
+                    f"The ion arrows '{arrow.label}' contain {number_arrows} arrows, "
+                    f"but the structure has {number_ions} ions. Pass one arrow per ion."
+                )
 
     def _raise_error_if_phonon_not_supported(self, mode=None):
         if mode == "ngl" and self.phonon is not None:
@@ -656,28 +802,33 @@ class View:
             )
 
     def _volume_dataset(self, grid_quantity):
-        # The field is sent ONCE; each isosurface becomes a separate volume on the
-        # viewer side sharing this data. The dataset-level sign_mode tells the viewer
-        # how to interpret negative values: "continuous" renders the raw field, while
-        # "mixed" marks a signed field (e.g. NICS +v / -v or spin up/down) so the
-        # viewer constrains each isosurface to the lobe matching its isovalue sign.
+        # The field is sent ONCE; each isosurface becomes a shell of this volume on the
+        # viewer side sharing its data. The scheme says what the values are, and the
+        # viewer decides how they look. Every key is sent, unset ones as None.
         data, grid = self._volume_data_and_grid(grid_quantity)
-        entry = {
+        isosurfaces = grid_quantity.isosurfaces or []
+        return {
             "label": grid_quantity.label,
             "data": data,
             "grid": grid,
-            "sign_mode": grid_quantity.sign_mode,
-        }
-        isosurfaces = grid_quantity.isosurfaces or []
-        if len(isosurfaces) > 0:
-            entry["isosurfaces"] = [
-                {
-                    "iso_value": isosurface.isolevel,
-                    "color_surface": isosurface.color,
-                }
-                for isosurface in isosurfaces
+            "scheme": grid_quantity.scheme,
+            "colormap": grid_quantity.colormap,
+            "isosurfaces": [
+                self._isosurface_entry(isosurface) for isosurface in isosurfaces
             ]
-        return entry
+            or None,
+        }
+
+    def _isosurface_entry(self, isosurface):
+        # every key is sent, unset ones as None, so each shell has the same keys; the
+        # viewer calls the isolevel "level" and ignores its sign on a symmetric quantity
+        return {
+            "level": isosurface.isolevel,
+            "color": isosurface.color,
+            "color_opposite": isosurface.color_opposite,
+            "opacity": isosurface.opacity,
+            "cap": isosurface.cap,
+        }
 
     def _volume_data_and_grid(self, grid_quantity):
         # The VASP Viewer uploads the flat data buffer into a 3D texture whose
@@ -686,10 +837,8 @@ class View:
         # (steps, na, nb, nc) with the last axis varying fastest (C order), so we
         # reverse the spatial axes to make the na axis the fastest-varying one.
         # The grid itself stays (na, nb, nc); only the memory layout changes.
-        quantity = np.asarray(grid_quantity.quantity)
-        grid = quantity.shape[1:]
-        data = self._convert_to_list(quantity[0].T)
-        return data, grid
+        quantity = _step_sent_to_vasp_viewer(grid_quantity)
+        return self._convert_to_list(quantity.T), quantity.shape
 
     def _convert_to_list(self, attribute):
         if isinstance(attribute, list):
@@ -756,12 +905,8 @@ class View:
                 ase_cube.write_cube(open(filename, "w"), atoms=atoms, data=quantity)
                 component = widget.add_component(filename)
             for isosurface in grid_scalar.isosurfaces:
-                isosurface_options = {
-                    "isolevel": isosurface.isolevel,
-                    "color": isosurface.color,
-                    "opacity": isosurface.opacity,
-                }
-                component.add_surface(**isosurface_options)
+                for surface in _ngl_surfaces(grid_scalar, isosurface):
+                    component.add_surface(**surface)
 
     def _shift_quantity(self, quantity):
         if self.shift is None:
@@ -783,6 +928,68 @@ class View:
                     transformation,
                 )
                 widget.shape.add_arrow(*(arrow_3d.to_serializable()))
+
+
+def _shape_of_arrows(arrow):
+    quantity = _as_float_array(arrow.quantity)
+    if quantity is None or quantity.ndim != 3 or quantity.shape[-1] != 3:
+        raise exception.IncorrectUsage(
+            f"The ion arrows '{arrow.label}' must be numbers of the shape (number of "
+            "steps, number of ions, 3), i.e. one Cartesian vector per ion and step."
+        )
+    return quantity.shape
+
+
+def _step_sent_to_vasp_viewer(grid_quantity):
+    # only the first step is sent; a single grid without the step axis is that step
+    quantity = _as_float_array(grid_quantity.quantity)
+    if quantity is None or quantity.ndim not in (3, 4):
+        raise exception.IncorrectUsage(
+            f"The grid quantity '{grid_quantity.label}' must be numbers of the shape "
+            "(number of steps, grid size x, grid size y, grid size z), or of the shape "
+            "(grid size x, grid size y, grid size z) for a single grid."
+        )
+    return quantity if quantity.ndim == 3 else quantity[0]
+
+
+def _as_float_array(values):
+    # None, strings or ragged nesting make numpy raise; the caller explains the shape
+    try:
+        return np.asarray(values, dtype=float)
+    except (TypeError, ValueError):
+        return None
+
+
+def _raise_error_if_volume_is_not_finite(grid_quantity):
+    if not np.isfinite(_step_sent_to_vasp_viewer(grid_quantity)).all():
+        raise exception.IncorrectUsage(
+            f"The grid quantity '{grid_quantity.label}' contains NaN or infinite "
+            "values, which VASP Viewer cannot draw. Replace them before plotting, e.g. "
+            "with numpy.nan_to_num."
+        )
+
+
+def _is_symmetric(grid_quantity):
+    return grid_quantity.scheme == "symmetric"
+
+
+def _ngl_surfaces(grid_quantity, isosurface):
+    # NGL keeps drawing what py4vasp sent before the viewer learned about schemes: a
+    # symmetric quantity's isosurface is the pair at +isolevel and -isolevel, and the
+    # settings only VASP Viewer knows (other schemes, cap) are left out
+    # without a color NGL draws what py4vasp always drew: cyan, or blue up and red
+    # down for a symmetric field
+    opacity = 0.6 if isosurface.opacity is None else isosurface.opacity
+    if not _is_symmetric(grid_quantity):
+        color = isosurface.color or _config.VASP_COLORS["cyan"]
+        yield {"isolevel": isosurface.isolevel, "color": color, "opacity": opacity}
+        return
+    # the colors follow the sign of the surface, whatever the sign of the isolevel
+    isolevel = abs(isosurface.isolevel)
+    color = isosurface.color or _config.VASP_COLORS["blue"]
+    opposite_color = isosurface.color_opposite or _config.VASP_COLORS["red"]
+    yield {"isolevel": isolevel, "color": color, "opacity": opacity}
+    yield {"isolevel": -isolevel, "color": opposite_color, "opacity": opacity}
 
 
 def _merge_view_fields(left_view, right_view):

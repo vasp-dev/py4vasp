@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import _config, exception
+from py4vasp import exception
 from py4vasp import raw as raw_module
 from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
@@ -33,6 +33,7 @@ _COMPONENTS = {
     3: ["3", "sigma_z", "z", "sigma_3"],
 }
 _MAGNETIZATION = ("magnetization", "mag", "m")
+_OPTIONS = ("isolevel", "color", "opacity")
 _COMMON_PARAMETERS = f"""\
 {slicing.PARAMETERS}
 supercell : int | np.ndarray | None = None
@@ -107,6 +108,7 @@ class DensityHandler:
         **user_options,
     ) -> view.View:
         _raise_error_if_no_data(self._raw_density.charge, self._selection_name)
+        check.raise_error_if_options_unknown(user_options, _OPTIONS, "density plot")
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_density.charge)
         selection = selection or _INTERNAL
@@ -115,15 +117,7 @@ class DensityHandler:
         structure_handler = self._structure()
         viewer = structure_handler.to_view(supercell)
         viewer.grid_scalars = [
-            view.GridQuantity(
-                quantity=selector[sel].T[np.newaxis],
-                label=self._label(selector.label(sel)),
-                isosurfaces=self._grid_quantity_properties(
-                    selector, sel, map_, user_options
-                ),
-                sign_mode=self._sign_mode(selector, sel, map_),
-            )
-            for sel in selections
+            self._grid_quantity(selector, sel, map_, user_options) for sel in selections
         ]
         return viewer
 
@@ -254,18 +248,24 @@ class DensityHandler:
         for key in _MAGNETIZATION:
             map_[key] = 1
 
-    def _grid_quantity_properties(self, selector, selection, map_, user_options):
+    def _grid_quantity(self, selector, selection, map_, user_options):
+        # The colors are left to the backend unless the user picked one.
         component_label = selector.label(selection)
         component = map_.get(component_label, -1)
-        return self._isosurfaces(component, **user_options)
+        return view.GridQuantity(
+            quantity=selector[selection].T[np.newaxis],
+            label=self._label(component_label),
+            isosurfaces=self._isosurfaces(component, **user_options),
+            scheme=self._scheme(component),
+        )
 
-    def _sign_mode(self, selector, selection, map_):
-        # Magnetization components use the symmetric ±isolevel (blue/red) lobes, so
-        # the viewer should treat positive/negative as opposite phenomena ("mixed").
-        # The charge density is a continuous, sign-agnostic field.
-        component_label = selector.label(selection)
-        component = map_.get(component_label, -1)
-        return "mixed" if self._use_symmetric_isosurface(component) else "continuous"
+    def _scheme(self, component):
+        # Spin up and down are opposite phenomena, so a magnetization component is
+        # symmetric and drawn at +isolevel and -isolevel. The density itself is
+        # positive, and a sum of components may have either sign.
+        if self._use_symmetric_isosurface(component):
+            return "symmetric"
+        return "positive" if component == 0 else "auto"
 
     def _label(self, component_label):
         if component_label == _INTERNAL:
@@ -275,16 +275,10 @@ class DensityHandler:
         else:
             return component_label
 
-    def _isosurfaces(self, component, isolevel=0.2, color=None, opacity=0.6):
+    def _isosurfaces(self, component, isolevel=0.2, color=None, opacity=None):
         if self._use_symmetric_isosurface(component):
             _raise_error_if_color_is_specified(color)
-            return [
-                view.Isosurface(isolevel, _config.VASP_COLORS["blue"], opacity),
-                view.Isosurface(-isolevel, _config.VASP_COLORS["red"], opacity),
-            ]
-        else:
-            color = color or _config.VASP_COLORS["cyan"]
-            return [view.Isosurface(isolevel, color, opacity)]
+        return [view.Isosurface(isolevel, color, opacity)]
 
     def _use_symmetric_isosurface(self, component):
         if component > 0 and self.is_nonpolarized():
@@ -325,7 +319,7 @@ class Density(view.Mixin):
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.density.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)], sign_mode='continuous')], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)], scheme='positive', ...)], ...)
 
     For your own postprocessing, you can read the band data into a Python dictionary:
 
@@ -575,9 +569,18 @@ class Density(view.Mixin):
             direction.
 
         user_options : dict
-            Further arguments with keyword that get directly passed on to the
-            visualizer. Most importantly, you can set isolevel to adjust the
-            value at which the isosurface is drawn.
+            Settings of the isosurface; any other keyword raises an error:
+
+            - *isolevel* (default 0.2): the value at which the isosurface is drawn. A
+              magnetization is drawn at +isolevel and -isolevel, so there the sign of
+              the isolevel does not matter.
+            - *color*: the color of the isosurface, e.g. "red" or "#2FB5AB". A
+              magnetization does not take a color.
+            - *opacity*: from 0 (transparent) to 1 (opaque).
+
+            Without color and opacity, NGL draws the density cyan and a magnetization
+            blue at +isolevel and red at -isolevel, with an opacity of 0.6. VASP Viewer
+            picks colors that fit the data and draws them opaque.
 
         Returns
         -------

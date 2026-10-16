@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import _config, exception, raw
+from py4vasp import exception, raw
 from py4vasp._calculation import bader
 from py4vasp._calculation._stoichiometry import StoichiometryHandler
 from py4vasp._calculation.dispatch import (
@@ -15,7 +15,9 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._third_party import view
-from py4vasp._util import index, select
+from py4vasp._util import check, index, select
+
+_OPTIONS = ("isolevel", "color", "opacity")
 
 _DEFAULT_SELECTION = "1"
 
@@ -61,13 +63,20 @@ class ExcitonDensityHandler:
         **user_options,
     ) -> view.View:
         _raise_error_if_no_data(self._raw_exciton_density.exciton_charge)
+        check.raise_error_if_options_unknown(
+            user_options, _OPTIONS, "exciton density plot"
+        )
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_exciton_density.exciton_charge)
         selection = selection or _DEFAULT_SELECTION
         tree = select.Tree.from_selection(selection)
         viewer = self._structure().to_view(supercell)
         viewer.grid_scalars = [
-            view.GridQuantity(selector[sel].T[np.newaxis], label=selector.label(sel))
+            view.GridQuantity(
+                selector[sel].T[np.newaxis],
+                label=selector.label(sel),
+                scheme="positive",
+            )
             for sel in tree.selections()
         ]
         if center:
@@ -89,8 +98,8 @@ class ExcitonDensityHandler:
         num_excitons = self._raw_exciton_density.exciton_charge.shape[0]
         return {str(choice + 1): choice for choice in range(num_excitons)}
 
-    def _isosurfaces(self, isolevel=0.8, color=None, opacity=0.6):
-        color = color or _config.VASP_COLORS["cyan"]
+    def _isosurfaces(self, isolevel=0.8, color=None, opacity=None):
+        # the backend picks color and opacity unless the user did
         return [view.Isosurface(isolevel, color, opacity)]
 
 
@@ -124,7 +133,7 @@ class ExcitonDensity(view.Mixin):
 
     >>> calculation.exciton.density.plot()
     ...
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='1', isosurfaces=[Isosurface(...)], sign_mode='continuous')], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='1', isosurfaces=[Isosurface(...)], scheme='positive', ...)], ...)
 
     Finally, you can inspect possible selections with:
 
@@ -248,9 +257,16 @@ class ExcitonDensity(view.Mixin):
             the exciton is at the corner of the cell.
 
         user_options
-            Further arguments with keyword that get directly passed on to the
-            visualizer. Most importantly, you can set isolevel to adjust the
-            value at which the isosurface is drawn.
+            Settings of the isosurface; any other keyword raises an error:
+
+            - *isolevel* (default 0.8): the value at which the isosurface is
+              drawn.
+            - *color*: the color of the isosurface, e.g. "red" or "#2FB5AB".
+            - *opacity*: from 0 (transparent) to 1 (opaque).
+
+            Without color and opacity, NGL draws the isosurface cyan with an opacity
+            of 0.6, while VASP Viewer picks a color that fits the data and draws it
+            opaque.
 
         Returns
         -------

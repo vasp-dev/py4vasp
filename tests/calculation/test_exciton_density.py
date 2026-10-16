@@ -5,7 +5,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import _config, exception, raw
+from py4vasp import exception, raw
 from py4vasp._calculation.exciton_density import ExcitonDensity
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._util.bader import BaderAnalysis
@@ -64,8 +64,9 @@ def test_plot_selection(exciton_density, selection, indices, Assert):
         assert len(grid_scalar.isosurfaces) == 1
         isosurface = grid_scalar.isosurfaces[0]
         assert isosurface.isolevel == 0.8
-        assert isosurface.color == _config.VASP_COLORS["cyan"]
-        assert isosurface.opacity == 0.6
+        assert isosurface.color is None  # the backend picks it
+        assert grid_scalar.scheme == "positive"
+        assert isosurface.opacity is None
 
 
 def test_plot_addition(exciton_density, Assert):
@@ -145,3 +146,11 @@ def test_factory_methods(raw_data, check_factory_methods):
     check_factory_methods(
         ExcitonDensity, data, skip_methods=["selections", "bader_charge"]
     )
+
+
+def test_plot_rejects_unknown_options(exciton_density):
+    # the error names the options the plot takes rather than an internal function
+    with pytest.raises(
+        exception.IncorrectUsage, match="'isolevel'.*'color'.*'opacity'"
+    ):
+        exciton_density.plot(isovalue=0.3)

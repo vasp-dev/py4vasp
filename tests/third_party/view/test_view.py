@@ -10,7 +10,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import _config, exception
 from py4vasp._third_party.view import View
 from py4vasp._third_party.view import view as view_module
 from py4vasp._third_party.view.view import (
@@ -297,10 +297,133 @@ def test_fail_isosurface(view_multiple_grid_scalars):
         widget = view.to_ngl()
 
 
+@pytest.mark.parametrize("number_arrows", [1, 7])
+def test_ngl_draws_arrows_that_do_not_match_the_ions(number_arrows):
+    # NGL cycles fewer arrows over the ions and drops extra ones; users rely on that
+    pytest.importorskip("nglview")
+    arrows = np.linspace(-1, 1, 3 * number_arrows).reshape(1, number_arrows, 3)
+    view = View(
+        **base_input_view(True), ion_arrows=[IonArrow(arrows, "a", "#FF0000", 0.2)]
+    )
+    view.to_ngl()
+
+
+@pytest.mark.parametrize("scheme", ["symetric", "Symmetric", "signed"])
+def test_grid_quantity_rejects_an_unknown_scheme(scheme):
+    # a misspelled scheme would silently change what NGL and VASP Viewer draw
+    with pytest.raises(exception.IncorrectUsage):
+        GridQuantity(np.zeros((1, 2, 2, 2)), "q", scheme=scheme)
+
+
+@pytest.mark.parametrize(
+    "scheme", ["auto", "positive", "negative", "diverging", "symmetric", "sequential"]
+)
+def test_grid_quantity_accepts_every_scheme(scheme):
+    assert GridQuantity(np.zeros((1, 2, 2, 2)), "q", scheme=scheme).scheme == scheme
+
+
+def _ngl_surfaces(grid_quantity):
+    view = View(**base_input_view(True), grid_scalars=[grid_quantity])
+    messages = view.to_ngl().get_state()["_ngl_msg_archive"]
+    return [message["kwargs"] for message in messages if message["args"] == ["surface"]]
+
+
+def test_symmetric_isosurfaces_in_ngl_match_the_pair_drawn_before():
+    # NGL draws a symmetric isosurface exactly as the +/- pair py4vasp used to send
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    blue, red = _config.VASP_COLORS["blue"], _config.VASP_COLORS["red"]
+    pair = [Isosurface(0.2, blue, 0.6), Isosurface(-0.2, red, 0.6)]
+    isosurface = Isosurface(0.2, blue, 0.6, color_opposite=red)
+    symmetric = GridQuantity(data, "m", [isosurface], scheme="symmetric")
+    assert _ngl_surfaces(symmetric) == _ngl_surfaces(GridQuantity(data, "m", pair))
+
+
+def test_negative_symmetric_isolevel_in_ngl_takes_the_colors_by_sign():
+    # the sign of a symmetric isolevel does not matter: the isosurface's color is drawn
+    # at the positive level and the negative color at the negative one
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    isosurface = Isosurface(-0.2, "#0000FF", 0.6, color_opposite="#FF0000")
+    grid = GridQuantity(data, "m", [isosurface], scheme="symmetric")
+    surfaces = _ngl_surfaces(grid)
+    assert [surface["isolevel"] for surface in surfaces] == [0.2, -0.2]
+    assert [surface["color"] for surface in surfaces] == ["#0000FF", "#FF0000"]
+
+
+@pytest.mark.parametrize(
+    "color_opposite, expected",
+    [("#FF8800", "#FF8800"), (None, _config.VASP_COLORS["red"])],
+)
+def test_opposite_color_of_symmetric_isosurfaces_in_ngl(color_opposite, expected):
+    pytest.importorskip("nglview")
+    isosurface = Isosurface(0.2, "#0000FF", 0.6, color_opposite=color_opposite)
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    surfaces = _ngl_surfaces(GridQuantity(data, "m", [isosurface], scheme="symmetric"))
+    assert [surface["isolevel"] for surface in surfaces] == [0.2, -0.2]
+    assert [surface["color"] for surface in surfaces] == ["#0000FF", expected]
+
+
+@pytest.mark.parametrize(
+    "options, expected",
+    [
+        ({}, [_config.VASP_COLORS["cyan"]]),
+        (
+            {"scheme": "symmetric"},
+            [_config.VASP_COLORS["blue"], _config.VASP_COLORS["red"]],
+        ),
+    ],
+)
+def test_ngl_fills_in_the_default_colors(options, expected):
+    # without a color NGL draws what py4vasp always drew: cyan, or blue up and red down
+    # for a symmetric field
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    grid_quantity = GridQuantity(data, "q", [Isosurface(0.2)], **options)
+    assert [surface["color"] for surface in _ngl_surfaces(grid_quantity)] == expected
+
+
+def test_ngl_fills_in_the_default_opacity():
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    (surface,) = _ngl_surfaces(GridQuantity(data, "q", [Isosurface(0.2)]))
+    assert surface["opacity"] == 0.6
+
+
+@pytest.mark.parametrize("scheme", ["positive", "negative", "diverging", "sequential"])
+def test_ngl_draws_one_surface_unless_the_scheme_is_symmetric(scheme):
+    # only "symmetric" changes what NGL draws; it picks no colors from a scheme
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    isosurfaces = [Isosurface(0.2, "#0000FF", 0.6)]
+    plain = GridQuantity(data, "q", isosurfaces)
+    with_scheme = GridQuantity(data, "q", isosurfaces, scheme=scheme)
+    assert _ngl_surfaces(with_scheme) == _ngl_surfaces(plain)
+
+
+def test_ngl_ignores_the_colormap():
+    pytest.importorskip("nglview")
+    data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
+    isosurfaces = [Isosurface(0.2, "#0000FF", 0.6)]
+    plain = GridQuantity(data, "q", isosurfaces)
+    with_colormap = GridQuantity(data, "q", isosurfaces, colormap="viridis")
+    assert _ngl_surfaces(with_colormap) == _ngl_surfaces(plain)
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_ngl_draws_volumes_with_non_finite_values(value):
+    # only VASP Viewer refuses them; NGL keeps drawing what it drew
+    pytest.importorskip("nglview")
+    volume = np.ones((1, 2, 2, 2))
+    volume[0, 1, 0, 1] = value
+    grid_quantity = GridQuantity(volume, "q", [Isosurface(0.5, "#0000FF", 0.6)])
+    View(**base_input_view(True), grid_scalars=[grid_quantity]).to_ngl()
+
+
 def test_fail_phonon_in_ngl():
     pytest.importorskip("nglview")
     phonon = PhononDispersion(
-        eigenvectors=np.zeros((1, 6, 2, 3), dtype=complex),
+        displacements=np.zeros((1, 6, 2, 3), dtype=complex),
         frequencies=np.zeros((1, 6)),
         qpoints=np.zeros((1, 3)),
         supercell_matrix=np.eye(3),

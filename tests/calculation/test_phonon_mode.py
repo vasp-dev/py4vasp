@@ -273,7 +273,7 @@ def test_dispersion_to_view(dispersion_mode, Assert):
     phonon = view.phonon
     number_qpoints, number_modes = dispersion_mode.ref.frequencies_THz.shape
     number_atoms = len(dispersion_mode.ref.structure.read()["elements"])
-    assert np.shape(phonon.eigenvectors) == (
+    assert np.shape(phonon.displacements) == (
         number_qpoints,
         number_modes,
         number_atoms,
@@ -295,7 +295,7 @@ def test_dispersion_to_view_selects_the_mode(dispersion_mode, Assert):
     phonon = dispersion_mode.plot("dispersion(4)").phonon
     number_qpoints = len(dispersion_mode.ref.qpoints)
     number_atoms = len(dispersion_mode.ref.structure.read()["elements"])
-    assert np.shape(phonon.eigenvectors) == (number_qpoints, 1, number_atoms, 3)
+    assert np.shape(phonon.displacements) == (number_qpoints, 1, number_atoms, 3)
     expected = dispersion_mode.ref.frequencies_THz[:, [3]] / convert.EV_TO_THZ
     Assert.allclose(phonon.frequencies, expected)
 
@@ -305,7 +305,7 @@ def test_dispersion_to_view_normalizes_every_mode(dispersion_mode, Assert):
     phonon = dispersion_mode.plot("dispersion").phonon
     elements = dispersion_mode.ref.structure.read()["elements"]
     mass = masses.of(elements)[:, np.newaxis]
-    displacements = np.array(phonon.eigenvectors)
+    displacements = np.array(phonon.displacements)
     normal_coordinate = np.sum(mass * np.abs(displacements) ** 2, axis=(-2, -1))
     Assert.allclose(normal_coordinate, np.ones_like(normal_coordinate))
 
@@ -327,7 +327,7 @@ def test_to_view(mode_handler, Assert):
     view = mode_handler.to_view()
     Assert.same_structure_view(view, mode_handler.ref.structure.plot())
     phonon = view.phonon
-    Assert.allclose(phonon.eigenvectors, mode_handler.displacements()[np.newaxis])
+    Assert.allclose(phonon.displacements, mode_handler.displacements()[np.newaxis])
     Assert.allclose(phonon.qpoints, np.zeros((1, 3)))
     Assert.allclose(phonon.supercell_matrix, np.eye(3))
     number_atoms = len(mode_handler.ref.masses)
@@ -350,7 +350,7 @@ def test_to_view_undoes_the_mass_weighting(translation_mode, Assert):
     # the viewer knows no masses, so passing VASP's eigenvectors would animate a rigid
     # translation as if the heavy atoms moved further than the light ones
     phonon = translation_mode.to_view().phonon
-    translation = np.array(phonon.eigenvectors)[0, 0]
+    translation = np.array(phonon.displacements)[0, 0]
     number_atoms = len(translation_mode.ref.masses)
     expected = np.zeros((number_atoms, 3))
     expected[:, 0] = translation_mode.ref.uniform_displacement
@@ -361,7 +361,7 @@ def test_to_view_accepts_custom_masses(translation_mode, Assert):
     number_atoms = len(translation_mode.ref.masses)
     phonon = translation_mode.to_view(masses={f"1:{number_atoms}": 1.0}).phonon
     expected = translation_mode.ref.eigenvectors.reshape(-1, number_atoms, 3)
-    Assert.allclose(np.array(phonon.eigenvectors)[0], expected)
+    Assert.allclose(np.array(phonon.displacements)[0], expected)
 
 
 def test_to_view_supercell(mode_handler, Assert):
@@ -372,7 +372,7 @@ def test_to_view_supercell(mode_handler, Assert):
 def test_to_view_selects_a_single_mode(mode_handler, Assert):
     phonon = mode_handler.to_view("4").phonon
     expected = mode_handler.displacements()[3]
-    Assert.allclose(phonon.eigenvectors, expected[np.newaxis, np.newaxis])
+    Assert.allclose(phonon.displacements, expected[np.newaxis, np.newaxis])
     expected_frequency = mode_handler._signed_frequencies()[3]
     Assert.allclose(phonon.frequencies, [[expected_frequency]])
 
@@ -380,7 +380,7 @@ def test_to_view_selects_a_single_mode(mode_handler, Assert):
 def test_to_view_selects_several_modes(mode_handler, Assert):
     phonon = mode_handler.to_view("4, 6").phonon
     expected = mode_handler.displacements()[[3, 5]]
-    Assert.allclose(phonon.eigenvectors, expected[np.newaxis])
+    Assert.allclose(phonon.displacements, expected[np.newaxis])
     expected_frequencies = mode_handler._signed_frequencies()[[3, 5]]
     Assert.allclose(phonon.frequencies, expected_frequencies[np.newaxis])
 
@@ -390,7 +390,7 @@ def test_to_view_without_selection_shows_every_mode(mode_handler, Assert):
     # translate the crystal are shown like any other
     phonon = mode_handler.to_view().phonon
     number_modes = len(mode_handler.ref.frequencies)
-    assert np.shape(phonon.eigenvectors)[1] == number_modes
+    assert np.shape(phonon.displacements)[1] == number_modes
 
 
 @pytest.mark.parametrize("selection", ["1:2", "1 + 2"])
@@ -408,7 +408,7 @@ def test_to_view_raises_error_for_mode_outside_the_range(mode_handler):
 def test_public_to_view_selects_the_mode(phonon_mode, Assert):
     number_atoms = len(phonon_mode.ref.structure.read()["elements"])
     view = phonon_mode.plot("4")
-    assert np.shape(view.phonon.eigenvectors) == (1, 1, number_atoms, 3)
+    assert np.shape(view.phonon.displacements) == (1, 1, number_atoms, 3)
 
 
 def test_plot_is_alias_of_to_view(phonon_mode, Assert):

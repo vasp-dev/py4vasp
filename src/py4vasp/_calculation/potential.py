@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import _config, exception
+from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
@@ -32,12 +32,14 @@ from py4vasp._util import (
 )
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
+_OPTIONS = ("isolevel", "color", "opacity")
 _COMPONENTS = {
     0: ["0", "unity", "sigma_0", "scalar"],
     1: ["1", "sigma_x", "x", "sigma_1"],
     2: ["2", "sigma_y", "y", "sigma_2"],
     3: ["3", "sigma_z", "z", "sigma_3"],
 }
+_MAGNETIC_COMPONENTS = {choice for key in (1, 2, 3) for choice in _COMPONENTS[key]}
 _COMMON_PARAMETERS = f"""\
 {slicing.PARAMETERS}
 supercell : int or np.ndarray
@@ -125,7 +127,11 @@ class PotentialHandler:
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ):
-        potentials = dict(self._get_potentials(selection))
+        check.raise_error_if_options_unknown(user_options, _OPTIONS, "potential plot")
+        potentials = {
+            label: (component, data)
+            for label, component, data in self._select_potentials(selection)
+        }
         isosurface = self._create_isosurface(**user_options)
         viewer = self._structure().to_view(supercell)
         viewer.grid_scalars = [
@@ -133,8 +139,9 @@ class PotentialHandler:
                 quantity=data[np.newaxis],
                 label=label,
                 isosurfaces=[isosurface],
+                scheme=_scheme(component),
             )
-            for label, data in potentials.items()
+            for label, (component, data) in potentials.items()
         ]
         return viewer
 
@@ -168,12 +175,17 @@ class PotentialHandler:
         return dict(self._get_potentials(selection or "total"))
 
     def _get_potentials(self, selection, is_magnetic=False):
+        for label, _, data in self._select_potentials(selection, is_magnetic):
+            yield label, data
+
+    def _select_potentials(self, selection, is_magnetic=False):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
             kind, component = self._determine_kind_and_component(selection)
             selector = self._create_selector(kind, component, is_magnetic)
             component_label = component[0] if component else ""
-            yield self._get_label(kind, component_label), selector[component].T
+            label = self._get_label(kind, component_label)
+            yield label, component_label, selector[component].T
 
     def _determine_kind_and_component(self, selection):
         for kind in VALID_KINDS:
@@ -222,8 +234,8 @@ class PotentialHandler:
             for choice in choices
         }
 
-    def _create_isosurface(self, isolevel=0, color=None, opacity=0.6):
-        color = color or _config.VASP_COLORS["cyan"]
+    def _create_isosurface(self, isolevel=0, color=None, opacity=None):
+        # the backend picks color and opacity unless the user did
         return view.Isosurface(isolevel, color, opacity)
 
     def _generate_items(self, kind):
@@ -417,9 +429,16 @@ class Potential(view.Mixin):
             If present the data is replicated the specified number of times along each
             direction.
         user_options
-            Further arguments with keyword that get directly passed on to the
-            visualizer. Most importantly, you can set isolevel (in eV) to adjust the
-            value at which the isosurface is drawn.
+            Settings of the isosurface; any other keyword raises an error:
+
+            - *isolevel* (default 0): the value in eV at which the isosurface is
+              drawn.
+            - *color*: the color of the isosurface, e.g. "red" or "#2FB5AB".
+            - *opacity*: from 0 (transparent) to 1 (opaque).
+
+            Without color and opacity, NGL draws the isosurface cyan with an opacity
+            of 0.6, while VASP Viewer picks a color that fits the data and draws it
+            opaque.
 
         Returns
         -------
@@ -653,3 +672,11 @@ def _raise_error_if_nonpolarized_potential(potential):
     if _is_nonpolarized(potential):
         message = "Cannot visualize nonpolarized potential as quiver plot."
         raise exception.DataMismatch(message)
+
+
+def _scheme(component):
+    # A magnetic component is the difference of the spin channels, so its zero means
+    # that up and down feel the same potential. Every other potential is only fixed
+    # up to a constant, so its zero means nothing.
+    is_magnetic = isinstance(component, str) and component in _MAGNETIC_COMPONENTS
+    return "diverging" if is_magnetic else "sequential"

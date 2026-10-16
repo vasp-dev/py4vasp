@@ -219,7 +219,7 @@ class PhononModeHandler:
         displacements = self._per_qpoint(self.displacements(masses))
         frequencies = self._per_qpoint(self._signed_frequencies())
         return view.PhononDispersion(
-            eigenvectors=displacements[:, indices],
+            displacements=displacements[:, indices],
             frequencies=frequencies[:, indices],
             qpoints=self._qpoint_coordinates(),
             supercell_matrix=np.eye(3),
@@ -950,7 +950,7 @@ class PhononMode(view.Mixin):
         one you want to watch
 
         >>> view = calculation.phonon.mode.plot()
-        >>> view.phonon.eigenvectors.shape
+        >>> view.phonon.displacements.shape
         (1, 21, 7, 3)
 
         The frequencies label the modes with their energy ħω in eV. An unstable mode
@@ -963,17 +963,17 @@ class PhononMode(view.Mixin):
         Selecting a mode narrows the animation down to it, so you do not have to find
         it in the viewer. Pass several modes to compare them
 
-        >>> calculation.phonon.mode.plot("4").phonon.eigenvectors.shape
+        >>> calculation.phonon.mode.plot("4").phonon.displacements.shape
         (1, 1, 7, 3)
-        >>> calculation.phonon.mode.plot("4, 5").phonon.eigenvectors.shape
+        >>> calculation.phonon.mode.plot("4, 5").phonon.displacements.shape
         (1, 2, 7, 3)
 
         The modes of a dispersion are selected the same way, with the **q** point as
         the leading dimension. Replicate the cell to watch the wave run through it
 
-        >>> calculation.phonon.mode.plot("dispersion").phonon.eigenvectors.shape
+        >>> calculation.phonon.mode.plot("dispersion").phonon.displacements.shape
         (164, 21, 7, 3)
-        >>> calculation.phonon.mode.plot("dispersion(4)", supercell=2).phonon.eigenvectors.shape
+        >>> calculation.phonon.mode.plot("dispersion(4)", supercell=2).phonon.displacements.shape
         (164, 1, 7, 3)
         """
         return merge_default(

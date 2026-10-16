@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import _config, exception, raw
+from py4vasp import exception, raw
 from py4vasp._calculation.density import Density
 from py4vasp._calculation.dispatch import DictSource
 from py4vasp._calculation.structure import Structure, StructureHandler
@@ -50,6 +50,7 @@ class Expectation:
     label: str
     density: np.ndarray
     isosurfaces: list
+    scheme: str = "positive"
 
 
 def make_reference_density(raw_data, selection, source=None):
@@ -202,8 +203,7 @@ def test_empty_density(empty_density):
 @pytest.mark.parametrize("selection", [None, "0", "unity", "sigma_0", "scalar"])
 def test_charge_plot(selection, reference_density, Assert):
     source = reference_density.ref.source
-    color = _config.VASP_COLORS["cyan"]
-    isosurfaces = [Isosurface(isolevel=0.2, color=color, opacity=0.6)]
+    isosurfaces = [Isosurface(isolevel=0.2)]
     if source == "charge":
         expected = Expectation(
             label=selection if selection else "charge",
@@ -233,6 +233,9 @@ def check_view(density, expected, Assert, **kwargs):
     Assert.allclose(grid_scalar.quantity, expected.density)
     assert len(grid_scalar.isosurfaces) == len(expected.isosurfaces)
     assert grid_scalar.isosurfaces == expected.isosurfaces
+    # a density is positive, a magnetization symmetric because spin up and down are
+    # opposite phenomena, and a sum of components may have either sign
+    assert grid_scalar.scheme == expected.scheme
 
 
 def test_accessing_spin_raises_error(nonpolarized_density):
@@ -246,25 +249,52 @@ def test_accessing_spin_raises_error(nonpolarized_density):
 def test_collinear_plot(selection, collinear_density, Assert):
     source = collinear_density.ref.source
     isosurfaces = [
-        Isosurface(isolevel=0.1, color=_config.VASP_COLORS["blue"], opacity=0.6),
-        Isosurface(isolevel=-0.1, color=_config.VASP_COLORS["red"], opacity=0.6),
+        Isosurface(isolevel=0.1),
     ]
     if source == "charge":
         expected = Expectation(
             label=selection,
             density=collinear_density.ref.output["magnetization"],
             isosurfaces=isosurfaces,
+            scheme="symmetric",
         )
     else:
         expected = Expectation(
             label=f"{source}({selection})",
             density=collinear_density.ref.output[source][1],
             isosurfaces=isosurfaces,
+            scheme="symmetric",
         )
         if selection in ("magnetization", "mag", "m"):
             # magnetization not allowed for kinetic_energy
             return
     check_view(collinear_density, expected, Assert, selection=selection, isolevel=0.1)
+
+
+def test_magnetization_keeps_a_negative_isolevel(collinear_density):
+    # the sign does not matter: the positive color is drawn at +0.1 either way
+    view = collinear_density.plot("3", isolevel=-0.1)
+    (grid_scalar,) = view.grid_scalars
+    assert grid_scalar.isosurfaces == [Isosurface(isolevel=-0.1)]
+    assert grid_scalar.scheme == "symmetric"
+
+
+def test_magnetization_leaves_the_colors_to_vasp_viewer(collinear_density):
+    # the viewer picks the colors and the opacity from the color scheme
+    config = collinear_density.plot("3").to_vasp_viewer_config()
+    (dataset,) = config["volume_datasets"]
+    assert dataset["scheme"] == "symmetric"
+    (isosurface,) = dataset["isosurfaces"]
+    assert isosurface["color"] is None
+    assert isosurface["opacity"] is None
+
+
+@pytest.mark.parametrize("options", [{}, {"color": "red", "opacity": 0.3}])
+def test_charge_sends_color_and_opacity_only_when_given(reference_density, options):
+    config = reference_density.plot(**options).to_vasp_viewer_config()
+    (isosurface,) = config["volume_datasets"][0]["isosurfaces"]
+    assert isosurface["color"] == options.get("color")
+    assert isosurface["opacity"] == options.get("opacity")
 
 
 def test_accessing_noncollinear_element_raises_error(collinear_density):
@@ -301,11 +331,10 @@ def test_plotting_noncollinear_density(selections, noncollinear_density, Assert)
         if "(" in selections[0]:  # magnetization not allowed for kinetic_energy
             return
     isosurfaces = [
-        Isosurface(isolevel=0.2, color=_config.VASP_COLORS["blue"], opacity=0.3),
-        Isosurface(isolevel=-0.2, color=_config.VASP_COLORS["red"], opacity=0.3),
+        Isosurface(isolevel=0.2, opacity=0.3),
     ]
     for selection, density, label in zip(selections, expected_density, expected_labels):
-        expected = Expectation(label, density, isosurfaces)
+        expected = Expectation(label, density, isosurfaces, scheme="symmetric")
         kwargs = {"selection": selection, "opacity": 0.3}
         check_view(noncollinear_density, expected, Assert, **kwargs)
 
@@ -318,11 +347,11 @@ def test_adding_components(noncollinear_density, Assert):
     else:
         expected_label = f"{source}(1 + 2)"
         expected_density = noncollinear_density.ref.output[source][1:]
-    color = _config.VASP_COLORS["cyan"]
     expected = Expectation(
         label=expected_label,
         density=expected_density[0] + expected_density[1],
-        isosurfaces=[Isosurface(isolevel=0.4, color=color, opacity=0.6)],
+        isosurfaces=[Isosurface(isolevel=0.4)],
+        scheme="auto",
     )
     check_view(noncollinear_density, expected, Assert, selection="1 + 2", isolevel=0.4)
 
@@ -330,8 +359,7 @@ def test_adding_components(noncollinear_density, Assert):
 @pytest.mark.parametrize("supercell", [2, (3, 2, 1)])
 def test_plotting_supercell(supercell, reference_density, Assert):
     source = reference_density.ref.source
-    color = _config.VASP_COLORS["cyan"]
-    isosurfaces = [Isosurface(isolevel=0.2, color=color, opacity=0.6)]
+    isosurfaces = [Isosurface(isolevel=0.2)]
     if source == "charge":
         expected = Expectation(
             label=source,
@@ -751,3 +779,11 @@ def test_is_available_reports_sources_selected_by_item(tmp_path):
     density = demo.calculation(tmp_path / "example").density
     assert density.is_available(["default", "tau"]) == {"default": True, "tau": True}
     assert density["tau"].read() is not None
+
+
+def test_plot_rejects_unknown_options(reference_density):
+    # the error names the options the plot takes rather than an internal function
+    with pytest.raises(
+        exception.IncorrectUsage, match="'isolevel'.*'color'.*'opacity'"
+    ):
+        reference_density.plot(isovalue=0.3)

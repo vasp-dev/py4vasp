@@ -7,7 +7,7 @@ from typing import Optional, Union
 
 import numpy as np
 
-from py4vasp import _config, exception
+from py4vasp import exception
 from py4vasp._calculation import _stoichiometry, bader
 from py4vasp._calculation.dispatch import (
     DataSource,
@@ -20,8 +20,10 @@ from py4vasp._raw import data as raw
 from py4vasp._third_party import view
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
-from py4vasp._util import import_, select
+from py4vasp._util import check, import_, select
 from py4vasp._util.slicing import plane
+
+_OPTIONS = ("isolevel", "color", "opacity")
 
 interpolate = import_.optional("scipy.interpolate")
 ndimage = import_.optional("scipy.ndimage")
@@ -120,6 +122,9 @@ class PartialDensityHandler:
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ):
+        check.raise_error_if_options_unknown(
+            user_options, _OPTIONS, "partial density plot"
+        )
         viewer = self._structure().to_view(supercell)
         partial_charge = self.to_numpy(selection)
         isosurface = self._setup_isosurface(**user_options)
@@ -127,6 +132,7 @@ class PartialDensityHandler:
             quantity=partial_charge[np.newaxis],
             label=selection,
             isosurfaces=[isosurface],
+            scheme="positive",
         )
         viewer.grid_scalars = [grid_quantity]
         return viewer
@@ -183,8 +189,8 @@ class PartialDensityHandler:
     def _spin_polarized(self):
         return self._raw_partial_density.partial_charge.shape[2] == 2
 
-    def _setup_isosurface(self, isolevel=0.2, color=None, opacity=0.6):
-        color = color or _config.VASP_COLORS["cyan"]
+    def _setup_isosurface(self, isolevel=0.2, color=None, opacity=None):
+        # the backend picks color and opacity unless the user did
         return view.Isosurface(isolevel=isolevel, color=color, opacity=opacity)
 
     def _check_band_index(self, band):
@@ -621,9 +627,16 @@ class PartialDensity(view.Mixin):
             If present the data is replicated the specified number of times along each
             direction.
         user_options
-            Further arguments with keyword that get directly passed on to the
-            visualizer. Most importantly, you can set isolevel to adjust the
-            value at which the isosurface is drawn.
+            Settings of the isosurface; any other keyword raises an error:
+
+            - *isolevel* (default 0.2): the value at which the isosurface is
+              drawn.
+            - *color*: the color of the isosurface, e.g. "red" or "#2FB5AB".
+            - *opacity*: from 0 (transparent) to 1 (opaque).
+
+            Without color and opacity, NGL draws the isosurface cyan with an opacity
+            of 0.6, while VASP Viewer picks a color that fits the data and draws it
+            opaque.
 
         Returns
         -------

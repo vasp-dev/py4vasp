@@ -10,7 +10,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import _config, exception
 from py4vasp._third_party.view import View
 from py4vasp._third_party.view.view import (
     CrystalSymmetry,
@@ -154,9 +154,9 @@ def _phonon_dispersion():
     n_qpoints, n_bands, n_atoms_prim = 4, 6, 2
     size = n_qpoints * n_bands * n_atoms_prim * 3
     real = np.arange(size, dtype=float).reshape(n_qpoints, n_bands, n_atoms_prim, 3)
-    eigenvectors = real + 1j * real[::-1]
+    displacements = real + 1j * real[::-1]
     return PhononDispersion(
-        eigenvectors=eigenvectors,
+        displacements=displacements,
         frequencies=np.arange(n_qpoints * n_bands, dtype=float).reshape(
             n_qpoints, n_bands
         ),
@@ -179,10 +179,10 @@ def _phonon_view(phonon):
 def test_phonon_dispersion_serialized_to_config():
     phonon = _phonon_dispersion()
     config = _phonon_view(phonon).to_vasp_viewer_config()
-    eigenvectors = np.asarray(phonon.eigenvectors)
+    displacements = np.asarray(phonon.displacements)
     Assert = np.testing.assert_allclose
-    Assert(np.asarray(config["phonon_eigenvectors_re"]), eigenvectors.real)
-    Assert(np.asarray(config["phonon_eigenvectors_im"]), eigenvectors.imag)
+    Assert(np.asarray(config["phonon_displacements_re"]), displacements.real)
+    Assert(np.asarray(config["phonon_displacements_im"]), displacements.imag)
     Assert(np.asarray(config["phonon_frequencies"]), np.asarray(phonon.frequencies))
     Assert(np.asarray(config["phonon_qpoints"]), np.asarray(phonon.qpoints))
     Assert(
@@ -199,7 +199,7 @@ def test_phonon_fields_absent_without_phonon_data():
     assert phonon_keys == []
 
 
-def _single_grid_view(isosurfaces, sign_mode="continuous"):
+def _single_grid_view(isosurfaces, **options):
     volume = np.arange(2 * 2 * 2, dtype=float).reshape(2, 2, 2)
     return View(
         elements=[["Si"]],
@@ -210,43 +210,187 @@ def _single_grid_view(isosurfaces, sign_mode="continuous"):
                 quantity=volume[np.newaxis],
                 label="q",
                 isosurfaces=isosurfaces,
-                sign_mode=sign_mode,
+                **options,
             )
         ],
     )
 
 
-def test_isosurfaces_sent_once_without_per_surface_sign_mode():
+def test_isosurfaces_sent_once_with_the_field():
     # The field is emitted once; each isolevel is a lightweight isosurface entry
-    # carrying only its value and colour. Sign handling lives on the dataset.
+    # carrying only its own settings. Sign handling lives on the dataset.
     view = _single_grid_view(
         [Isosurface(1.0, "#0000ff", 0.6), Isosurface(-1.0, "#ff0000", 0.6)]
     )
     datasets = view.to_vasp_viewer_config()["volume_datasets"]
     assert len(datasets) == 1  # one field, not one dataset per isolevel
+    common = {"opacity": 0.6, "cap": None, "color_opposite": None}
     assert datasets[0]["isosurfaces"] == [
-        {"iso_value": 1.0, "color_surface": "#0000ff"},
-        {"iso_value": -1.0, "color_surface": "#ff0000"},
+        {"level": 1.0, "color": "#0000ff", **common},
+        {"level": -1.0, "color": "#ff0000", **common},
     ]
 
 
-def test_default_sign_mode_is_continuous():
-    view = _single_grid_view([Isosurface(0.2, "#0000ff", 0.6)])
-    assert (
-        view.to_vasp_viewer_config()["volume_datasets"][0]["sign_mode"] == "continuous"
-    )
+@pytest.mark.parametrize("cap", [None, "off"])
+def test_isosurface_config_carries_opacity_and_cap(cap):
+    # an unset cap is sent as None, so the viewer falls back to its own default
+    view = _single_grid_view([Isosurface(0.5, "#0000ff", 0.3, cap=cap)])
+    (isosurface,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert isosurface["opacity"] == 0.3
+    assert isosurface["cap"] == cap
 
 
-def test_mixed_sign_mode_emitted_at_dataset_level():
-    # NICS-style ±v signed field: the dataset is flagged "mixed" so the viewer
-    # constrains each isosurface to the lobe matching its isovalue sign.
-    view = _single_grid_view(
-        [Isosurface(1.0, "#0000ff", 0.6), Isosurface(-1.0, "#ff0000", 0.6)],
-        sign_mode="mixed",
-    )
+@pytest.mark.parametrize("scheme", [None, "positive", "symmetric"])
+def test_volume_config_sends_the_scheme(scheme):
+    # the scheme says what the values are, the viewer decides how they look
+    options = {} if scheme is None else {"scheme": scheme}
+    view = _single_grid_view([Isosurface(1.0, "#0000ff", 0.6)], **options)
     dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
-    assert dataset["sign_mode"] == "mixed"
-    assert all("sign_mode" not in iso for iso in dataset["isosurfaces"])
+    assert dataset["scheme"] == (scheme or "auto")
+    for replaced_key in ("sign_mode", "signed", "symmetric", "color_scheme"):
+        assert replaced_key not in dataset  # the viewer refuses them
+
+
+@pytest.mark.parametrize("colormap", [None, "viridis"])
+def test_volume_config_forwards_the_colormap(colormap):
+    # an override for hand-built views; the viewer uses it for slices and DVR
+    view = _single_grid_view([Isosurface(1.0)], colormap=colormap)
+    assert view.to_vasp_viewer_config()["volume_datasets"][0]["colormap"] == colormap
+
+
+@pytest.mark.parametrize("color_opposite", [None, "#ff8800"])
+def test_isosurface_config_forwards_the_opposite_color(color_opposite):
+    # the second color of a symmetric or diverging quantity overrides the viewer's
+    isosurface = Isosurface(1.0, "#0000ff", 0.6, color_opposite=color_opposite)
+    view = _single_grid_view([isosurface], scheme="symmetric")
+    dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
+    assert dataset["isosurfaces"][0]["color_opposite"] == color_opposite
+    assert "color_negative" not in dataset  # the volume carries no colors
+
+
+def test_volume_config_sends_a_symmetric_isolevel_of_zero():
+    # every combination of scheme and isolevel draws something in VASP Viewer
+    view = _single_grid_view([Isosurface(0.0, "#0000ff", 0.6)], scheme="symmetric")
+    (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert entry["level"] == 0.0
+
+
+def test_negative_symmetric_isolevel_is_sent_as_given():
+    # VASP Viewer ignores the sign of a symmetric isolevel, and the colors follow the
+    # sign of the surface: color at +0.2, color_opposite at -0.2
+    isosurface = Isosurface(-0.2, "#0000ff", 0.6, color_opposite="#ff8800")
+    view = _single_grid_view([isosurface], scheme="symmetric")
+    (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert entry["level"] == -0.2
+    assert entry["color"] == "#0000ff"
+    assert entry["color_opposite"] == "#ff8800"
+
+
+@pytest.mark.parametrize("color", [None, "#00ff00"])
+def test_isosurface_color_is_sent_only_when_set(color):
+    # without a color the viewer picks one from the color scheme
+    view = _single_grid_view([Isosurface(0.5, color=color)])
+    (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert entry["color"] == color
+
+
+@pytest.mark.parametrize("opacity", [None, 0.3])
+def test_isosurface_opacity_is_sent_only_when_set(opacity):
+    # without an opacity the viewer draws the isosurface opaque
+    options = {} if opacity is None else {"opacity": opacity}
+    view = _single_grid_view([Isosurface(0.5, **options)])
+    (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert entry["opacity"] == opacity
+
+
+def test_payload_has_exactly_the_keys_of_the_contract():
+    # VASP Viewer refuses keys it does not know, so a stray key must not slip in
+    inputs = base_input_view(is_structure=True)
+    arrow = IonArrow(np.zeros((1, 5, 3)), "forces", "#FF0000", 0.2)
+    grid_quantity = GridQuantity(np.ones((1, 2, 2, 2)), "q", [Isosurface(0.5)])
+    view = View(**inputs, ion_arrows=[arrow], grid_scalars=[grid_quantity])
+    config = view.to_vasp_viewer_config()
+    (volume,) = config["volume_datasets"]
+    assert set(volume) == {"label", "data", "grid", "scheme", "colormap", "isosurfaces"}
+    (isosurface,) = volume["isosurfaces"]
+    assert set(isosurface) == {"level", "color", "color_opposite", "opacity", "cap"}
+    (group,) = config["ion_arrow_groups"]
+    expected = {"label", "quantity", "base_color", "length_mode", "width_mode"}
+    assert set(group) == expected
+
+
+def _view_of_volume(volume):
+    grid_quantity = GridQuantity(volume, "q", [Isosurface(0.5, "#0000ff", 0.6)])
+    return View(
+        elements=[["Si"]],
+        lattice_vectors=[np.eye(3)],
+        positions=[[[0.0, 0.0, 0.0]]],
+        grid_scalars=[grid_quantity],
+    )
+
+
+def test_volume_config_accepts_a_grid_without_the_step_axis():
+    # a single grid of shape (Na, Nb, Nc) is the one step VASP Viewer draws
+    volume = np.arange(2 * 3 * 4, dtype=float).reshape(2, 3, 4)
+    config = _view_of_volume(volume[np.newaxis]).to_vasp_viewer_config()
+    with_step_axis = config["volume_datasets"][0]
+    config = _view_of_volume(volume).to_vasp_viewer_config()
+    without_step_axis = config["volume_datasets"][0]
+    assert (
+        tuple(without_step_axis["grid"]) == tuple(with_step_axis["grid"]) == (2, 3, 4)
+    )
+    assert np.allclose(without_step_axis["data"], with_step_axis["data"])
+
+
+def test_volume_config_checks_a_grid_without_the_step_axis_for_nan():
+    volume = np.ones((2, 3, 4))
+    volume[1, 2, 3] = np.nan  # outside the first plane
+    with pytest.raises(exception.IncorrectUsage):
+        _view_of_volume(volume).to_vasp_viewer_config()
+
+
+@pytest.mark.parametrize(
+    "quantity",
+    [
+        [[[[1.0, None], [0.0, 1.0]], [[0.0, 1.0], [1.0, 0.0]]]],  # not a number
+        [[[[1.0, 2.0], [0.0]], [[0.0, 1.0], [1.0, 0.0]]]],  # ragged
+        np.ones((2, 2)),  # not a grid
+    ],
+)
+def test_volume_config_rejects_malformed_grids(quantity):
+    with pytest.raises(exception.IncorrectUsage):
+        _view_of_volume(quantity).to_vasp_viewer_config()
+
+
+@pytest.mark.parametrize(
+    "quantity",
+    [
+        np.ones(3),  # no ions
+        [[[1, 0, 0], [0, 1]]],  # ragged
+        np.ones((1, 5, 2)),  # not three components
+    ],
+)
+def test_vasp_viewer_rejects_malformed_arrows(quantity):
+    inputs = base_input_view(is_structure=True)  # 5 ions
+    arrow = IonArrow(quantity, "forces", "#FF0000", 0.2)
+    view = View(**inputs, ion_arrows=[arrow])
+    with pytest.raises(exception.IncorrectUsage):
+        view.to_vasp_viewer_config()
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_volume_config_rejects_non_finite_values(value):
+    # VASP Viewer only draws finite values
+    volume = np.ones((1, 2, 2, 2))
+    volume[0, 1, 0, 1] = value
+    with pytest.raises(exception.IncorrectUsage):
+        _view_of_volume(volume).to_vasp_viewer_config()
+
+
+def test_volume_without_isosurfaces_sends_none():
+    # the viewer rejects an empty list, and every volume is sent with the same keys
+    dataset = _single_grid_view(None).to_vasp_viewer_config()["volume_datasets"][0]
+    assert dataset["isosurfaces"] is None
 
 
 @hasVaspView
@@ -271,31 +415,7 @@ def test_fail_isosurface(view):
 @pytest.mark.parametrize("is_structure", [True, False])
 def test_ion_arrows(is_structure, Assert):
     inputs = base_input_view(is_structure)
-    view = View(
-        **inputs,
-        ion_arrows=[
-            IonArrow(
-                np.random.rand(
-                    len(inputs["positions"]),
-                    len(inputs["positions"][0]),
-                    3,
-                ),
-                label="Magnetization",
-                color="#00FFFF",
-                radius=0.25,
-            ),
-            IonArrow(
-                np.random.rand(
-                    len(inputs["positions"]),
-                    len(inputs["positions"][0]),
-                    3,
-                ),
-                label="Velocities",
-                color="#84FF00",
-                radius=0.13,
-            ),
-        ],
-    )
+    view = View(**inputs, ion_arrows=_ion_arrows(inputs))
     state = view.to_vasp_viewer().get_state()
     for arrow_group_view, arrow_group_state in zip(
         view.ion_arrows, state["_ion_arrow_groups"]
@@ -307,7 +427,42 @@ def test_ion_arrows(is_structure, Assert):
         )
         assert arrow_group_view.label == arrow_group_state["label"]
         assert arrow_group_view.color == arrow_group_state["base_color"]
-        assert arrow_group_view.radius == arrow_group_state["base_radius"]
+
+
+def _ion_arrows(inputs):
+    shape = (len(inputs["positions"]), len(inputs["positions"][0]), 3)
+    return [
+        IonArrow(
+            np.random.rand(*shape), label="Magnetization", color="#00FFFF", radius=0.25
+        ),
+        IonArrow(
+            np.random.rand(*shape), label="Velocities", color="#84FF00", radius=0.13
+        ),
+    ]
+
+
+@pytest.mark.parametrize("is_structure", [True, False])
+def test_arrow_group_config_has_no_radius(is_structure):
+    # the radius sizes an arrow in NGL, VASP Viewer sizes it from its width mode instead
+    inputs = base_input_view(is_structure)
+    view = View(**inputs, ion_arrows=_ion_arrows(inputs))
+    for group in view.to_vasp_viewer_config()["ion_arrow_groups"]:
+        assert "base_radius" not in group
+
+
+@pytest.mark.parametrize(
+    "modes", [{}, {"length_mode": "physical", "width_mode": "atom"}]
+)
+def test_arrow_group_config_forwards_the_modes(modes):
+    # an unset mode is sent as None, so the viewer falls back to its own default
+    inputs = base_input_view(is_structure=True)
+    arrow = IonArrow(
+        np.zeros((1, 5, 3)), label="forces", color="purple", radius=0.2, **modes
+    )
+    view = View(**inputs, ion_arrows=[arrow])
+    (group,) = view.to_vasp_viewer_config()["ion_arrow_groups"]
+    assert group["length_mode"] == modes.get("length_mode")
+    assert group["width_mode"] == modes.get("width_mode")
 
 
 @hasVaspView
@@ -410,6 +565,15 @@ def test_incorrect_shape_raises_error(view):
     incorrect_unit_cell = np.zeros((len(view.lattice_vectors), 2, 4))
     with pytest.raises(exception.IncorrectUsage):
         View(view.elements, incorrect_unit_cell, view.positions)
+
+
+def test_vasp_viewer_needs_one_arrow_per_ion():
+    # only VASP Viewer refuses the mismatch; NGL keeps cycling the arrows over the ions
+    inputs = base_input_view(is_structure=True)  # 5 ions
+    arrow = IonArrow(np.zeros((1, 4, 3)), "forces", "#FF0000", 0.2)
+    view = View(**inputs, ion_arrows=[arrow])
+    with pytest.raises(exception.IncorrectUsage):
+        view.to_vasp_viewer_config()
 
 
 def _crystal_symmetry():
