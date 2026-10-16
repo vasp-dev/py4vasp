@@ -124,7 +124,7 @@ class ExcitonDensity(view.Mixin):
 
     >>> calculation.exciton.density.plot()
     ...
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='1', isosurfaces=[Isosurface(...)], signed=False, ...)], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='1', isosurfaces=[Isosurface(...)], scheme='auto', ...)], ...)
 
     Finally, you can inspect possible selections with:
 

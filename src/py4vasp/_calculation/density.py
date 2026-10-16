@@ -248,7 +248,7 @@ class DensityHandler:
 
     def _grid_quantity(self, selector, selection, map_, user_options):
         # Spin up and down are opposite phenomena, so a magnetization component is a
-        # signed, symmetric field: each isolevel is drawn at +isolevel and -isolevel.
+        # symmetric field: each isolevel is drawn at +isolevel and -isolevel.
         # The charge density is a continuous, sign-agnostic field. The colors are left
         # to the backend unless the user picked one.
         component_label = selector.label(selection)
@@ -258,8 +258,7 @@ class DensityHandler:
             quantity=selector[selection].T[np.newaxis],
             label=self._label(component_label),
             isosurfaces=self._isosurfaces(component, **user_options),
-            signed=symmetric,
-            symmetric=symmetric,
+            scheme="symmetric" if symmetric else "auto",
         )
 
     def _label(self, component_label):
@@ -314,7 +313,7 @@ class Density(view.Mixin):
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.density.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)], signed=False, ...)], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)], scheme='auto', ...)], ...)
 
     For your own postprocessing, you can read the band data into a Python dictionary:
 

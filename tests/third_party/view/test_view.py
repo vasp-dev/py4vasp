@@ -308,21 +308,6 @@ def test_ngl_draws_arrows_that_do_not_match_the_ions(number_arrows):
     view.to_ngl()
 
 
-@pytest.mark.parametrize(
-    "options, isosurface",
-    [
-        ({"symmetric": True}, Isosurface(0.1, "#0000FF", 0.6)),
-        ({"signed": True, "symmetric": True}, Isosurface(-0.1, "#0000FF", 0.6)),
-        ({"signed": True, "symmetric": True}, Isosurface(0.0, "#0000FF", 0.6)),
-        ({"negative_color": "#FF0000"}, Isosurface(0.1, "#0000FF", 0.6)),
-        ({"signed": True}, Isosurface(0.1, "#0000FF", 0.6, negative_color="#FF0000")),
-    ],
-)
-def test_grid_quantity_leaves_the_sign_rules_to_vasp_viewer(options, isosurface):
-    # only VASP Viewer checks how the sign settings combine, so NGL stays as it was
-    GridQuantity(np.zeros((1, 2, 2, 2)), "q", [isosurface], **options)
-
-
 def _ngl_surfaces(grid_quantity):
     view = View(**base_input_view(True), grid_scalars=[grid_quantity])
     messages = view.to_ngl().get_state()["_ngl_msg_archive"]
@@ -335,7 +320,7 @@ def test_symmetric_isosurfaces_in_ngl_match_the_pair_drawn_before():
     data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
     blue, red = _config.VASP_COLORS["blue"], _config.VASP_COLORS["red"]
     pair = [Isosurface(0.2, blue, 0.6), Isosurface(-0.2, red, 0.6)]
-    options = {"signed": True, "symmetric": True, "negative_color": red}
+    options = {"scheme": "symmetric", "negative_color": red}
     symmetric = GridQuantity(data, "m", [Isosurface(0.2, blue, 0.6)], **options)
     assert _ngl_surfaces(symmetric) == _ngl_surfaces(GridQuantity(data, "m", pair))
 
@@ -345,7 +330,7 @@ def test_negative_symmetric_isolevel_in_ngl_takes_the_colors_by_sign():
     # at the positive level and the negative color at the negative one
     pytest.importorskip("nglview")
     data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
-    options = {"signed": True, "symmetric": True, "negative_color": "#FF0000"}
+    options = {"scheme": "symmetric", "negative_color": "#FF0000"}
     grid = GridQuantity(data, "m", [Isosurface(-0.2, "#0000FF", 0.6)], **options)
     surfaces = _ngl_surfaces(grid)
     assert [surface["isolevel"] for surface in surfaces] == [0.2, -0.2]
@@ -365,7 +350,7 @@ def test_negative_color_of_symmetric_isosurfaces_in_ngl(
 ):
     pytest.importorskip("nglview")
     isosurface = Isosurface(0.2, "#0000FF", 0.6, negative_color=isosurface_color)
-    options = {"signed": True, "symmetric": True, "negative_color": quantity_color}
+    options = {"scheme": "symmetric", "negative_color": quantity_color}
     data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
     surfaces = _ngl_surfaces(GridQuantity(data, "m", [isosurface], **options))
     assert [surface["isolevel"] for surface in surfaces] == [0.2, -0.2]
@@ -377,7 +362,7 @@ def test_negative_color_of_symmetric_isosurfaces_in_ngl(
     [
         ({}, [_config.VASP_COLORS["cyan"]]),
         (
-            {"signed": True, "symmetric": True},
+            {"scheme": "symmetric"},
             [_config.VASP_COLORS["blue"], _config.VASP_COLORS["red"]],
         ),
     ],
@@ -398,12 +383,14 @@ def test_ngl_fills_in_the_default_opacity():
     assert surface["opacity"] == 0.6
 
 
-def test_ngl_ignores_the_color_scheme():
+@pytest.mark.parametrize("scheme", ["positive", "negative", "diverging", "sequential"])
+def test_ngl_draws_one_surface_unless_the_scheme_is_symmetric(scheme):
+    # only "symmetric" changes what NGL draws; it picks no colors from a scheme
     pytest.importorskip("nglview")
     data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
     isosurfaces = [Isosurface(0.2, "#0000FF", 0.6)]
     plain = GridQuantity(data, "q", isosurfaces)
-    with_scheme = GridQuantity(data, "q", isosurfaces, color_scheme="monochrome")
+    with_scheme = GridQuantity(data, "q", isosurfaces, scheme=scheme)
     assert _ngl_surfaces(with_scheme) == _ngl_surfaces(plain)
 
 

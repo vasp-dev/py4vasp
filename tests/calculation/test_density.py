@@ -233,9 +233,8 @@ def check_view(density, expected, Assert, **kwargs):
     Assert.allclose(grid_scalar.quantity, expected.density)
     assert len(grid_scalar.isosurfaces) == len(expected.isosurfaces)
     assert grid_scalar.isosurfaces == expected.isosurfaces
-    # a magnetization is signed and symmetric, spin down drawn in red at -isolevel
-    assert grid_scalar.signed == expected.symmetric
-    assert grid_scalar.symmetric == expected.symmetric
+    # a magnetization is symmetric: spin up and down are opposite phenomena
+    assert (grid_scalar.scheme == "symmetric") == expected.symmetric
     assert grid_scalar.negative_color is None  # the backend picks it
 
 
@@ -277,15 +276,14 @@ def test_magnetization_keeps_a_negative_isolevel(collinear_density):
     view = collinear_density.plot("3", isolevel=-0.1)
     (grid_scalar,) = view.grid_scalars
     assert grid_scalar.isosurfaces == [Isosurface(isolevel=-0.1)]
-    assert grid_scalar.symmetric
+    assert grid_scalar.scheme == "symmetric"
 
 
 def test_magnetization_leaves_the_colors_to_vasp_viewer(collinear_density):
     # the viewer picks the colors and the opacity from the color scheme
     config = collinear_density.plot("3").to_vasp_viewer_config()
     (dataset,) = config["volume_datasets"]
-    assert dataset["signed"] and dataset["symmetric"]
-    assert dataset["color_scheme"] == "auto"
+    assert dataset["scheme"] == "symmetric"
     assert dataset["color_negative"] is None
     (isosurface,) = dataset["isosurfaces"]
     assert isosurface["color_surface"] is None

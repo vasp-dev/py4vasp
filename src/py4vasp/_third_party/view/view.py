@@ -108,7 +108,7 @@ class GridQuantity:
     >>> quantity = [[[[0, 0, 0], [0, 0, 0], [0, 0, 0]], [[0, 0, 0], [0, 0.1, 0], [0, 0.15, 0]], [[0, 0, 0], [0, 0, 0], [0, 0, 0]]]]
     >>> isosurface = Isosurface(isolevel=0.1, color='red', opacity=0.5)
     >>> GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
-    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)], signed=False, ...)
+    GridQuantity(quantity=[[[[...]]]], label=..., isosurfaces=[Isosurface(...)], scheme='auto', ...)
     """
 
     quantity: npt.ArrayLike
@@ -117,35 +117,26 @@ class GridQuantity:
     """Name of the quantity"""
     isosurfaces: Sequence[Isosurface] = None
     """Sequence of isosurfaces to be plotted for this quantity."""
-    signed: bool = False
-    """Viewer setting that marks negative values as the opposite phenomenon rather than
-    just lower ones, e.g. spin down in a magnetization or deshielding in a NICS map.
-    NGL ignores it."""
-    symmetric: bool = False
-    """Draw every isosurface at +isolevel in its color and at -isolevel in the negative
-    color, so the sign of the isolevel does not matter. NGL draws both surfaces as well;
-    VASP Viewer requires :attr:`signed` for it."""
-    color_scheme: str = "auto"
-    """Color mapping strategy for the visualization in VASP Viewer, which picks the
-    colors of the isosurfaces from it. NGL ignores it.
+    scheme: str = "auto"
+    """How to read the values. VASP Viewer picks the colors of the quantity from it. NGL
+    draws every isosurface of a "symmetric" quantity at +isolevel and -isolevel and
+    ignores the other schemes.
 
-    Available options:
-    - "auto" (default): Automatically select based on data range:
-        * "diverging" if data spans negative and positive values
-        * "positive" if all values are non-negative
-        * "negative" if all values are non-positive
-        * "default" otherwise
-    - "monochrome" or "stm": Single-color gradient (suitable for STM images)
-    - "sequential": Perceptually uniform progression (Viridis)
-    - "positive": Red gradient for non-negative data
-    - "negative": Reverse blue gradient for non-positive data
-    - "diverging": Red-white-blue for data crossing zero (RdBu_r)
+    - "positive": the values are >= 0 and zero is the baseline, e.g. a density.
+    - "negative": the values are <= 0 and zero is the baseline.
+    - "diverging": one quantity that rises or falls from zero, e.g. a density
+      difference.
+    - "symmetric": two opposite phenomena of one magnitude, e.g. a magnetization.
+      Every isosurface is drawn at +isolevel and -isolevel, so the sign of the
+      isolevel does not matter.
+    - "sequential": a ramp whose zero means nothing, e.g. a potential.
+    - "auto" (default): unknown; VASP Viewer picks "diverging", "positive" or
+      "negative" from the smallest and largest value.
     """
     negative_color: Optional[str] = None
-    """Color of the surfaces at negative values of a signed quantity, e.g. spin down,
-    overriding the one VASP Viewer picks from :attr:`color_scheme`, unless an isosurface
-    names its own. VASP Viewer requires :attr:`signed` for it. NGL draws the surfaces at
-    -isolevel of a symmetric quantity in this color as well, or in red without one."""
+    """Color of the surfaces at -isolevel of a symmetric quantity, e.g. spin down,
+    overriding the one VASP Viewer picks from :attr:`scheme`, unless an isosurface names
+    its own. NGL draws those surfaces in this color as well, or in red without one."""
 
 
 @dataclass
@@ -379,7 +370,7 @@ class View:
     View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=None, ...)
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)], signed=True, symmetric=True, ...)], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)], scheme='symmetric', ...)], ...)
 
     But you can also create :class:`~py4vasp.view.View` objects directly. For example:
 
@@ -423,7 +414,7 @@ class View:
     >>> grid_quantity = GridQuantity(quantity=quantity, label='Charge Density', isosurfaces=[isosurface])
     >>> view.grid_scalars = [grid_quantity]
     >>> view
-    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)], signed=False, ...)], ...)
+    View(elements=[[...]], lattice_vectors=[[[...]]], positions=[[[...]]], grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='Charge Density', isosurfaces=[Isosurface(...)], scheme='auto', ...)], ...)
     """
 
     elements: npt.ArrayLike
@@ -672,7 +663,6 @@ class View:
             # checks of rules only VASP Viewer has; NGL must keep drawing what it drew
             self._raise_error_if_not_one_arrow_per_ion()
             for grid_quantity in self.grid_scalars or ():
-                _raise_error_if_vasp_viewer_cannot_draw_the_signs(grid_quantity)
                 _raise_error_if_volume_contains_nan(grid_quantity)
 
     def _raise_error_if_not_one_arrow_per_ion(self):
@@ -733,19 +723,15 @@ class View:
 
     def _volume_dataset(self, grid_quantity):
         # The field is sent ONCE; each isosurface becomes a shell of this volume on the
-        # viewer side sharing its data. The volume says how to read negative values: a
-        # signed field's negative values are the opposite phenomenon, and a symmetric
-        # one draws each shell at +level and -level. Every key is sent, and a volume
-        # without isosurfaces sends None, because the viewer rejects an empty list.
+        # viewer side sharing its data. The scheme says what the values are, and the
+        # viewer decides how they look. Every key is sent, unset ones as None.
         data, grid = self._volume_data_and_grid(grid_quantity)
         isosurfaces = grid_quantity.isosurfaces or []
         return {
             "label": grid_quantity.label,
             "data": data,
             "grid": grid,
-            "signed": grid_quantity.signed,
-            "symmetric": grid_quantity.symmetric,
-            "color_scheme": grid_quantity.color_scheme,
+            "scheme": grid_quantity.scheme,
             "color_negative": grid_quantity.negative_color,
             "isosurfaces": [
                 self._isosurface_entry(grid_quantity, isosurface)
@@ -763,7 +749,7 @@ class View:
             "cap": isosurface.cap,
             "color_negative": isosurface.negative_color,
         }
-        if grid_quantity.symmetric:
+        if _is_symmetric(grid_quantity):
             # the viewer takes a symmetric isolevel as a magnitude; the colors follow
             # the sign of the surface either way
             entry["iso_value"] = abs(isosurface.isolevel)
@@ -881,40 +867,18 @@ def _raise_error_if_volume_contains_nan(grid_quantity):
         )
 
 
-def _raise_error_if_vasp_viewer_cannot_draw_the_signs(grid_quantity):
-    label = grid_quantity.label
-    if not grid_quantity.signed and grid_quantity.symmetric:
-        raise exception.IncorrectUsage(
-            f"The grid quantity '{label}' is symmetric but not signed. Only a signed "
-            "field, whose negative values are the opposite phenomenon, can draw every "
-            "isosurface at +isolevel and -isolevel in VASP Viewer."
-        )
-    if not grid_quantity.signed and grid_quantity.negative_color is not None:
-        raise exception.IncorrectUsage(
-            f"The grid quantity '{label}' sets a negative color but is not signed. Set "
-            "signed=True to draw its negative values in that color in VASP Viewer."
-        )
-    for isosurface in grid_quantity.isosurfaces or ():
-        if grid_quantity.symmetric and isosurface.isolevel == 0:
-            raise exception.IncorrectUsage(
-                f"VASP Viewer draws the isosurfaces of the symmetric grid quantity "
-                f"'{label}' at +isolevel and -isolevel, so an isolevel cannot be 0."
-            )
-        if not grid_quantity.symmetric and isosurface.negative_color is not None:
-            raise exception.IncorrectUsage(
-                f"An isosurface of the grid quantity '{label}' sets a negative color, "
-                "but only a symmetric quantity draws a surface at -isolevel."
-            )
+def _is_symmetric(grid_quantity):
+    return grid_quantity.scheme == "symmetric"
 
 
 def _ngl_surfaces(grid_quantity, isosurface):
-    # NGL keeps drawing what py4vasp sent before the viewer learned about signs: a
+    # NGL keeps drawing what py4vasp sent before the viewer learned about schemes: a
     # symmetric quantity's isosurface is the pair at +isolevel and -isolevel, and the
-    # settings only VASP Viewer knows (signed, cap) are left out
+    # settings only VASP Viewer knows (other schemes, cap) are left out
     # without a color NGL draws what py4vasp always drew: cyan, or blue up and red
     # down for a symmetric field
     opacity = 0.6 if isosurface.opacity is None else isosurface.opacity
-    if not grid_quantity.symmetric:
+    if not _is_symmetric(grid_quantity):
         color = isosurface.color or _config.VASP_COLORS["cyan"]
         yield {"isolevel": isosurface.isolevel, "color": color, "opacity": opacity}
         return

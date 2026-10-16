@@ -412,8 +412,7 @@ def test_plot(nics_on_a_grid, selection, Assert):
         assert grid_scalar.isosurfaces == [
             view.Isosurface(1.0),
         ]
-        assert grid_scalar.signed
-        assert grid_scalar.symmetric
+        assert grid_scalar.scheme == "symmetric"
         assert grid_scalar.negative_color is None  # the backend picks it
 
 
@@ -435,7 +434,7 @@ def test_plot_user_options(nics_on_a_grid):
 def test_plot_leaves_the_colors_to_vasp_viewer(nics_on_a_grid):
     # the viewer picks the colors and the opacity from the color scheme
     (dataset,) = nics_on_a_grid.plot().to_vasp_viewer_config()["volume_datasets"]
-    assert dataset["signed"] and dataset["symmetric"]
+    assert dataset["scheme"] == "symmetric"
     assert dataset["color_negative"] is None
     (isosurface,) = dataset["isosurfaces"]
     assert isosurface["color_surface"] is None
@@ -447,7 +446,7 @@ def test_plot_keeps_a_negative_isolevel(nics_on_a_grid):
     (grid_scalar,) = nics_on_a_grid.plot(isolevel=-0.9).grid_scalars
     (isosurface,) = grid_scalar.isosurfaces
     assert isosurface.isolevel == -0.9
-    assert grid_scalar.symmetric
+    assert grid_scalar.scheme == "symmetric"
 
 
 @pytest.mark.parametrize(

@@ -190,8 +190,7 @@ nucleus-independent chemical shift:
             quantity=quantity[np.newaxis],
             label=f"{key} NICS",
             isosurfaces=self._isosurfaces(**user_options),
-            signed=True,
-            symmetric=True,
+            scheme="symmetric",
         )
 
     def _isosurfaces(self, isolevel=1.0, opacity=None):
@@ -250,7 +249,7 @@ class Nics(view.Mixin):
     You can also visualize a 3d isosurface of the chemical shift:
 
     >>> calculation.nics.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)], signed=True, symmetric=True, ...)], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='isotropic NICS', isosurfaces=[Isosurface(...)], scheme='symmetric', ...)], ...)
 
     Alternatively, you can visualize a contour plot of the chemical shift in a plane:
 

@@ -240,17 +240,15 @@ def test_isosurface_config_carries_opacity_and_cap(cap):
     assert isosurface["cap"] == cap
 
 
-@pytest.mark.parametrize(
-    "options", [{}, {"signed": True}, {"signed": True, "symmetric": True}]
-)
-def test_volume_config_marks_signed_and_symmetric_fields(options):
-    # negative values of a signed field are the opposite phenomenon, e.g. spin down;
-    # a symmetric field draws every isosurface at +level and at -level
+@pytest.mark.parametrize("scheme", [None, "positive", "symmetric"])
+def test_volume_config_sends_the_scheme(scheme):
+    # the scheme says what the values are, the viewer decides how they look
+    options = {} if scheme is None else {"scheme": scheme}
     view = _single_grid_view([Isosurface(1.0, "#0000ff", 0.6)], **options)
     dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
-    assert dataset["signed"] == options.get("signed", False)
-    assert dataset["symmetric"] == options.get("symmetric", False)
-    assert "sign_mode" not in dataset  # the viewer rejects the replaced key
+    assert dataset["scheme"] == (scheme or "auto")
+    for replaced_key in ("sign_mode", "signed", "symmetric", "color_scheme"):
+        assert replaced_key not in dataset  # the viewer refuses them
 
 
 @pytest.mark.parametrize("colors", [(None, None), ("#ff0000", "#ff8800")])
@@ -258,28 +256,18 @@ def test_volume_config_forwards_the_negative_colors(colors):
     # the volume's negative color holds for every isosurface that names none
     volume_color, isosurface_color = colors
     isosurface = Isosurface(1.0, "#0000ff", 0.6, negative_color=isosurface_color)
-    options = {"signed": True, "symmetric": True, "negative_color": volume_color}
+    options = {"scheme": "symmetric", "negative_color": volume_color}
     view = _single_grid_view([isosurface], **options)
     dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
     assert dataset["color_negative"] == volume_color
     assert dataset["isosurfaces"][0]["color_negative"] == isosurface_color
 
 
-@pytest.mark.parametrize(
-    "options, isosurface",
-    [
-        ({"symmetric": True}, Isosurface(0.1, "#0000ff", 0.6)),
-        ({"negative_color": "#ff0000"}, Isosurface(0.1, "#0000ff", 0.6)),
-        ({"signed": True}, Isosurface(0.1, "#0000ff", 0.6, negative_color="#ff0000")),
-        ({"signed": True, "symmetric": True}, Isosurface(0.0, "#0000ff", 0.6)),
-    ],
-)
-def test_volume_config_rejects_signs_vasp_viewer_cannot_draw(options, isosurface):
-    # symmetric and a negative color need a signed field, only a symmetric field draws
-    # an isosurface at -isolevel, and a symmetric isosurface at 0 has no magnitude
-    view = _single_grid_view([isosurface], **options)
-    with pytest.raises(exception.IncorrectUsage):
-        view.to_vasp_viewer_config()
+def test_volume_config_sends_a_symmetric_isolevel_of_zero():
+    # every combination of scheme and isolevel draws something in VASP Viewer
+    view = _single_grid_view([Isosurface(0.0, "#0000ff", 0.6)], scheme="symmetric")
+    (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert entry["iso_value"] == 0.0
 
 
 @pytest.mark.parametrize("isosurface_color", [None, "#ff8800"])
@@ -287,7 +275,7 @@ def test_negative_symmetric_isolevel_is_sent_as_a_magnitude(isosurface_color):
     # VASP Viewer takes a symmetric isolevel as a magnitude, and the colors follow the
     # sign of the surface: the isosurface's color at +0.2, the negative one at -0.2
     isosurface = Isosurface(-0.2, "#0000ff", 0.6, negative_color=isosurface_color)
-    options = {"signed": True, "symmetric": True, "negative_color": "#ff0000"}
+    options = {"scheme": "symmetric", "negative_color": "#ff0000"}
     view = _single_grid_view([isosurface], **options)
     dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
     (entry,) = dataset["isosurfaces"]
@@ -295,14 +283,6 @@ def test_negative_symmetric_isolevel_is_sent_as_a_magnitude(isosurface_color):
     assert entry["color_surface"] == "#0000ff"
     assert entry["color_negative"] == isosurface_color
     assert dataset["color_negative"] == "#ff0000"
-
-
-@pytest.mark.parametrize("options", [{}, {"color_scheme": "diverging"}])
-def test_volume_config_forwards_the_color_scheme(options):
-    # the viewer picks the colors from the scheme and resolves "auto" from the data
-    view = _single_grid_view([Isosurface(0.5, "#0000ff", 0.6)], **options)
-    dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
-    assert dataset["color_scheme"] == options.get("color_scheme", "auto")
 
 
 @pytest.mark.parametrize("color", [None, "#00ff00"])
