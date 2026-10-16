@@ -179,6 +179,23 @@ def test_plot_multiple_selections(raw_data, Assert):
     check_view(potential, view, expectations, Assert)
 
 
+@pytest.mark.parametrize(
+    "magnetism, selection",
+    [("collinear", "xc(sigma_z) total(3) hartree"), ("noncollinear", "xc(x) hartree")],
+)
+def test_plot_magnetic_component_is_diverging(raw_data, magnetism, selection):
+    # a magnetic component is the difference of the spin channels, so its zero means
+    # that up and down feel the same potential; every other potential is only fixed
+    # up to a constant
+    potential = make_reference_potential(raw_data, f"Fe3O4 {magnetism}", "all")
+    view = potential.plot(selection)
+    *magnetic, hartree = view.grid_scalars
+    assert [grid_scalar.scheme for grid_scalar in magnetic] == ["diverging"] * len(
+        magnetic
+    )
+    assert hartree.scheme == "sequential"
+
+
 @pytest.mark.parametrize("supercell", [2, (3, 2, 1)])
 def test_plot_supercell(raw_data, supercell, Assert):
     potential = make_reference_potential(raw_data, "Sr2TiO4", "total")

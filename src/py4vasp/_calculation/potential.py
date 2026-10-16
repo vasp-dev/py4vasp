@@ -38,6 +38,7 @@ _COMPONENTS = {
     2: ["2", "sigma_y", "y", "sigma_2"],
     3: ["3", "sigma_z", "z", "sigma_3"],
 }
+_MAGNETIC_COMPONENTS = {choice for key in (1, 2, 3) for choice in _COMPONENTS[key]}
 _COMMON_PARAMETERS = f"""\
 {slicing.PARAMETERS}
 supercell : int or np.ndarray
@@ -125,7 +126,10 @@ class PotentialHandler:
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ):
-        potentials = dict(self._get_potentials(selection))
+        potentials = {
+            label: (component, data)
+            for label, component, data in self._select_potentials(selection)
+        }
         isosurface = self._create_isosurface(**user_options)
         viewer = self._structure().to_view(supercell)
         viewer.grid_scalars = [
@@ -133,9 +137,9 @@ class PotentialHandler:
                 quantity=data[np.newaxis],
                 label=label,
                 isosurfaces=[isosurface],
-                scheme="sequential",
+                scheme=_scheme(component),
             )
-            for label, data in potentials.items()
+            for label, (component, data) in potentials.items()
         ]
         return viewer
 
@@ -169,12 +173,17 @@ class PotentialHandler:
         return dict(self._get_potentials(selection or "total"))
 
     def _get_potentials(self, selection, is_magnetic=False):
+        for label, _, data in self._select_potentials(selection, is_magnetic):
+            yield label, data
+
+    def _select_potentials(self, selection, is_magnetic=False):
         tree = select.Tree.from_selection(selection)
         for selection in tree.selections():
             kind, component = self._determine_kind_and_component(selection)
             selector = self._create_selector(kind, component, is_magnetic)
             component_label = component[0] if component else ""
-            yield self._get_label(kind, component_label), selector[component].T
+            label = self._get_label(kind, component_label)
+            yield label, component_label, selector[component].T
 
     def _determine_kind_and_component(self, selection):
         for kind in VALID_KINDS:
@@ -654,3 +663,11 @@ def _raise_error_if_nonpolarized_potential(potential):
     if _is_nonpolarized(potential):
         message = "Cannot visualize nonpolarized potential as quiver plot."
         raise exception.DataMismatch(message)
+
+
+def _scheme(component):
+    # A magnetic component is the difference of the spin channels, so its zero means
+    # that up and down feel the same potential. Every other potential is only fixed
+    # up to a constant, so its zero means nothing.
+    is_magnetic = isinstance(component, str) and component in _MAGNETIC_COMPONENTS
+    return "diverging" if is_magnetic else "sequential"
