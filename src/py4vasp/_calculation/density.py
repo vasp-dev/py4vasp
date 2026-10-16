@@ -247,19 +247,23 @@ class DensityHandler:
             map_[key] = 1
 
     def _grid_quantity(self, selector, selection, map_, user_options):
-        # Spin up and down are opposite phenomena, so a magnetization component is a
-        # symmetric field: each isolevel is drawn at +isolevel and -isolevel.
-        # The charge density is a continuous, sign-agnostic field. The colors are left
-        # to the backend unless the user picked one.
+        # The colors are left to the backend unless the user picked one.
         component_label = selector.label(selection)
         component = map_.get(component_label, -1)
-        symmetric = self._use_symmetric_isosurface(component)
         return view.GridQuantity(
             quantity=selector[selection].T[np.newaxis],
             label=self._label(component_label),
             isosurfaces=self._isosurfaces(component, **user_options),
-            scheme="symmetric" if symmetric else "auto",
+            scheme=self._scheme(component),
         )
+
+    def _scheme(self, component):
+        # Spin up and down are opposite phenomena, so a magnetization component is
+        # symmetric and drawn at +isolevel and -isolevel. The density itself is
+        # positive, and a sum of components may have either sign.
+        if self._use_symmetric_isosurface(component):
+            return "symmetric"
+        return "positive" if component == 0 else "auto"
 
     def _label(self, component_label):
         if component_label == _INTERNAL:
@@ -313,7 +317,7 @@ class Density(view.Mixin):
     You can also visualize a 3d isosurface of the density:
 
     >>> calculation.density.plot()
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)], scheme='auto', ...)], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='charge', isosurfaces=[Isosurface(...)], scheme='positive', ...)], ...)
 
     For your own postprocessing, you can read the band data into a Python dictionary:
 

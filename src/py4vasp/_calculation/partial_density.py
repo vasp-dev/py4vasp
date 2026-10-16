@@ -127,6 +127,7 @@ class PartialDensityHandler:
             quantity=partial_charge[np.newaxis],
             label=selection,
             isosurfaces=[isosurface],
+            scheme="positive",
         )
         viewer.grid_scalars = [grid_quantity]
         return viewer

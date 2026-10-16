@@ -163,6 +163,7 @@ def test_plot(PolarizedNonSplitPartialDensity, selection, Assert):
     isosurface = grid_scalar.isosurfaces[0]
     assert isosurface.isolevel == 0.2
     assert isosurface.color is None  # the backend picks it
+    assert grid_scalar.scheme == "positive"
     assert isosurface.opacity is None
 
 

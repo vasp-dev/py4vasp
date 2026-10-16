@@ -133,6 +133,7 @@ class PotentialHandler:
                 quantity=data[np.newaxis],
                 label=label,
                 isosurfaces=[isosurface],
+                scheme="sequential",
             )
             for label, data in potentials.items()
         ]

@@ -50,7 +50,7 @@ class Expectation:
     label: str
     density: np.ndarray
     isosurfaces: list
-    symmetric: bool = False
+    scheme: str = "positive"
 
 
 def make_reference_density(raw_data, selection, source=None):
@@ -233,8 +233,9 @@ def check_view(density, expected, Assert, **kwargs):
     Assert.allclose(grid_scalar.quantity, expected.density)
     assert len(grid_scalar.isosurfaces) == len(expected.isosurfaces)
     assert grid_scalar.isosurfaces == expected.isosurfaces
-    # a magnetization is symmetric: spin up and down are opposite phenomena
-    assert (grid_scalar.scheme == "symmetric") == expected.symmetric
+    # a density is positive, a magnetization symmetric because spin up and down are
+    # opposite phenomena, and a sum of components may have either sign
+    assert grid_scalar.scheme == expected.scheme
 
 
 def test_accessing_spin_raises_error(nonpolarized_density):
@@ -255,14 +256,14 @@ def test_collinear_plot(selection, collinear_density, Assert):
             label=selection,
             density=collinear_density.ref.output["magnetization"],
             isosurfaces=isosurfaces,
-            symmetric=True,
+            scheme="symmetric",
         )
     else:
         expected = Expectation(
             label=f"{source}({selection})",
             density=collinear_density.ref.output[source][1],
             isosurfaces=isosurfaces,
-            symmetric=True,
+            scheme="symmetric",
         )
         if selection in ("magnetization", "mag", "m"):
             # magnetization not allowed for kinetic_energy
@@ -333,7 +334,7 @@ def test_plotting_noncollinear_density(selections, noncollinear_density, Assert)
         Isosurface(isolevel=0.2, opacity=0.3),
     ]
     for selection, density, label in zip(selections, expected_density, expected_labels):
-        expected = Expectation(label, density, isosurfaces, symmetric=True)
+        expected = Expectation(label, density, isosurfaces, scheme="symmetric")
         kwargs = {"selection": selection, "opacity": 0.3}
         check_view(noncollinear_density, expected, Assert, **kwargs)
 
@@ -350,6 +351,7 @@ def test_adding_components(noncollinear_density, Assert):
         label=expected_label,
         density=expected_density[0] + expected_density[1],
         isosurfaces=[Isosurface(isolevel=0.4)],
+        scheme="auto",
     )
     check_view(noncollinear_density, expected, Assert, selection="1 + 2", isolevel=0.4)
 

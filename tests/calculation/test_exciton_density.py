@@ -65,6 +65,7 @@ def test_plot_selection(exciton_density, selection, indices, Assert):
         isosurface = grid_scalar.isosurfaces[0]
         assert isosurface.isolevel == 0.8
         assert isosurface.color is None  # the backend picks it
+        assert grid_scalar.scheme == "positive"
         assert isosurface.opacity is None
 
 

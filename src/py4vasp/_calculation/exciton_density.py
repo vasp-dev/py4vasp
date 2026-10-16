@@ -67,7 +67,11 @@ class ExcitonDensityHandler:
         tree = select.Tree.from_selection(selection)
         viewer = self._structure().to_view(supercell)
         viewer.grid_scalars = [
-            view.GridQuantity(selector[sel].T[np.newaxis], label=selector.label(sel))
+            view.GridQuantity(
+                selector[sel].T[np.newaxis],
+                label=selector.label(sel),
+                scheme="positive",
+            )
             for sel in tree.selections()
         ]
         if center:
@@ -124,7 +128,7 @@ class ExcitonDensity(view.Mixin):
 
     >>> calculation.exciton.density.plot()
     ...
-    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='1', isosurfaces=[Isosurface(...)], scheme='auto', ...)], ...)
+    View(elements=array([[...]]...), lattice_vectors=array([[[...]]]...), positions=array([[[...]]]...), grid_scalars=[GridQuantity(quantity=array([[[[...]]]]...), label='1', isosurfaces=[Isosurface(...)], scheme='positive', ...)], ...)
 
     Finally, you can inspect possible selections with:
 

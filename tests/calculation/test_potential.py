@@ -201,6 +201,8 @@ def check_view(potential, view, expectations, Assert, supercell=None):
         Assert.allclose(grid_scalar.quantity, expected.potential)
         assert len(grid_scalar.isosurfaces) == 1
         assert grid_scalar.isosurfaces[0] == expected.isosurface
+        # a potential is a ramp whose zero means nothing
+        assert grid_scalar.scheme == "sequential"
 
 
 def test_incorrect_selection(reference_potential):
