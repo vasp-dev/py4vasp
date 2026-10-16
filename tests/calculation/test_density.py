@@ -235,7 +235,6 @@ def check_view(density, expected, Assert, **kwargs):
     assert grid_scalar.isosurfaces == expected.isosurfaces
     # a magnetization is symmetric: spin up and down are opposite phenomena
     assert (grid_scalar.scheme == "symmetric") == expected.symmetric
-    assert grid_scalar.negative_color is None  # the backend picks it
 
 
 def test_accessing_spin_raises_error(nonpolarized_density):
@@ -284,9 +283,8 @@ def test_magnetization_leaves_the_colors_to_vasp_viewer(collinear_density):
     config = collinear_density.plot("3").to_vasp_viewer_config()
     (dataset,) = config["volume_datasets"]
     assert dataset["scheme"] == "symmetric"
-    assert dataset["color_negative"] is None
     (isosurface,) = dataset["isosurfaces"]
-    assert isosurface["color_surface"] is None
+    assert isosurface["color"] is None
     assert isosurface["opacity"] is None
 
 
@@ -294,7 +292,7 @@ def test_magnetization_leaves_the_colors_to_vasp_viewer(collinear_density):
 def test_charge_sends_color_and_opacity_only_when_given(reference_density, options):
     config = reference_density.plot(**options).to_vasp_viewer_config()
     (isosurface,) = config["volume_datasets"][0]["isosurfaces"]
-    assert isosurface["color_surface"] == options.get("color")
+    assert isosurface["color"] == options.get("color")
     assert isosurface["opacity"] == options.get("opacity")
 
 

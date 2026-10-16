@@ -413,7 +413,6 @@ def test_plot(nics_on_a_grid, selection, Assert):
             view.Isosurface(1.0),
         ]
         assert grid_scalar.scheme == "symmetric"
-        assert grid_scalar.negative_color is None  # the backend picks it
 
 
 @pytest.mark.parametrize("supercell", (2, (3, 1, 2)))
@@ -435,9 +434,8 @@ def test_plot_leaves_the_colors_to_vasp_viewer(nics_on_a_grid):
     # the viewer picks the colors and the opacity from the color scheme
     (dataset,) = nics_on_a_grid.plot().to_vasp_viewer_config()["volume_datasets"]
     assert dataset["scheme"] == "symmetric"
-    assert dataset["color_negative"] is None
     (isosurface,) = dataset["isosurfaces"]
-    assert isosurface["color_surface"] is None
+    assert isosurface["color"] is None
     assert isosurface["opacity"] is None
 
 

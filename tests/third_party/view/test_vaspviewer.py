@@ -224,10 +224,10 @@ def test_isosurfaces_sent_once_with_the_field():
     )
     datasets = view.to_vasp_viewer_config()["volume_datasets"]
     assert len(datasets) == 1  # one field, not one dataset per isolevel
-    common = {"opacity": 0.6, "cap": None, "color_negative": None}
+    common = {"opacity": 0.6, "cap": None, "color_opposite": None}
     assert datasets[0]["isosurfaces"] == [
-        {"iso_value": 1.0, "color_surface": "#0000ff", **common},
-        {"iso_value": -1.0, "color_surface": "#ff0000", **common},
+        {"isolevel": 1.0, "color": "#0000ff", **common},
+        {"isolevel": -1.0, "color": "#ff0000", **common},
     ]
 
 
@@ -251,38 +251,32 @@ def test_volume_config_sends_the_scheme(scheme):
         assert replaced_key not in dataset  # the viewer refuses them
 
 
-@pytest.mark.parametrize("colors", [(None, None), ("#ff0000", "#ff8800")])
-def test_volume_config_forwards_the_negative_colors(colors):
-    # the volume's negative color holds for every isosurface that names none
-    volume_color, isosurface_color = colors
-    isosurface = Isosurface(1.0, "#0000ff", 0.6, negative_color=isosurface_color)
-    options = {"scheme": "symmetric", "negative_color": volume_color}
-    view = _single_grid_view([isosurface], **options)
+@pytest.mark.parametrize("color_opposite", [None, "#ff8800"])
+def test_isosurface_config_forwards_the_opposite_color(color_opposite):
+    # the second color of a symmetric or diverging quantity overrides the viewer's
+    isosurface = Isosurface(1.0, "#0000ff", 0.6, color_opposite=color_opposite)
+    view = _single_grid_view([isosurface], scheme="symmetric")
     dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
-    assert dataset["color_negative"] == volume_color
-    assert dataset["isosurfaces"][0]["color_negative"] == isosurface_color
+    assert dataset["isosurfaces"][0]["color_opposite"] == color_opposite
+    assert "color_negative" not in dataset  # the volume carries no colors
 
 
 def test_volume_config_sends_a_symmetric_isolevel_of_zero():
     # every combination of scheme and isolevel draws something in VASP Viewer
     view = _single_grid_view([Isosurface(0.0, "#0000ff", 0.6)], scheme="symmetric")
     (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
-    assert entry["iso_value"] == 0.0
+    assert entry["isolevel"] == 0.0
 
 
-@pytest.mark.parametrize("isosurface_color", [None, "#ff8800"])
-def test_negative_symmetric_isolevel_is_sent_as_a_magnitude(isosurface_color):
-    # VASP Viewer takes a symmetric isolevel as a magnitude, and the colors follow the
-    # sign of the surface: the isosurface's color at +0.2, the negative one at -0.2
-    isosurface = Isosurface(-0.2, "#0000ff", 0.6, negative_color=isosurface_color)
-    options = {"scheme": "symmetric", "negative_color": "#ff0000"}
-    view = _single_grid_view([isosurface], **options)
-    dataset = view.to_vasp_viewer_config()["volume_datasets"][0]
-    (entry,) = dataset["isosurfaces"]
-    assert entry["iso_value"] == 0.2
-    assert entry["color_surface"] == "#0000ff"
-    assert entry["color_negative"] == isosurface_color
-    assert dataset["color_negative"] == "#ff0000"
+def test_negative_symmetric_isolevel_is_sent_as_given():
+    # VASP Viewer ignores the sign of a symmetric isolevel, and the colors follow the
+    # sign of the surface: color at +0.2, color_opposite at -0.2
+    isosurface = Isosurface(-0.2, "#0000ff", 0.6, color_opposite="#ff8800")
+    view = _single_grid_view([isosurface], scheme="symmetric")
+    (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
+    assert entry["isolevel"] == -0.2
+    assert entry["color"] == "#0000ff"
+    assert entry["color_opposite"] == "#ff8800"
 
 
 @pytest.mark.parametrize("color", [None, "#00ff00"])
@@ -290,7 +284,7 @@ def test_isosurface_color_is_sent_only_when_set(color):
     # without a color the viewer picks one from the color scheme
     view = _single_grid_view([Isosurface(0.5, color=color)])
     (entry,) = view.to_vasp_viewer_config()["volume_datasets"][0]["isosurfaces"]
-    assert entry["color_surface"] == color
+    assert entry["color"] == color
 
 
 @pytest.mark.parametrize("opacity", [None, 0.3])

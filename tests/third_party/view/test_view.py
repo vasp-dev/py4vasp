@@ -320,8 +320,8 @@ def test_symmetric_isosurfaces_in_ngl_match_the_pair_drawn_before():
     data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
     blue, red = _config.VASP_COLORS["blue"], _config.VASP_COLORS["red"]
     pair = [Isosurface(0.2, blue, 0.6), Isosurface(-0.2, red, 0.6)]
-    options = {"scheme": "symmetric", "negative_color": red}
-    symmetric = GridQuantity(data, "m", [Isosurface(0.2, blue, 0.6)], **options)
+    isosurface = Isosurface(0.2, blue, 0.6, color_opposite=red)
+    symmetric = GridQuantity(data, "m", [isosurface], scheme="symmetric")
     assert _ngl_surfaces(symmetric) == _ngl_surfaces(GridQuantity(data, "m", pair))
 
 
@@ -330,29 +330,22 @@ def test_negative_symmetric_isolevel_in_ngl_takes_the_colors_by_sign():
     # at the positive level and the negative color at the negative one
     pytest.importorskip("nglview")
     data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
-    options = {"scheme": "symmetric", "negative_color": "#FF0000"}
-    grid = GridQuantity(data, "m", [Isosurface(-0.2, "#0000FF", 0.6)], **options)
+    isosurface = Isosurface(-0.2, "#0000FF", 0.6, color_opposite="#FF0000")
+    grid = GridQuantity(data, "m", [isosurface], scheme="symmetric")
     surfaces = _ngl_surfaces(grid)
     assert [surface["isolevel"] for surface in surfaces] == [0.2, -0.2]
     assert [surface["color"] for surface in surfaces] == ["#0000FF", "#FF0000"]
 
 
 @pytest.mark.parametrize(
-    "quantity_color, isosurface_color, expected",
-    [
-        ("#FF0000", None, "#FF0000"),
-        ("#FF0000", "#FF8800", "#FF8800"),
-        (None, None, _config.VASP_COLORS["red"]),
-    ],
+    "color_opposite, expected",
+    [("#FF8800", "#FF8800"), (None, _config.VASP_COLORS["red"])],
 )
-def test_negative_color_of_symmetric_isosurfaces_in_ngl(
-    quantity_color, isosurface_color, expected
-):
+def test_opposite_color_of_symmetric_isosurfaces_in_ngl(color_opposite, expected):
     pytest.importorskip("nglview")
-    isosurface = Isosurface(0.2, "#0000FF", 0.6, negative_color=isosurface_color)
-    options = {"scheme": "symmetric", "negative_color": quantity_color}
+    isosurface = Isosurface(0.2, "#0000FF", 0.6, color_opposite=color_opposite)
     data = np.linspace(-1, 1, 64).reshape(1, 4, 4, 4)
-    surfaces = _ngl_surfaces(GridQuantity(data, "m", [isosurface], **options))
+    surfaces = _ngl_surfaces(GridQuantity(data, "m", [isosurface], scheme="symmetric"))
     assert [surface["isolevel"] for surface in surfaces] == [0.2, -0.2]
     assert [surface["color"] for surface in surfaces] == ["#0000FF", expected]
 

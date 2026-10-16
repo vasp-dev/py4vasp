@@ -67,7 +67,7 @@ class Isosurface:
 
     >>> from py4vasp.view import Isosurface
     >>> Isosurface(isolevel=0.1, color='red', opacity=0.5)
-    Isosurface(isolevel=0.1, color='red', opacity=0.5, cap=None, negative_color=None)
+    Isosurface(isolevel=0.1, color='red', opacity=0.5, cap=None, color_opposite=None)
     """
 
     isolevel: float
@@ -88,10 +88,11 @@ class Isosurface:
     - 'off': paints nothing.
 
     None leaves the choice to the viewer."""
-    negative_color: Optional[str] = None
-    """Color of the surface at -isolevel of a symmetric
-    :class:`~py4vasp.view.GridQuantity`, overriding the quantity's own negative color.
-    NGL draws that surface in this color as well."""
+    color_opposite: Optional[str] = None
+    """Second color of the isosurface, for the opposite side of a "symmetric" or
+    "diverging" :class:`~py4vasp.view.GridQuantity`. None lets VASP Viewer pick it from
+    the scheme. NGL draws the surface at -isolevel of a symmetric quantity in this
+    color, or in red without one."""
 
 
 @dataclass
@@ -133,10 +134,6 @@ class GridQuantity:
     - "auto" (default): unknown; VASP Viewer picks "diverging", "positive" or
       "negative" from the smallest and largest value.
     """
-    negative_color: Optional[str] = None
-    """Color of the surfaces at -isolevel of a symmetric quantity, e.g. spin down,
-    overriding the one VASP Viewer picks from :attr:`scheme`, unless an isosurface names
-    its own. NGL draws those surfaces in this color as well, or in red without one."""
 
 
 @dataclass
@@ -732,28 +729,22 @@ class View:
             "data": data,
             "grid": grid,
             "scheme": grid_quantity.scheme,
-            "color_negative": grid_quantity.negative_color,
             "isosurfaces": [
-                self._isosurface_entry(grid_quantity, isosurface)
-                for isosurface in isosurfaces
+                self._isosurface_entry(isosurface) for isosurface in isosurfaces
             ]
             or None,
         }
 
-    def _isosurface_entry(self, grid_quantity, isosurface):
+    def _isosurface_entry(self, isosurface):
         # every key is sent, unset ones as None, so each shell has the same keys
-        entry = {
-            "iso_value": isosurface.isolevel,
-            "color_surface": isosurface.color,
+        # the viewer ignores the sign of a symmetric isolevel
+        return {
+            "isolevel": isosurface.isolevel,
+            "color": isosurface.color,
+            "color_opposite": isosurface.color_opposite,
             "opacity": isosurface.opacity,
             "cap": isosurface.cap,
-            "color_negative": isosurface.negative_color,
         }
-        if _is_symmetric(grid_quantity):
-            # the viewer takes a symmetric isolevel as a magnitude; the colors follow
-            # the sign of the surface either way
-            entry["iso_value"] = abs(isosurface.isolevel)
-        return entry
 
     def _volume_data_and_grid(self, grid_quantity):
         # The VASP Viewer uploads the flat data buffer into a 3D texture whose
@@ -885,17 +876,9 @@ def _ngl_surfaces(grid_quantity, isosurface):
     # the colors follow the sign of the surface, whatever the sign of the isolevel
     isolevel = abs(isosurface.isolevel)
     color = isosurface.color or _config.VASP_COLORS["blue"]
-    negative_color = _negative_color(grid_quantity, isosurface)
+    opposite_color = isosurface.color_opposite or _config.VASP_COLORS["red"]
     yield {"isolevel": isolevel, "color": color, "opacity": opacity}
-    yield {"isolevel": -isolevel, "color": negative_color, "opacity": opacity}
-
-
-def _negative_color(grid_quantity, isosurface):
-    return (
-        isosurface.negative_color
-        or grid_quantity.negative_color
-        or _config.VASP_COLORS["red"]
-    )
+    yield {"isolevel": -isolevel, "color": opposite_color, "opacity": opacity}
 
 
 def _merge_view_fields(left_view, right_view):
