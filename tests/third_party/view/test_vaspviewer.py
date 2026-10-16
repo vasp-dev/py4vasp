@@ -303,6 +303,22 @@ def test_isosurface_opacity_is_sent_only_when_set(opacity):
     assert entry["opacity"] == opacity
 
 
+def test_payload_has_exactly_the_keys_of_the_contract():
+    # VASP Viewer refuses keys it does not know, so a stray key must not slip in
+    inputs = base_input_view(is_structure=True)
+    arrow = IonArrow(np.zeros((1, 5, 3)), "forces", "#FF0000", 0.2)
+    grid_quantity = GridQuantity(np.ones((1, 2, 2, 2)), "q", [Isosurface(0.5)])
+    view = View(**inputs, ion_arrows=[arrow], grid_scalars=[grid_quantity])
+    config = view.to_vasp_viewer_config()
+    (volume,) = config["volume_datasets"]
+    assert set(volume) == {"label", "data", "grid", "scheme", "colormap", "isosurfaces"}
+    (isosurface,) = volume["isosurfaces"]
+    assert set(isosurface) == {"level", "color", "color_opposite", "opacity", "cap"}
+    (group,) = config["ion_arrow_groups"]
+    expected = {"label", "quantity", "base_color", "length_mode", "width_mode"}
+    assert set(group) == expected
+
+
 def _view_of_volume(volume):
     grid_quantity = GridQuantity(volume, "q", [Isosurface(0.5, "#0000ff", 0.6)])
     return View(
