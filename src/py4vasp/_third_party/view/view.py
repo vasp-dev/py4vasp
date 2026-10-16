@@ -116,7 +116,8 @@ class GridQuantity:
     """
 
     quantity: npt.ArrayLike
-    """The quantity which is to be plotted as an isosurface. Expected shape is (number of steps, grid size x, grid size y, grid size z)."""
+    """The quantity which is to be plotted as an isosurface. Expected shape is (number of steps, grid size x, grid size y, grid size z).
+    VASP Viewer also takes a single grid without the step axis; NGL needs the step axis."""
     label: str
     """Name of the quantity"""
     isosurfaces: Sequence[Isosurface] = None
@@ -768,10 +769,8 @@ class View:
         # (steps, na, nb, nc) with the last axis varying fastest (C order), so we
         # reverse the spatial axes to make the na axis the fastest-varying one.
         # The grid itself stays (na, nb, nc); only the memory layout changes.
-        quantity = np.asarray(grid_quantity.quantity)
-        grid = quantity.shape[1:]
-        data = self._convert_to_list(quantity[0].T)
-        return data, grid
+        quantity = _step_sent_to_vasp_viewer(grid_quantity)
+        return self._convert_to_list(quantity.T), quantity.shape
 
     def _convert_to_list(self, attribute):
         if isinstance(attribute, list):
@@ -863,9 +862,14 @@ class View:
                 widget.shape.add_arrow(*(arrow_3d.to_serializable()))
 
 
+def _step_sent_to_vasp_viewer(grid_quantity):
+    # only the first step is sent; a single grid without the step axis is that step
+    quantity = np.asarray(grid_quantity.quantity)
+    return quantity if quantity.ndim == 3 else quantity[0]
+
+
 def _raise_error_if_volume_is_not_finite(grid_quantity):
-    # only the first step is sent to the viewer, so only that one is checked
-    if not np.isfinite(np.asarray(grid_quantity.quantity)[0]).all():
+    if not np.isfinite(_step_sent_to_vasp_viewer(grid_quantity)).all():
         raise exception.IncorrectUsage(
             f"The grid quantity '{grid_quantity.label}' contains NaN or infinite "
             "values, which VASP Viewer cannot draw. Replace them before plotting, e.g. "

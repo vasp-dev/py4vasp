@@ -313,6 +313,26 @@ def _view_of_volume(volume):
     )
 
 
+def test_volume_config_accepts_a_grid_without_the_step_axis():
+    # a single grid of shape (Na, Nb, Nc) is the one step VASP Viewer draws
+    volume = np.arange(2 * 3 * 4, dtype=float).reshape(2, 3, 4)
+    config = _view_of_volume(volume[np.newaxis]).to_vasp_viewer_config()
+    with_step_axis = config["volume_datasets"][0]
+    config = _view_of_volume(volume).to_vasp_viewer_config()
+    without_step_axis = config["volume_datasets"][0]
+    assert (
+        tuple(without_step_axis["grid"]) == tuple(with_step_axis["grid"]) == (2, 3, 4)
+    )
+    assert np.allclose(without_step_axis["data"], with_step_axis["data"])
+
+
+def test_volume_config_checks_a_grid_without_the_step_axis_for_nan():
+    volume = np.ones((2, 3, 4))
+    volume[1, 2, 3] = np.nan  # outside the first plane
+    with pytest.raises(exception.IncorrectUsage):
+        _view_of_volume(volume).to_vasp_viewer_config()
+
+
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
 def test_volume_config_rejects_non_finite_values(value):
     # VASP Viewer only draws finite values
