@@ -779,3 +779,11 @@ def test_is_available_reports_sources_selected_by_item(tmp_path):
     density = demo.calculation(tmp_path / "example").density
     assert density.is_available(["default", "tau"]) == {"default": True, "tau": True}
     assert density["tau"].read() is not None
+
+
+def test_plot_rejects_unknown_options(reference_density):
+    # the error names the options the plot takes rather than an internal function
+    with pytest.raises(
+        exception.IncorrectUsage, match="'isolevel'.*'color'.*'opacity'"
+    ):
+        reference_density.plot(isovalue=0.3)

@@ -24,6 +24,7 @@ from py4vasp._util import check, documentation, import_, index, select, slicing
 
 _DEFAULT_SELECTION: str = "isotropic"
 _NEVER_NEGATIVE = ("span", "asymmetry")
+_OPTIONS = ("isolevel", "opacity")
 
 
 class NicsHandler:
@@ -79,6 +80,7 @@ nucleus-independent chemical shift:
         **user_options,
     ):
         self._raise_error_if_used_in_points_mode()
+        check.raise_error_if_options_unknown(user_options, _OPTIONS, "NICS plot")
         selection = selection or _DEFAULT_SELECTION
         viewer = self._structure().to_view(supercell)
         viewer.grid_scalars = [
@@ -407,11 +409,16 @@ class Nics(view.Mixin):
             If present the data is replicated the specified number of times along each
             direction.
         user_options
-            Further arguments with keyword that get directly passed on to the
-            visualizer. Most importantly, you can set isolevel to adjust the
-            value at which the isosurface is drawn. The surface at +isolevel is drawn
-            in blue and the one at -isolevel in red, so the sign of the isolevel does
-            not matter.
+            Settings of the isosurfaces; any other keyword raises an error:
+
+            - *isolevel* (default 1.0): the isosurfaces are drawn at +isolevel and
+              -isolevel, so the sign of the isolevel does not matter.
+            - *opacity*: from 0 (transparent) to 1 (opaque).
+
+            NGL draws the surface at +isolevel blue and the one at -isolevel red, with
+            an opacity of 0.6 unless you set one. VASP Viewer picks colors that fit the
+            data, except for span and asymmetry, which keep blue and red, and draws
+            them opaque unless you set an opacity.
 
         Returns
         -------

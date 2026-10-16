@@ -32,6 +32,7 @@ from py4vasp._util import (
 )
 
 VALID_KINDS = ("total", "ionic", "xc", "hartree")
+_OPTIONS = ("isolevel", "color", "opacity")
 _COMPONENTS = {
     0: ["0", "unity", "sigma_0", "scalar"],
     1: ["1", "sigma_x", "x", "sigma_1"],
@@ -126,6 +127,7 @@ class PotentialHandler:
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ):
+        check.raise_error_if_options_unknown(user_options, _OPTIONS, "potential plot")
         potentials = {
             label: (component, data)
             for label, component, data in self._select_potentials(selection)
@@ -427,9 +429,16 @@ class Potential(view.Mixin):
             If present the data is replicated the specified number of times along each
             direction.
         user_options
-            Further arguments with keyword that get directly passed on to the
-            visualizer. Most importantly, you can set isolevel (in eV) to adjust the
-            value at which the isosurface is drawn.
+            Settings of the isosurface; any other keyword raises an error:
+
+            - *isolevel* (default 0): the value in eV at which the isosurface is
+              drawn.
+            - *color*: the color of the isosurface, e.g. "red" or "#2FB5AB".
+            - *opacity*: from 0 (transparent) to 1 (opaque).
+
+            Without color and opacity, NGL draws the isosurface cyan with an opacity
+            of 0.6, while VASP Viewer picks a color that fits the data and draws it
+            opaque.
 
         Returns
         -------

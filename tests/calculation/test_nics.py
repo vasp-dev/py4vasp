@@ -623,3 +623,9 @@ def test_is_available_without_payload(raw_data):
     quantity = Nics.from_data(raw_nics)
     assert quantity.is_available("default") is False
     assert quantity.is_available("default", method="to_view") is False
+
+
+def test_plot_rejects_unknown_options(nics_on_a_grid):
+    # the error names the options the plot takes rather than an internal function
+    with pytest.raises(exception.IncorrectUsage, match="'isolevel'.*'opacity'"):
+        nics_on_a_grid.plot(color="green")

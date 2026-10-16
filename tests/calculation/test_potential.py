@@ -495,3 +495,11 @@ def test_is_available_without_potential(raw_data):
     potential = Potential.from_data(raw_potential)
     assert potential.is_available("default") is False
     assert potential.is_available("default", method="to_view") is False
+
+
+def test_plot_rejects_unknown_options(reference_potential):
+    # the error names the options the plot takes rather than an internal function
+    with pytest.raises(
+        exception.IncorrectUsage, match="'isolevel'.*'color'.*'opacity'"
+    ):
+        reference_potential.plot(isovalue=0.0)

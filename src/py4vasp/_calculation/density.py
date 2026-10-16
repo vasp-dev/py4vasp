@@ -33,6 +33,7 @@ _COMPONENTS = {
     3: ["3", "sigma_z", "z", "sigma_3"],
 }
 _MAGNETIZATION = ("magnetization", "mag", "m")
+_OPTIONS = ("isolevel", "color", "opacity")
 _COMMON_PARAMETERS = f"""\
 {slicing.PARAMETERS}
 supercell : int | np.ndarray | None = None
@@ -107,6 +108,7 @@ class DensityHandler:
         **user_options,
     ) -> view.View:
         _raise_error_if_no_data(self._raw_density.charge, self._selection_name)
+        check.raise_error_if_options_unknown(user_options, _OPTIONS, "density plot")
         map_ = self._create_map()
         selector = index.Selector({0: map_}, self._raw_density.charge)
         selection = selection or _INTERNAL
@@ -567,11 +569,18 @@ class Density(view.Mixin):
             direction.
 
         user_options : dict
-            Further arguments with keyword that get directly passed on to the
-            visualizer. Most importantly, you can set isolevel to adjust the
-            value at which the isosurface is drawn. For a magnetization the surface
-            at +isolevel is drawn in blue and the one at -isolevel in red, so the sign
-            of the isolevel does not matter.
+            Settings of the isosurface; any other keyword raises an error:
+
+            - *isolevel* (default 0.2): the value at which the isosurface is drawn. A
+              magnetization is drawn at +isolevel and -isolevel, so there the sign of
+              the isolevel does not matter.
+            - *color*: the color of the isosurface, e.g. "red" or "#2FB5AB". A
+              magnetization does not take a color.
+            - *opacity*: from 0 (transparent) to 1 (opaque).
+
+            Without color and opacity, NGL draws the density cyan and a magnetization
+            blue at +isolevel and red at -isolevel, with an opacity of 0.6. VASP Viewer
+            picks colors that fit the data and draws them opaque.
 
         Returns
         -------

@@ -22,6 +22,17 @@ def raise_error_if_not_number(test_if_number, error_message):
         raise exception.IncorrectUsage(error_message)
 
 
+def raise_error_if_options_unknown(options, known_options, plot):
+    """Name the options a plot takes when it is given one it does not know."""
+    unknown = [option for option in options if option not in known_options]
+    if unknown:
+        message = (
+            f"The {plot} does not take the option {', '.join(map(repr, unknown))}. It "
+            f"takes {', '.join(map(repr, known_options))}."
+        )
+        raise exception.IncorrectUsage(message)
+
+
 def raise_error_if_not_callable(function, *args, **kwargs):
     signature = inspect.signature(function)
     try:

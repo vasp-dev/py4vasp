@@ -146,3 +146,11 @@ def test_factory_methods(raw_data, check_factory_methods):
     check_factory_methods(
         ExcitonDensity, data, skip_methods=["selections", "bader_charge"]
     )
+
+
+def test_plot_rejects_unknown_options(exciton_density):
+    # the error names the options the plot takes rather than an internal function
+    with pytest.raises(
+        exception.IncorrectUsage, match="'isolevel'.*'color'.*'opacity'"
+    ):
+        exciton_density.plot(isovalue=0.3)

@@ -20,8 +20,10 @@ from py4vasp._raw import data as raw
 from py4vasp._third_party import view
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
-from py4vasp._util import import_, select
+from py4vasp._util import check, import_, select
 from py4vasp._util.slicing import plane
+
+_OPTIONS = ("isolevel", "color", "opacity")
 
 interpolate = import_.optional("scipy.interpolate")
 ndimage = import_.optional("scipy.ndimage")
@@ -120,6 +122,9 @@ class PartialDensityHandler:
         supercell: Optional[Union[int, np.ndarray]] = None,
         **user_options,
     ):
+        check.raise_error_if_options_unknown(
+            user_options, _OPTIONS, "partial density plot"
+        )
         viewer = self._structure().to_view(supercell)
         partial_charge = self.to_numpy(selection)
         isosurface = self._setup_isosurface(**user_options)
@@ -622,9 +627,16 @@ class PartialDensity(view.Mixin):
             If present the data is replicated the specified number of times along each
             direction.
         user_options
-            Further arguments with keyword that get directly passed on to the
-            visualizer. Most importantly, you can set isolevel to adjust the
-            value at which the isosurface is drawn.
+            Settings of the isosurface; any other keyword raises an error:
+
+            - *isolevel* (default 0.2): the value at which the isosurface is
+              drawn.
+            - *color*: the color of the isosurface, e.g. "red" or "#2FB5AB".
+            - *opacity*: from 0 (transparent) to 1 (opaque).
+
+            Without color and opacity, NGL draws the isosurface cyan with an opacity
+            of 0.6, while VASP Viewer picks a color that fits the data and draws it
+            opaque.
 
         Returns
         -------
