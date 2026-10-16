@@ -49,6 +49,9 @@ def _rotate(arrow: _Arrow3d, transformation: npt.ArrayLike) -> _Arrow3d:
     )
 
 
+_SCHEMES = ("auto", "positive", "negative", "diverging", "symmetric", "sequential")
+
+
 @dataclass
 class Isosurface:
     """Dataclass to store the settings for an isosurface to be plotted for a grid quantity.
@@ -137,6 +140,14 @@ class GridQuantity:
     colormap: Optional[str] = None
     """Colormap VASP Viewer uses for the slices and the volume rendering of this
     quantity, overriding the one it picks from :attr:`scheme`. NGL ignores it."""
+
+    def __post_init__(self):
+        # a misspelled scheme would silently change what both viewers draw
+        if self.scheme not in _SCHEMES:
+            raise exception.IncorrectUsage(
+                f"The scheme {self.scheme!r} of the grid quantity '{self.label}' is "
+                "not known. Choose one of " + ", ".join(map(repr, _SCHEMES)) + "."
+            )
 
 
 @dataclass

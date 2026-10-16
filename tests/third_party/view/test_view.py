@@ -308,6 +308,20 @@ def test_ngl_draws_arrows_that_do_not_match_the_ions(number_arrows):
     view.to_ngl()
 
 
+@pytest.mark.parametrize("scheme", ["symetric", "Symmetric", "signed"])
+def test_grid_quantity_rejects_an_unknown_scheme(scheme):
+    # a misspelled scheme would silently change what NGL and VASP Viewer draw
+    with pytest.raises(exception.IncorrectUsage):
+        GridQuantity(np.zeros((1, 2, 2, 2)), "q", scheme=scheme)
+
+
+@pytest.mark.parametrize(
+    "scheme", ["auto", "positive", "negative", "diverging", "symmetric", "sequential"]
+)
+def test_grid_quantity_accepts_every_scheme(scheme):
+    assert GridQuantity(np.zeros((1, 2, 2, 2)), "q", scheme=scheme).scheme == scheme
+
+
 def _ngl_surfaces(grid_quantity):
     view = View(**base_input_view(True), grid_scalars=[grid_quantity])
     messages = view.to_ngl().get_state()["_ngl_msg_archive"]
