@@ -9,13 +9,17 @@ different jobs without saying which one is meant:
   them *without* `dark`. So a figure built by plotly and the same figure built by `Graph`
   color their series differently. Neither cycle was chosen for being told apart, by a
   color-blind reader or in greyscale print: it is simply the dict in insertion order.
-- **as a diverging pair.** `density.py:272-273` and `nics.py:196-197` draw the positive
-  isosurface blue and the negative one red. The plotly template's contour scale
-  (`graph.py:45-48`) runs *red → white → blue*, while `Contour`'s fallback
+- **as a diverging pair.** For a `GridQuantity` with `scheme="symmetric"` (a
+  magnetization, a NICS map), NGL draws the positive isosurface blue and the negative one
+  red (`_ngl_surfaces` in `_third_party/view/view.py`). The plotly template's contour
+  scale (`graph.py:45-48`) runs *red → white → blue*, while `Contour`'s fallback
   (`contour.py:600-605`) runs *blue → white → red* and its `"diverging"` scheme uses
   plotly's `RdBu_r`. That is three diverging scales, two of them pointing opposite ways.
-- **as a single highlight.** `cyan` is the default isosurface color in `density`,
-  `potential`, `partial_density` and `exciton_density`. Meanwhile `view.py:30` defaults
+  VASP Viewer no longer gets colors from the quantities: it picks its own from
+  `GridQuantity.scheme`, so the 3D colors of the two backends need not agree either.
+- **as a single highlight.** `cyan` is NGL's default isosurface color
+  (`_ngl_surfaces`), used for densities, potentials and every other quantity that does
+  not set a color. Meanwhile `view.py:30` defaults
   to `#2FB5AB`, a cyan not in `VASP_COLORS`, and `electronic_minimization.py:52` has
   its own `_UNUSUAL_COLOR = "#4d4d4d"`.
 
@@ -59,8 +63,9 @@ Things to decide before starting:
 - the names a user sees. `Contour.color_scheme` already accepts `"positive"`,
   `"negative"`, `"monochrome"` and `"stm"`, so the new names need aliases or a
   deprecation path;
-- how far it reaches: plotly graphs only, or also the defaults of `view`
-  (isosurfaces, arrows) and the VASP Viewer config.
+- how far it reaches: plotly graphs only, or also NGL's defaults in `view`
+  (isosurfaces, arrows). VASP Viewer picks its own colors from `GridQuantity.scheme`,
+  whose names follow `Contour.color_scheme`.
 
 Changing default colors changes every figure in the documentation and every image a
 user regenerates, so it should land as one deliberate change rather than piecemeal.
