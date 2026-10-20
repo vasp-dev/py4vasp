@@ -21,7 +21,7 @@ Installation
 
 While this is not required to be able to run *py4vasp*, you may want to consider
 creating a separate :ref:`environment <environment_>` for installation to avoid
-interference with other installed packages.
+interference with other installed packages. *py4vasp* requires Python 3.11 or newer.
 You can then install *py4vasp* from PyPI_ using the pip package installer
 
 .. code-block:: bash
@@ -29,6 +29,17 @@ You can then install *py4vasp* from PyPI_ using the pip package installer
   pip install py4vasp
 
 This will automatically download *py4vasp* and its required dependencies.
+
+pip installs the latest final release and skips pre-releases such as a beta. To try
+a pre-release, ask for it explicitly, either for the newest one or for a particular
+version
+
+.. code-block:: bash
+
+  pip install --pre py4vasp
+  pip install py4vasp==1.0.0b1
+
+The same applies to *py4vasp-core*.
 
 This installs two distributions: *py4vasp-core*, which contains the code, and
 *py4vasp*, which contains nothing but the list of dependencies that makes the
@@ -268,6 +279,16 @@ If *py4vasp* tells you that a feature relies on a package you do not have, insta
 that package is all that is needed -- there is nothing to reconfigure and no need to
 reinstall *py4vasp*.
 
+.. rubric:: Getting help
+
+If you found a bug, please open an issue at
+`github.com/vasp-dev/py4vasp/issues <https://github.com/vasp-dev/py4vasp/issues>`_
+describing what you did, what you expected, and what happened instead -- a minimal
+example that reproduces the problem is the most helpful thing you can include. For
+general usage questions, use the "Using VASP" category of the
+`VASP forum <https://www.vasp.at/forum/>`_; for anything specific to the Python
+interface itself, a GitHub issue works too.
+
 .. toctree::
    :hidden:
    :glob:
@@ -305,7 +326,7 @@ venv (Linux / MacOS)
   .. code-block:: bash
 
     python3 -m venv py4vasp-env
-    source py4vasp-env/bin/activate.sh
+    source py4vasp-env/bin/activate
 
 venv (Windows)
   .. code-block:: bash
