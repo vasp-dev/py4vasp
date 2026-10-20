@@ -5,7 +5,7 @@
 # exactly the dependency list the `py4vasp` distribution had before the split.
 [project]
 name = "py4vasp"
-version = "0.11.3"
+version = "1.0.0b1"
 description = "Tool for assisting with the analysis and setup of VASP calculations."
 authors = [
     { name = "VASP Software GmbH", email = "py4vasp@vasp.at" },
@@ -27,12 +27,12 @@ requires-python = ">=3.11"
 readme = "README.md"
 license = "Apache-2.0"
 dependencies = [
-    "py4vasp-core[all]==0.11.3",
+    "py4vasp-core[all]==1.0.0b1",
 ]
 
 [project.optional-dependencies]
-sphinx = ["py4vasp-core[sphinx]==0.11.3"]
-mdtraj = ["py4vasp-core[mdtraj]==0.11.3"]
+sphinx = ["py4vasp-core[sphinx]==1.0.0b1"]
+mdtraj = ["py4vasp-core[mdtraj]==1.0.0b1"]
 # Once vasp-viewer is published to an index this workspace can reach, add
 #     viewer = ["vasp-viewer"]
 # here. Declaring it *here* rather than as an extra of py4vasp-core is what keeps the

@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.11+db.4",
+  "schema_version": "1.0",
   "models": {
     "BandModel": [
       [

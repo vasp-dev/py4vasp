@@ -30,7 +30,7 @@ VoigtMatrix = Tuple[Voigt, Voigt, Voigt, Voigt, Voigt, Voigt]
 # series, e.g. "0.11". Increment it whenever any model below changes between releases
 # (a test enforces this, see tests/raw/test_schema_version.py); the version then reads
 # "0.11+db.1", "0.11+db.2", ... Reset it back to 0 on every new py4vasp minor release.
-__DB_SCHEMA__ = 4
+__DB_SCHEMA__ = 0
 # Fields that changed their meaning, keyed by the first value of the counter above from
 # which the new meaning holds. The fingerprint cannot see a field change its meaning,
 # e.g. its unit, so a bump without a changed field name or type is only accepted with a
