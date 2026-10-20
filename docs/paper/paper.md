@@ -211,7 +211,9 @@ routines via `scipy` [@Virtanen2020]; a command-line interface via `click`
 
 A new user does not need to already know which quantities py4vasp
 supports: tab-completing `calculation.` (or a `Calculation` instance) in an
-interactive session lists every quantity computed for that particular run,
+interactive session lists every quantity py4vasp supports,
+`selections(only_available=True)` on a `Calculation` narrows this to the
+quantities computed for that particular run,
 and `calculation.dos.selections()` — or the equivalent on any other
 quantity — lists exactly which selections it accepts, such as the `"p"`
 orbital used throughout this example. The [full
