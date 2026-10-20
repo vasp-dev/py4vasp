@@ -81,6 +81,14 @@ def test_backend_pins_core_exactly(expected_version):
     assert backend["project"]["dependencies"] == [f"py4vasp-core=={expected_version}"]
 
 
+def test_documentation_version(expected_version):
+    conf = (ROOT_DIR / "docs" / "conf.py").read_text()
+    assert (
+        re.search(r'^release = "(.*)"$', conf, re.MULTILINE).group(1)
+        == expected_version
+    )
+
+
 def test_metapackage_python_requirement_matches_core():
     """A stricter requires-python in the wrapper would hide py4vasp-core from pip."""
     core = read_toml(ROOT_DIR / "pyproject.toml")["project"]["requires-python"]

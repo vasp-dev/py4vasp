@@ -16,11 +16,13 @@ def set_version(tmp_path):
     module.ROOT = tmp_path
     module.MODULES = (tmp_path / "__init__.py",)
     module.PYPROJECTS = (tmp_path / "pyproject.toml",)
+    module.SPHINX_CONF = tmp_path / "conf.py"
     return module
 
 
 def write_workspace(root, version):
     (root / "__init__.py").write_text(f'__version__ = "{version}"\n')
+    (root / "conf.py").write_text(f'project = "py4vasp"\nrelease = "{version}"\n')
     (root / "pyproject.toml").write_text(
         f'version = "{version}"\n'
         f'dependencies = ["py4vasp-core[all]=={version}"]\n'
@@ -41,6 +43,8 @@ def test_set_version(set_version, tmp_path, old, new):
     write_workspace(tmp_path, old)
     set_version.main(new)
     assert (tmp_path / "__init__.py").read_text() == f'__version__ = "{new}"\n'
+    conf = (tmp_path / "conf.py").read_text()
+    assert conf == f'project = "py4vasp"\nrelease = "{new}"\n'
     assert (tmp_path / "pyproject.toml").read_text() == (
         f'version = "{new}"\n'
         f'dependencies = ["py4vasp-core[all]=={new}"]\n'

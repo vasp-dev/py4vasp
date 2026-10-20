@@ -4,8 +4,9 @@
 
 py4vasp-core reads its version from ``src/py4vasp/__init__.py``, but the two wrapper
 distributions have to repeat it: a metadata-only package has no module to read it from,
-and both pin ``py4vasp-core`` exactly. This script keeps the four places in step;
-``tests/test_version.py`` fails if they ever drift apart.
+and both pin ``py4vasp-core`` exactly. This script keeps those places in step, together
+with the ``release`` shown by the documentation; ``tests/test_version.py`` fails if they
+ever drift apart.
 
 Usage: python scripts/set_version.py 0.12.0
        python scripts/set_version.py 1.0.0b1
@@ -28,6 +29,7 @@ PYPROJECTS = (
     ROOT / "packages" / "py4vasp" / "pyproject.toml",
     ROOT / "packages" / "backend" / "pyproject.toml",
 )
+SPHINX_CONF = ROOT / "docs" / "conf.py"
 
 
 def main(version):
@@ -37,6 +39,7 @@ def main(version):
         )
     for path in MODULES:
         substitute(path, r'^__version__ = ".*"$', f'__version__ = "{version}"')
+    substitute(SPHINX_CONF, r'^release = ".*"$', f'release = "{version}"')
     for path in PYPROJECTS:
         substitute(path, r'^version = ".*"$', f'version = "{version}"', optional=True)
         # The pins appear both as their own line in `dependencies` and inline in an
