@@ -37,13 +37,7 @@ __DB_SCHEMA__ = 0
 # reason recorded here. A change of meaning that rode along with a bump for changed
 # fields is recorded as well, because nothing else tells a consumer about it. Empty it
 # together with resetting __DB_SCHEMA__ on a new py4vasp minor release.
-__DB_SEMANTIC_CHANGES__ = {
-    3: "PhononBandModel.eigenvalue_min/max and PhononDosModel.energy_min/max store eV "
-    "instead of THz; the change landed while the counter was 2, so data written at "
-    "+db.2 may be in either unit",
-    4: "StressModel and the *_3d_tensor fields of ElasticModulusModel store GPa "
-    "instead of kBar",
-}
+__DB_SEMANTIC_CHANGES__ = {}
 
 
 def schema_version() -> str:
