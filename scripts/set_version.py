@@ -8,12 +8,17 @@ and both pin ``py4vasp-core`` exactly. This script keeps the four places in step
 ``tests/test_version.py`` fails if they ever drift apart.
 
 Usage: python scripts/set_version.py 0.12.0
+       python scripts/set_version.py 1.0.0b1
 """
 
 import pathlib
 import re
 import sys
 
+# <major>.<minor>.<patch>, optionally followed by a pre-release such as b1 or rc2. pip and
+# uv skip pre-releases unless asked for one explicitly, so `pip install py4vasp` keeps
+# installing the latest final release while a beta is on the index.
+VERSION = r"\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?"
 ROOT = pathlib.Path(__file__).parent.parent
 MODULES = (
     ROOT / "src" / "py4vasp" / "__init__.py",
@@ -26,8 +31,10 @@ PYPROJECTS = (
 
 
 def main(version):
-    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
-        raise SystemExit(f"'{version}' is not a <major>.<minor>.<patch> version.")
+    if not re.fullmatch(VERSION, version):
+        raise SystemExit(
+            f"'{version}' is not a <major>.<minor>.<patch>[a|b|rc<N>] version."
+        )
     for path in MODULES:
         substitute(path, r'^__version__ = ".*"$', f'__version__ = "{version}"')
     for path in PYPROJECTS:
@@ -36,7 +43,7 @@ def main(version):
         # extra, so match the requirement itself rather than the whole line.
         substitute(
             path,
-            r"py4vasp-core(\[[a-z,]*\])?==\d+\.\d+\.\d+",
+            rf"py4vasp-core(\[[a-z,]*\])?=={VERSION}",
             rf"py4vasp-core\g<1>=={version}",
         )
 
