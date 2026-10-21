@@ -315,8 +315,8 @@ def test_payload_has_exactly_the_keys_of_the_contract():
     (isosurface,) = volume["isosurfaces"]
     assert set(isosurface) == {"level", "color", "color_opposite", "opacity", "cap"}
     (group,) = config["ion_arrow_groups"]
-    expected = {"label", "quantity", "base_color", "length_mode", "width_mode"}
-    assert set(group) == expected
+    drawing_settings = {"length_mode", "width_mode", "alignment"}
+    assert set(group) == {"label", "quantity", "base_color"} | drawing_settings
 
 
 def _view_of_volume(volume):
@@ -451,18 +451,23 @@ def test_arrow_group_config_has_no_radius(is_structure):
 
 
 @pytest.mark.parametrize(
-    "modes", [{}, {"length_mode": "physical", "width_mode": "atom"}]
+    "settings",
+    [
+        {},
+        {"length_mode": "physical", "width_mode": "atom"},
+        {"alignment": "tail_at_surface"},
+    ],
 )
-def test_arrow_group_config_forwards_the_modes(modes):
-    # an unset mode is sent as None, so the viewer falls back to its own default
+def test_arrow_group_config_forwards_the_settings(settings):
+    # an unset setting is sent as None, so the viewer falls back to its own default
     inputs = base_input_view(is_structure=True)
     arrow = IonArrow(
-        np.zeros((1, 5, 3)), label="forces", color="purple", radius=0.2, **modes
+        np.zeros((1, 5, 3)), label="forces", color="purple", radius=0.2, **settings
     )
     view = View(**inputs, ion_arrows=[arrow])
     (group,) = view.to_vasp_viewer_config()["ion_arrow_groups"]
-    assert group["length_mode"] == modes.get("length_mode")
-    assert group["width_mode"] == modes.get("width_mode")
+    for key in ("length_mode", "width_mode", "alignment"):
+        assert group[key] == settings.get(key)
 
 
 @hasVaspView
