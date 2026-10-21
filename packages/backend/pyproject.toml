@@ -13,7 +13,7 @@ readme = "README.md"
 license = "Apache-2.0"
 # Exact pin: this package wraps py4vasp internals, which may change in any release.
 dependencies = [
-    "py4vasp-core==0.11.3",
+    "py4vasp-core==1.0.0b1",
 ]
 
 [project.urls]

@@ -23,7 +23,7 @@ copyright = "2025, VASP Software GmbH"
 author = "VASP Software GmbH"
 
 # The full version, including alpha/beta/rc tags
-release = "0.11.2"
+release = "1.0.0b1"
 root_doc = "_index"
 
 # -- General configuration ---------------------------------------------------

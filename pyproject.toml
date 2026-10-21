@@ -16,6 +16,7 @@ authors = [
     { name = "Alexey Tal", email = "alexey.tal@vasp.at" },
     { name = "Tomáš Bučko", email = "tomas.bucko@uniba.sk" },
     { name = "Max Liebetreu", email = "max.liebetreu@vasp.at" },
+    { name = "Christopher Sheldon", email = "christopher.sheldon@vasp.at" },
 ]
 requires-python = ">=3.11"
 readme = "README.md"

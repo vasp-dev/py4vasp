@@ -149,21 +149,18 @@ def test_fingerprint_top_level_shape():
     assert isinstance(fingerprint["models"], dict)
 
 
-def test_fingerprint_records_why_the_counter_moved_without_a_model_change():
+def test_fingerprint_records_why_the_counter_moved_without_a_model_change(monkeypatch):
+    reasons = {2: "StressModel stores GPa instead of kBar"}
+    monkeypatch.setattr(models, "__DB_SEMANTIC_CHANGES__", reasons)
     # keyed by string, because the fingerprint round-trips through JSON
+    changes = models.schema_fingerprint()["changes"]
+    assert changes == {"2": "StressModel stores GPa instead of kBar"}
+
+
+def test_fingerprint_changes_mirror_the_recorded_reasons():
     changes = models.schema_fingerprint()["changes"]
     expected = {str(k): v for k, v in models.__DB_SEMANTIC_CHANGES__.items()}
     assert changes == expected
-    assert "GPa" in changes["4"]
-
-
-def test_fingerprint_records_the_phonon_energies_moving_to_eV():
-    # the change landed while the counter was 2 and rode along with the bump to 3,
-    # which changed fields as well, so only this entry tells a consumer about it
-    change = models.schema_fingerprint()["changes"]["3"]
-    assert "PhononBandModel" in change
-    assert "PhononDosModel" in change
-    assert "eV instead of THz" in change
 
 
 def test_fingerprint_includes_all_models_but_not_the_base():

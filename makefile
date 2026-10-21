@@ -45,6 +45,7 @@ endif
 	uv run --no-sync python scripts/set_version.py $(VERSION)
 	uv lock
 	uv run --no-sync pytest tests/test_version.py
-	@echo "Now review the diff, reset __DB_SCHEMA__ in src/py4vasp/_raw/models.py if this"
-	@echo "is a new minor series, and regenerate the schema snapshot with"
+	@echo "Now review the diff. If this is a new minor series, reset __DB_SCHEMA__ to 0 and"
+	@echo "empty __DB_SEMANTIC_CHANGES__ in src/py4vasp/_raw/models.py, then regenerate the"
+	@echo "schema snapshot with"
 	@echo "  pytest tests/raw/test_schema_version.py --update-schema-snapshot"

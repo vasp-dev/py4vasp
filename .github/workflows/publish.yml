@@ -52,10 +52,14 @@ jobs:
             echo "$modules"
             exit 1
           fi
+      # Pin the version: for a pre-release such as 1.0.0b1, an unpinned install would
+      # prefer the latest final release on PyPI over the beta in dist/ and smoke test
+      # the wrong code.
       - name: Smoke test the built distributions
         run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/py4vasp/__init__.py)
           uv venv smoke
-          VIRTUAL_ENV=smoke uv pip install --find-links dist py4vasp
+          VIRTUAL_ENV=smoke uv pip install --find-links dist "py4vasp==$version"
           VIRTUAL_ENV=smoke uv run --no-project python -c "import py4vasp; print(py4vasp.__version__)"
           VIRTUAL_ENV=smoke uv run --no-project py4vasp --help
       - name: Upload the distributions
