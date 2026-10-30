@@ -25,12 +25,10 @@ authors:
   - name: Marie-Therese Huebsch
     orcid: 0000-0002-3541-2895
     affiliation: 1
-  - name: Eisuke Kawashima
-    orcid: 0000-0002-6252-5414
-    affiliation: 5
   - name: Jonathan Lahnsteiner
     affiliation: 1
   - name: Henrique Miranda
+    orcid: 0000-0002-2843-0876
     affiliation: 1
   - name: Christopher Sheldon
     orcid: 0000-0001-7160-2955
@@ -46,7 +44,7 @@ authors:
     affiliation: 1
   - name: Georg Kresse
     orcid: 0000-0001-9102-4259
-    affiliation: "1, 6"
+    affiliation: "1, 5"
 affiliations:
   - name: VASP Software GmbH, Vienna, Austria
     index: 1
@@ -56,11 +54,9 @@ affiliations:
     index: 3
   - name: Independent Researcher
     index: 4
-  - name: RIKEN Center for Computational Science, Kobe, Japan
-    index: 5
   - name: Computational Materials Physics, University of Vienna, Vienna, Austria
-    index: 6
-date: 9 September 2026
+    index: 5
+date: 30 October 2026
 bibliography: paper.bib
 ---
 
@@ -85,9 +81,11 @@ will not change.
 VASP writes the results of a calculation into a single HDF5 file,
 `vaspout.h5`, but turning that file into a band structure, a density of
 states, or a set of phonon frequencies has traditionally been left to each
-research group's own scripts. These scripts parse the older `OUTCAR` or XML
-output formats, get rewritten independently across groups, and silently
-diverge in correctness as VASP's output evolves; `vaspout.h5`, by contrast,
+research group's own scripts or to general-purpose libraries such as ASE
+[@Larsen2017] and pymatgen [@Ong2013]. Both typically parse the older
+`OUTCAR` or XML output formats, whose free-form text changes as VASP evolves,
+and the scripts get rewritten independently across groups and silently
+diverge in correctness. `vaspout.h5`, by contrast,
 is governed by an explicit, versioned schema rather than free-form text, so
 it only needs to be parsed correctly once. We replace this pattern
 with a single, shared interface that covers electronic structure, lattice
@@ -95,10 +93,11 @@ dynamics, response properties, and structural analysis alike, so that
 learning to extract one quantity teaches the pattern for all of them.
 Because this interface is designed to be shared across research groups
 rather than reimplemented by each one, it is only useful if it keeps
-working as VASP itself evolves: almost every quantity and export method is
-checked against reference data on every code change, across multiple
-operating systems and Python versions, including an installation that
-provides nothing beyond `numpy` [@Harris2020] and `h5py` [@Collette2013].
+working as VASP itself evolves: on every code change, continuous
+integration checks almost every quantity and export method against
+reference data on Linux, macOS, and Windows with Python 3.11 to 3.14,
+including an installation that provides nothing beyond `numpy`
+[@Harris2020] and `h5py` [@Collette2013].
 
 # State of the field
 
@@ -113,7 +112,10 @@ codes as part of automated workflows.
 VASPKIT [@Wang2021] and PyProcar [@Herath2020] are instead focused
 specifically on VASP, covering high-throughput pre- and post-processing for
 VASPKIT and band-structure and Fermi-surface analysis for PyProcar, each
-through its own command-line tools and functions.
+through its own command-line tools and functions. Keeping a reader of
+`vaspout.h5` consistent as VASP's output evolves requires close access to
+VASP's own schema, which is why py4vasp is maintained by the same team that
+develops VASP rather than as an extension of one of these tools.
 
 # Software design
 
@@ -123,10 +125,7 @@ heterogeneous the underlying data is, so that learning to extract one
 quantity is sufficient to extract any other. The trade-off is that any new
 quantity must adhere to the same uniform shape rather than choosing an
 optimal interface per quantity. py4vasp reads `vaspout.h5` directly,
-which requires VASP to be linked against HDF5. Keeping this consistent as
-VASP's output evolves requires close access to VASP's own schema, which is
-why this interface is maintained by the same team that develops VASP
-rather than as an extension of one of the tools above.
+which requires VASP to be linked against HDF5.
 
 The rest of these design choices are easiest to see by following one task
 through: comparing how a hybrid functional shifts the *p*-projected density
@@ -156,16 +155,29 @@ yet, and costs nothing until a `<method>` call actually reads from
 `vaspout.h5`. A script can therefore set up as many calculation objects as
 convenient and only pay the cost of reading a file for the ones it ends up
 using. Even if the hybrid-functional calculation is not finished yet,
-creating `pbe0` still succeeds.
+creating `pbe0` still succeeds; py4vasp only raises an error once something
+actually tries to read from it.
 
-py4vasp only raises an error once something actually tries to read from it.
-The type of that error carries a meaning: every situation py4vasp
-anticipated, such as an unfinished calculation or an unrecognized
-selection, raises a `py4vasp.exception.Py4VaspError`. Anything else
-indicates a bug or a system-level problem rather than a case py4vasp was
-designed to handle. A script can therefore write
-`except exception.Py4VaspError:` to catch what py4vasp expects can go
-wrong, distinct from failures it does not.
+Installation follows the same principle of paying only for what is used.
+`pip install py4vasp-core`
+installs the same code as `pip install py4vasp` with a dependency footprint
+of only `numpy` and `h5py`; every further package is optional, and each
+feature becomes available the moment the package it depends on is
+installed, without reconfiguring py4vasp itself. These optional packages
+cover interactive plotting (`pandas` [@McKinney2010], `plotly`
+[@PlotlyTechnologies2015], `kaleido` [@KaleidoProject]), structural
+analysis (`ase` [@Larsen2017], `spglib` [@Togo2018], `seekpath`
+[@Hinuma2017]), and visualization in notebooks (`nglview` [@Nguyen2018],
+`ipython` [@Perez2007]), among others; `pip install py4vasp` installs all
+of them.
+
+Using a feature whose package is missing raises an error that names the
+package to install. Like an unfinished calculation or an unrecognized
+selection, this is a situation py4vasp anticipates, and each of these
+raises a `py4vasp.exception.Py4VaspError`. An error of any other type
+indicates a bug or a system-level problem. A script can therefore use
+`except exception.Py4VaspError:` to tell expected py4vasp errors apart from
+unexpected failures.
 
 Once both calculations are finished, comparing them needs only
 
@@ -191,23 +203,11 @@ pbe0.energy[:].read()        # every ionic step of the relaxation
 pbe0.structure[-1].to_ase()  # the relaxed structure, handed to ASE
 ```
 
-Here, `to_ase` [@Larsen2017] is one of several format-specific export methods
+Here, `to_ase` is one of several format-specific export methods
 (`to_frame`, `to_csv`, `to_POSCAR`, `to_mdtraj` [@McGibbon2015], among
 others) that follow the same `calculation.<quantity>.to_<format>()`
-convention shown above and become available the moment the Python package
-they depend on is installed, without reconfiguring py4vasp itself: `pip
-install py4vasp` installs the full interface used throughout this example;
-`pip install py4vasp-core` installs the same code with a dependency
-footprint of only `numpy` and `h5py`, for users who do not need the
-remaining, opt-in functionality — interactive plotting via `pandas`
-[@McKinney2010], `plotly` [@PlotlyTechnologies2015], and `kaleido`
-[@KaleidoProject]; structural analysis via `ase` [@Larsen2017] and `spglib`
-[@Togo2018]; standardized band-structure paths via `seekpath`
-[@Hinuma2017]; interactive 3D visualization via `nglview` [@Nguyen2018];
-richer notebook output via `ipython` [@Perez2007]; additional numerical
-routines via `scipy` [@Virtanen2020]; a command-line interface via `click`
-[@ClickProject]; and molecular-dynamics trajectory export via `mdtraj`
-[@McGibbon2015].
+convention and, like the plotting methods, become available once the
+package they hand the data to is installed.
 
 A new user does not need to already know which quantities py4vasp
 supports: tab-completing `calculation.` (or a `Calculation` instance) in an
@@ -242,15 +242,17 @@ repository](https://github.com/vasp-dev/py4vasp/issues) also receives
 issues from users outside the development team, indicating use beyond
 internal testing.
 
-# AI usage
+# AI usage disclosure
 
-Two AI coding assistants were used during development. Since February 2026,
-GitHub Copilot, using Sonnet models, has assisted with implementing and
-testing individual code features. Since June 2026, Claude Code, using Opus
-models, has assisted with both code development and with drafting this
-manuscript. Every change, regardless of how it was written, is subject to
-the same automated test suite and continuous integration checks described
-above before being merged, and the authors reviewed and take responsibility
+Two AI coding assistants were used during development, each with the most
+recent model version available at the time. Since February 2026, GitHub
+Copilot, using Claude Sonnet models from version 4.6 onward, has assisted
+with implementing and testing individual code features. Since June 2026,
+Claude Code, using Claude Opus models up to version 5.5, has assisted with
+code development; the drafting of this manuscript used Claude Opus 5.5
+exclusively. Every change, regardless of how it was written, passes the
+same tests against reference data and continuous integration described in
+the Statement of need before being merged, and the authors reviewed and take responsibility
 for all code that is part of the release. On the manuscript side, Claude
 Code drafted text from an outline, a tone-of-voice reference, and a
 source-verified facts sheet prepared and directed by the authors, including
@@ -268,6 +270,10 @@ is free and open source, and improves the usability of VASP's output.
 
 # Acknowledgements
 
-We thank the users of py4vasp for their feedback and bug reports.
+This work was funded entirely by VASP Software GmbH, which employs most of
+the authors and was therefore involved, through them, in the design and
+development of py4vasp and in the preparation of this manuscript. We thank
+Eisuke Kawashima, Shibu Meher, and Jan Priessnitz for their contributions
+to the code, and the users of py4vasp for their feedback and bug reports.
 
 # References
