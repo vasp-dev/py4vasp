@@ -266,6 +266,18 @@ class IonArrow:
       shape.
 
     None leaves the choice to the viewer."""
+    alignment: Optional[str] = None
+    """Viewer setting for where each arrow sits on its atom (NGL ignores it and starts
+    every arrow at the center of its atom):
+
+    - 'center_at_atom': the arrow is centered on the atom and runs through it, which
+      suits a property of the atom such as a force or a magnetic moment.
+    - 'tail_at_atom': the arrow starts at the center of the atom, which suits a
+      direction the atom moves in.
+    - 'tail_at_surface': the arrow starts at the surface of the atom, so even a short
+      arrow is never hidden inside its atom.
+
+    None leaves the choice to the viewer."""
 
 
 @dataclass
@@ -635,6 +647,7 @@ class View:
                     "base_color": arrow.color,
                     "length_mode": arrow.length_mode,
                     "width_mode": arrow.width_mode,
+                    "alignment": arrow.alignment,
                 }
                 for arrow in self.ion_arrows
             ]
