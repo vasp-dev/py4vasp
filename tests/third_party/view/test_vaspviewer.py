@@ -525,6 +525,11 @@ def test_atom_radius(atom_radius):
     assert state["_selections_atom_radius"] == atom_radius
 
 
+def test_atom_radius_config():
+    view = View(**base_input_view(is_structure=True), atom_radius=0.7)
+    assert view.to_vasp_viewer_config()["selections_atom_radius"] == 0.7
+
+
 def test_atom_radius_left_to_viewer_by_default():
     view = View(**base_input_view(is_structure=True))
     assert "selections_atom_radius" not in view.to_vasp_viewer_config()
