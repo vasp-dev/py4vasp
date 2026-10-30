@@ -156,28 +156,10 @@ yet, and costs nothing until a `<method>` call actually reads from
 convenient and only pay the cost of reading a file for the ones it ends up
 using. Even if the hybrid-functional calculation is not finished yet,
 creating `pbe0` still succeeds; py4vasp only raises an error once something
-actually tries to read from it.
-
-Installation follows the same principle of paying only for what is used.
-`pip install py4vasp-core`
-installs the same code as `pip install py4vasp` with a dependency footprint
-of only `numpy` and `h5py`; every further package is optional, and each
-feature becomes available the moment the package it depends on is
-installed, without reconfiguring py4vasp itself. These optional packages
-cover interactive plotting (`pandas` [@McKinney2010], `plotly`
-[@PlotlyTechnologies2015], `kaleido` [@KaleidoProject]), structural
-analysis (`ase` [@Larsen2017], `spglib` [@Togo2018], `seekpath`
-[@Hinuma2017]), and visualization in notebooks (`nglview` [@Nguyen2018],
-`ipython` [@Perez2007]), among others; `pip install py4vasp` installs all
-of them.
-
-Using a feature whose package is missing raises an error that names the
-package to install. Like an unfinished calculation or an unrecognized
-selection, this is a situation py4vasp anticipates, and each of these
-raises a `py4vasp.exception.Py4VaspError`. An error of any other type
-indicates a bug or a system-level problem. A script can therefore use
-`except exception.Py4VaspError:` to tell expected py4vasp errors apart from
-unexpected failures.
+actually tries to read from it. Installation follows the same principle of
+paying only for what is used: `pip install py4vasp-core` installs the same
+code as `pip install py4vasp` with a dependency footprint of only `numpy`
+and `h5py`, and every further package is optional.
 
 Once both calculations are finished, comparing them needs only
 
@@ -206,8 +188,22 @@ pbe0.structure[-1].to_ase()  # the relaxed structure, handed to ASE
 Here, `to_ase` is one of several format-specific export methods
 (`to_frame`, `to_csv`, `to_POSCAR`, `to_mdtraj` [@McGibbon2015], among
 others) that follow the same `calculation.<quantity>.to_<format>()`
-convention and, like the plotting methods, become available once the
-package they hand the data to is installed.
+convention. Like the plotting methods, each becomes available the moment
+the package it depends on is installed, without reconfiguring py4vasp
+itself. `pip install py4vasp` installs all of these optional packages,
+covering interactive plotting (`pandas` [@McKinney2010], `plotly`
+[@PlotlyTechnologies2015], `kaleido` [@KaleidoProject]), structural
+analysis (`ase` [@Larsen2017], `spglib` [@Togo2018], `seekpath`
+[@Hinuma2017]), and visualization in notebooks (`nglview` [@Nguyen2018],
+`ipython` [@Perez2007]), among others.
+
+Using a feature whose package is missing raises an error that names the
+package to install. Like an unfinished calculation or an unrecognized
+selection, this is a situation py4vasp anticipates, and each of these
+raises a `py4vasp.exception.Py4VaspError`. An error of any other type
+indicates a bug or a system-level problem. A script can therefore use
+`except exception.Py4VaspError:` to tell expected py4vasp errors apart from
+unexpected failures.
 
 A new user does not need to already know which quantities py4vasp
 supports: tab-completing `calculation.` (or a `Calculation` instance) in an
