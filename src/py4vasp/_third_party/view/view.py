@@ -76,8 +76,9 @@ class Isosurface:
         "away_from_zero" paints the inside of a lobe, "toward_zero" the side with zero,
         "off" nothing. None lets VASP Viewer decide; NGL draws no caps.
     color_opposite : str or None
-        Second color, for the opposite side of a "symmetric" or "diverging" quantity.
-        None lets the viewer pick it; NGL draws red at -isolevel of a symmetric quantity.
+        Second color, for the surface at -isolevel of a "symmetric" quantity, the only
+        scheme that draws one; VASP Viewer refuses it on any other. None lets the viewer
+        pick it; NGL draws red at -isolevel of a symmetric quantity.
 
     Examples
     --------
@@ -113,10 +114,10 @@ class Isosurface:
 
     None leaves the choice to the viewer."""
     color_opposite: Optional[str] = None
-    """Second color of the isosurface, for the opposite side of a "symmetric" or
-    "diverging" :class:`~py4vasp.view.GridQuantity`. None lets VASP Viewer pick it from
-    the scheme. NGL draws the surface at -isolevel of a symmetric quantity in this
-    color, or in red without one."""
+    """Second color of the isosurface, for its surface at -isolevel, which only a
+    "symmetric" :class:`~py4vasp.view.GridQuantity` draws; VASP Viewer refuses it on any
+    other scheme. None lets VASP Viewer pick it from the scheme. NGL draws the surface at
+    -isolevel in this color, or in red without one."""
 
 
 @dataclass
@@ -245,7 +246,8 @@ class IonArrow:
     color: str
     """Color with which the arrows should be drawn. For example, '#2FB5AB' or 'red'."""
     radius: float
-    """Radius of the arrows in Å, used by NGL only."""
+    """Radius of the arrows in Å, used by NGL only. VASP Viewer gives each arrow a width
+    that follows its drawn length."""
     length_mode: Optional[str] = None
     """Viewer setting for the length of the arrows (NGL ignores it and draws each
     arrow as long as its vector):
@@ -254,16 +256,6 @@ class IonArrow:
     - 'normalized': every arrow of the group gets the same length, from the largest
       atom an arrow is drawn on.
     - 'relative': each arrow's length is proportional to the radius of its own atom.
-
-    None leaves the choice to the viewer."""
-    width_mode: Optional[str] = None
-    """Viewer setting for the width of the arrows (NGL ignores it and uses the radius):
-
-    - 'atom': each arrow is as wide as the atom it marks allows, so the atom is never
-      hidden behind its own arrow.
-    - 'global': one width for the whole group, from the smallest atom on screen.
-    - 'length': each arrow's width follows its own length, so all arrows keep the same
-      shape.
 
     None leaves the choice to the viewer."""
     alignment: Optional[str] = None
@@ -277,6 +269,18 @@ class IonArrow:
     - 'tail_at_surface': the arrow starts at the surface of the atom, so even a short
       arrow is never hidden inside its atom.
 
+    None leaves the choice to the viewer."""
+    preset: Optional[str] = None
+    """Viewer setting for the whole look of the arrows, one of the presets VASP Viewer
+    offers for an arrow style (NGL ignores it):
+
+    - 'normalized': every arrow the same length, centered on its atom, in one color.
+    - 'physical': each arrow as long as its vector, starting at the surface of its atom.
+    - 'normalized_magnitude': as 'normalized', each arrow colored by its vector's length.
+    - 'normalized_projection': as 'normalized', each arrow colored by its vector's
+      component along z.
+
+    A :attr:`length_mode` or :attr:`alignment` given beside it wins over the preset's.
     None leaves the choice to the viewer."""
 
 
@@ -512,8 +516,13 @@ class View:
     """Defines the shift of the origin, defaults to no shift. Given in Direct coordinates. Expected shape is (3,). This is useful if you want to change the origin of the unit cell, e.g., to the center of the cell."""
     camera: str = "orthographic"
     """Defines the camera view type (orthographic or perspective)."""
+    atom_preset: Optional[str] = None
+    """Preset for how the atoms and bonds are drawn (only available for VASP Viewer), one
+    of those its Atoms & Bonds panel offers, e.g. 'standard', 'ball_and_stick' or
+    'covalent'. None starts in the viewer's default, 'standard'."""
     atom_radius: Optional[float] = None
-    """Defines the radius of the atoms (only available for VASP Viewer). Must be a positive number."""
+    """Scales the radius each atom is drawn at (only available for VASP Viewer). Must be a
+    positive number. It wins over the size of the :attr:`atom_preset`, which None keeps."""
     structure_title: Optional[str] = None
     """Title of the structure to be shown (only available for VASP Viewer)."""
 
@@ -636,7 +645,10 @@ class View:
         }
 
         # === Atoms options ===
-        structure["selections_atom_radius"] = self.atom_radius or 1.0
+        if self.atom_preset is not None:
+            structure["selections_atom_preset"] = self.atom_preset
+        if self.atom_radius is not None:
+            structure["selections_atom_radius"] = self.atom_radius
 
         # === Vector Group options ===
         if self.ion_arrows is not None:
@@ -646,8 +658,8 @@ class View:
                     "quantity": self._convert_to_list(arrow.quantity),
                     "base_color": arrow.color,
                     "length_mode": arrow.length_mode,
-                    "width_mode": arrow.width_mode,
                     "alignment": arrow.alignment,
+                    "preset": arrow.preset,
                 }
                 for arrow in self.ion_arrows
             ]
