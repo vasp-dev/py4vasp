@@ -32,7 +32,7 @@ from py4vasp._raw.data import CalculationMetaData
 from py4vasp._raw.data import _DatabaseData as DatabaseData
 from py4vasp._util import database as _database
 
-__version__ = "1.0.0b1"
+__version__ = "1.0.0b2"
 
 __all__ = [
     "CalculationMetaData",

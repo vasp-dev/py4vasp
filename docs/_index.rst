@@ -37,7 +37,7 @@ version
 .. code-block:: bash
 
   pip install --pre py4vasp
-  pip install py4vasp==1.0.0b1
+  pip install py4vasp==1.0.0b2
 
 The same applies to *py4vasp-core*.
 

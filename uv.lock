@@ -2726,7 +2726,7 @@ wheels = [
 
 [[package]]
 name = "py4vasp"
-version = "1.0.0b1"
+version = "1.0.0b2"
 source = { editable = "packages/py4vasp" }
 dependencies = [
     { name = "py4vasp-core", extra = ["all"] },
