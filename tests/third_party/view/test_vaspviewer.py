@@ -315,7 +315,7 @@ def test_payload_has_exactly_the_keys_of_the_contract():
     (isosurface,) = volume["isosurfaces"]
     assert set(isosurface) == {"level", "color", "color_opposite", "opacity", "cap"}
     (group,) = config["ion_arrow_groups"]
-    drawing_settings = {"length_mode", "width_mode", "alignment"}
+    drawing_settings = {"length_mode", "alignment", "preset"}
     assert set(group) == {"label", "quantity", "base_color"} | drawing_settings
 
 
@@ -426,7 +426,8 @@ def test_ion_arrows(is_structure, Assert):
             atol=1e-7,
         )
         assert arrow_group_view.label == arrow_group_state["label"]
-        assert arrow_group_view.color == arrow_group_state["base_color"]
+        # VASP Viewer sends every color as lowercase #rrggbb
+        assert arrow_group_view.color.lower() == arrow_group_state["base_color"]
 
 
 def _ion_arrows(inputs):
@@ -443,7 +444,7 @@ def _ion_arrows(inputs):
 
 @pytest.mark.parametrize("is_structure", [True, False])
 def test_arrow_group_config_has_no_radius(is_structure):
-    # the radius sizes an arrow in NGL, VASP Viewer sizes it from its width mode instead
+    # the radius sizes an arrow in NGL, VASP Viewer sizes it from its drawn length instead
     inputs = base_input_view(is_structure)
     view = View(**inputs, ion_arrows=_ion_arrows(inputs))
     for group in view.to_vasp_viewer_config()["ion_arrow_groups"]:
@@ -454,8 +455,9 @@ def test_arrow_group_config_has_no_radius(is_structure):
     "settings",
     [
         {},
-        {"length_mode": "physical", "width_mode": "atom"},
+        {"length_mode": "physical"},
         {"alignment": "tail_at_surface"},
+        {"preset": "physical", "alignment": "tail_at_atom"},
     ],
 )
 def test_arrow_group_config_forwards_the_settings(settings):
@@ -466,7 +468,7 @@ def test_arrow_group_config_forwards_the_settings(settings):
     )
     view = View(**inputs, ion_arrows=[arrow])
     (group,) = view.to_vasp_viewer_config()["ion_arrow_groups"]
-    for key in ("length_mode", "width_mode", "alignment"):
+    for key in ("length_mode", "alignment", "preset"):
         assert group[key] == settings.get(key)
 
 
@@ -521,6 +523,26 @@ def test_atom_radius(atom_radius):
     view = View(**base_input_view(is_structure=True), atom_radius=atom_radius)
     state = view.to_vasp_viewer().get_state()
     assert state["_selections_atom_radius"] == atom_radius
+
+
+def test_atom_radius_config():
+    view = View(**base_input_view(is_structure=True), atom_radius=0.7)
+    assert view.to_vasp_viewer_config()["selections_atom_radius"] == 0.7
+
+
+def test_atom_radius_left_to_viewer_by_default():
+    view = View(**base_input_view(is_structure=True))
+    assert "selections_atom_radius" not in view.to_vasp_viewer_config()
+
+
+def test_atom_preset():
+    view = View(**base_input_view(is_structure=True), atom_preset="ball_and_stick")
+    assert view.to_vasp_viewer_config()["selections_atom_preset"] == "ball_and_stick"
+
+
+def test_atom_preset_left_to_viewer_by_default():
+    view = View(**base_input_view(is_structure=True))
+    assert "selections_atom_preset" not in view.to_vasp_viewer_config()
 
 
 @hasVaspView
