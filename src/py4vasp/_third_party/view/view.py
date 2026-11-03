@@ -518,7 +518,7 @@ class View:
     """Defines the camera view type (orthographic or perspective)."""
     atom_preset: Optional[str] = None
     """Preset for how the atoms and bonds are drawn (only available for VASP Viewer), one
-    of those its Atoms & Bonds panel offers, e.g. 'standard', 'ball_and_stick' or
+    of those its Atoms & Bonds panel offers, e.g. 'standard', 'ball_and_stick', 'outline', or
     'covalent'. None starts in the viewer's default, 'standard'."""
     atom_radius: Optional[float] = None
     """Scales the radius each atom is drawn at (only available for VASP Viewer). Must be a
