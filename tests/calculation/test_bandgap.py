@@ -361,7 +361,18 @@ def test_print_writes_to_stdout(bandgap, capsys):
 
 
 def test_selections(bandgap):
-    assert bandgap.selections() == {"bandgap": ["default", "kpoint"]}
+    assert bandgap.selections() == {
+        "bandgap": [
+            "default",
+            "kpoint",
+            "qp",
+            "qp_linearized",
+            "qp_kpoint",
+            "qp_linearized_kpoint",
+            "qp_zeros",
+            "qp_zeros_kpoint",
+        ]
+    }
 
 
 def test_factory_methods(raw_data, check_factory_methods):

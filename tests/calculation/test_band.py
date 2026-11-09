@@ -299,6 +299,23 @@ def expected_lattice(selection):
         return np.array([[1.52216787, 0.0], [0.29043854, 0.89433656]])
 
 
+def test_select_gw_iteration(raw_data, Assert):
+    # The "qp" sources store every GW iteration with the steps as first dimension;
+    # [] selects one of them, the last one by default.
+    raw_band = raw_data.band("single")
+    eigenvalues = np.asarray(raw_band.dispersion.eigenvalues)
+    raw_band.dispersion.eigenvalues = np.stack([eigenvalues - 1, eigenvalues])
+    raw_band.occupations = np.stack([raw_band.occupations] * 2)
+    raw_band.fermi_energy = np.array([0.5, 1.5])
+    band = Band.from_data(raw_band)
+    assert band.read()["fermi_energy"] == 1.5
+    assert band[0].read()["fermi_energy"] == 0.5
+    Assert.allclose(band[0].read(fermi_energy=0)["bands"], eigenvalues[0] - 1)
+    for steps in (2, slice(0, 2)):
+        with pytest.raises(exception.IncorrectUsage):
+            band[steps].read()
+
+
 def test_single_band_read(single_band, Assert):
     band = single_band.read(fermi_energy=single_band.ref.fermi_energy_argument)
     assert band["fermi_energy"] == single_band.ref.fermi_energy
@@ -814,7 +831,14 @@ def test_is_available_without_projectors(raw_data):
         without_projectors.read("Sr")
     # the available projections are reported as empty instead of raising
     assert without_projectors.selections() == {
-        "band": ["default", "kpoints_opt", "kpoints_wan"]
+        "band": [
+            "default",
+            "kpoints_opt",
+            "kpoints_wan",
+            "qp",
+            "qp_linearized",
+            "qp_zeros",
+        ]
     }
 
 

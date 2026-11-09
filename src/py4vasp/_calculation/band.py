@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from __future__ import annotations
 
+import copy
+import dataclasses
 from typing import Any, Iterable, List
 
 import numpy as np
@@ -20,6 +22,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.kpoint import KpointHandler
 from py4vasp._calculation.projector import ProjectorHandler
+from py4vasp._calculation.slice_ import check_single_step, take_step
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import BandModel
 from py4vasp._third_party import graph
@@ -339,20 +342,31 @@ class Band(graph.Mixin):
     You can inspect possible choices with
 
     >>> calculation.band.selections()
-    {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
+    {'band': ['default', 'kpoints_opt', 'kpoints_wan', 'qp', 'qp_linearized', 'qp_zeros'],
         'atom': [...], 'orbital': [...], 'spin': [...]}
     """
 
     def __init__(self, source, quantity_name="band"):
         self._source = source
         self._quantity_name = quantity_name
+        self._steps = None
 
     @classmethod
     def from_data(cls, raw_band):
         return cls(source=DataSource(raw_band))
 
+    def __getitem__(self, steps) -> "Band":
+        """Select one step of data written as a history, e.g. the GW iteration of the
+        "qp" sources (0 for the energies the GW run started from). Sources without a
+        history are not affected. Without a selection, the last step is used."""
+        new = copy.copy(self)
+        new._steps = check_single_step(steps)
+        return new
+
     def _handler_factory(self, raw):
-        return BandHandler.from_data(raw)
+        return BandHandler.from_data(
+            _select_step(raw, -1 if self._steps is None else self._steps)
+        )
 
     def _is_available(self, raw_data, selection=None, method=None) -> bool:
         # to_quiver plots the spin texture, which needs the optional projections and
@@ -758,6 +772,10 @@ class Band(graph.Mixin):
                 or select multiple orbitals by their angular momentum (s, p, d, f).
             -   If you used a different **k**-point mesh choose "kpoints_opt" or "kpoints_wan"
                 to select them instead of the default mesh specified in the KPOINTS file.
+            -   After a GW calculation choose "qp" (or "qp_linearized") for the
+                quasiparticle energies of the linearized QP equation or "qp_zeros" for
+                the zeros of the QP equation, which only the low-scaling GW algorithms
+                provide.
 
             You separate multiple selections by commas or whitespace and can nest them using
             parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
@@ -911,3 +929,20 @@ class _ToQuiverReduction(index.Reduction):
     def __call__(self, array: ArrayLike, axis: Iterable):
         axis = tuple(filter(None, axis))
         return np.sum(array, axis=axis)
+
+
+def _select_step(raw_band, step):
+    """The "qp" sources store the bands of every GW iteration, so their eigenvalues have
+    the steps as additional first dimension (step, spin, k point, band); pick one step.
+    Other sources are returned unchanged."""
+    eigenvalues = raw_band.dispersion.eigenvalues
+    if check.is_none(eigenvalues) or np.ndim(eigenvalues) < 4:
+        return raw_band
+    take = lambda data: data if check.is_none(data) else take_step(data, step)
+    dispersion = dataclasses.replace(raw_band.dispersion, eigenvalues=take(eigenvalues))
+    return dataclasses.replace(
+        raw_band,
+        dispersion=dispersion,
+        fermi_energy=take(raw_band.fermi_energy),
+        occupations=take(raw_band.occupations),
+    )

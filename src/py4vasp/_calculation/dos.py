@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import copy
+import dataclasses
 import pathlib
 from contextlib import suppress
 
@@ -16,6 +18,7 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._calculation.projector import ProjectorHandler
+from py4vasp._calculation.slice_ import check_single_step, take_step
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import DosModel
 from py4vasp._third_party import graph
@@ -219,7 +222,7 @@ class Dos(graph.Mixin):
     :tag:`LORBIT`. You can get a list of the allowed choices with
 
     >>> calculation.dos.selections()
-    {'dos': ['default', 'kpoints_opt'], 'atom': [...], 'orbital': [...], 'spin': [...]}
+    {'dos': ['default', 'kpoints_opt', 'qp', 'qp_linearized', 'qp_zeros'], 'atom': [...], 'orbital': [...], 'spin': [...]}
 
     The example data above describes an insulator, so its DOS vanishes at the Fermi
     energy. Generate a metal instead to see a DOS that does not
@@ -232,13 +235,24 @@ class Dos(graph.Mixin):
     def __init__(self, source, quantity_name="dos"):
         self._source = source
         self._quantity_name = quantity_name
+        self._steps = None
 
     @classmethod
     def from_data(cls, raw_dos):
         return cls(source=DataSource(raw_dos))
 
+    def __getitem__(self, steps) -> "Dos":
+        """Select one step of data written as a history, e.g. the GW iteration of the
+        "qp" sources. Sources without a history are not affected. Without a selection,
+        the last step is used."""
+        new = copy.copy(self)
+        new._steps = check_single_step(steps)
+        return new
+
     def _handler_factory(self, raw):
-        return DosHandler.from_data(raw)
+        return DosHandler.from_data(
+            _select_step(raw, -1 if self._steps is None else self._steps)
+        )
 
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
@@ -589,3 +603,17 @@ def _series(energies, data):
 
 def _flip_down_component(name):
     return "down" in name and "up" not in name and "total" not in name
+
+
+def _select_step(raw_dos, step):
+    """The "qp" sources store the DOS of every GW iteration, so it has the steps as
+    additional first dimension (step, spin, energy); pick one step. Other sources are
+    returned unchanged."""
+    if check.is_none(raw_dos.dos) or np.ndim(raw_dos.dos) < 3:
+        return raw_dos
+    return dataclasses.replace(
+        raw_dos,
+        fermi_energy=take_step(raw_dos.fermi_energy, step),
+        energies=take_step(raw_dos.energies, step),
+        dos=take_step(raw_dos.dos, step),
+    )

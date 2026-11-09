@@ -119,7 +119,14 @@ def test_print_writes_to_stdout(dispersion, capsys):
 
 def test_selections(dispersion):
     assert dispersion.selections() == {
-        "dispersion": ["default", "kpoints_opt", "kpoints_wan", "phonon"]
+        "dispersion": [
+            "default",
+            "kpoints_opt",
+            "kpoints_wan",
+            "qp",
+            "qp_zeros",
+            "phonon",
+        ]
     }
 
 

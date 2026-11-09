@@ -344,7 +344,7 @@ instead of the constructor Calculation()."""
         Get all public quantities and their schema-defined selections (default):
 
         >>> calculation.selections()
-        {'band': ['default', 'kpoints_opt', 'kpoints_wan'], ...}
+        {'band': ['default', 'kpoints_opt', 'kpoints_wan', 'qp', 'qp_zeros'], ...}
 
         Restrict to quantities implementing a specific method:
 
