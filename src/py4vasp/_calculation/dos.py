@@ -16,9 +16,10 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    slice_steps,
 )
 from py4vasp._calculation.projector import ProjectorHandler
-from py4vasp._calculation.slice_ import check_single_step, take_step
+from py4vasp._calculation.slice_ import check_single_step
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import DosModel
 from py4vasp._third_party import graph
@@ -250,9 +251,7 @@ class Dos(graph.Mixin):
         return new
 
     def _handler_factory(self, raw):
-        return DosHandler.from_data(
-            _select_step(raw, -1 if self._steps is None else self._steps)
-        )
+        return DosHandler.from_data(_select_step(raw, self._steps))
 
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
@@ -606,14 +605,16 @@ def _flip_down_component(name):
 
 
 def _select_step(raw_dos, step):
-    """The "qp" sources store the DOS of every GW iteration, so it has the steps as
-    additional first dimension (step, spin, energy); pick one step. Other sources are
-    returned unchanged."""
-    if check.is_none(raw_dos.dos) or np.ndim(raw_dos.dos) < 3:
-        return raw_dos
+    """The "qp" sources store the DOS of every GW iteration, so their data has the
+    steps as additional first dimension (step, spin, energy); pick one step. Every
+    field decides on its own whether it is written as a history, because VASP writes
+    some of them only once; those are returned unchanged."""
+    take = lambda data, ndim: (
+        data if check.is_none(data) else slice_steps(data, step, ndim)
+    )
     return dataclasses.replace(
         raw_dos,
-        fermi_energy=take_step(raw_dos.fermi_energy, step),
-        energies=take_step(raw_dos.energies, step),
-        dos=take_step(raw_dos.dos, step),
+        fermi_energy=take(raw_dos.fermi_energy, 0),
+        energies=take(raw_dos.energies, 1),
+        dos=take(raw_dos.dos, 2),
     )
