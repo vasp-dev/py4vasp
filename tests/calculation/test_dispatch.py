@@ -821,6 +821,28 @@ class TestMergeStrings:
         assert "second" in result
 
 
+class _SpyData:
+    """Array-like that reports whether all of its data was converted at once."""
+
+    def __init__(self, array):
+        self.array = array
+        self.converted = False
+
+    @property
+    def ndim(self):
+        return self.array.ndim
+
+    def __len__(self):
+        return len(self.array)
+
+    def __getitem__(self, key):
+        return self.array[key]
+
+    def __array__(self, *args, **kwargs):
+        self.converted = True
+        return self.array
+
+
 class TestSliceSteps:
     def test_none_returns_last_step(self):
         # 3 steps, each is a 2x2 matrix → shape (3, 2, 2), default_ndim=2
@@ -864,6 +886,19 @@ class TestSliceSteps:
         data = np.array([10, 20, 30, 40, 50])
         result = slice_steps(data, steps=slice(1, 4), default_ndim=0)
         np.testing.assert_array_equal(result, np.array([20, 30, 40]))
+
+    def test_does_not_read_unselected_steps(self):
+        # VaspData reads from the file when it is converted, so a history must be
+        # indexed instead of converted; otherwise every step is read to return one
+        data = _SpyData(np.arange(12).reshape(3, 2, 2))
+        result = slice_steps(data, steps=1, default_ndim=2)
+        np.testing.assert_array_equal(result, data.array[1])
+        assert not data.converted
+
+    def test_no_step_dimension_returns_data_unchanged(self):
+        data = _SpyData(np.arange(6).reshape(2, 3))
+        assert slice_steps(data, steps=None, default_ndim=2) is data
+        assert not data.converted
 
     def test_out_of_range_names_number_of_steps(self):
         # knowing how many steps there are is what tells the user which step to ask for

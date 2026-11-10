@@ -1098,9 +1098,12 @@ def _field_is_optional(field):
 def slice_steps(data, steps, default_ndim):
     """Slice the step dimension from data.
 
+    The data is indexed, never converted as a whole, so that reading one step of a
+    history stored in a file does not read all the other ones.
+
     Parameters
     ----------
-    data : np.ndarray
+    data : array-like
         Array that may have a leading step dimension.
     steps : int | slice | None
         None → last step, int → single step, slice → range.
@@ -1111,11 +1114,10 @@ def slice_steps(data, steps, default_ndim):
 
     Returns
     -------
-    np.ndarray
-        The sliced data.
+    array-like
+        The selected step(s), or the data itself if it has no step dimension.
     """
-    data = np.asarray(data)
-    if data.ndim <= default_ndim:
+    if np.ndim(data) <= default_ndim:
         return data
     if steps is None:
         return data[-1]
