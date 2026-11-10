@@ -159,21 +159,16 @@ def _Fe3O4_projections(orders, magnetism):
     return np.concatenate(([charge], projected))
 
 
-def quasiparticle_Sr2TiO4(labels="with_labels"):
+def quasiparticle_Sr2TiO4():
     """Band structure of Sr2TiO4 for the two iterations of a GW run.
 
     VASP writes the quasiparticle energies as a history, so the steps are the first
     dimension of every field. Step 0 repeats the eigenvalues the run started from and
     the last step opens the gap by a scissor shift of the conduction bands, so the two
     steps differ the way a GW result differs from its DFT starting point.
-
-    Parameters
-    ----------
-    labels
-        Pass ``"no_labels"`` to omit the labels of the high-symmetry points.
     """
     model = electronic_structure.Sr2TiO4()
-    kpoints = kpoint.line_mode(labels)
+    kpoints = kpoint.line_mode()
     eigenvalues, _ = electronic_structure.sort_bands(
         model.evaluate(np.array(kpoints.coordinates))
     )

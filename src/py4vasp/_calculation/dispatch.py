@@ -1136,6 +1136,21 @@ def check_single_step(steps):
 
     Quantities that present one step of a history at a time use this to reject a
     slice, because they have no way to show more than one step at once.
+
+    Parameters
+    ----------
+    steps : int
+        The step the user selected with the [] operator.
+
+    Returns
+    -------
+    int
+        The same step, so that it can be passed on to :func:`slice_steps`.
+
+    Raises
+    ------
+    IncorrectUsage
+        If the step is anything but a single integer.
     """
     if isinstance(steps, (int, np.integer)) and not isinstance(steps, bool):
         return int(steps)
