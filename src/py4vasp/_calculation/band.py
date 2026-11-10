@@ -19,10 +19,11 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    slice_steps,
 )
 from py4vasp._calculation.kpoint import KpointHandler
 from py4vasp._calculation.projector import ProjectorHandler
-from py4vasp._calculation.slice_ import check_single_step, take_step
+from py4vasp._calculation.slice_ import check_single_step
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import BandModel
 from py4vasp._third_party import graph
@@ -364,9 +365,7 @@ class Band(graph.Mixin):
         return new
 
     def _handler_factory(self, raw):
-        return BandHandler.from_data(
-            _select_step(raw, -1 if self._steps is None else self._steps)
-        )
+        return BandHandler.from_data(_select_step(raw, self._steps))
 
     def _is_available(self, raw_data, selection=None, method=None) -> bool:
         # to_quiver plots the spin texture, which needs the optional projections and
@@ -932,17 +931,19 @@ class _ToQuiverReduction(index.Reduction):
 
 
 def _select_step(raw_band, step):
-    """The "qp" sources store the bands of every GW iteration, so their eigenvalues have
-    the steps as additional first dimension (step, spin, k point, band); pick one step.
-    Other sources are returned unchanged."""
-    eigenvalues = raw_band.dispersion.eigenvalues
-    if check.is_none(eigenvalues) or np.ndim(eigenvalues) < 4:
-        return raw_band
-    take = lambda data: data if check.is_none(data) else take_step(data, step)
-    dispersion = dataclasses.replace(raw_band.dispersion, eigenvalues=take(eigenvalues))
+    """The "qp" sources store the bands of every GW iteration, so their data has the
+    steps as additional first dimension (step, spin, k point, band); pick one step.
+    Every field decides on its own whether it is written as a history, because VASP
+    writes some of them only once; those are returned unchanged."""
+    take = lambda data, ndim: (
+        data if check.is_none(data) else slice_steps(data, step, ndim)
+    )
+    dispersion = dataclasses.replace(
+        raw_band.dispersion, eigenvalues=take(raw_band.dispersion.eigenvalues, 3)
+    )
     return dataclasses.replace(
         raw_band,
         dispersion=dispersion,
-        fermi_energy=take(raw_band.fermi_energy),
-        occupations=take(raw_band.occupations),
+        fermi_energy=take(raw_band.fermi_energy, 0),
+        occupations=take(raw_band.occupations, 3),
     )
