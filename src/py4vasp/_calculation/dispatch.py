@@ -1122,9 +1122,11 @@ def slice_steps(data, steps, default_ndim):
     try:
         return data[steps]
     except (IndexError, TypeError) as error:
-        raise exception.IncorrectUsage(
-            f"Error accessing step {steps!r}. Please check that it is a valid integer or slice."
-        ) from error
+        message = (
+            f"Error accessing step {steps!r}, the data contains {len(data)} steps. "
+            "Please check that it is a valid integer or slice."
+        )
+        raise exception.IncorrectUsage(message) from error
 
 
 class Group:

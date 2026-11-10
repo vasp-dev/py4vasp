@@ -865,6 +865,14 @@ class TestSliceSteps:
         result = slice_steps(data, steps=slice(1, 4), default_ndim=0)
         np.testing.assert_array_equal(result, np.array([20, 30, 40]))
 
+    def test_out_of_range_names_number_of_steps(self):
+        # knowing how many steps there are is what tells the user which step to ask for
+        data = np.zeros((3, 2, 2))
+        with pytest.raises(exception.IncorrectUsage) as error:
+            slice_steps(data, steps=7, default_ndim=2)
+        assert "7" in str(error.value)
+        assert "3" in str(error.value)
+
 
 class TestQuantityDecorator:
     def test_registers_top_level_quantity(self):
