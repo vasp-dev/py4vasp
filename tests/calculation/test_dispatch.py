@@ -28,6 +28,7 @@ from py4vasp._calculation.dispatch import (
     _parse_selections,
     _result_has_data,
     _substitute_remaining_selection,
+    check_single_step,
     data_available,
     merge_default,
     merge_graphs,
@@ -907,6 +908,21 @@ class TestSliceSteps:
             slice_steps(data, steps=7, default_ndim=2)
         assert "7" in str(error.value)
         assert "3" in str(error.value)
+
+
+class TestCheckSingleStep:
+    @pytest.mark.parametrize("steps", [0, -1, 3, np.int64(2)])
+    def test_integer_is_accepted(self, steps):
+        result = check_single_step(steps)
+        assert result == steps
+        assert isinstance(result, int)
+
+    @pytest.mark.parametrize("steps", [slice(0, 2), slice(None), True, None, "0", 1.0])
+    def test_everything_else_is_rejected(self, steps):
+        # a quantity reporting a single step cannot show more than one of them, and a
+        # bool is an integer in Python but never a step the user meant
+        with pytest.raises(exception.IncorrectUsage):
+            check_single_step(steps)
 
 
 class TestQuantityDecorator:

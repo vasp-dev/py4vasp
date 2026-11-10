@@ -14,6 +14,7 @@ from py4vasp._calculation import projector
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
+    check_single_step,
     is_available_raw,
     merge_default,
     merge_strings,
@@ -23,7 +24,6 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._calculation.kpoint import KpointHandler
 from py4vasp._calculation.projector import ProjectorHandler
-from py4vasp._calculation.slice_ import check_single_step
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import BandModel
 from py4vasp._third_party import graph

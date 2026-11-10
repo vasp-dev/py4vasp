@@ -12,6 +12,7 @@ from py4vasp._calculation import projector
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    check_single_step,
     merge_default,
     merge_strings,
     merge_to_database,
@@ -19,7 +20,6 @@ from py4vasp._calculation.dispatch import (
     slice_steps,
 )
 from py4vasp._calculation.projector import ProjectorHandler
-from py4vasp._calculation.slice_ import check_single_step
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import DosModel
 from py4vasp._third_party import graph

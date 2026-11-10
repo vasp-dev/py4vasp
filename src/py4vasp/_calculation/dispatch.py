@@ -1131,6 +1131,18 @@ def slice_steps(data, steps, default_ndim):
         raise exception.IncorrectUsage(message) from error
 
 
+def check_single_step(steps):
+    """Return the step as int; only a single step can be selected from a history.
+
+    Quantities that present one step of a history at a time use this to reject a
+    slice, because they have no way to show more than one step at once.
+    """
+    if isinstance(steps, (int, np.integer)) and not isinstance(steps, bool):
+        return int(steps)
+    message = f"Select a single step with an integer, {steps!r} is not supported."
+    raise exception.IncorrectUsage(message)
+
+
 class Group:
     """Thin namespace for nested quantities (e.g. phonon.dos, phonon.band).
 

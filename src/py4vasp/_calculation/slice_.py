@@ -2,10 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
 
-import numpy as np
-
 from py4vasp import exception
-from py4vasp._raw.data_wrapper import VaspData
 
 
 def examples(instance_name, function_name=None, step="step"):
@@ -79,24 +76,3 @@ def _create_slice_for_current_step_if_possible(steps):
     except TypeError as error:
         message = f"Error creating slice [{steps}:{steps} + 1], please check the access operator argument."
         raise exception.IncorrectUsage(message) from None
-
-
-def check_single_step(steps):
-    "Return the step as int; only a single step can be selected from a history."
-    if isinstance(steps, (int, np.integer)) and not isinstance(steps, bool):
-        return int(steps)
-    message = f"Select a single step with an integer, {steps!r} is not supported."
-    raise exception.IncorrectUsage(message)
-
-
-def take_step(history, step):
-    """Return one step of a history, i.e. data whose first dimension counts the steps,
-    as raw data (a scalar if the step holds a single value)."""
-    number_steps = len(history)
-    if not -number_steps <= step < number_steps:
-        message = (
-            f"The step {step} is out of range, the data contains {number_steps} steps."
-        )
-        raise exception.IncorrectUsage(message)
-    result = VaspData(np.asarray(history[step]))
-    return result[()] if result.ndim == 0 else result
