@@ -7,7 +7,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.band import (
     _OCCUPATION_CUTOFF,
@@ -827,6 +827,14 @@ def test_dispatcher_to_database_default(single_band):
     assert "band" in result
     assert isinstance(result["band"], dict)
     assert isinstance(result["band"]["default"], BandModel)
+
+
+def test_print_without_projector_data(raw_data):
+    # the "qp" sources reference no projector group at all, so the reader yields no
+    # projector rather than one whose fields are unset
+    raw_band = raw_data.band("single")
+    raw_band.projectors = raw.VaspData(None)
+    assert "no projectors" in str(Band.from_data(raw_band))
 
 
 def test_print_writes_to_stdout(multiple_bands, capsys):

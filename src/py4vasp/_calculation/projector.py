@@ -83,7 +83,7 @@ class ProjectorHandler:
         return cls(raw_projector)
 
     def __str__(self):
-        if self._raw_projector.orbital_types.is_none():
+        if not has_projector_data(self._raw_projector):
             return "no projectors"
         if self._is_collinear:
             spin_projection = "\n    spin: total, up, down"
@@ -122,7 +122,7 @@ class ProjectorHandler:
          'spin': {'total': slice(0, 2, None), 'up': slice(0, 1, None),
             'down': slice(1, 2, None)}}
         """
-        if self._raw_projector.orbital_types.is_none():
+        if not has_projector_data(self._raw_projector):
             return {}
         atom_dict = self._init_atom_dict()
         orbital_dict = self._init_orbital_dict()
@@ -279,7 +279,7 @@ class ProjectorHandler:
         )
 
     def _raise_error_if_orbitals_missing(self):
-        if self._raw_projector.orbital_types.is_none():
+        if not has_projector_data(self._raw_projector):
             message = "Projectors are not available, rerun VASP setting LORBIT >= 10."
             raise exception.IncorrectUsage(message)
 

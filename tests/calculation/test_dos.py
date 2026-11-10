@@ -8,7 +8,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation.dispatch import DictSource
 from py4vasp._calculation.dos import Dos, DosHandler, _select_step
 from py4vasp._calculation.projector import SPIN_PROJECTION, Projector
@@ -341,6 +341,14 @@ projectors:
     orbitals: s, p, d, f
     spin: total, sigma_x, sigma_y, sigma_z"""
     assert actual == {"text/plain": reference}
+
+
+def test_print_without_projector_data(raw_data):
+    # the "qp" sources reference no projector group at all, so the reader yields no
+    # projector rather than one whose fields are unset
+    raw_dos = raw_data.dos("Sr2TiO4")
+    raw_dos.projectors = raw.VaspData(None)
+    assert "no projectors" in str(Dos.from_data(raw_dos))
 
 
 def test_print_writes_to_stdout(Sr2TiO4, capsys):

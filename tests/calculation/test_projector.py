@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation.projector import SPIN_PROJECTION, Projector, ProjectorHandler
 from py4vasp._raw.models import ProjectorModel
 
@@ -31,6 +31,17 @@ def missing_orbitals(raw_data):
     return Projector.from_data(raw_data.projector("without_orbitals"))
 
 
+@pytest.fixture
+def without_projector_data():
+    """A quantity whose source defines no projectors at all.
+
+    VASP writes the projectors to a group the source does not reference, e.g. for the
+    quasiparticle energies of a GW run, so the reader yields no projector object
+    rather than one with unset fields.
+    """
+    return ProjectorHandler.from_data(raw.VaspData(None))
+
+
 @pytest.fixture(params=["Sr2TiO4", "Fe3O4", "Ba2PbO4", "without_orbitals"])
 def all_projectors(request, raw_data):
     raw_projector = raw_data.projector(request.param)
@@ -53,6 +64,10 @@ def projections():
 
 def test_read_missing_orbitals(missing_orbitals):
     assert missing_orbitals.read() == {}
+
+
+def test_read_without_projector_data(without_projector_data):
+    assert without_projector_data.to_dict() == {}
 
 
 def test_read_Sr2TiO4(Sr2TiO4):
@@ -232,6 +247,11 @@ def test_missing_orbitals_project(missing_orbitals):
         missing_orbitals.project("any string", "any data")
 
 
+def test_without_projector_data_project(without_projector_data):
+    with pytest.raises(exception.IncorrectUsage):
+        without_projector_data.project("any string", "any data")
+
+
 def test_error_parsing(Sr2TiO4, projections):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4.project(selection="XX", projections=projections)
@@ -323,6 +343,11 @@ projectors:
 def test_missing_orbitals_print(missing_orbitals, format_):
     actual, _ = format_(missing_orbitals)
     assert actual == {"text/plain": "no projectors"}
+
+
+def test_without_projector_data_print(without_projector_data):
+    # band and dos interpolate str(...) of this handler into their own report
+    assert str(without_projector_data) == "no projectors"
 
 
 def test_print_writes_to_stdout(Sr2TiO4, capsys):
