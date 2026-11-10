@@ -357,9 +357,43 @@ class Band(graph.Mixin):
         return cls(source=DataSource(raw_band))
 
     def __getitem__(self, steps) -> "Band":
-        """Select one step of data written as a history, e.g. the GW iteration of the
-        "qp" sources (0 for the energies the GW run started from). Sources without a
-        history are not affected. Without a selection, the last step is used."""
+        """Select one step of data written as a history.
+
+        The "qp" sources store the quasiparticle energies of every GW iteration, so
+        they have the steps as an additional dimension. Sources without a history are
+        not affected. Without a selection, the last step is used.
+
+        Parameters
+        ----------
+        steps : int
+            The GW iteration you want to read, 0 being the energies the run started
+            from. Only a single step can be selected, because the band structure of
+            one step is what the methods of this class report.
+
+        Returns
+        -------
+        -
+            A band structure reporting the selected step.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Without a selection you obtain the last iteration, where the conduction band
+        minimum sits half the quasiparticle gap above the Fermi energy
+
+        >>> final = calculation.band.read("qp")
+        >>> round(min(final["bands"][final["occupations"] < 0.5]), 1)
+        np.float64(1.7)
+
+        Step 0 holds the eigenvalues the GW run started from, so it still shows the
+        smaller gap of the underlying DFT calculation
+
+        >>> start = calculation.band[0].read("qp")
+        >>> round(min(start["bands"][start["occupations"] < 0.5]), 1)
+        np.float64(1.3)
+        """
         new = copy.copy(self)
         new._steps = check_single_step(steps)
         return new

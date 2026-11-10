@@ -150,3 +150,28 @@ def Cu(projectors):
         projections = np.einsum("bao,be->aoe", character, per_band)
         raw_dos.projections = _demo.wrap_data(projections[np.newaxis])
     return raw_dos
+
+
+def quasiparticle_Sr2TiO4():
+    """Density of states of Sr2TiO4 for the two iterations of a GW run.
+
+    Broadened from the same scissor-shifted bands as
+    :func:`showcase.band.quasiparticle_Sr2TiO4`, so the gap the density of states
+    shows is the gap of the quasiparticle band structure. The steps are the first
+    dimension, as VASP writes a history.
+    """
+    model = electronic_structure.Sr2TiO4()
+    (eigenvalues,) = _eigenvalues([model])
+    shifted = eigenvalues + np.where(
+        eigenvalues < model.fermi_energy, 0.0, electronic_structure.QUASIPARTICLE_SHIFT
+    )
+    energies = _energies([eigenvalues, shifted])
+    start = np.sum(_broadened_bands(eigenvalues, energies), axis=0)
+    quasiparticle = np.sum(_broadened_bands(shifted, energies), axis=0)
+    return raw.Dos(
+        fermi_energy=_demo.wrap_data(
+            [model.fermi_energy, electronic_structure.QUASIPARTICLE_FERMI_ENERGY]
+        ),
+        energies=_demo.wrap_data([energies, energies]),
+        dos=_demo.wrap_data([[start], [quasiparticle]]),
+    )

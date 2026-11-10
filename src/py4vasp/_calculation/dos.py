@@ -243,9 +243,40 @@ class Dos(graph.Mixin):
         return cls(source=DataSource(raw_dos))
 
     def __getitem__(self, steps) -> "Dos":
-        """Select one step of data written as a history, e.g. the GW iteration of the
-        "qp" sources. Sources without a history are not affected. Without a selection,
-        the last step is used."""
+        """Select one step of data written as a history.
+
+        The "qp" sources store the density of states of every GW iteration, so they
+        have the steps as an additional dimension. Sources without a history are not
+        affected. Without a selection, the last step is used.
+
+        Parameters
+        ----------
+        steps : int
+            The GW iteration you want to read, 0 being the one the run started from.
+            Only a single step can be selected, because the density of states of one
+            step is what the methods of this class report.
+
+        Returns
+        -------
+        -
+            A density of states reporting the selected step.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Without a selection you obtain the last iteration, which reports the Fermi
+        energy in the middle of the quasiparticle gap
+
+        >>> round(calculation.dos.read("qp")["fermi_energy"], 1)
+        np.float64(1.7)
+
+        Step 0 holds the data the GW run started from
+
+        >>> round(calculation.dos[0].read("qp")["fermi_energy"], 1)
+        np.float64(1.3)
+        """
         new = copy.copy(self)
         new._steps = check_single_step(steps)
         return new
