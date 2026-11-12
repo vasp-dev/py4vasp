@@ -180,6 +180,28 @@ def test_error_messages_with_counts(raw_data):
     assert model.error_message_counts == [2, 1]
 
 
+@pytest.mark.parametrize("wrap", [lambda x: x, np.array, raw.VaspData])
+def test_single_message_as_scalars(raw_data, wrap):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.message_text = wrap(b"the only error")
+    raw_run_info.setup.message_severity = wrap(b"error")
+    raw_run_info.setup.message_count = wrap(np.int64(3))
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["error_messages"] == ["the only error"]
+    assert actual["error_message_counts"] == [3]
+
+
+@pytest.mark.parametrize("missing", ["message_severity", "message_count"])
+def test_partial_message_arrays_are_none(raw_data, missing):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    setattr(raw_run_info.setup, missing, raw.VaspData(None))
+    handler = RunInfoHandler.from_data(raw_run_info)
+    actual = handler.to_dict()
+    assert actual["error_messages"] is None
+    assert actual["error_message_counts"] is None
+    handler.to_database()  # the rest of the record is still stored
+
+
 def test_error_messages_with_padded_severity(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.message_text = np.array([b"padded error    ", b"a warning  "])

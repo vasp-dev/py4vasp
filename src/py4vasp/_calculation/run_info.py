@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from contextlib import suppress
 
+import numpy as np
+
 from py4vasp import raw
 from py4vasp._calculation import bandgap as bandgap_module
 from py4vasp._calculation import exception
@@ -202,13 +204,20 @@ class RunInfoHandler:
         }
 
     def _dict_from_messages(self) -> dict:
-        "Collect the messages of severity error; VASP omits the arrays without messages."
+        """Collect the messages of severity error; VASP omits the arrays without messages.
+
+        Incomplete message data yields None rather than an error, so that the rest of
+        the run info can still be stored in the database."""
+        unknown = {"error_messages": None, "error_message_counts": None}
         if check.is_none(getattr(self._raw_run_info, "setup", None)):
-            return {"error_messages": None, "error_message_counts": None}
+            return unknown
         setup = self._raw_run_info.setup
         if check.is_none(setup.message_text):
             return {"error_messages": [], "error_message_counts": []}
-        messages = zip(setup.message_text, setup.message_severity, setup.message_count)
+        arrays = (setup.message_text, setup.message_severity, setup.message_count)
+        if any(check.is_none(array) for array in arrays):
+            return unknown
+        messages = zip(*(np.atleast_1d(_unwrap(array)) for array in arrays))
         errors = [
             (convert.fortran_text_to_string(text), int(count))
             for text, severity, count in messages
@@ -232,7 +241,7 @@ class RunInfoHandler:
         value = getattr(setup, key)
         if check.is_none(value):
             return None
-        value = value[()] if isinstance(value, VaspData) else value
+        value = _unwrap(value)
         return value.item() if hasattr(value, "item") else value
 
     def _setup_grid(self, *keys):
@@ -325,6 +334,10 @@ class RunInfoHandler:
             "phonon_num_qpoints": phonon_num_qpoints,
             "phonon_num_modes": phonon_num_modes,
         }
+
+
+def _unwrap(data):
+    return data[()] if isinstance(data, VaspData) else data
 
 
 @quantity("run_info")
