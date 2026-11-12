@@ -364,7 +364,7 @@ run info for Sr2TiO4:
     peak memory: 256.0 MB
     parallelization: 64 MPI ranks, KPAR=4, NCORE=8
     error messages: 1
-    setup sections: dimensions, dos, electronic, exchange_correlation, ionic, kpoints_opt, write_flags"""
+    extensions: dimensions, dos, electronic, exchange_correlation, ionic, kpoints_opt, metadata/build, metadata/performance, metadata/resources, write_flags"""
     assert actual == {"text/plain": reference}
 
 
@@ -373,7 +373,7 @@ def test_print_lists_extension_sections(raw_data):
     raw_run_info.extension = raw.RunInfoExtension(
         sections={"zeta": raw.SetupSection(), "alpha": raw.SetupSection()}
     )
-    assert "    setup sections: alpha, zeta" in str(RunInfo.from_data(raw_run_info))
+    assert "    extensions: alpha, zeta" in str(RunInfo.from_data(raw_run_info))
 
 
 def test_print_partial_parallelization(raw_data):

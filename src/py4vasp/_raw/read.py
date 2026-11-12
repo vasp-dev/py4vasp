@@ -22,21 +22,30 @@ _RUN_INFO_EXTENSION_REQUIRED = data.Version(6, 7)
 
 
 def run_info_extension(filename):
-    """Read every section of the /setup group VASP wrote into the h5 file.
+    """Read every section of the /setup and /metadata groups VASP wrote into the file.
 
-    Subgroups of a section are flattened into keys like "functional_1/NAME". The data
-    is read eagerly so that the file can be closed before returning. Because access
-    does not check the version of data_factory sources, this function raises an
-    OutdatedVaspVersion error itself for files older than VASP 6.7."""
+    The sections of /setup keep their name, the ones of /metadata get the prefix
+    "metadata/", e.g. "metadata/build". Subgroups of a section are flattened into
+    keys like "functional_1/NAME". The data is read eagerly so that the file can be
+    closed before returning. Because access does not check the version of
+    data_factory sources, this function raises an OutdatedVaspVersion error itself
+    for files older than VASP 6.7."""
     with h5py.File(filename, "r") as h5f:
         _check_version(h5f, _RUN_INFO_EXTENSION_REQUIRED, filename)
-        setup = h5f.get("setup", {})
         sections = {
-            name: _read_setup_section(group)
-            for name, group in setup.items()
-            if isinstance(group, h5py.Group)
+            **_read_sections(h5f, "setup", prefix=""),
+            **_read_sections(h5f, "metadata", prefix="metadata/"),
         }
     return data.RunInfoExtension(sections=sections)
+
+
+def _read_sections(h5f, group_name, prefix):
+    group = h5f.get(group_name, {})
+    return {
+        prefix + name: _read_setup_section(subgroup)
+        for name, subgroup in group.items()
+        if isinstance(subgroup, h5py.Group)
+    }
 
 
 def _check_version(h5f, required, filename):

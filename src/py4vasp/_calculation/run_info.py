@@ -132,7 +132,7 @@ class RunInfoHandler:
         if data["error_messages"] is not None:
             yield f"    error messages: {len(data['error_messages'])}"
         if data["extensions"]:
-            yield f"    setup sections: {', '.join(sorted(data['extensions']))}"
+            yield f"    extensions: {', '.join(sorted(data['extensions']))}"
 
     @staticmethod
     def _parallelization(data):
@@ -409,7 +409,9 @@ class RunInfo:
         Every setting VASP wrote is available in the extensions, grouped by section
 
         >>> sorted(run_info["extensions"])
-        ['dimensions', 'dos', 'electronic', 'exchange_correlation', 'ionic', 'kpoints_opt', 'write_flags']
+        ['dimensions', 'dos', 'electronic', 'exchange_correlation', 'ionic',
+         'kpoints_opt', 'metadata/build', 'metadata/performance',
+         'metadata/resources', 'write_flags']
         >>> run_info["extensions"]["dos"]
         {'ISMEAR': 0, 'SIGMA': 0.05}
         """

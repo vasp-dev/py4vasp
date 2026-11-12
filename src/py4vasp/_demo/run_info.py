@@ -44,9 +44,22 @@ _SETUP = {
 }
 # The /metadata group in the same layout; resources exist only for MPI builds.
 _METADATA = {
-    "resources": {"mpi_ranks": 64, "images": 0, "KPAR": 4, "NCORE": 8, "NPAR": 2},
-    "performance": {"peak_memory": 262144.0},  # kB
+    "build": {
+        "variant": ("std", None, "variant of the executable"),
+        "mpi": (True, None, "built with MPI"),
+        "openmp": (False, None, "built with OpenMP"),
+        "configuration/fortran_compiler": ("demo-fortran", None, None),
+    },
+    "resources": {
+        "mpi_ranks": (64, None, "number of MPI ranks"),
+        "images": (0, None, "number of images"),
+        "KPAR": (4, None, None),
+        "NCORE": (8, None, None),
+        "NPAR": (2, None, None),
+    },
+    "performance": {"peak_memory": (262144.0, "kB", "peak memory")},
 }
+_GROUPS = {"setup": _SETUP, "metadata": _METADATA}
 _EXIT_STATUS = "success"
 _MESSAGES = {
     "text": ["Use more k points.", "The basis set is incomplete."],
@@ -75,9 +88,22 @@ def Sr2TiO4():
     )
 
 
-def _value(section, key):
-    value = _SETUP[section][key][0]
+def _value(section, key, table=_SETUP):
+    "The value as VASP stores it, i.e., logicals as integers 0/1."
+    value = table[section][key][0]
     return int(value) if isinstance(value, bool) else value
+
+
+def _resource(key):
+    return _value("resources", key, _METADATA)
+
+
+def _sections():
+    "Every section the data factory reads, with the name it reports it under."
+    for group, table in _GROUPS.items():
+        prefix = "" if group == "setup" else f"{group}/"
+        for name, entries in table.items():
+            yield f"{group}/{name}", prefix + name, entries
 
 
 def run_setup():
@@ -108,11 +134,11 @@ def run_setup():
     }
     return raw.RunSetup(
         **{field: _value(*location) for field, location in core.items()},
-        images=_METADATA["resources"]["images"],
-        ncore=_METADATA["resources"]["NCORE"],
-        kpar=_METADATA["resources"]["KPAR"],
-        mpi_ranks=_METADATA["resources"]["mpi_ranks"],
-        peak_memory=_METADATA["performance"]["peak_memory"],
+        images=_resource("images"),
+        ncore=_resource("NCORE"),
+        kpar=_resource("KPAR"),
+        mpi_ranks=_resource("mpi_ranks"),
+        peak_memory=_value("performance", "peak_memory", _METADATA),
         exit_status=_EXIT_STATUS,
         message_text=np.array(_MESSAGES["text"]),
         message_severity=np.array(_MESSAGES["severity"]),
@@ -121,9 +147,9 @@ def run_setup():
 
 
 def extension():
-    "Every setting of the /setup group as the data factory reads it."
+    "Every entry of the /setup and /metadata groups as the data factory reads it."
     sections = {}
-    for name, entries in _SETUP.items():
+    for _, name, entries in _sections():
         section = raw.SetupSection()
         for key, (value, units, description) in entries.items():
             section.values[key] = value
@@ -140,18 +166,16 @@ def write_to_h5(h5f):
 
     raw.write cannot handle the data factory of the extension, so the groups are
     written directly with h5py."""
-    for name, entries in _SETUP.items():
+    for path, _, entries in _sections():
         for key, (value, units, description) in entries.items():
-            dataset = h5f.create_dataset(f"setup/{name}/{key}", data=_value(name, key))
+            data = int(value) if isinstance(value, bool) else value
+            dataset = h5f.create_dataset(f"{path}/{key}", data=data)
             if isinstance(value, bool):
                 dataset.attrs["dtype"] = "bool"
             if units is not None:
                 dataset.attrs["units"] = units
             if description is not None:
                 dataset.attrs["description"] = description
-    for group, entries in _METADATA.items():
-        for key, value in entries.items():
-            h5f[f"metadata/{group}/{key}"] = value
     # VASP declares fixed-length character variables, which Fortran pads with blanks
     h5f["messages/exit_status"] = _EXIT_STATUS.ljust(10)
     h5f["messages/number_messages"] = len(_MESSAGES["text"])

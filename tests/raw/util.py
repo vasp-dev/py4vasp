@@ -63,7 +63,8 @@ class ComplexNested:
 def write_setup_file(filename, setup, version=(6, 7, 0)):
     """Write an h5 file with the given /setup content.
 
-    `setup` maps a path below /setup to a value or to (value, attributes). Pass
+    `setup` maps a path below /setup to a value or to (value, attributes); a path
+    starting with "/" is used as is, e.g. "/metadata/build/variant". Pass
     version=None to omit the version datasets."""
     with h5py.File(filename, "w") as h5f:
         if version is not None:
@@ -71,6 +72,7 @@ def write_setup_file(filename, setup, version=(6, 7, 0)):
                 h5f[f"version/{name}"] = number
         for key, value in setup.items():
             value, attributes = value if isinstance(value, tuple) else (value, {})
-            dataset = h5f.create_dataset(f"setup/{key}", data=value)
+            path = key if key.startswith("/") else f"setup/{key}"
+            dataset = h5f.create_dataset(path, data=value)
             dataset.attrs.update(attributes)
     return filename

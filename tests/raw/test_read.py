@@ -135,6 +135,46 @@ def test_run_info_extension_reads_string_array(setup_file, dtype):
     assert all(isinstance(name, str) for name in actual.flat)
 
 
+def test_run_info_extension_includes_metadata_sections(setup_file):
+    filename = setup_file(
+        {
+            "dos/SIGMA": 0.05,
+            "/metadata/build/variant": "std   ",
+            "/metadata/build/mpi": (1, {"dtype": "bool"}),
+            "/metadata/resources/mpi_ranks": 64,
+            "/metadata/resources/KPAR": 4,
+            "/metadata/performance/peak_memory": (262144.0, {"units": "kB"}),
+        }
+    )
+    extension = read.run_info_extension(filename)
+    actual = values(extension)
+    assert actual == {
+        "dos": {"SIGMA": 0.05},
+        "metadata/build": {"variant": "std", "mpi": True},
+        "metadata/resources": {"mpi_ranks": 64, "KPAR": 4},
+        "metadata/performance": {"peak_memory": 262144.0},
+    }
+    assert extension.sections["metadata/performance"].units == {"peak_memory": "kB"}
+
+
+def test_run_info_extension_flattens_build_configuration(setup_file):
+    filename = setup_file(
+        {
+            "/metadata/build/variant": "gam",
+            "/metadata/build/configuration/fortran_compiler": "ifx",
+            "/metadata/build/configuration/precision": "double",
+        }
+    )
+    extension = read.run_info_extension(filename)
+    assert values(extension) == {
+        "metadata/build": {
+            "variant": "gam",
+            "configuration/fortran_compiler": "ifx",
+            "configuration/precision": "double",
+        }
+    }
+
+
 def test_run_info_extension_converts_bool(setup_file):
     bool_attribute = {"dtype": "bool"}
     filename = setup_file(
