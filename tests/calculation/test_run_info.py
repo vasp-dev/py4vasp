@@ -154,6 +154,37 @@ def test_core_settings_without_setup_are_none(raw_data):
     raw_run_info.setup = None
     actual = RunInfo.from_data(raw_run_info).read()
     assert all(actual[field] is None for field in CORE_BOOLS + CORE_SCALARS)
+    assert actual["error_messages"] is None
+    assert actual["error_message_counts"] is None
+
+
+def test_error_messages_with_counts(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.message_text = np.array(
+        [b"first error", b"a warning", b"second error", b"a bug"]
+    )
+    raw_run_info.setup.message_severity = np.array(
+        [b"error", b"warning", b"error", b"bug"]
+    )
+    raw_run_info.setup.message_count = np.array([2, 5, 1, 1])
+    handler = RunInfoHandler.from_data(raw_run_info)
+    actual = handler.to_dict()
+    assert actual["error_messages"] == ["first error", "second error"]
+    assert actual["error_message_counts"] == [2, 1]
+    assert all(type(count) is int for count in actual["error_message_counts"])
+    model = handler.to_database()
+    assert model.error_messages == ["first error", "second error"]
+    assert model.error_message_counts == [2, 1]
+
+
+def test_no_messages_is_empty_list(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.message_text = raw.VaspData(None)
+    raw_run_info.setup.message_severity = raw.VaspData(None)
+    raw_run_info.setup.message_count = raw.VaspData(None)
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["error_messages"] == []
+    assert actual["error_message_counts"] == []
 
 
 def test_to_dict_matches_read(run_info_handler):

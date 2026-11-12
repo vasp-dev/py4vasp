@@ -800,6 +800,9 @@ schema.add(
     images="metadata/resources/images",
     peak_memory="metadata/performance/peak_memory",
     exit_status="messages/exit_status",
+    message_text="messages/text",
+    message_severity="messages/severity",
+    message_count="messages/count",
 )
 # The /setup group has no index of its sections, so a data factory walks the whole
 # group. It checks for VASP 6.7 itself, because access skips the version check here.

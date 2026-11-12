@@ -869,6 +869,12 @@ class RunSetup:
     "The peak memory used by the run in kB."
     exit_status: VaspData = NONE()
     'How VASP finished: "success", "error", "killed", or "dry-run".'
+    message_text: VaspData = NONE()
+    "The text of every distinct message VASP reported."
+    message_severity: VaspData = NONE()
+    'The severity of every message, e.g., "bug", "error", "alert", or "warning".'
+    message_count: VaspData = NONE()
+    "How often VASP reported every message."
 
 
 @dataclasses.dataclass

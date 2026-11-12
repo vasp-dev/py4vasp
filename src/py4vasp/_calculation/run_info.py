@@ -64,6 +64,7 @@ class RunInfoHandler:
             **self._dict_additional_collection(),
             **self._dict_from_contcar(),
             **self._dict_from_phonon_dispersion(),
+            **self._dict_from_messages(),
         }
 
     def __str__(self) -> str:
@@ -157,6 +158,26 @@ class RunInfoHandler:
             ),
             **{key: self._setup_value(key) for key in _CORE_SETTINGS},
             **{key: self._setup_bool(key) for key in _CORE_LOGICALS},
+        }
+
+    def _dict_from_messages(self) -> dict:
+        "Collect the messages of severity error; VASP omits the arrays without messages."
+        if check.is_none(getattr(self._raw_run_info, "setup", None)):
+            return {"error_messages": None, "error_message_counts": None}
+        setup = self._raw_run_info.setup
+        if check.is_none(setup.message_text):
+            return {"error_messages": [], "error_message_counts": []}
+        messages = zip(
+            setup.message_text, setup.message_severity, setup.message_count
+        )
+        errors = [
+            (convert.text_to_string(text), int(count))
+            for text, severity, count in messages
+            if convert.text_to_string(severity) == "error"
+        ]
+        return {
+            "error_messages": [text for text, _ in errors],
+            "error_message_counts": [count for _, count in errors],
         }
 
     def _setup_bool(self, key):

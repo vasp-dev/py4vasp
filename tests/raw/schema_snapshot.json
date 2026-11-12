@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0+db.1",
+  "schema_version": "1.0+db.2",
   "models": {
     "BandModel": [
       [
@@ -1102,6 +1102,14 @@
       ]
     ],
     "RunInfoModel": [
+      [
+        "error_message_counts",
+        "Optional[list[int]]"
+      ],
+      [
+        "error_messages",
+        "Optional[list[str]]"
+      ],
       [
         "fermi_energy",
         "Optional[float]"

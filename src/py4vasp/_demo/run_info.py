@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import numpy as np
+
 from py4vasp import _demo, raw
 
 
@@ -50,4 +52,7 @@ def run_setup():
         images=0,
         peak_memory=262144.0,
         exit_status="success",
+        message_text=np.array(["Use more k points.", "The basis set is incomplete."]),
+        message_severity=np.array(["warning", "error"]),
+        message_count=np.array([3, 1]),
     )
