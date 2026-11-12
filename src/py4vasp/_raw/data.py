@@ -808,6 +808,27 @@ class RunInfo:
 
 
 @dataclasses.dataclass
+class SetupSection:
+    "The settings VASP wrote into one section of the /setup group."
+
+    values: dict = dataclasses.field(default_factory=dict)
+    "Maps every key of the section to its value."
+    units: dict = dataclasses.field(default_factory=dict)
+    "Maps the keys that specify units to these units."
+    descriptions: dict = dataclasses.field(default_factory=dict)
+    "Maps the keys that come with a description to that description."
+
+
+@dataclasses.dataclass
+class RunInfoExtension:
+    """All settings VASP wrote into the /setup group, including sections that
+    py4vasp does not know about."""
+
+    sections: dict = dataclasses.field(default_factory=dict)
+    "Maps the name of every section to its raw.SetupSection."
+
+
+@dataclasses.dataclass
 class RuntimeData:
     """Data about the runtime environment of the VASP calculation."""
 

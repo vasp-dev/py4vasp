@@ -1,6 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import h5py
 import numpy as np
+import pytest
 
 from py4vasp import raw
 from py4vasp._calculation._CONTCAR import CONTCAR
@@ -30,3 +32,89 @@ def test_read_contcar(raw_data, tmp_path, Assert):
         file.write(str(CONTCAR.from_data(raw_contcar)))
     contcar = read.CONTCAR(filename)
     Assert.same_raw_contcar(contcar, raw_contcar)
+
+
+def write_setup_file(filename, setup, version=(6, 7, 0)):
+    """Write an h5 file with the given /setup content.
+
+    `setup` maps a path below /setup to a value or to (value, attributes)."""
+    with h5py.File(filename, "w") as h5f:
+        if version is not None:
+            for name, number in zip(("major", "minor", "patch"), version):
+                h5f[f"version/{name}"] = number
+        for key, value in setup.items():
+            value, attributes = value if isinstance(value, tuple) else (value, {})
+            dataset = h5f.create_dataset(f"setup/{key}", data=value)
+            dataset.attrs.update(attributes)
+    return filename
+
+
+@pytest.fixture
+def setup_file(tmp_path):
+    return lambda setup, **kwargs: write_setup_file(
+        tmp_path / "vaspout.h5", setup, **kwargs
+    )
+
+
+def values(extension):
+    return {
+        section: setup_section.values
+        for section, setup_section in extension.sections.items()
+    }
+
+
+def test_run_info_extension_reads_all_sections(setup_file):
+    filename = setup_file(
+        {
+            "dimensions/NGX": 24,
+            "dimensions/NGY": 30,
+            "electronic/NELM": 60,
+            "electronic/GGA": "PE",
+            "dos/SIGMA": 0.05,
+            "my_new_section/FOO": np.array([1.0, 2.0]),
+        }
+    )
+    extension = read.run_info_extension(filename)
+    actual = values(extension)
+    assert actual.keys() == {"dimensions", "electronic", "dos", "my_new_section"}
+    assert actual["dimensions"] == {"NGX": 24, "NGY": 30}
+    assert actual["electronic"] == {"NELM": 60, "GGA": "PE"}
+    assert actual["dos"] == {"SIGMA": 0.05}
+    assert np.allclose(actual["my_new_section"]["FOO"], [1.0, 2.0])
+
+
+def test_run_info_extension_flattens_subgroups(setup_file):
+    filename = setup_file(
+        {
+            "exchange_correlation/LHFCALC": 0,
+            "exchange_correlation/functional_1/NAME": "PBE",
+            "exchange_correlation/functional_1/P1": 0.25,
+            "exchange_correlation/functional_2/NAME": "LDA",
+        }
+    )
+    extension = read.run_info_extension(filename)
+    assert values(extension) == {
+        "exchange_correlation": {
+            "LHFCALC": 0,
+            "functional_1/NAME": "PBE",
+            "functional_1/P1": 0.25,
+            "functional_2/NAME": "LDA",
+        }
+    }
+
+
+def test_run_info_extension_keeps_units_and_description(setup_file):
+    filename = setup_file(
+        {
+            "dos/SIGMA": (0.05, {"units": "eV", "description": "smearing width"}),
+            "dos/NEDOS": (301, {"description": "number of grid points"}),
+            "dos/ISMEAR": 0,
+        }
+    )
+    extension = read.run_info_extension(filename)
+    section = extension.sections["dos"]
+    assert section.units == {"SIGMA": "eV"}
+    assert section.descriptions == {
+        "SIGMA": "smearing width",
+        "NEDOS": "number of grid points",
+    }
