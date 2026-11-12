@@ -4,6 +4,53 @@ import numpy as np
 
 from py4vasp import _demo, raw
 
+# Settings of a nonpolarized run in the layout of the /setup group VASP 6.7 writes.
+# Every entry is (value, units, description); units and description may be None.
+_SETUP = {
+    "dimensions": {
+        "NGX": (32, None, "coarse FFT grid along the first lattice vector"),
+        "NGY": (32, None, "coarse FFT grid along the second lattice vector"),
+        "NGZ": (40, None, "coarse FFT grid along the third lattice vector"),
+        "NGXF": (64, None, "fine FFT grid along the first lattice vector"),
+        "NGYF": (64, None, "fine FFT grid along the second lattice vector"),
+        "NGZF": (80, None, "fine FFT grid along the third lattice vector"),
+    },
+    "electronic": {
+        "ISPIN": (1, None, "spin polarization"),
+        "LNONCOLLINEAR": (False, None, "noncollinear magnetism"),
+        "LSORBIT": (False, None, "spin-orbit coupling"),
+        "ISTART": (0, None, "start from the WAVECAR file"),
+        "ICHARG": (2, None, "initial charge density"),
+        "NELM": (60, None, "maximum number of electronic steps"),
+        "LREAL": (False, None, "projection in real space"),
+        "LMAXMIX": (4, None, "maximum l passed to the mixer"),
+    },
+    "ionic": {
+        "POTIM": (0.5, "fs", "time step"),
+        "TEBEG": (300.0, "K", "initial temperature"),
+        "TEEND": (300.0, "K", "final temperature"),
+        "MDALGO": (0, None, "molecular-dynamics algorithm"),
+        "ISYM": (2, None, "symmetry treatment"),
+    },
+    "dos": {
+        "ISMEAR": (0, None, "smearing method"),
+        "SIGMA": (0.05, "eV", "smearing width"),
+    },
+    "kpoints_opt": {"LKPOINTS_OPT": (False, None, "evaluate KPOINTS_OPT")},
+    "write_flags": {"LORBIT": (11, None, "projections onto local orbitals")},
+    "exchange_correlation": {
+        "functional_1/NAME": ("PBE", None, "name of the functional"),
+    },
+}
+_IMAGES = 0
+_PEAK_MEMORY = 262144.0  # kB
+_EXIT_STATUS = "success"
+_MESSAGES = {
+    "text": ["Use more k points.", "The basis set is incomplete."],
+    "severity": ["warning", "error"],
+    "count": [3, 1],
+}
+
 
 def Sr2TiO4():
     runtime_data = _demo.runtime_data.runtime_data("Sr2TiO4")
@@ -21,38 +68,84 @@ def Sr2TiO4():
         contcar=_demo.CONTCAR.Sr2TiO4(),
         phonon_dispersion=_demo.phonon.band.Sr2TiO4().dispersion,
         setup=run_setup(),
+        extension=extension(),
     )
+
+
+def _value(section, key):
+    value = _SETUP[section][key][0]
+    return int(value) if isinstance(value, bool) else value
 
 
 def run_setup():
     "Core settings of a nonpolarized run that finished successfully."
+    core = {
+        "ngx": ("dimensions", "NGX"),
+        "ngy": ("dimensions", "NGY"),
+        "ngz": ("dimensions", "NGZ"),
+        "ngxf": ("dimensions", "NGXF"),
+        "ngyf": ("dimensions", "NGYF"),
+        "ngzf": ("dimensions", "NGZF"),
+        "ispin": ("electronic", "ISPIN"),
+        "lnoncollinear": ("electronic", "LNONCOLLINEAR"),
+        "lsorbit": ("electronic", "LSORBIT"),
+        "istart": ("electronic", "ISTART"),
+        "icharg": ("electronic", "ICHARG"),
+        "nelm": ("electronic", "NELM"),
+        "lreal": ("electronic", "LREAL"),
+        "lmaxmix": ("electronic", "LMAXMIX"),
+        "sigma": ("dos", "SIGMA"),
+        "potim": ("ionic", "POTIM"),
+        "tebeg": ("ionic", "TEBEG"),
+        "teend": ("ionic", "TEEND"),
+        "mdalgo": ("ionic", "MDALGO"),
+        "isym": ("ionic", "ISYM"),
+        "lkpoints_opt": ("kpoints_opt", "LKPOINTS_OPT"),
+        "lorbit": ("write_flags", "LORBIT"),
+    }
     return raw.RunSetup(
-        ngx=32,
-        ngy=32,
-        ngz=40,
-        ngxf=64,
-        ngyf=64,
-        ngzf=80,
-        ispin=1,
-        lnoncollinear=0,
-        lsorbit=0,
-        istart=0,
-        icharg=2,
-        nelm=60,
-        lreal=0,
-        lmaxmix=4,
-        sigma=0.05,
-        potim=0.5,
-        tebeg=300.0,
-        teend=300.0,
-        mdalgo=0,
-        isym=2,
-        lkpoints_opt=0,
-        lorbit=11,
-        images=0,
-        peak_memory=262144.0,
-        exit_status="success",
-        message_text=np.array(["Use more k points.", "The basis set is incomplete."]),
-        message_severity=np.array(["warning", "error"]),
-        message_count=np.array([3, 1]),
+        **{field: _value(*location) for field, location in core.items()},
+        images=_IMAGES,
+        peak_memory=_PEAK_MEMORY,
+        exit_status=_EXIT_STATUS,
+        message_text=np.array(_MESSAGES["text"]),
+        message_severity=np.array(_MESSAGES["severity"]),
+        message_count=np.array(_MESSAGES["count"]),
     )
+
+
+def extension():
+    "Every setting of the /setup group as the data factory reads it."
+    sections = {}
+    for name, entries in _SETUP.items():
+        section = raw.SetupSection()
+        for key, (value, units, description) in entries.items():
+            section.values[key] = value
+            if units is not None:
+                section.units[key] = units
+            if description is not None:
+                section.descriptions[key] = description
+        sections[name] = section
+    return raw.RunInfoExtension(sections=sections)
+
+
+def write_to_h5(h5f):
+    """Write the settings, metadata, and messages the way VASP 6.7 does.
+
+    raw.write cannot handle the data factory of the extension, so the groups are
+    written directly with h5py."""
+    for name, entries in _SETUP.items():
+        for key, (value, units, description) in entries.items():
+            dataset = h5f.create_dataset(f"setup/{name}/{key}", data=_value(name, key))
+            if isinstance(value, bool):
+                dataset.attrs["dtype"] = "bool"
+            if units is not None:
+                dataset.attrs["units"] = units
+            if description is not None:
+                dataset.attrs["description"] = description
+    h5f["metadata/resources/images"] = _IMAGES
+    h5f["metadata/performance/peak_memory"] = _PEAK_MEMORY
+    h5f["messages/exit_status"] = _EXIT_STATUS
+    h5f["messages/number_messages"] = len(_MESSAGES["text"])
+    for key, values in _MESSAGES.items():
+        h5f[f"messages/{key}"] = values

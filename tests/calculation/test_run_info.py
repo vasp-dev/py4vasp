@@ -24,6 +24,7 @@ def run_info(request, raw_data):
     run_info.ref.runtime = raw_run_info.runtime
     run_info.ref.fermi_energy = raw_run_info.fermi_energy
     run_info.ref.setup = raw_run_info.setup
+    run_info.ref.extension = raw_run_info.extension
     run_info.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
     run_info.ref.len_dos = raw_run_info.len_dos
     run_info.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
@@ -45,6 +46,7 @@ def run_info_handler(request, raw_data):
     handler.ref.runtime = raw_run_info.runtime
     handler.ref.fermi_energy = raw_run_info.fermi_energy
     handler.ref.setup = raw_run_info.setup
+    handler.ref.extension = raw_run_info.extension
     handler.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
     handler.ref.len_dos = raw_run_info.len_dos
     handler.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
@@ -140,6 +142,7 @@ def test_read(run_info):
     actual = run_info.read()
     expected = _expected_core_settings(run_info.ref.setup)
     assert {key: actual[key] for key in expected} == expected
+    actual.pop("extensions")  # checked separately, not part of the database model
     _check_dict(RunInfoModel(**actual), run_info.ref)
 
 
@@ -175,6 +178,37 @@ def test_error_messages_with_counts(raw_data):
     model = handler.to_database()
     assert model.error_messages == ["first error", "second error"]
     assert model.error_message_counts == [2, 1]
+
+
+def test_read_contains_extensions(run_info):
+    raw_extension = run_info.ref.extension
+    expected = {
+        name: section.values for name, section in raw_extension.sections.items()
+    }
+    assert expected  # the demo data should contain some sections
+    assert run_info.read()["extensions"] == expected
+
+
+def test_unknown_section_appears(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.extension.sections["brand_new"] = raw.SetupSection(
+        values={"LFOO": True, "functional_1/NAME": "PBE"}, units={"LFOO": "none"}
+    )
+    actual = RunInfo.from_data(raw_run_info).read()["extensions"]
+    assert actual["brand_new"] == {"LFOO": True, "functional_1/NAME": "PBE"}
+
+
+@pytest.mark.parametrize("missing_extension", [None, raw.VaspData(None)])
+def test_read_without_extension_is_empty(raw_data, missing_extension):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.extension = missing_extension
+    assert RunInfo.from_data(raw_run_info).read()["extensions"] == {}
+
+
+def test_to_database_excludes_extensions(run_info_handler):
+    model = run_info_handler.to_database()
+    assert not hasattr(model, "extensions")
+    assert "extensions" in run_info_handler.to_dict()
 
 
 def test_no_messages_is_empty_list(raw_data):

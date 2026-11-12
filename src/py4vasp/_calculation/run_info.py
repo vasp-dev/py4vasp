@@ -65,6 +65,16 @@ class RunInfoHandler:
             **self._dict_from_contcar(),
             **self._dict_from_phonon_dispersion(),
             **self._dict_from_messages(),
+            "extensions": self._dict_from_extension(),
+        }
+
+    def _dict_from_extension(self) -> dict:
+        "All settings of the /setup group as {section: {KEY: value}}."
+        extension = getattr(self._raw_run_info, "extension", None)
+        if check.is_none(extension):
+            return {}
+        return {
+            name: dict(section.values) for name, section in extension.sections.items()
         }
 
     def __str__(self) -> str:
@@ -106,8 +116,10 @@ class RunInfoHandler:
         return "nonpolarized"
 
     def to_database(self) -> dict:
-        """Serialize run info for the database."""
-        return RunInfoModel(**self.to_dict())
+        """Serialize run info for the database; only the core settings are stored."""
+        data = self.to_dict()
+        data.pop("extensions")
+        return RunInfoModel(**data)
 
     def _read_attr(self, *keys: str):
         data = self._raw_run_info
@@ -304,11 +316,44 @@ class RunInfo:
     def read(self, selection: str | None = None) -> dict:
         """Convert the run information to a dictionary.
 
+        The dictionary summarizes the calculation: the VASP version, the system, and
+        properties derived from the results like the Fermi energy. Since VASP 6.7, it
+        also contains the core settings of the run under the name of their INCAR tag
+        in lower case (e.g. ``"sigma"``, ``"ispin"``, ``"nelm"``), the FFT grids, the
+        peak memory in kB, whether the run succeeded, and the error messages VASP
+        reported with how often it reported them. Settings VASP did not write are None.
+
         Parameters
         ----------
         selection : str | None
             Select the source of the data. This quantity has only the default source;
             the argument exists for compatibility with older versions of py4vasp.
+
+        Returns
+        -------
+        -
+            A dictionary with the run information. The key ``"extensions"`` contains
+            every setting VASP wrote as ``{section: {TAG: value}}``, including sections
+            py4vasp does not know about; it is empty for files of VASP older than 6.7.
+
+        Examples
+        --------
+        Read the run information of a calculation and look at some core settings
+
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+        >>> run_info = calculation.run_info.read()
+        >>> run_info["grid_coarse_shape"], run_info["sigma"], run_info["is_success"]
+        ([32, 32, 40], 0.05, True)
+        >>> run_info["error_messages"], run_info["error_message_counts"]
+        (['The basis set is incomplete.'], [1])
+
+        Every setting VASP wrote is available in the extensions, grouped by section
+
+        >>> sorted(run_info["extensions"])
+        ['dimensions', 'dos', 'electronic', 'exchange_correlation', 'ionic', 'kpoints_opt', 'write_flags']
+        >>> run_info["extensions"]["dos"]
+        {'ISMEAR': 0, 'SIGMA': 0.05}
         """
         return merge_default(
             self._source,
