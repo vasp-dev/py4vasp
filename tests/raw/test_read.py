@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import h5py
 import numpy as np
 import pytest
 from util import write_setup_file
@@ -117,6 +118,21 @@ def test_run_info_extension_strips_strings(setup_file):
     assert section.values["NAMES"].tolist() == ["Sr", "Ti", "O"]
     assert section.units == {"GGA": "none"}
     assert section.descriptions == {"GGA": "xc"}
+
+
+@pytest.mark.parametrize(
+    "dtype", [np.dtype("S4"), h5py.string_dtype()], ids=["fixed", "vlen"]
+)
+def test_run_info_extension_reads_string_array(setup_file, dtype):
+    names = [["Sr", "Ti", "O"], ["La", "Al", "N"]]
+    filename = setup_file(
+        {"species/NAMES": np.array(names, dtype=object).astype(dtype)}
+    )
+    actual = read.run_info_extension(filename).sections["species"].values["NAMES"]
+    assert isinstance(actual, np.ndarray)
+    assert actual.shape == (2, 3)
+    assert actual.tolist() == names
+    assert all(isinstance(name, str) for name in actual.flat)
 
 
 def test_run_info_extension_converts_bool(setup_file):
