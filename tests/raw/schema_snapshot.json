@@ -1196,7 +1196,7 @@
       ],
       [
         "lreal",
-        "Optional[bool]"
+        "Optional[str]"
       ],
       [
         "lsorbit",

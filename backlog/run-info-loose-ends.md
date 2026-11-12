@@ -5,10 +5,6 @@ exposes every other recorded setting as `read()["extensions"]`. These points wer
 left open.
 
 **Waiting for VASP.**
-- `mdalgo` stays None until VASP writes `setup/ionic/MDALGO`.
-- `lreal` is read as a logical. VASP currently writes it as a logical, so `On` and
-  `Auto` look the same. If VASP switches to a string, the field type of
-  `RunInfoModel.lreal` has to change (with a database schema bump).
 - The message fields assume VASP writes `messages/{text,severity,count}` together.
   If one is missing, py4vasp reports both message fields as None instead of
   failing.

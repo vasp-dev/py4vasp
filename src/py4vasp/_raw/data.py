@@ -844,7 +844,7 @@ class RunSetup:
     nelm: VaspData = NONE()
     "Maximum number of electronic steps per ionic step."
     lreal: VaspData = NONE()
-    "Whether the projection operators are evaluated in real space."
+    "How the projection operators are evaluated: Auto, On, T (real space) or F."
     lmaxmix: VaspData = NONE()
     "Maximum angular momentum of the one-center densities passed to the mixer."
     sigma: VaspData = NONE()

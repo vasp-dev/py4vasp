@@ -22,7 +22,7 @@ _SETUP = {
         "ISTART": (0, None, "start from the WAVECAR file"),
         "ICHARG": (2, None, "initial charge density"),
         "NELM": (60, None, "maximum number of electronic steps"),
-        "LREAL": (False, None, "projection in real space"),
+        "LREAL": ("Auto", None, "real-space projection"),
         "LMAXMIX": (4, None, "maximum l passed to the mixer"),
     },
     "ionic": {

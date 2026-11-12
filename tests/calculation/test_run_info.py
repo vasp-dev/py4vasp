@@ -112,7 +112,8 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
         assert getattr(models, field) == expected, field
 
 
-CORE_BOOLS = ("lnoncollinear", "lsorbit", "lreal", "lkpoints_opt")
+CORE_BOOLS = ("lnoncollinear", "lsorbit", "lkpoints_opt")
+CORE_STRINGS = ("lreal",)
 CORE_SCALARS = (
     "sigma",
     "ispin",
@@ -138,7 +139,12 @@ def _expected_core_settings(setup):
     return {
         **{field: getattr(setup, field) for field in CORE_SCALARS},
         **{field: bool(getattr(setup, field)) for field in CORE_BOOLS},
+        **{field: _decode(getattr(setup, field)) for field in CORE_STRINGS},
     }
+
+
+def _decode(text):
+    return text.decode().strip() if isinstance(text, bytes) else text.strip()
 
 
 def test_read(run_info):
@@ -155,11 +161,28 @@ def test_core_bools_are_bool(run_info):
         assert type(actual[field]) is bool, field
 
 
+def test_lreal_of_demo_is_vasp_string(run_info):
+    assert run_info.read()["lreal"] == "Auto"
+
+
+@pytest.mark.parametrize("lreal", [b"Auto", b"On", b"F", b"T", b"Auto  ", "On"])
+def test_lreal_keeps_vasp_spelling(raw_data, lreal):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.lreal = lreal
+    actual = RunInfo.from_data(raw_run_info).read()["lreal"]
+    assert actual == _decode(lreal)
+    assert (
+        RunInfo.from_data(raw_run_info)._to_database()["run_info"]["default"].lreal
+        == actual
+    )
+
+
 def test_core_settings_without_setup_are_none(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup = None
     actual = RunInfo.from_data(raw_run_info).read()
-    assert all(actual[field] is None for field in CORE_BOOLS + CORE_SCALARS)
+    fields = CORE_BOOLS + CORE_STRINGS + CORE_SCALARS
+    assert all(actual[field] is None for field in fields)
     assert actual["error_messages"] is None
     assert actual["error_message_counts"] is None
 

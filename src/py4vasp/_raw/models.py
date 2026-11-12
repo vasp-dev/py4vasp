@@ -1081,8 +1081,8 @@ class RunInfoModel(_DatabaseModel):
     """How VASP constructed the initial charge density (ICHARG)."""
     nelm: Optional[int] = None
     """The maximum number of electronic steps per ionic step (NELM)."""
-    lreal: Optional[bool] = None
-    """Whether the projection operators are evaluated in real space (LREAL)."""
+    lreal: Optional[str] = None
+    """How the projection operators are evaluated (LREAL), spelled as VASP writes it: "Auto" or "On" for optimized real-space projectors, "T" for real space, "F" for reciprocal space."""
     lmaxmix: Optional[int] = None
     """The maximum angular momentum passed to the mixer (LMAXMIX)."""
     potim: Optional[float] = None

@@ -47,7 +47,8 @@ _CORE_SETTINGS = (
     "kpar",
     "mpi_ranks",
 )
-_CORE_LOGICALS = ("lnoncollinear", "lsorbit", "lreal", "lkpoints_opt")
+_CORE_LOGICALS = ("lnoncollinear", "lsorbit", "lkpoints_opt")
+_CORE_STRINGS = ("lreal",)
 
 
 class RunInfoHandler:
@@ -219,6 +220,7 @@ class RunInfoHandler:
             ),
             **{key: self._setup_value(key) for key in _CORE_SETTINGS},
             **{key: self._setup_bool(key) for key in _CORE_LOGICALS},
+            **{key: self._setup_string(key) for key in _CORE_STRINGS},
         }
 
     def _dict_from_messages(self) -> dict:
@@ -250,6 +252,11 @@ class RunInfoHandler:
         "VASP stores logicals as integers 0/1."
         value = self._setup_value(key)
         return None if value is None else bool(value)
+
+    def _setup_string(self, key):
+        "VASP pads fixed-length strings with blanks."
+        value = self._setup_value(key)
+        return None if value is None else convert.fortran_text_to_string(value)
 
     def _setup_value(self, key):
         "Return a scalar of the core setup as a Python object, None if VASP did not write it."
@@ -389,8 +396,8 @@ class RunInfo:
         also contains
 
         - the core settings of the run under the name of their INCAR tag in lower
-          case, e.g. ``"sigma"``, ``"ispin"``, ``"nelm"``, ``"lreal"``; logical tags
-          are Python bools,
+          case, e.g. ``"sigma"``, ``"ispin"``, ``"nelm"``; logical tags are Python
+          bools, and ``"lreal"`` keeps VASP's spelling ("Auto", "On", "T" or "F"),
         - the FFT grids ``"grid_coarse_shape"`` and ``"grid_fine_shape"``,
         - the parallelization ``"mpi_ranks"``, ``"kpar"``, and ``"ncore"`` and the
           ``"peak_memory"`` in kB,
