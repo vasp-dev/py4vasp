@@ -109,32 +109,52 @@ class RunInfoHandler:
         if isinstance(fermi_energy, VaspData):
             fermi_energy = fermi_energy._data
 
-        is_success = None  # TODO implement
-
-        is_collinear = self._is_collinear()
-        is_noncollinear = self._is_noncollinear()
         is_metallic = self._is_metallic()
         is_magnetic = None  # TODO implement
         magnetic_order = None  # TODO implement
 
-        grid_coarse_shape = (
-            None  # TODO implement for FFT grid (currently not written to H5)
-        )
-        grid_fine_shape = (
-            None  # TODO implement for FFT grid (currently not written to H5)
-        )
-
         return {
-            "grid_coarse_shape": grid_coarse_shape,
-            "grid_fine_shape": grid_fine_shape,
-            "is_success": is_success,
+            **self._dict_from_setup(),
             "fermi_energy": fermi_energy,
-            "is_collinear": is_collinear,
-            "is_noncollinear": is_noncollinear,
             "is_metallic": is_metallic,
             "is_magnetic": is_magnetic,
             "magnetization_order": magnetic_order,
         }
+
+    def _dict_from_setup(self) -> dict:
+        exit_status = self._setup_value("exit_status")
+        ispin = self._setup_value("ispin")
+        lnoncollinear = self._setup_value("lnoncollinear")
+        return {
+            "grid_coarse_shape": self._setup_grid("ngx", "ngy", "ngz"),
+            "grid_fine_shape": self._setup_grid("ngxf", "ngyf", "ngzf"),
+            "is_success": (
+                None
+                if exit_status is None
+                else convert.text_to_string(exit_status) == "success"
+            ),
+            "is_collinear": self._is_collinear() if ispin is None else ispin == 2,
+            "is_noncollinear": (
+                self._is_noncollinear()
+                if lnoncollinear is None
+                else bool(lnoncollinear)
+            ),
+        }
+
+    def _setup_value(self, key):
+        "Return a scalar of the core setup as a Python object, None if VASP did not write it."
+        setup = getattr(self._raw_run_info, "setup", None)
+        if check.is_none(setup):
+            return None
+        value = getattr(setup, key)
+        if check.is_none(value):
+            return None
+        value = value[()] if isinstance(value, VaspData) else value
+        return value.item() if hasattr(value, "item") else value
+
+    def _setup_grid(self, *keys):
+        shape = [self._setup_value(key) for key in keys]
+        return None if None in shape else shape
 
     def _is_collinear(self):
         if not check.is_none(self._raw_run_info.len_dos):

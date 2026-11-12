@@ -806,8 +806,37 @@ class RunInfo:
     phonon_dispersion: Optional[Dispersion] = None
     "The phonon dispersion of the system."
 
+    setup: Optional[RunSetup] = None
+    "The core settings and the exit status of the run (VASP 6.7 or newer)."
     extension: Optional[RunInfoExtension] = None
     "All settings VASP wrote into the /setup group (VASP 6.7 or newer)."
+
+
+@dataclasses.dataclass
+class RunSetup:
+    """The core settings of the VASP run and how it ended.
+
+    The field names are the INCAR tags in lower case. Logicals are stored as the
+    integers 0 and 1."""
+
+    ngx: VaspData = NONE()
+    "Number of grid points of the coarse FFT grid along the first lattice vector."
+    ngy: VaspData = NONE()
+    "Number of grid points of the coarse FFT grid along the second lattice vector."
+    ngz: VaspData = NONE()
+    "Number of grid points of the coarse FFT grid along the third lattice vector."
+    ngxf: VaspData = NONE()
+    "Number of grid points of the fine FFT grid along the first lattice vector."
+    ngyf: VaspData = NONE()
+    "Number of grid points of the fine FFT grid along the second lattice vector."
+    ngzf: VaspData = NONE()
+    "Number of grid points of the fine FFT grid along the third lattice vector."
+    ispin: VaspData = NONE()
+    "1 for a nonpolarized and 2 for a spin-polarized calculation."
+    lnoncollinear: VaspData = NONE()
+    "Whether the calculation is noncollinear."
+    exit_status: VaspData = NONE()
+    'How VASP finished: "success", "error", "killed", or "dry-run".'
 
 
 @dataclasses.dataclass

@@ -2,8 +2,10 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import types
 
+import numpy as np
 import pytest
 
+from py4vasp import raw
 from py4vasp._calculation._CONTCAR import CONTCARHandler
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.bandgap import Bandgap, BandgapHandler
@@ -21,6 +23,7 @@ def run_info(request, raw_data):
     run_info.ref.system_name = raw_run_info.system.system
     run_info.ref.runtime = raw_run_info.runtime
     run_info.ref.fermi_energy = raw_run_info.fermi_energy
+    run_info.ref.setup = raw_run_info.setup
     run_info.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
     run_info.ref.len_dos = raw_run_info.len_dos
     run_info.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
@@ -41,6 +44,7 @@ def run_info_handler(request, raw_data):
     handler.ref.system_name = raw_run_info.system.system
     handler.ref.runtime = raw_run_info.runtime
     handler.ref.fermi_energy = raw_run_info.fermi_energy
+    handler.ref.setup = raw_run_info.setup
     handler.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
     handler.ref.len_dos = raw_run_info.len_dos
     handler.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
@@ -88,12 +92,13 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
     )
 
     # extra collection
-    assert models.grid_coarse_shape is None
-    assert models.grid_fine_shape is None
-    assert models.is_success is None
+    setup = runinfo_ref.setup
+    assert list(models.grid_coarse_shape) == [setup.ngx, setup.ngy, setup.ngz]
+    assert list(models.grid_fine_shape) == [setup.ngxf, setup.ngyf, setup.ngzf]
+    assert models.is_success == (setup.exit_status == "success")
     assert models.fermi_energy == runinfo_ref.fermi_energy
-    assert models.is_collinear == (runinfo_ref.len_dos == 2)
-    assert models.is_noncollinear == (runinfo_ref.len_dos == 4)
+    assert models.is_collinear == (setup.ispin == 2)
+    assert models.is_noncollinear == bool(setup.lnoncollinear)
     assert models.is_metallic == all(
         runinfo_ref.bandgap._output_gap("fundamental", to_string=False) <= 0.0
     )
@@ -124,6 +129,66 @@ def test_dispatcher_to_database(run_info):
     assert "run_info" in result
     assert isinstance(result["run_info"], dict)
     assert isinstance(result["run_info"]["default"], RunInfoModel)
+
+
+def test_read_grid_shapes(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.ngx, raw_run_info.setup.ngy, raw_run_info.setup.ngz = 12, 15, 18
+    raw_run_info.setup.ngxf = np.int64(24)
+    raw_run_info.setup.ngyf, raw_run_info.setup.ngzf = 30, 36
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["grid_coarse_shape"] == [12, 15, 18]
+    assert actual["grid_fine_shape"] == [24, 30, 36]
+    assert all(type(n) is int for n in actual["grid_fine_shape"])
+
+
+@pytest.mark.parametrize(
+    "exit_status, expected",
+    [("success", True), (b"success", True), ("error", False), ("killed", False)],
+)
+def test_is_success(raw_data, exit_status, expected):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.exit_status = exit_status
+    assert RunInfo.from_data(raw_run_info).read()["is_success"] is expected
+
+
+@pytest.mark.parametrize(
+    "ispin, lnoncollinear, collinear, noncollinear",
+    [(2, 0, True, False), (1, 1, False, True), (1, 0, False, False)],
+)
+def test_spin_from_setup_preferred(
+    raw_data, ispin, lnoncollinear, collinear, noncollinear
+):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.len_dos = 4  # contradicts the setup, which takes precedence
+    raw_run_info.setup.ispin = ispin
+    raw_run_info.setup.lnoncollinear = lnoncollinear
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["is_collinear"] is collinear
+    assert actual["is_noncollinear"] is noncollinear
+
+
+@pytest.mark.parametrize("missing_setup", [None, raw.VaspData(None)])
+def test_without_setup_falls_back(raw_data, missing_setup):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup = missing_setup
+    raw_run_info.len_dos = 2
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["grid_coarse_shape"] is None
+    assert actual["grid_fine_shape"] is None
+    assert actual["is_success"] is None
+    assert actual["is_collinear"] is True
+    assert actual["is_noncollinear"] is False
+
+
+def test_setup_with_missing_datasets_falls_back(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup = raw.RunSetup()
+    raw_run_info.len_dos = 4
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["grid_coarse_shape"] is None
+    assert actual["is_success"] is None
+    assert actual["is_noncollinear"] is True
 
 
 def test_print(run_info, format_):
@@ -163,6 +228,7 @@ run info for Sr2TiO4:
 )
 def test_print_reports_the_spin_configuration(raw_data, len_dos, expected):
     raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup = None  # the spin falls back to the DOS
     raw_run_info.len_dos = len_dos
     assert expected in str(RunInfo.from_data(raw_run_info))
 
@@ -174,6 +240,7 @@ def test_print_omits_half_known_spin_configuration(raw_data, known_field):
     # without a DOS the two flags fall back to different fields, so one of them may be
     # False while the other is simply unknown; that is not enough to claim nonpolarized
     raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup = None
     raw_run_info.len_dos = None
     for field in ("band_dispersion_eigenvalues", "band_projections"):
         if field != known_field:
@@ -183,6 +250,7 @@ def test_print_omits_half_known_spin_configuration(raw_data, known_field):
 
 def test_print_omits_unknown_spin_configuration(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup = None
     raw_run_info.len_dos = None
     raw_run_info.band_dispersion_eigenvalues = None
     raw_run_info.band_projections = None

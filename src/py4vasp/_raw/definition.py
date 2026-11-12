@@ -769,7 +769,21 @@ schema.add(
     structure=Link("structure", DEFAULT_SOURCE),
     contcar=Link("CONTCAR", DEFAULT_SOURCE),
     phonon_dispersion=Link("dispersion", "phonon"),
+    setup=Link("run_setup", DEFAULT_SOURCE),
     extension=Link("run_info_extension", DEFAULT_SOURCE),
+)
+schema.add(
+    raw.RunSetup,
+    required=raw.Version(6, 7),
+    ngx="setup/dimensions/NGX",
+    ngy="setup/dimensions/NGY",
+    ngz="setup/dimensions/NGZ",
+    ngxf="setup/dimensions/NGXF",
+    ngyf="setup/dimensions/NGYF",
+    ngzf="setup/dimensions/NGZF",
+    ispin="setup/electronic/ISPIN",
+    lnoncollinear="setup/electronic/LNONCOLLINEAR",
+    exit_status="messages/exit_status",
 )
 # The /setup group has no index of its sections, so a data factory walks the whole
 # group. It checks for VASP 6.7 itself, because access skips the version check here.

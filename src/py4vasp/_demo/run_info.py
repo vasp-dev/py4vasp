@@ -18,4 +18,20 @@ def Sr2TiO4():
         structure=_demo.structure.Sr2TiO4(),
         contcar=_demo.CONTCAR.Sr2TiO4(),
         phonon_dispersion=_demo.phonon.band.Sr2TiO4().dispersion,
+        setup=run_setup(),
+    )
+
+
+def run_setup():
+    "Core settings of a nonpolarized run that finished successfully."
+    return raw.RunSetup(
+        ngx=32,
+        ngy=32,
+        ngz=40,
+        ngxf=64,
+        ngyf=64,
+        ngzf=80,
+        ispin=1,
+        lnoncollinear=0,
+        exit_status="success",
     )
