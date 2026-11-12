@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.0+db.1",
   "models": {
     "BandModel": [
       [
@@ -1127,6 +1127,14 @@
         "Optional[bool]"
       ],
       [
+        "icharg",
+        "Optional[int]"
+      ],
+      [
+        "images",
+        "Optional[int]"
+      ],
+      [
         "is_collinear",
         "Optional[bool]"
       ],
@@ -1147,12 +1155,60 @@
         "Optional[bool]"
       ],
       [
+        "ispin",
+        "Optional[int]"
+      ],
+      [
+        "istart",
+        "Optional[int]"
+      ],
+      [
+        "isym",
+        "Optional[int]"
+      ],
+      [
+        "lkpoints_opt",
+        "Optional[bool]"
+      ],
+      [
+        "lmaxmix",
+        "Optional[int]"
+      ],
+      [
+        "lnoncollinear",
+        "Optional[bool]"
+      ],
+      [
+        "lorbit",
+        "Optional[int]"
+      ],
+      [
+        "lreal",
+        "Optional[bool]"
+      ],
+      [
+        "lsorbit",
+        "Optional[bool]"
+      ],
+      [
         "magnetization_order",
         "Optional[str]"
       ],
       [
+        "mdalgo",
+        "Optional[int]"
+      ],
+      [
+        "nelm",
+        "Optional[int]"
+      ],
+      [
         "num_ionic_steps",
         "Optional[int]"
+      ],
+      [
+        "peak_memory",
+        "Optional[float]"
       ],
       [
         "phonon_num_modes",
@@ -1163,8 +1219,24 @@
         "Optional[int]"
       ],
       [
+        "potim",
+        "Optional[float]"
+      ],
+      [
+        "sigma",
+        "Optional[float]"
+      ],
+      [
         "system_tag",
         "Optional[str]"
+      ],
+      [
+        "tebeg",
+        "Optional[float]"
+      ],
+      [
+        "teend",
+        "Optional[float]"
       ],
       [
         "vasp_version",

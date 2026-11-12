@@ -105,9 +105,55 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
     assert models.is_magnetic is None
     assert models.magnetization_order is None
 
+    # core settings
+    for field, expected in _expected_core_settings(setup).items():
+        assert getattr(models, field) == expected, field
+
+
+CORE_BOOLS = ("lnoncollinear", "lsorbit", "lreal", "lkpoints_opt")
+CORE_SCALARS = (
+    "sigma",
+    "ispin",
+    "istart",
+    "icharg",
+    "nelm",
+    "lmaxmix",
+    "potim",
+    "tebeg",
+    "teend",
+    "mdalgo",
+    "isym",
+    "lorbit",
+    "images",
+    "peak_memory",
+)
+
+
+def _expected_core_settings(setup):
+    return {
+        **{field: getattr(setup, field) for field in CORE_SCALARS},
+        **{field: bool(getattr(setup, field)) for field in CORE_BOOLS},
+    }
+
 
 def test_read(run_info):
-    _check_dict(RunInfoModel(**run_info.read()), run_info.ref)
+    actual = run_info.read()
+    expected = _expected_core_settings(run_info.ref.setup)
+    assert {key: actual[key] for key in expected} == expected
+    _check_dict(RunInfoModel(**actual), run_info.ref)
+
+
+def test_core_bools_are_bool(run_info):
+    actual = run_info.read()
+    for field in CORE_BOOLS:
+        assert type(actual[field]) is bool, field
+
+
+def test_core_settings_without_setup_are_none(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup = None
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert all(actual[field] is None for field in CORE_BOOLS + CORE_SCALARS)
 
 
 def test_to_dict_matches_read(run_info_handler):

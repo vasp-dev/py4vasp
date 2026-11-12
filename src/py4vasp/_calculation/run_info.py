@@ -25,6 +25,24 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     TypeError,
     ValueError,
 )
+# core settings of raw.RunSetup reported under their own name
+_CORE_SETTINGS = (
+    "sigma",
+    "ispin",
+    "istart",
+    "icharg",
+    "nelm",
+    "lmaxmix",
+    "potim",
+    "tebeg",
+    "teend",
+    "mdalgo",
+    "isym",
+    "lorbit",
+    "images",
+    "peak_memory",
+)
+_CORE_LOGICALS = ("lnoncollinear", "lsorbit", "lreal", "lkpoints_opt")
 
 
 class RunInfoHandler:
@@ -124,7 +142,7 @@ class RunInfoHandler:
     def _dict_from_setup(self) -> dict:
         exit_status = self._setup_value("exit_status")
         ispin = self._setup_value("ispin")
-        lnoncollinear = self._setup_value("lnoncollinear")
+        lnoncollinear = self._setup_bool("lnoncollinear")
         return {
             "grid_coarse_shape": self._setup_grid("ngx", "ngy", "ngz"),
             "grid_fine_shape": self._setup_grid("ngxf", "ngyf", "ngzf"),
@@ -135,11 +153,16 @@ class RunInfoHandler:
             ),
             "is_collinear": self._is_collinear() if ispin is None else ispin == 2,
             "is_noncollinear": (
-                self._is_noncollinear()
-                if lnoncollinear is None
-                else bool(lnoncollinear)
+                self._is_noncollinear() if lnoncollinear is None else lnoncollinear
             ),
+            **{key: self._setup_value(key) for key in _CORE_SETTINGS},
+            **{key: self._setup_bool(key) for key in _CORE_LOGICALS},
         }
+
+    def _setup_bool(self, key):
+        "VASP stores logicals as integers 0/1."
+        value = self._setup_value(key)
+        return None if value is None else bool(value)
 
     def _setup_value(self, key):
         "Return a scalar of the core setup as a Python object, None if VASP did not write it."

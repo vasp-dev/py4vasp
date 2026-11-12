@@ -835,6 +835,38 @@ class RunSetup:
     "1 for a nonpolarized and 2 for a spin-polarized calculation."
     lnoncollinear: VaspData = NONE()
     "Whether the calculation is noncollinear."
+    lsorbit: VaspData = NONE()
+    "Whether spin-orbit coupling is included."
+    istart: VaspData = NONE()
+    "Whether VASP started from the WAVECAR file."
+    icharg: VaspData = NONE()
+    "How VASP constructed the initial charge density."
+    nelm: VaspData = NONE()
+    "Maximum number of electronic steps per ionic step."
+    lreal: VaspData = NONE()
+    "Whether the projection operators are evaluated in real space."
+    lmaxmix: VaspData = NONE()
+    "Maximum angular momentum of the one-center densities passed to the mixer."
+    sigma: VaspData = NONE()
+    "Width of the smearing in eV."
+    potim: VaspData = NONE()
+    "Time step of molecular dynamics in fs or scaling of the ionic step."
+    tebeg: VaspData = NONE()
+    "Temperature at the start of molecular dynamics in K."
+    teend: VaspData = NONE()
+    "Temperature at the end of molecular dynamics in K."
+    mdalgo: VaspData = NONE()
+    "Algorithm (thermostat) used for molecular dynamics."
+    isym: VaspData = NONE()
+    "How VASP uses the symmetry of the system."
+    lkpoints_opt: VaspData = NONE()
+    "Whether VASP evaluated the KPOINTS_OPT k-point set."
+    lorbit: VaspData = NONE()
+    "Which projections onto local orbitals VASP computed."
+    images: VaspData = NONE()
+    "Number of images, e.g., of a nudged elastic band calculation."
+    peak_memory: VaspData = NONE()
+    "The peak memory used by the run in kB."
     exit_status: VaspData = NONE()
     'How VASP finished: "success", "error", "killed", or "dry-run".'
 

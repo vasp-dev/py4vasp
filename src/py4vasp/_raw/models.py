@@ -30,7 +30,7 @@ VoigtMatrix = Tuple[Voigt, Voigt, Voigt, Voigt, Voigt, Voigt]
 # series, e.g. "0.11". Increment it whenever any model below changes between releases
 # (a test enforces this, see tests/raw/test_schema_version.py); the version then reads
 # "0.11+db.1", "0.11+db.2", ... Reset it back to 0 on every new py4vasp minor release.
-__DB_SCHEMA__ = 0
+__DB_SCHEMA__ = 1
 # Fields that changed their meaning, keyed by the first value of the counter above from
 # which the new meaning holds. The fingerprint cannot see a field change its meaning,
 # e.g. its unit, so a bump without a changed field name or type is only accepted with a
@@ -1065,6 +1065,44 @@ class RunInfoModel(_DatabaseModel):
     """The number of q-points used in the phonon calculation."""
     phonon_num_modes: Optional[int] = None
     """The number of phonon modes calculated."""
+
+    # core settings named after the INCAR tag in lower case (VASP 6.7 or newer)
+    sigma: Optional[float] = None
+    """The width of the smearing (SIGMA), in eV."""
+    ispin: Optional[int] = None
+    """1 for a nonpolarized and 2 for a spin-polarized calculation (ISPIN)."""
+    lnoncollinear: Optional[bool] = None
+    """Whether the calculation is noncollinear (LNONCOLLINEAR)."""
+    lsorbit: Optional[bool] = None
+    """Whether spin-orbit coupling is included (LSORBIT)."""
+    istart: Optional[int] = None
+    """Whether VASP started from the WAVECAR file (ISTART)."""
+    icharg: Optional[int] = None
+    """How VASP constructed the initial charge density (ICHARG)."""
+    nelm: Optional[int] = None
+    """The maximum number of electronic steps per ionic step (NELM)."""
+    lreal: Optional[bool] = None
+    """Whether the projection operators are evaluated in real space (LREAL)."""
+    lmaxmix: Optional[int] = None
+    """The maximum angular momentum passed to the mixer (LMAXMIX)."""
+    potim: Optional[float] = None
+    """The time step of molecular dynamics in fs or scaling of the ionic step (POTIM)."""
+    tebeg: Optional[float] = None
+    """The temperature at the start of molecular dynamics (TEBEG), in K."""
+    teend: Optional[float] = None
+    """The temperature at the end of molecular dynamics (TEEND), in K."""
+    mdalgo: Optional[int] = None
+    """The algorithm used for molecular dynamics (MDALGO)."""
+    isym: Optional[int] = None
+    """How VASP uses the symmetry of the system (ISYM)."""
+    lkpoints_opt: Optional[bool] = None
+    """Whether VASP evaluated the KPOINTS_OPT k-point set (LKPOINTS_OPT)."""
+    lorbit: Optional[int] = None
+    """Which projections onto local orbitals VASP computed (LORBIT)."""
+    images: Optional[int] = None
+    """The number of images, e.g., of a nudged elastic band calculation."""
+    peak_memory: Optional[float] = None
+    """The peak memory used by the run, in kB."""
 
 
 @dataclass
