@@ -50,6 +50,9 @@ def _add_to_section(section, key, item):
 
 def _read_setup_value(dataset):
     value = dataset[()]
+    if _is_logical(dataset):
+        value = np.asarray(value).astype(np.bool_)
+        return value if value.ndim > 0 else value.item()
     if isinstance(value, np.ndarray):
         if value.dtype.kind in "OS":
             strings = [convert.text_to_string(element) for element in value.flat]
@@ -58,3 +61,9 @@ def _read_setup_value(dataset):
     if isinstance(value, bytes):
         return convert.text_to_string(value)
     return value.item() if isinstance(value, np.generic) else value
+
+
+def _is_logical(dataset):
+    "VASP stores logicals as integers 0/1 and marks them with the attribute dtype."
+    dtype = dataset.attrs.get("dtype")
+    return dtype is not None and convert.text_to_string(dtype) == "bool"

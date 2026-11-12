@@ -118,3 +118,30 @@ def test_run_info_extension_keeps_units_and_description(setup_file):
         "SIGMA": "smearing width",
         "NEDOS": "number of grid points",
     }
+
+
+def test_run_info_extension_converts_bool(setup_file):
+    bool_attribute = {"dtype": "bool"}
+    filename = setup_file(
+        {
+            "electronic/LNONCOLLINEAR": (1, bool_attribute),
+            "electronic/LSORBIT": (0, bool_attribute),
+            "write_flags/LFLAGS": (np.array([1, 0, 1]), bool_attribute),
+        }
+    )
+    extension = read.run_info_extension(filename)
+    electronic = extension.sections["electronic"].values
+    assert electronic["LNONCOLLINEAR"] is True
+    assert electronic["LSORBIT"] is False
+    flags = extension.sections["write_flags"].values["LFLAGS"]
+    assert flags.dtype == np.bool_
+    assert flags.tolist() == [True, False, True]
+
+
+def test_run_info_extension_integer_without_attribute_stays_int(setup_file):
+    filename = setup_file(
+        {"electronic/ISPIN": 1, "electronic/NELM": (0, {"dtype": "int"})}
+    )
+    values = read.run_info_extension(filename).sections["electronic"].values
+    assert values == {"ISPIN": 1, "NELM": 0}
+    assert all(type(value) is int for value in values.values())
