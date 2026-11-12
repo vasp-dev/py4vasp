@@ -30,7 +30,7 @@ VoigtMatrix = Tuple[Voigt, Voigt, Voigt, Voigt, Voigt, Voigt]
 # series, e.g. "0.11". Increment it whenever any model below changes between releases
 # (a test enforces this, see tests/raw/test_schema_version.py); the version then reads
 # "0.11+db.1", "0.11+db.2", ... Reset it back to 0 on every new py4vasp minor release.
-__DB_SCHEMA__ = 2
+__DB_SCHEMA__ = 3
 # Fields that changed their meaning, keyed by the first value of the counter above from
 # which the new meaning holds. The fingerprint cannot see a field change its meaning,
 # e.g. its unit, so a bump without a changed field name or type is only accepted with a
@@ -1103,6 +1103,12 @@ class RunInfoModel(_DatabaseModel):
     """The number of images, e.g., of a nudged elastic band calculation."""
     peak_memory: Optional[float] = None
     """The peak memory used by the run, in kB."""
+    ncore: Optional[int] = None
+    """The number of cores working on an individual orbital (NCORE)."""
+    kpar: Optional[int] = None
+    """The number of k-point groups treated in parallel (KPAR)."""
+    mpi_ranks: Optional[int] = None
+    """The number of MPI ranks the run used."""
 
     error_messages: Optional[List[str]] = None
     """The text of every distinct message of severity "error" VASP reported."""

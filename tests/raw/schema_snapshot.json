@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0+db.2",
+  "schema_version": "1.0+db.3",
   "models": {
     "BandModel": [
       [
@@ -1175,6 +1175,10 @@
         "Optional[int]"
       ],
       [
+        "kpar",
+        "Optional[int]"
+      ],
+      [
         "lkpoints_opt",
         "Optional[bool]"
       ],
@@ -1204,6 +1208,14 @@
       ],
       [
         "mdalgo",
+        "Optional[int]"
+      ],
+      [
+        "mpi_ranks",
+        "Optional[int]"
+      ],
+      [
+        "ncore",
         "Optional[int]"
       ],
       [

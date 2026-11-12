@@ -42,8 +42,11 @@ _SETUP = {
         "functional_1/NAME": ("PBE", None, "name of the functional"),
     },
 }
-_IMAGES = 0
-_PEAK_MEMORY = 262144.0  # kB
+# The /metadata group in the same layout; resources exist only for MPI builds.
+_METADATA = {
+    "resources": {"mpi_ranks": 64, "images": 0, "KPAR": 4, "NCORE": 8, "NPAR": 2},
+    "performance": {"peak_memory": 262144.0},  # kB
+}
 _EXIT_STATUS = "success"
 _MESSAGES = {
     "text": ["Use more k points.", "The basis set is incomplete."],
@@ -105,8 +108,11 @@ def run_setup():
     }
     return raw.RunSetup(
         **{field: _value(*location) for field, location in core.items()},
-        images=_IMAGES,
-        peak_memory=_PEAK_MEMORY,
+        images=_METADATA["resources"]["images"],
+        ncore=_METADATA["resources"]["NCORE"],
+        kpar=_METADATA["resources"]["KPAR"],
+        mpi_ranks=_METADATA["resources"]["mpi_ranks"],
+        peak_memory=_METADATA["performance"]["peak_memory"],
         exit_status=_EXIT_STATUS,
         message_text=np.array(_MESSAGES["text"]),
         message_severity=np.array(_MESSAGES["severity"]),
@@ -143,8 +149,9 @@ def write_to_h5(h5f):
                 dataset.attrs["units"] = units
             if description is not None:
                 dataset.attrs["description"] = description
-    h5f["metadata/resources/images"] = _IMAGES
-    h5f["metadata/performance/peak_memory"] = _PEAK_MEMORY
+    for group, entries in _METADATA.items():
+        for key, value in entries.items():
+            h5f[f"metadata/{group}/{key}"] = value
     # VASP declares fixed-length character variables, which Fortran pads with blanks
     h5f["messages/exit_status"] = _EXIT_STATUS.ljust(10)
     h5f["messages/number_messages"] = len(_MESSAGES["text"])

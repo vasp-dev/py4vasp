@@ -128,6 +128,9 @@ CORE_SCALARS = (
     "lorbit",
     "images",
     "peak_memory",
+    "ncore",
+    "kpar",
+    "mpi_ranks",
 )
 
 
@@ -359,6 +362,7 @@ run info for Sr2TiO4:
     SIGMA: 0.05 eV
     NELM: 60
     peak memory: 256.0 MB
+    parallelization: 64 MPI ranks, KPAR=4, NCORE=8
     error messages: 1
     setup sections: dimensions, dos, electronic, exchange_correlation, ionic, kpoints_opt, write_flags"""
     assert actual == {"text/plain": reference}
@@ -370,6 +374,16 @@ def test_print_lists_extension_sections(raw_data):
         sections={"zeta": raw.SetupSection(), "alpha": raw.SetupSection()}
     )
     assert "    setup sections: alpha, zeta" in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_partial_parallelization(raw_data):
+    # serial builds write no MPI resources, so only what VASP wrote is shown
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.mpi_ranks = raw.VaspData(None)
+    raw_run_info.setup.ncore = raw.VaspData(None)
+    assert "    parallelization: KPAR=4\n" in str(RunInfo.from_data(raw_run_info))
+    raw_run_info.setup.kpar = raw.VaspData(None)
+    assert "parallelization" not in str(RunInfo.from_data(raw_run_info))
 
 
 def test_print_omits_unknown_quantities(raw_data, format_):

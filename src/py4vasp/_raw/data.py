@@ -867,6 +867,12 @@ class RunSetup:
     "Number of images, e.g., of a nudged elastic band calculation."
     peak_memory: VaspData = NONE()
     "The peak memory used by the run in kB."
+    ncore: VaspData = NONE()
+    "Number of cores working on an individual orbital."
+    kpar: VaspData = NONE()
+    "Number of k-point groups treated in parallel."
+    mpi_ranks: VaspData = NONE()
+    "Number of MPI ranks the run used."
     exit_status: VaspData = NONE()
     'How VASP finished: "success", "error", "killed", or "dry-run".'
     message_text: VaspData = NONE()

@@ -43,6 +43,9 @@ _CORE_SETTINGS = (
     "lorbit",
     "images",
     "peak_memory",
+    "ncore",
+    "kpar",
+    "mpi_ranks",
 )
 _CORE_LOGICALS = ("lnoncollinear", "lsorbit", "lreal", "lkpoints_opt")
 
@@ -123,10 +126,25 @@ class RunInfoHandler:
                 yield f"    {tag}: {value}" + (f" {unit}" if unit else "")
         if data["peak_memory"] is not None:
             yield f"    peak memory: {data['peak_memory'] / 1024:.1f} MB"
+        parallelization = self._parallelization(data)
+        if parallelization:
+            yield f"    parallelization: {parallelization}"
         if data["error_messages"] is not None:
             yield f"    error messages: {len(data['error_messages'])}"
         if data["extensions"]:
             yield f"    setup sections: {', '.join(sorted(data['extensions']))}"
+
+    @staticmethod
+    def _parallelization(data):
+        parts = []
+        if data["mpi_ranks"] is not None:
+            parts.append(f"{data['mpi_ranks']} MPI ranks")
+        parts += [
+            f"{tag.upper()}={data[tag]}"
+            for tag in ("kpar", "ncore")
+            if data[tag] is not None
+        ]
+        return ", ".join(parts)
 
     def _setup_unit(self, section, tag):
         extension = getattr(self._raw_run_info, "extension", None)
