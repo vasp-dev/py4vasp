@@ -360,7 +360,17 @@ def _unwrap(data):
 
 @quantity("run_info")
 class RunInfo:
-    "Contains information about the VASP run."
+    """Contains information about the VASP run.
+
+    The run info gathers a summary of the calculation in one place: the VASP version
+    and the system, properties of the results such as the Fermi energy, the spin
+    configuration, and whether the system is metallic, the number of ionic steps, and
+    the phonon dispersion. Since VASP 6.7, it adds the core INCAR settings, the FFT
+    grids, the parallelization, the peak memory, whether VASP terminated normally,
+    the error messages, and, as extensions, every setting and metadata entry VASP
+    wrote to the HDF5 file. Use :py:meth:`read` to get all of it as a dictionary and
+    :py:meth:`print` for a short overview.
+    """
 
     def __init__(self, source, quantity_name: str = "run_info"):
         self._source = source
@@ -376,10 +386,24 @@ class RunInfo:
 
         The dictionary summarizes the calculation: the VASP version, the system, and
         properties derived from the results like the Fermi energy. Since VASP 6.7, it
-        also contains the core settings of the run under the name of their INCAR tag
-        in lower case (e.g. ``"sigma"``, ``"ispin"``, ``"nelm"``), the FFT grids, the
-        peak memory in kB, whether the run succeeded, and the error messages VASP
-        reported with how often it reported them. Settings VASP did not write are None.
+        also contains
+
+        - the core settings of the run under the name of their INCAR tag in lower
+          case, e.g. ``"sigma"``, ``"ispin"``, ``"nelm"``, ``"lreal"``; logical tags
+          are Python bools,
+        - the FFT grids ``"grid_coarse_shape"`` and ``"grid_fine_shape"``,
+        - the parallelization ``"mpi_ranks"``, ``"kpar"``, and ``"ncore"`` and the
+          ``"peak_memory"`` in kB,
+        - ``"is_success"``, which is True if VASP terminated normally (exit status
+          "success"); it can be True while error messages exist,
+        - ``"error_messages"`` and ``"error_message_counts"``, the text of every
+          distinct message of severity "error" and how often VASP reported it.
+          Warnings and alerts are not reported here; they remain in the HDF5 file
+          under /messages.
+
+        All top-level keys are lower case. A setting VASP did not write is None; in
+        particular, for VASP older than 6.7 the core settings, ``"is_success"``, the
+        error messages, and the parallelization are None.
 
         Parameters
         ----------
@@ -391,8 +415,14 @@ class RunInfo:
         -------
         -
             A dictionary with the run information. The key ``"extensions"`` contains
-            every setting VASP wrote as ``{section: {TAG: value}}``, including sections
-            py4vasp does not know about; it is empty for files of VASP older than 6.7.
+            every entry VASP wrote as ``{section: {key: value}}``, including sections
+            py4vasp does not know about. The sections of the /setup group keep their
+            name (e.g. ``"dos"``, ``"electronic"``) and their keys keep VASP's
+            spelling, i.e., upper-case INCAR tags. The sections ``"metadata/build"``,
+            ``"metadata/resources"``, and ``"metadata/performance"`` describe the
+            executable, the resources, and the performance of the run with lower-case
+            keys. Nested groups are flattened into keys like ``"functional_1/NAME"``.
+            The extensions are empty for files of VASP older than 6.7.
 
         Examples
         --------
@@ -403,10 +433,16 @@ class RunInfo:
         >>> run_info = calculation.run_info.read()
         >>> run_info["grid_coarse_shape"], run_info["sigma"], run_info["is_success"]
         ([32, 32, 40], 0.05, True)
+        >>> run_info["mpi_ranks"], run_info["kpar"], run_info["ncore"]
+        (64, 4, 8)
+
+        Only messages of severity "error" are reported, so the warning of this run is
+        missing; the run still succeeded
+
         >>> run_info["error_messages"], run_info["error_message_counts"]
         (['The basis set is incomplete.'], [1])
 
-        Every setting VASP wrote is available in the extensions, grouped by section
+        Every entry VASP wrote is available in the extensions, grouped by section
 
         >>> sorted(run_info["extensions"])
         ['dimensions', 'dos', 'electronic', 'exchange_correlation', 'ionic',
@@ -414,6 +450,10 @@ class RunInfo:
          'metadata/resources', 'write_flags']
         >>> run_info["extensions"]["dos"]
         {'ISMEAR': 0, 'SIGMA': 0.05}
+        >>> run_info["extensions"]["exchange_correlation"]
+        {'functional_1/NAME': 'PBE'}
+        >>> run_info["extensions"]["metadata/build"]["variant"]
+        'std'
         """
         return merge_default(
             self._source,
