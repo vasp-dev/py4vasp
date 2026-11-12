@@ -3,6 +3,7 @@
 import h5py
 import numpy as np
 
+from py4vasp import exception
 from py4vasp._raw import data
 from py4vasp._util import convert, parse
 
@@ -17,12 +18,18 @@ def CONTCAR(filename):
         return parse.POSCAR(file.read())
 
 
+_RUN_INFO_EXTENSION_REQUIRED = data.Version(6, 7)
+
+
 def run_info_extension(filename):
     """Read every section of the /setup group VASP wrote into the h5 file.
 
     Subgroups of a section are flattened into keys like "functional_1/NAME". The data
-    is read eagerly so that the file can be closed before returning."""
+    is read eagerly so that the file can be closed before returning. Because access
+    does not check the version of data_factory sources, this function raises an
+    OutdatedVaspVersion error itself for files older than VASP 6.7."""
     with h5py.File(filename, "r") as h5f:
+        _check_version(h5f, _RUN_INFO_EXTENSION_REQUIRED, filename)
         setup = h5f.get("setup", {})
         sections = {
             name: _read_setup_section(group)
@@ -30,6 +37,23 @@ def run_info_extension(filename):
             if isinstance(group, h5py.Group)
         }
     return data.RunInfoExtension(sections=sections)
+
+
+def _check_version(h5f, required, filename):
+    from py4vasp._raw.definition import schema  # definition imports this module
+
+    try:
+        version = data.Version(
+            major=h5f[schema.version.major][()],
+            minor=h5f[schema.version.minor][()],
+            patch=h5f[schema.version.patch][()],
+        )
+    except KeyError:
+        message = f"The settings in /setup are not available because {filename} does not specify a VASP version. They require at least {required}."
+        raise exception.OutdatedVaspVersion(message) from None
+    if version < required:
+        message = f"The settings in /setup are not available in VASP {version}. They require at least {required}."
+        raise exception.OutdatedVaspVersion(message)
 
 
 def _read_setup_section(group):

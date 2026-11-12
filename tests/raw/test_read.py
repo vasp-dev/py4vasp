@@ -1,8 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-import h5py
 import numpy as np
 import pytest
+from util import write_setup_file
 
 from py4vasp import raw
 from py4vasp._calculation._CONTCAR import CONTCAR
@@ -32,21 +32,6 @@ def test_read_contcar(raw_data, tmp_path, Assert):
         file.write(str(CONTCAR.from_data(raw_contcar)))
     contcar = read.CONTCAR(filename)
     Assert.same_raw_contcar(contcar, raw_contcar)
-
-
-def write_setup_file(filename, setup, version=(6, 7, 0)):
-    """Write an h5 file with the given /setup content.
-
-    `setup` maps a path below /setup to a value or to (value, attributes)."""
-    with h5py.File(filename, "w") as h5f:
-        if version is not None:
-            for name, number in zip(("major", "minor", "patch"), version):
-                h5f[f"version/{name}"] = number
-        for key, value in setup.items():
-            value, attributes = value if isinstance(value, tuple) else (value, {})
-            dataset = h5f.create_dataset(f"setup/{key}", data=value)
-            dataset.attrs.update(attributes)
-    return filename
 
 
 @pytest.fixture

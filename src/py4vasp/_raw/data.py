@@ -806,6 +806,9 @@ class RunInfo:
     phonon_dispersion: Optional[Dispersion] = None
     "The phonon dispersion of the system."
 
+    extension: Optional[RunInfoExtension] = None
+    "All settings VASP wrote into the /setup group (VASP 6.7 or newer)."
+
 
 @dataclasses.dataclass
 class SetupSection:

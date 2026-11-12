@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, call, patch
 
 import numpy as np
 import pytest
-from util import VERSION
+from util import VERSION, write_setup_file
 
 import py4vasp.raw as raw
 from py4vasp import exception
@@ -355,3 +355,28 @@ def test_access_without_keyword(mock_access):
     with pytest.raises(exception.IncorrectUsage):
         with raw.access("simple", "further arguments are keyword only"):
             pass
+
+
+def test_access_run_info_extension(tmp_path):
+    write_setup_file(tmp_path / DEFAULT_FILE, {"dos/SIGMA": 0.05, "dos/ISMEAR": 0})
+    with raw.access("run_info_extension", path=tmp_path) as extension:
+        assert extension.sections["dos"].values == {"SIGMA": 0.05, "ISMEAR": 0}
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.extension.sections["dos"].values["SIGMA"] == 0.05
+
+
+@pytest.mark.parametrize("version", [(6, 6, 1), None])
+def test_run_info_extension_outdated_version_is_none(tmp_path, version):
+    write_setup_file(tmp_path / DEFAULT_FILE, {"dos/SIGMA": 0.05}, version=version)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        with raw.access("run_info_extension", path=tmp_path):
+            pass
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert isinstance(run_info.extension, raw.VaspData)
+        assert run_info.extension.is_none()
+
+
+def test_run_info_extension_without_setup_group_is_empty(tmp_path):
+    write_setup_file(tmp_path / DEFAULT_FILE, {})
+    with raw.access("run_info_extension", path=tmp_path) as extension:
+        assert extension.sections == {}

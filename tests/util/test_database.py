@@ -235,3 +235,17 @@ def test_get_all_possible_keys():
         sum([1 for v in all_keys.values() if len(v) > 0 and isinstance(v[0], tuple)])
         > 10
     )
+
+
+def test_should_load_run_info_with_data_factory_link(tmp_path):
+    # run_info links to run_info_extension, whose default source is a data factory
+    h5py = pytest.importorskip("h5py")
+    from py4vasp._raw.definition import schema
+
+    with h5py.File(tmp_path / "vaspout.h5", "w") as h5f:
+        for name, number in zip(("major", "minor", "patch"), (6, 7, 0)):
+            h5f[f"version/{name}"] = number
+        _, _, _, additional_keys = database.should_load(
+            "run_info", DEFAULT_SOURCE, h5f, schema
+        )
+    assert "run_info_extension:default" in additional_keys

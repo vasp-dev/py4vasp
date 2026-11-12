@@ -138,8 +138,10 @@ def should_load(
         else:
             should_load_ = False
             should_attempt_read = True
-            # data_factory might be set
-            if schema.sources[quantity][source].data_factory is not None:
+            # data_factory might be set; a quantity whose default source is itself a
+            # data factory (e.g. run_info_extension) has no h5 default to fall back to
+            is_factory = schema.sources[quantity][source].data_factory is not None
+            if is_factory and source != DEFAULT_SOURCE:
                 _, version, _, additional_keys = should_load(
                     quantity, DEFAULT_SOURCE, h5file, schema, version, print_debug
                 )

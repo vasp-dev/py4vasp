@@ -769,7 +769,11 @@ schema.add(
     structure=Link("structure", DEFAULT_SOURCE),
     contcar=Link("CONTCAR", DEFAULT_SOURCE),
     phonon_dispersion=Link("dispersion", "phonon"),
+    extension=Link("run_info_extension", DEFAULT_SOURCE),
 )
+# The /setup group has no index of its sections, so a data factory walks the whole
+# group. It checks for VASP 6.7 itself, because access skips the version check here.
+schema.add(raw.RunInfoExtension, data_factory=read.run_info_extension)
 #
 schema.add(
     raw.Stoichiometry,
