@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import copy
+import dataclasses
 import pathlib
 from contextlib import suppress
 
@@ -10,10 +12,12 @@ from py4vasp._calculation import projector
 from py4vasp._calculation.dispatch import (
     DataSource,
     _dispatch,
+    check_single_step,
     merge_default,
     merge_strings,
     merge_to_database,
     quantity,
+    slice_steps,
 )
 from py4vasp._calculation.projector import ProjectorHandler
 from py4vasp._raw import data as raw
@@ -219,7 +223,7 @@ class Dos(graph.Mixin):
     :tag:`LORBIT`. You can get a list of the allowed choices with
 
     >>> calculation.dos.selections()
-    {'dos': ['default', 'kpoints_opt'], 'atom': [...], 'orbital': [...], 'spin': [...]}
+    {'dos': ['default', 'kpoints_opt', 'qp', 'qp_linearized', 'qp_zeros'], 'atom': [...], 'orbital': [...], 'spin': [...]}
 
     The example data above describes an insulator, so its DOS vanishes at the Fermi
     energy. Generate a metal instead to see a DOS that does not
@@ -232,13 +236,53 @@ class Dos(graph.Mixin):
     def __init__(self, source, quantity_name="dos"):
         self._source = source
         self._quantity_name = quantity_name
+        self._steps = None
 
     @classmethod
     def from_data(cls, raw_dos):
         return cls(source=DataSource(raw_dos))
 
+    def __getitem__(self, steps) -> "Dos":
+        """Select one step of data written as a history.
+
+        The "qp" sources store the density of states of every GW iteration, so they
+        have the steps as an additional dimension. Sources without a history are not
+        affected. Without a selection, the last step is used.
+
+        Parameters
+        ----------
+        steps : int
+            The GW iteration you want to read, 0 being the one the run started from.
+            Only a single step can be selected, because the density of states of one
+            step is what the methods of this class report.
+
+        Returns
+        -------
+        -
+            A density of states reporting the selected step.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Without a selection you obtain the last iteration, which reports the Fermi
+        energy in the middle of the quasiparticle gap
+
+        >>> round(calculation.dos.read("qp")["fermi_energy"], 1)
+        np.float64(1.7)
+
+        Step 0 holds the data the GW run started from
+
+        >>> round(calculation.dos[0].read("qp")["fermi_energy"], 1)
+        np.float64(1.3)
+        """
+        new = copy.copy(self)
+        new._steps = check_single_step(steps)
+        return new
+
     def _handler_factory(self, raw):
-        return DosHandler.from_data(raw)
+        return DosHandler.from_data(_select_step(raw, self._steps))
 
     def print(self, selection: str | None = None) -> None:
         """Print a string representation of this quantity.
@@ -589,3 +633,19 @@ def _series(energies, data):
 
 def _flip_down_component(name):
     return "down" in name and "up" not in name and "total" not in name
+
+
+def _select_step(raw_dos, step):
+    """The "qp" sources store the DOS of every GW iteration, so their data has the
+    steps as additional first dimension (step, spin, energy); pick one step. Every
+    field decides on its own whether it is written as a history, because VASP writes
+    some of them only once; those are returned unchanged."""
+    take = lambda data, ndim: (
+        data if check.is_none(data) else slice_steps(data, step, ndim)
+    )
+    return dataclasses.replace(
+        raw_dos,
+        fermi_energy=take(raw_dos.fermi_energy, 0),
+        energies=take(raw_dos.energies, 1),
+        dos=take(raw_dos.dos, 2),
+    )

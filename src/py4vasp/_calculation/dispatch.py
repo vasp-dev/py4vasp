@@ -1098,9 +1098,12 @@ def _field_is_optional(field):
 def slice_steps(data, steps, default_ndim):
     """Slice the step dimension from data.
 
+    The data is indexed, never converted as a whole, so that reading one step of a
+    history stored in a file does not read all the other ones.
+
     Parameters
     ----------
-    data : np.ndarray
+    data : array-like
         Array that may have a leading step dimension.
     steps : int | slice | None
         None → last step, int → single step, slice → range.
@@ -1111,20 +1114,48 @@ def slice_steps(data, steps, default_ndim):
 
     Returns
     -------
-    np.ndarray
-        The sliced data.
+    array-like
+        The selected step(s), or the data itself if it has no step dimension.
     """
-    data = np.asarray(data)
-    if data.ndim <= default_ndim:
+    if np.ndim(data) <= default_ndim:
         return data
     if steps is None:
         return data[-1]
     try:
         return data[steps]
     except (IndexError, TypeError) as error:
-        raise exception.IncorrectUsage(
-            f"Error accessing step {steps!r}. Please check that it is a valid integer or slice."
-        ) from error
+        message = (
+            f"Error accessing step {steps!r}, the data contains {len(data)} steps. "
+            "Please check that it is a valid integer or slice."
+        )
+        raise exception.IncorrectUsage(message) from error
+
+
+def check_single_step(steps):
+    """Return the step as int; only a single step can be selected from a history.
+
+    Quantities that present one step of a history at a time use this to reject a
+    slice, because they have no way to show more than one step at once.
+
+    Parameters
+    ----------
+    steps : int
+        The step the user selected with the [] operator.
+
+    Returns
+    -------
+    int
+        The same step, so that it can be passed on to :func:`slice_steps`.
+
+    Raises
+    ------
+    IncorrectUsage
+        If the step is anything but a single integer.
+    """
+    if isinstance(steps, (int, np.integer)) and not isinstance(steps, bool):
+        return int(steps)
+    message = f"Select a single step with an integer, {steps!r} is not supported."
+    raise exception.IncorrectUsage(message)
 
 
 class Group:

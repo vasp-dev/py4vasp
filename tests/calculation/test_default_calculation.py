@@ -40,7 +40,7 @@ def test_selections_on_empty_path(tmp_path):
     full = calc.selections()
     assert "band" in full
     assert "bandgap" in full
-    assert full["band"] == ["default", "kpoints_opt", "kpoints_wan"]
+    assert full["band"] == ["default", "kpoints_opt", "kpoints_wan", "qp", "qp_zeros"]
 
 
 def test_selections_on_demo_calculation(tmp_path):
@@ -141,7 +141,7 @@ def test_selections_on_empty_path_returns_all(tmp_path):
     calc = Calculation.from_path(tmp_path)
     full = calc.selections()
 
-    assert full["band"] == ["default", "kpoints_opt", "kpoints_wan"]
+    assert full["band"] == ["default", "kpoints_opt", "kpoints_wan", "qp", "qp_zeros"]
     assert "default" in full["structure"]
     assert "final" in full["structure"]
     assert "poscar" in full["structure"]

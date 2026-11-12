@@ -204,3 +204,62 @@ def test_every_special_point_can_be_labelled(name):
     # a point defined in the module but missing from the label table used to raise a bare
     # KeyError as soon as it was put on a path
     assert kpoint._label(name)
+
+
+@pytest.fixture
+def raw_quasiparticle_band():
+    return showcase_band.quasiparticle_Sr2TiO4()
+
+
+def test_quasiparticle_band_is_a_history_of_two_iterations(
+    raw_quasiparticle_band, model
+):
+    shape = (2, 1, 4 * showcase.LINE_LENGTH, model.number_bands)
+    assert np.array(raw_quasiparticle_band.dispersion.eigenvalues).shape == shape
+    assert np.array(raw_quasiparticle_band.occupations).shape == shape
+    assert np.array(raw_quasiparticle_band.fermi_energy).shape == (2,)
+
+
+def test_quasiparticle_band_starts_from_the_dft_eigenvalues(raw_quasiparticle_band):
+    # step 0 is the band structure the GW run started from, i.e. the showcase bands
+    start = np.array(raw_quasiparticle_band.dispersion.eigenvalues)[0]
+    reference = np.array(showcase_band.Sr2TiO4("no_projectors").dispersion.eigenvalues)
+    np.testing.assert_allclose(start, reference)
+
+
+def test_quasiparticle_band_shifts_only_the_conduction_states(
+    raw_quasiparticle_band, model
+):
+    eigenvalues = np.array(raw_quasiparticle_band.dispersion.eigenvalues)
+    valence, conduction = np.split(eigenvalues, [model.number_valence_bands], axis=-1)
+    shift = electronic_structure.QUASIPARTICLE_SHIFT
+    np.testing.assert_allclose(valence[-1], valence[0])
+    np.testing.assert_allclose(conduction[-1], conduction[0] + shift)
+    # the gap of the last step is the gap of the model widened by the shift
+    gap = np.min(conduction[-1]) - np.max(valence[-1])
+    assert gap == pytest.approx(electronic_structure.BAND_GAP + shift)
+
+
+def test_quasiparticle_band_keeps_the_occupations_of_the_starting_point(
+    raw_quasiparticle_band, model
+):
+    # the scissor shift moves no state across the Fermi energy, so the occupations of
+    # the two steps agree and still split the valence from the conduction states
+    occupations = np.array(raw_quasiparticle_band.occupations)
+    np.testing.assert_allclose(occupations[-1], occupations[0])
+    valence, conduction = np.split(
+        occupations[0], [model.number_valence_bands], axis=-1
+    )
+    assert np.all(valence == 1)
+    assert np.all(conduction == 0)
+
+
+def test_quasiparticle_band_agrees_with_the_density_of_states_on_the_fermi_energy(
+    raw_quasiparticle_band,
+):
+    # both write the Fermi energy of the "qp" sources to intermediate/quasiparticle/
+    # efermi, so a mismatch here would let whichever is written first decide for both
+    raw_dos = showcase_dos.quasiparticle_Sr2TiO4()
+    np.testing.assert_allclose(
+        np.array(raw_quasiparticle_band.fermi_energy), np.array(raw_dos.fermi_energy)
+    )

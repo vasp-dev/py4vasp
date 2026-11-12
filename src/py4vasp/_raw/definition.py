@@ -54,6 +54,27 @@ schema.add(
     projectors=Link("projector", "kpoints_wan"),
     projections="results/projectors_kpoints_wan/par",
 )
+# The quasiparticle energies of a GW run are a history over the GW iterations (the
+# first dimension counts the steps), step 0 holding the eigenvalues the GW run started
+# from; band and dos select one step with the [] operator, the last one by default.
+# The linearized solution of the QP equation and, for low-scaling GW, its zeros are
+# written to subgroups of one group, which also holds the k points. "qp" is the
+# linearized solution, which can also be selected explicitly as "qp_linearized".
+# They are written by VASP versions newer than 6.6.1.
+QP_GROUP = "intermediate/quasiparticle"
+QP_GROUPS = {"qp": f"{QP_GROUP}/linearized", "qp_zeros": f"{QP_GROUP}/zeros"}
+QP_ALIASES = {"qp": ["qp_linearized"], "qp_zeros": []}
+QP_VERSION = raw.Version(6, 6, 2)
+for name, group in QP_GROUPS.items():
+    schema.add(
+        raw.Band,
+        name=name,
+        alias=QP_ALIASES[name],
+        required=QP_VERSION,
+        dispersion=Link("dispersion", name),
+        fermi_energy=f"{group}/efermi",
+        occupations=f"{group}/fermiweights",
+    )
 #
 schema.add(
     raw.Bandgap,
@@ -68,6 +89,23 @@ schema.add(
     labels="intermediate/electron/band/labels",
     values="intermediate/electron/band/gap_from_kpoint",
 )
+for name, group in QP_GROUPS.items():
+    schema.add(
+        raw.Bandgap,
+        name=name,
+        alias=QP_ALIASES[name],
+        required=QP_VERSION,
+        labels=f"{group}/band/labels",
+        values=f"{group}/band/gap_from_weight",
+    )
+    schema.add(
+        raw.Bandgap,
+        name=f"{name}_kpoint",
+        alias=[f"{alias}_kpoint" for alias in QP_ALIASES[name]],
+        required=QP_VERSION,
+        labels=f"{group}/band/labels",
+        values=f"{group}/band/gap_from_kpoint",
+    )
 #
 schema.add(
     raw.BornEffectiveCharge,
@@ -285,6 +323,14 @@ schema.add(
     kpoints=Link("kpoint", "kpoints_wan"),
     eigenvalues="results/electron_eigenvalues_kpoints_wan/eigenvalues",
 )
+for name, group in QP_GROUPS.items():
+    schema.add(
+        raw.Dispersion,
+        name=name,
+        required=QP_VERSION,
+        kpoints=Link("kpoint", "qp"),
+        eigenvalues=f"{group}/eigenvalues",
+    )
 schema.add(
     raw.Dispersion,
     name="phonon",
@@ -311,6 +357,16 @@ schema.add(
     projectors=Link("projector", "kpoints_opt"),
     projections=f"{group}/dospar",
 )
+for name, group in QP_GROUPS.items():
+    schema.add(
+        raw.Dos,
+        name=name,
+        alias=QP_ALIASES[name],
+        required=QP_VERSION,
+        fermi_energy=f"{group}/efermi",
+        energies=f"{group}/dos_energies",
+        dos=f"{group}/dos",
+    )
 #
 group = "results/crpa"
 schema.add(
@@ -516,6 +572,24 @@ result = "results/electron_eigenvalues_kpoints_wan"
 schema.add(
     raw.Kpoint,
     name="kpoints_wan",
+    mode=f"{input_}/mode",
+    number=f"{input_}/number_kpoints",
+    number_x=f"{input_}/nkpx",
+    number_y=f"{input_}/nkpy",
+    number_z=f"{input_}/nkpz",
+    coordinates=f"{result}/kpoint_coords",
+    weights=f"{result}/kpoints_symmetry_weight",
+    labels=f"{input_}/labels_kpoints",
+    label_indices=f"{input_}/positions_labels_kpoints",
+    cell=Link("cell", DEFAULT_SOURCE),
+)
+input_ = "input/kpoints"
+result = QP_GROUP
+# k points of the quasiparticle energies, shared by the "qp" and "qp_zeros" sources
+schema.add(
+    raw.Kpoint,
+    name="qp",
+    required=QP_VERSION,
     mode=f"{input_}/mode",
     number=f"{input_}/number_kpoints",
     number_x=f"{input_}/nkpx",

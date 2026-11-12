@@ -28,6 +28,7 @@ from py4vasp._calculation.dispatch import (
     _parse_selections,
     _result_has_data,
     _substitute_remaining_selection,
+    check_single_step,
     data_available,
     merge_default,
     merge_graphs,
@@ -821,6 +822,28 @@ class TestMergeStrings:
         assert "second" in result
 
 
+class _SpyData:
+    """Array-like that reports whether all of its data was converted at once."""
+
+    def __init__(self, array):
+        self.array = array
+        self.converted = False
+
+    @property
+    def ndim(self):
+        return self.array.ndim
+
+    def __len__(self):
+        return len(self.array)
+
+    def __getitem__(self, key):
+        return self.array[key]
+
+    def __array__(self, *args, **kwargs):
+        self.converted = True
+        return self.array
+
+
 class TestSliceSteps:
     def test_none_returns_last_step(self):
         # 3 steps, each is a 2x2 matrix → shape (3, 2, 2), default_ndim=2
@@ -864,6 +887,42 @@ class TestSliceSteps:
         data = np.array([10, 20, 30, 40, 50])
         result = slice_steps(data, steps=slice(1, 4), default_ndim=0)
         np.testing.assert_array_equal(result, np.array([20, 30, 40]))
+
+    def test_does_not_read_unselected_steps(self):
+        # VaspData reads from the file when it is converted, so a history must be
+        # indexed instead of converted; otherwise every step is read to return one
+        data = _SpyData(np.arange(12).reshape(3, 2, 2))
+        result = slice_steps(data, steps=1, default_ndim=2)
+        np.testing.assert_array_equal(result, data.array[1])
+        assert not data.converted
+
+    def test_no_step_dimension_returns_data_unchanged(self):
+        data = _SpyData(np.arange(6).reshape(2, 3))
+        assert slice_steps(data, steps=None, default_ndim=2) is data
+        assert not data.converted
+
+    def test_out_of_range_names_number_of_steps(self):
+        # knowing how many steps there are is what tells the user which step to ask for
+        data = np.zeros((3, 2, 2))
+        with pytest.raises(exception.IncorrectUsage) as error:
+            slice_steps(data, steps=7, default_ndim=2)
+        assert "7" in str(error.value)
+        assert "3" in str(error.value)
+
+
+class TestCheckSingleStep:
+    @pytest.mark.parametrize("steps", [0, -1, 3, np.int64(2)])
+    def test_integer_is_accepted(self, steps):
+        result = check_single_step(steps)
+        assert result == steps
+        assert isinstance(result, int)
+
+    @pytest.mark.parametrize("steps", [slice(0, 2), slice(None), True, None, "0", 1.0])
+    def test_everything_else_is_rejected(self, steps):
+        # a quantity reporting a single step cannot show more than one of them, and a
+        # bool is an integer in Python but never a step the user meant
+        with pytest.raises(exception.IncorrectUsage):
+            check_single_step(steps)
 
 
 class TestQuantityDecorator:

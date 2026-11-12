@@ -80,3 +80,59 @@ def test_dos_without_projectors_omits_the_projections():
     raw_dos = showcase_dos.Sr2TiO4("no_projectors")
     assert raw_dos.projections.is_none()
     assert raw_dos.projectors.orbital_types.is_none()
+
+
+@pytest.fixture
+def raw_quasiparticle_dos():
+    return showcase_dos.quasiparticle_Sr2TiO4()
+
+
+def test_quasiparticle_dos_is_a_history_of_two_iterations(raw_quasiparticle_dos):
+    assert np.array(raw_quasiparticle_dos.dos).shape == (2, 1, showcase.NUMBER_POINTS)
+    assert np.array(raw_quasiparticle_dos.energies).shape == (2, showcase.NUMBER_POINTS)
+    assert np.array(raw_quasiparticle_dos.fermi_energy).shape == (2,)
+
+
+def test_quasiparticle_dos_starts_from_the_dft_result(raw_quasiparticle_dos, model):
+    # step 0 is where the GW run started, so it is the density of states of the model
+    start = np.array(raw_quasiparticle_dos.dos)[0, 0]
+    energies = np.array(raw_quasiparticle_dos.energies)[0]
+    assert np.array(raw_quasiparticle_dos.fermi_energy)[0] == pytest.approx(
+        model.fermi_energy
+    )
+    in_gap = np.argmin(np.abs(energies - model.fermi_energy))
+    assert start[in_gap] < 1e-10 * start.max()
+
+
+def _width_of_the_gap(raw_dos, step, fermi_energy):
+    """Width of the region around the Fermi energy where the broadened DOS vanishes."""
+    energies = np.array(raw_dos.energies)[step]
+    dos = np.array(raw_dos.dos)[step, 0]
+    threshold = 1e-10 * dos.max()
+    occupied = energies < fermi_energy
+    valence_edge = energies[occupied][dos[occupied] > threshold].max()
+    empty = energies > fermi_energy
+    conduction_edge = energies[empty][dos[empty] > threshold].min()
+    return conduction_edge - valence_edge
+
+
+def test_quasiparticle_dos_opens_the_gap_by_the_scissor_shift(raw_quasiparticle_dos):
+    # the broadening smears both band edges, so the region where the DOS vanishes is
+    # narrower than the gap itself; measuring both steps the same way cancels that out
+    # and leaves the opening, which is what the GW step does to the density of states
+    fermi_energies = np.array(raw_quasiparticle_dos.fermi_energy)
+    start = _width_of_the_gap(raw_quasiparticle_dos, 0, fermi_energies[0])
+    final = _width_of_the_gap(raw_quasiparticle_dos, -1, fermi_energies[-1])
+    shift = electronic_structure.QUASIPARTICLE_SHIFT
+    assert final - start == pytest.approx(shift, abs=0.02)
+    assert start < electronic_structure.BAND_GAP  # the broadening eats into the gap
+
+
+def test_quasiparticle_dos_conserves_the_electron_count(raw_quasiparticle_dos, model):
+    expected = showcase_dos.SPIN_DEGENERACY * model.number_valence_bands
+    for step, fermi_energy in enumerate(np.array(raw_quasiparticle_dos.fermi_energy)):
+        energies = np.array(raw_quasiparticle_dos.energies)[step]
+        dos = np.array(raw_quasiparticle_dos.dos)[step, 0]
+        occupied = energies < fermi_energy
+        electrons = np.trapezoid(dos[occupied], energies[occupied])
+        assert electrons == pytest.approx(expected, rel=1e-4)

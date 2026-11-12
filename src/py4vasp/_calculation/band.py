@@ -2,6 +2,8 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 from __future__ import annotations
 
+import copy
+import dataclasses
 from typing import Any, Iterable, List
 
 import numpy as np
@@ -12,11 +14,13 @@ from py4vasp._calculation import projector
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.dispatch import (
     DataSource,
+    check_single_step,
     is_available_raw,
     merge_default,
     merge_strings,
     merge_to_database,
     quantity,
+    slice_steps,
 )
 from py4vasp._calculation.kpoint import KpointHandler
 from py4vasp._calculation.projector import ProjectorHandler
@@ -339,20 +343,63 @@ class Band(graph.Mixin):
     You can inspect possible choices with
 
     >>> calculation.band.selections()
-    {'band': ['default', 'kpoints_opt', 'kpoints_wan'],
+    {'band': ['default', 'kpoints_opt', 'kpoints_wan', 'qp', 'qp_linearized', 'qp_zeros'],
         'atom': [...], 'orbital': [...], 'spin': [...]}
     """
 
     def __init__(self, source, quantity_name="band"):
         self._source = source
         self._quantity_name = quantity_name
+        self._steps = None
 
     @classmethod
     def from_data(cls, raw_band):
         return cls(source=DataSource(raw_band))
 
+    def __getitem__(self, steps) -> "Band":
+        """Select one step of data written as a history.
+
+        The "qp" sources store the quasiparticle energies of every GW iteration, so
+        they have the steps as an additional dimension. Sources without a history are
+        not affected. Without a selection, the last step is used.
+
+        Parameters
+        ----------
+        steps : int
+            The GW iteration you want to read, 0 being the energies the run started
+            from. Only a single step can be selected, because the band structure of
+            one step is what the methods of this class report.
+
+        Returns
+        -------
+        -
+            A band structure reporting the selected step.
+
+        Examples
+        --------
+        >>> from py4vasp import demo
+        >>> calculation = demo.calculation()
+
+        Without a selection you obtain the last iteration, where the conduction band
+        minimum sits half the quasiparticle gap above the Fermi energy
+
+        >>> final = calculation.band.read("qp")
+        >>> round(min(final["bands"][final["occupations"] < 0.5]), 1)
+        np.float64(1.7)
+
+        Step 0 holds the eigenvalues the GW run started from, so it still shows the
+        smaller gap of the underlying DFT calculation
+
+        >>> start = calculation.band[0].read("qp")
+        >>> round(min(start["bands"][start["occupations"] < 0.5]), 1)
+        np.float64(1.3)
+        """
+        new = copy.copy(self)
+        new._steps = check_single_step(steps)
+        return new
+
     def _handler_factory(self, raw):
-        return BandHandler.from_data(raw)
+        return BandHandler.from_data(_select_step(raw, self._steps))
 
     def _is_available(self, raw_data, selection=None, method=None) -> bool:
         # to_quiver plots the spin texture, which needs the optional projections and
@@ -758,6 +805,10 @@ class Band(graph.Mixin):
                 or select multiple orbitals by their angular momentum (s, p, d, f).
             -   If you used a different **k**-point mesh choose "kpoints_opt" or "kpoints_wan"
                 to select them instead of the default mesh specified in the KPOINTS file.
+            -   After a GW calculation choose "qp" (or "qp_linearized") for the
+                quasiparticle energies of the linearized QP equation or "qp_zeros" for
+                the zeros of the QP equation, which only the low-scaling GW algorithms
+                provide.
 
             You separate multiple selections by commas or whitespace and can nest them using
             parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
@@ -911,3 +962,22 @@ class _ToQuiverReduction(index.Reduction):
     def __call__(self, array: ArrayLike, axis: Iterable):
         axis = tuple(filter(None, axis))
         return np.sum(array, axis=axis)
+
+
+def _select_step(raw_band, step):
+    """The "qp" sources store the bands of every GW iteration, so their data has the
+    steps as additional first dimension (step, spin, k point, band); pick one step.
+    Every field decides on its own whether it is written as a history, because VASP
+    writes some of them only once; those are returned unchanged."""
+    take = lambda data, ndim: (
+        data if check.is_none(data) else slice_steps(data, step, ndim)
+    )
+    dispersion = dataclasses.replace(
+        raw_band.dispersion, eigenvalues=take(raw_band.dispersion.eigenvalues, 3)
+    )
+    return dataclasses.replace(
+        raw_band,
+        dispersion=dispersion,
+        fermi_energy=take(raw_band.fermi_energy, 0),
+        occupations=take(raw_band.occupations, 3),
+    )

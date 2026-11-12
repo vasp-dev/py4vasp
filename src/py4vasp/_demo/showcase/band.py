@@ -157,3 +157,30 @@ def _Fe3O4_projections(orders, magnetism):
     charge = _project(both_channels, order)
     projected = np.einsum("aokb,kbs->saokb", charge, both_directions[order])
     return np.concatenate(([charge], projected))
+
+
+def quasiparticle_Sr2TiO4():
+    """Band structure of Sr2TiO4 for the two iterations of a GW run.
+
+    VASP writes the quasiparticle energies as a history, so the steps are the first
+    dimension of every field. Step 0 repeats the eigenvalues the run started from and
+    the last step opens the gap by a scissor shift of the conduction bands, so the two
+    steps differ the way a GW result differs from its DFT starting point.
+    """
+    model = electronic_structure.Sr2TiO4()
+    kpoints = kpoint.line_mode()
+    eigenvalues, _ = electronic_structure.sort_bands(
+        model.evaluate(np.array(kpoints.coordinates))
+    )
+    occupied = eigenvalues < model.fermi_energy
+    occupations = np.where(occupied, 1.0, 0.0)
+    shifted = eigenvalues + np.where(
+        occupied, 0.0, electronic_structure.QUASIPARTICLE_SHIFT
+    )
+    return raw.Band(
+        dispersion=raw.Dispersion(kpoints, _demo.wrap_data([[eigenvalues], [shifted]])),
+        fermi_energy=_demo.wrap_data(
+            [model.fermi_energy, electronic_structure.QUASIPARTICLE_FERMI_ENERGY]
+        ),
+        occupations=_demo.wrap_data([[occupations], [occupations]]),
+    )

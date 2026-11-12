@@ -161,6 +161,10 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, showcase.dielectric_function.electron())
     write(h5f, showcase.raman.Sr2TiO4())
     write(h5f, showcase.velocity.Sr2TiO4())
+    # the quasiparticle energies of a GW run: a history over the GW iterations that
+    # band and dos read with the same Fermi energy, so both take it from one model
+    write(h5f, showcase.dos.quasiparticle_Sr2TiO4(), selection="qp")
+    write(h5f, showcase.band.quasiparticle_Sr2TiO4(), selection="qp")
     write(h5f, showcase.dos.Sr2TiO4("no_projectors"), selection="kpoints_opt")
     write(
         h5f,

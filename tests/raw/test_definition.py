@@ -51,6 +51,22 @@ def test_phonon_mode_has_dispersion_source():
     assert source.qpoints == Link("kpoint", "phonon")
 
 
+def test_qp_sources_read_linearized_and_zeros():
+    # GW runs write the linearized solution of the QP equation and, for low-scaling
+    # GW, its zeros to two subgroups that share the k points; "qp" is the linearized one
+    group = "intermediate/quasiparticle"
+    for name, subgroup in (("qp", "linearized"), ("qp_zeros", "zeros")):
+        dispersion = schema.sources["dispersion"][name].data
+        assert dispersion.eigenvalues == f"{group}/{subgroup}/eigenvalues"
+        assert schema.sources["dos"][name].data.dos == f"{group}/{subgroup}/dos"
+        bandgap = schema.sources["bandgap"][name].data
+        assert bandgap.values == f"{group}/{subgroup}/band/gap_from_weight"
+    for quantity in ("band", "dos", "bandgap"):
+        assert schema.sources[quantity]["qp_linearized"].alias_for == "qp"
+    kpoint = schema.sources["kpoint"]["qp"].data
+    assert kpoint.coordinates == f"{group}/kpoint_coords"
+
+
 def test_get_schema(complex_schema):
     mock_schema, _ = complex_schema
     with patch("py4vasp._raw.definition.schema", mock_schema):

@@ -276,7 +276,8 @@ class Kpoint:
         ----------
         selection : str, optional
             You can select "kpoints_opt" or "kpoints_wan" here, to read from those
-            meshes instead of the default one defined by the KPOINTS file.
+            meshes instead of the default one defined by the KPOINTS file. After a GW
+            calculation, "qp" selects the **k** points of the quasiparticle energies.
 
         Returns
         -------

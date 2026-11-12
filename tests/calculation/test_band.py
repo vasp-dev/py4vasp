@@ -7,9 +7,15 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
+from py4vasp import exception, raw
 from py4vasp._calculation._dispersion import DispersionHandler
-from py4vasp._calculation.band import _OCCUPATION_CUTOFF, Band, BandHandler
+from py4vasp._calculation.band import (
+    _OCCUPATION_CUTOFF,
+    Band,
+    BandHandler,
+    _select_step,
+)
+from py4vasp._calculation.dispatch import DictSource
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.projector import Projector
 from py4vasp._raw.models import BandModel
@@ -297,6 +303,69 @@ def expected_lattice(selection):
         return np.array([[1.52216787, 0.0], [0.14521927, 1.51522486]])
     else:
         return np.array([[1.52216787, 0.0], [0.29043854, 0.89433656]])
+
+
+@pytest.fixture
+def quasiparticle(raw_data):
+    "The bands of two GW iterations, i.e. every field has the steps as first dimension."
+    raw_band = raw_data.band("single")
+    eigenvalues = np.asarray(raw_band.dispersion.eigenvalues)
+    occupations = np.asarray(raw_band.occupations)
+    raw_band.dispersion.eigenvalues = np.stack([eigenvalues - 1, eigenvalues])
+    raw_band.occupations = np.stack([occupations, 1 - occupations])
+    raw_band.fermi_energy = np.array([0.5, 1.5])
+    quasiparticle = Band.from_data(raw_band)
+    quasiparticle.ref = types.SimpleNamespace()
+    quasiparticle.ref.raw_band = raw_band
+    quasiparticle.ref.eigenvalues = eigenvalues
+    quasiparticle.ref.occupations = occupations
+    return quasiparticle
+
+
+def test_select_gw_iteration(quasiparticle, Assert):
+    # The "qp" sources store every GW iteration with the steps as first dimension;
+    # [] selects one of them, the last one by default.
+    reference = quasiparticle.ref
+    assert quasiparticle.read()["fermi_energy"] == 1.5
+    last_step = quasiparticle.read(fermi_energy=0)
+    Assert.allclose(last_step["bands"], reference.eigenvalues[0])
+    Assert.allclose(last_step["occupations"], 1 - reference.occupations[0])
+    assert quasiparticle[0].read()["fermi_energy"] == 0.5
+    first_step = quasiparticle[0].read(fermi_energy=0)
+    Assert.allclose(first_step["bands"], reference.eigenvalues[0] - 1)
+    Assert.allclose(first_step["occupations"], reference.occupations[0])
+
+
+@pytest.mark.parametrize("steps", [2, -3, slice(0, 2), True, None, "0"])
+def test_select_invalid_gw_iteration(quasiparticle, steps):
+    with pytest.raises(exception.IncorrectUsage):
+        quasiparticle[steps].read()
+
+
+@pytest.mark.parametrize("fermi_energy", [None, 0.5])
+def test_select_gw_iteration_of_field_without_history(
+    quasiparticle, fermi_energy, Assert
+):
+    # VASP writes some fields only once even when the bands are a history, so every
+    # field decides on its own whether the step applies to it
+    raw_band = quasiparticle.ref.raw_band
+    raw_band.fermi_energy = fermi_energy
+    selected = _select_step(raw_band, 0)
+    assert selected.fermi_energy is fermi_energy
+    Assert.allclose(selected.dispersion.eigenvalues, quasiparticle.ref.eigenvalues - 1)
+    Assert.allclose(selected.occupations, quasiparticle.ref.occupations)
+
+
+def test_select_step_only_affects_source_with_history(quasiparticle, raw_data, Assert):
+    # the step is chosen before the source, so it must not disturb the sources that
+    # are not written as a history
+    default = raw_data.band("single")
+    source = DictSource({"band": default, ("band", "qp"): quasiparticle.ref.raw_band})
+    band = Band(source)
+    from_history = band[0].read("qp", fermi_energy=0)["bands"]
+    Assert.allclose(from_history, quasiparticle.ref.eigenvalues[0] - 1)
+    without_history = band[0].read(fermi_energy=0)["bands"]
+    Assert.allclose(without_history, np.asarray(default.dispersion.eigenvalues)[0])
 
 
 def test_single_band_read(single_band, Assert):
@@ -760,6 +829,14 @@ def test_dispatcher_to_database_default(single_band):
     assert isinstance(result["band"]["default"], BandModel)
 
 
+def test_print_without_projector_data(raw_data):
+    # the "qp" sources reference no projector group at all, so the reader yields no
+    # projector rather than one whose fields are unset
+    raw_band = raw_data.band("single")
+    raw_band.projectors = raw.VaspData(None)
+    assert "no projectors" in str(Band.from_data(raw_band))
+
+
 def test_print_writes_to_stdout(multiple_bands, capsys):
     assert multiple_bands.print() is None
     assert capsys.readouterr().out == str(multiple_bands) + "\n"
@@ -814,7 +891,14 @@ def test_is_available_without_projectors(raw_data):
         without_projectors.read("Sr")
     # the available projections are reported as empty instead of raising
     assert without_projectors.selections() == {
-        "band": ["default", "kpoints_opt", "kpoints_wan"]
+        "band": [
+            "default",
+            "kpoints_opt",
+            "kpoints_wan",
+            "qp",
+            "qp_linearized",
+            "qp_zeros",
+        ]
     }
 
 

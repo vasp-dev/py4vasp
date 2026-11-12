@@ -15,6 +15,10 @@ import numpy as np
 NUMBER_VALENCE_BANDS = 6
 NUMBER_CONDUCTION_BANDS = 2
 BAND_GAP = 2.6  # eV
+QUASIPARTICLE_SHIFT = 0.8  # eV the GW step adds to the gap of the DFT starting point
+# band and dos write the Fermi energy of the "qp" sources to the same field of the
+# file, so both take it from here; a GW run reports it in the middle of the wider gap
+QUASIPARTICLE_FERMI_ENERGY = (BAND_GAP + QUASIPARTICLE_SHIFT) / 2
 
 # Translations by one crystal axis, expressed in the primitive basis of the
 # body-centred tetragonal cell: a2 + a3 is the x axis, a1 + a3 the y axis and a1 + a2

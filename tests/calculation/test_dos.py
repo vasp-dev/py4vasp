@@ -8,8 +8,9 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from py4vasp import exception
-from py4vasp._calculation.dos import Dos, DosHandler
+from py4vasp import exception, raw
+from py4vasp._calculation.dispatch import DictSource
+from py4vasp._calculation.dos import Dos, DosHandler, _select_step
 from py4vasp._calculation.projector import SPIN_PROJECTION, Projector
 from py4vasp._raw.models import DosModel
 
@@ -342,6 +343,14 @@ projectors:
     assert actual == {"text/plain": reference}
 
 
+def test_print_without_projector_data(raw_data):
+    # the "qp" sources reference no projector group at all, so the reader yields no
+    # projector rather than one whose fields are unset
+    raw_dos = raw_data.dos("Sr2TiO4")
+    raw_dos.projectors = raw.VaspData(None)
+    assert "no projectors" in str(Dos.from_data(raw_dos))
+
+
 def test_print_writes_to_stdout(Sr2TiO4, capsys):
     assert Sr2TiO4.print() is None
     assert capsys.readouterr().out == str(Sr2TiO4) + "\n"
@@ -417,6 +426,68 @@ def test_to_database_Ba2PbO4(Ba2PbO4):
     _check_to_database(Ba2PbO4, fermi_energy=Ba2PbO4.ref.fermi_energy + 0.5)
 
 
+@pytest.fixture
+def quasiparticle(raw_data):
+    "The DOS of two GW iterations, i.e. every field has the steps as first dimension."
+    raw_dos = raw_data.dos("Sr2TiO4")
+    raw_dos.projectors = raw_dos.projections = None
+    dos = np.asarray(raw_dos.dos)
+    energies = np.asarray(raw_dos.energies)
+    raw_dos.dos = np.stack([2 * dos, dos])
+    raw_dos.energies = np.stack([energies, energies + 1])
+    raw_dos.fermi_energy = np.array([0.5, 1.5])
+    quasiparticle = Dos.from_data(raw_dos)
+    quasiparticle.ref = types.SimpleNamespace()
+    quasiparticle.ref.raw_dos = raw_dos
+    quasiparticle.ref.dos = dos
+    quasiparticle.ref.energies = energies
+    return quasiparticle
+
+
+def test_select_gw_iteration(quasiparticle, Assert):
+    # The "qp" sources store the DOS of every GW iteration with the steps as first
+    # dimension; [] selects one of them, the last one by default.
+    reference = quasiparticle.ref
+    last_step = quasiparticle.read()
+    assert last_step["fermi_energy"] == 1.5
+    Assert.allclose(last_step["total"], reference.dos[0])
+    Assert.allclose(last_step["energies"], reference.energies + 1 - 1.5)
+    first_step = quasiparticle[0].read()
+    assert first_step["fermi_energy"] == 0.5
+    Assert.allclose(first_step["total"], 2 * reference.dos[0])
+    Assert.allclose(first_step["energies"], reference.energies - 0.5)
+
+
+@pytest.mark.parametrize("steps", [2, -3, slice(0, 2), True, None, "0"])
+def test_select_invalid_gw_iteration(quasiparticle, steps):
+    with pytest.raises(exception.IncorrectUsage):
+        quasiparticle[steps].read()
+
+
+@pytest.mark.parametrize("fermi_energy", [None, 0.5])
+def test_select_gw_iteration_of_field_without_history(
+    quasiparticle, fermi_energy, Assert
+):
+    # VASP writes some fields only once even when the DOS is a history, so every field
+    # decides on its own whether the step applies to it
+    raw_dos = quasiparticle.ref.raw_dos
+    raw_dos.fermi_energy = fermi_energy
+    selected = _select_step(raw_dos, 0)
+    assert selected.fermi_energy is fermi_energy
+    Assert.allclose(selected.dos, 2 * quasiparticle.ref.dos)
+    Assert.allclose(selected.energies, quasiparticle.ref.energies)
+
+
+def test_select_step_only_affects_source_with_history(quasiparticle, raw_data, Assert):
+    # the step is chosen before the source, so it must not disturb the sources that
+    # are not written as a history
+    default = raw_data.dos("Sr2TiO4")
+    source = DictSource({"dos": default, ("dos", "qp"): quasiparticle.ref.raw_dos})
+    dos = Dos(source)
+    Assert.allclose(dos[0].read("qp")["total"], 2 * quasiparticle.ref.dos[0])
+    Assert.allclose(dos[0].read()["total"], np.asarray(default.dos)[0])
+
+
 def test_is_available_without_projectors(raw_data):
     """VASP writes the projectors only when LORBIT is set. The DOS without them is
     still usable by every method that does not project onto atoms or orbitals."""
@@ -431,7 +502,9 @@ def test_is_available_without_projectors(raw_data):
     # projecting is the only thing that does not work, and it says so
     with pytest.raises(exception.IncorrectUsage):
         without_projectors.read("Sr")
-    assert without_projectors.selections() == {"dos": ["default", "kpoints_opt"]}
+    assert without_projectors.selections() == {
+        "dos": ["default", "kpoints_opt", "qp", "qp_linearized", "qp_zeros"]
+    }
 
 
 def test_to_frame_without_projectors(raw_data):
