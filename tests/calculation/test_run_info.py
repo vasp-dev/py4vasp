@@ -180,6 +180,16 @@ def test_error_messages_with_counts(raw_data):
     assert model.error_message_counts == [2, 1]
 
 
+def test_error_messages_with_padded_severity(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.message_text = np.array([b"padded error    ", b"a warning  "])
+    raw_run_info.setup.message_severity = np.array([b"error  ", b"warning"])
+    raw_run_info.setup.message_count = np.array([4, 1])
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["error_messages"] == ["padded error"]
+    assert actual["error_message_counts"] == [4]
+
+
 def test_read_contains_extensions(run_info):
     raw_extension = run_info.ref.extension
     expected = {
@@ -261,6 +271,16 @@ def test_is_success(raw_data, exit_status, expected):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.exit_status = exit_status
     assert RunInfo.from_data(raw_run_info).read()["is_success"] is expected
+
+
+@pytest.mark.parametrize("exit_status", ["success  ", b"success   "])
+def test_is_success_with_padded_status(raw_data, exit_status):
+    # Fortran pads fixed-length character variables with blanks
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.exit_status = exit_status
+    run_info = RunInfo.from_data(raw_run_info)
+    assert run_info.read()["is_success"] is True
+    assert "    exit status: success\n" in str(run_info)
 
 
 @pytest.mark.parametrize(

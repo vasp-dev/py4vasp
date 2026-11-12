@@ -91,7 +91,7 @@ class RunInfoHandler:
             yield f"    VASP version: {convert.text_to_string(version)}"
         exit_status = self._setup_value("exit_status")
         if exit_status is not None:
-            yield f"    exit status: {convert.text_to_string(exit_status)}"
+            yield f"    exit status: {convert.fortran_text_to_string(exit_status)}"
         if data["num_ionic_steps"] is not None:
             yield f"    ionic steps: {data['num_ionic_steps']}"
         if data["fermi_energy"] is not None:
@@ -191,7 +191,7 @@ class RunInfoHandler:
             "is_success": (
                 None
                 if exit_status is None
-                else convert.text_to_string(exit_status) == "success"
+                else convert.fortran_text_to_string(exit_status) == "success"
             ),
             "is_collinear": self._is_collinear() if ispin is None else ispin == 2,
             "is_noncollinear": (
@@ -210,9 +210,9 @@ class RunInfoHandler:
             return {"error_messages": [], "error_message_counts": []}
         messages = zip(setup.message_text, setup.message_severity, setup.message_count)
         errors = [
-            (convert.text_to_string(text), int(count))
+            (convert.fortran_text_to_string(text), int(count))
             for text, severity, count in messages
-            if convert.text_to_string(severity) == "error"
+            if convert.fortran_text_to_string(severity) == "error"
         ]
         return {
             "error_messages": [text for text, _ in errors],

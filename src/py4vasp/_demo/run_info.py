@@ -145,7 +145,9 @@ def write_to_h5(h5f):
                 dataset.attrs["description"] = description
     h5f["metadata/resources/images"] = _IMAGES
     h5f["metadata/performance/peak_memory"] = _PEAK_MEMORY
-    h5f["messages/exit_status"] = _EXIT_STATUS
+    # VASP declares fixed-length character variables, which Fortran pads with blanks
+    h5f["messages/exit_status"] = _EXIT_STATUS.ljust(10)
     h5f["messages/number_messages"] = len(_MESSAGES["text"])
-    for key, values in _MESSAGES.items():
-        h5f[f"messages/{key}"] = values
+    h5f["messages/text"] = [text.ljust(80) for text in _MESSAGES["text"]]
+    h5f["messages/severity"] = [severity.ljust(7) for severity in _MESSAGES["severity"]]
+    h5f["messages/count"] = _MESSAGES["count"]

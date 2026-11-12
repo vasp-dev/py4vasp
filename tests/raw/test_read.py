@@ -105,6 +105,20 @@ def test_run_info_extension_keeps_units_and_description(setup_file):
     }
 
 
+def test_run_info_extension_strips_strings(setup_file):
+    filename = setup_file(
+        {
+            "electronic/GGA": ("PE   ", {"units": "none   ", "description": "xc  "}),
+            "electronic/NAMES": np.array([b"Sr  ", b"Ti  ", b"O   "]),
+        }
+    )
+    section = read.run_info_extension(filename).sections["electronic"]
+    assert section.values["GGA"] == "PE"
+    assert section.values["NAMES"].tolist() == ["Sr", "Ti", "O"]
+    assert section.units == {"GGA": "none"}
+    assert section.descriptions == {"GGA": "xc"}
+
+
 def test_run_info_extension_converts_bool(setup_file):
     bool_attribute = {"dtype": "bool"}
     filename = setup_file(

@@ -67,9 +67,11 @@ def _add_to_section(section, key, item):
         return
     section.values[key] = _read_setup_value(item)
     if "units" in item.attrs:
-        section.units[key] = convert.text_to_string(item.attrs["units"])
+        section.units[key] = convert.fortran_text_to_string(item.attrs["units"])
     if "description" in item.attrs:
-        section.descriptions[key] = convert.text_to_string(item.attrs["description"])
+        section.descriptions[key] = convert.fortran_text_to_string(
+            item.attrs["description"]
+        )
 
 
 def _read_setup_value(dataset):
@@ -79,15 +81,17 @@ def _read_setup_value(dataset):
         return value if value.ndim > 0 else value.item()
     if isinstance(value, np.ndarray):
         if value.dtype.kind in "OS":
-            strings = [convert.text_to_string(element) for element in value.flat]
+            strings = [
+                convert.fortran_text_to_string(element) for element in value.flat
+            ]
             return np.array(strings).reshape(value.shape)
         return value
     if isinstance(value, bytes):
-        return convert.text_to_string(value)
+        return convert.fortran_text_to_string(value)
     return value.item() if isinstance(value, np.generic) else value
 
 
 def _is_logical(dataset):
     "VASP stores logicals as integers 0/1 and marks them with the attribute dtype."
     dtype = dataset.attrs.get("dtype")
-    return dtype is not None and convert.text_to_string(dtype) == "bool"
+    return dtype is not None and convert.fortran_text_to_string(dtype) == "bool"
