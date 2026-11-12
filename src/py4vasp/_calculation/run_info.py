@@ -89,6 +89,9 @@ class RunInfoHandler:
         version = data["vasp_version"]
         if version is not None:
             yield f"    VASP version: {convert.text_to_string(version)}"
+        exit_status = self._setup_value("exit_status")
+        if exit_status is not None:
+            yield f"    exit status: {convert.text_to_string(exit_status)}"
         if data["num_ionic_steps"] is not None:
             yield f"    ionic steps: {data['num_ionic_steps']}"
         if data["fermi_energy"] is not None:
@@ -102,6 +105,32 @@ class RunInfoHandler:
         modes = data["phonon_num_modes"]
         if qpoints is not None and modes is not None:
             yield f"    phonon dispersion: {qpoints} q-points, {modes} modes"
+        yield from self._setup_summary_lines(data)
+
+    def _setup_summary_lines(self, data):
+        coarse, fine = data["grid_coarse_shape"], data["grid_fine_shape"]
+        if coarse is not None:
+            grid = " x ".join(map(str, coarse))
+            if fine is not None:
+                grid += f" (fine {' x '.join(map(str, fine))})"
+            yield f"    FFT grid: {grid}"
+        for section, tag in (("dos", "SIGMA"), ("electronic", "NELM")):
+            value = data[tag.lower()]
+            if value is not None:
+                unit = self._setup_unit(section, tag)
+                yield f"    {tag}: {value}" + (f" {unit}" if unit else "")
+        if data["peak_memory"] is not None:
+            yield f"    peak memory: {data['peak_memory'] / 1024:.1f} MB"
+        if data["error_messages"] is not None:
+            yield f"    error messages: {len(data['error_messages'])}"
+        if data["extensions"]:
+            yield f"    setup sections: {', '.join(sorted(data['extensions']))}"
+
+    def _setup_unit(self, section, tag):
+        extension = getattr(self._raw_run_info, "extension", None)
+        if check.is_none(extension) or section not in extension.sections:
+            return None
+        return extension.sections[section].units.get(tag)
 
     @staticmethod
     def _spin_string(data):
@@ -179,9 +208,7 @@ class RunInfoHandler:
         setup = self._raw_run_info.setup
         if check.is_none(setup.message_text):
             return {"error_messages": [], "error_message_counts": []}
-        messages = zip(
-            setup.message_text, setup.message_severity, setup.message_count
-        )
+        messages = zip(setup.message_text, setup.message_severity, setup.message_count)
         errors = [
             (convert.text_to_string(text), int(count))
             for text, severity, count in messages

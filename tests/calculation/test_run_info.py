@@ -307,18 +307,35 @@ def test_print(run_info, format_):
     reference = """\
 run info for Sr2TiO4:
     VASP version: 99.99.99
+    exit status: success
     ionic steps: 4
     Fermi energy: 0.500
     spin: nonpolarized
     metallic: no
-    phonon dispersion: 20 q-points, 21 modes"""
+    phonon dispersion: 20 q-points, 21 modes
+    FFT grid: 32 x 32 x 40 (fine 64 x 64 x 80)
+    SIGMA: 0.05 eV
+    NELM: 60
+    peak memory: 256.0 MB
+    error messages: 1
+    setup sections: dimensions, dos, electronic, exchange_correlation, ionic, kpoints_opt, write_flags"""
     assert actual == {"text/plain": reference}
+
+
+def test_print_lists_extension_sections(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.extension = raw.RunInfoExtension(
+        sections={"zeta": raw.SetupSection(), "alpha": raw.SetupSection()}
+    )
+    assert "    setup sections: alpha, zeta" in str(RunInfo.from_data(raw_run_info))
 
 
 def test_print_omits_unknown_quantities(raw_data, format_):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.runtime = None
     raw_run_info.phonon_dispersion = None
+    raw_run_info.setup = None
+    raw_run_info.extension = None
     actual, _ = format_(RunInfo.from_data(raw_run_info))
     reference = """\
 run info for Sr2TiO4:
