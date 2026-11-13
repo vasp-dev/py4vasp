@@ -400,7 +400,7 @@ class RunInfo:
 
     The run info gathers a summary of the calculation in one place: the VASP version
     and the system, properties of the results such as the Fermi energy, the number
-    of ionic steps, and the phonon dispersion.
+    of ionic steps, and the phonon calculation.
     If VASP records how the run was set up, it adds the core INCAR settings, e.g.,
     the spin (ISPIN and LNONCOLLINEAR), the FFT grids, the parallelization, the run
     time and peak memory, the build of the executable, whether VASP terminated
@@ -421,10 +421,15 @@ class RunInfo:
     def read(self, selection: str | None = None) -> dict:
         """Convert the run information to a dictionary.
 
-        The dictionary summarizes the calculation: the VASP version, the system, and
-        properties derived from the results like the Fermi energy
-        ``"fermi_energy"`` in eV or the number of ionic steps. If VASP records how
-        the run was set up, it also contains
+        The dictionary summarizes the calculation: the VASP version
+        ``"vasp_version"``, the SYSTEM tag ``"system_tag"``, the Fermi energy
+        ``"fermi_energy"`` in eV VASP computed, the number of ionic steps
+        ``"num_ionic_steps"``, whether the ions move with selective dynamics
+        ``"has_selective_dynamics"``, and the phonon calculation: how the force
+        constants were computed ``"phonon_method"``, the number of modes at the Gamma
+        point of the supercell ``"phonon_num_modes"``, and the number of q points
+        ``"phonon_num_qpoints"`` and frequencies per q point ``"phonon_num_branches"``
+        of the dispersion. If VASP records how the run was set up, it also contains
 
         - the core settings of the run under the name of their INCAR tag: the kind
           of run (``"IBRION"``, ``"ISIF"``, ``"NSW"``, ``"EDIFFG"``), the basis
@@ -441,7 +446,8 @@ class RunInfo:
           name such as "pbe", "hse06", or "mixture". ``"ALGO"`` is the value as
           typed in the INCAR file, e.g. "Fast", "VERYFAST", or "V", so compare it
           ignoring case; in response-function runs it is that algorithm, e.g.
-          "EVGW0", and it is None if the INCAR sets only an ``IALGO`` other than 38.
+          "EVGW0". It is "Normal" if the INCAR sets neither ALGO nor IALGO and None
+          if it sets only IALGO, which ``read()["extensions"]["electronic"]`` holds.
           ``"EFERMI"`` is the value set
           in the INCAR file, not the computed ``"fermi_energy"``: "LEGACY", "MIDGAP", or
           the Fermi energy in eV the user fixed, given as text, e.g. "5.5",
