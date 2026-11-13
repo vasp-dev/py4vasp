@@ -903,6 +903,14 @@ class RunSetup:
     "Number of k-point groups treated in parallel."
     mpi_ranks: VaspData = NONE()
     "Number of MPI ranks the run used."
+    lasph: VaspData = NONE()
+    "Whether VASP includes the nonspherical contributions inside the PAW spheres."
+    lhfcalc: VaspData = NONE()
+    "Whether VASP computes exact exchange, e.g., for hybrid functionals."
+    ldipol: VaspData = NONE()
+    "Whether VASP corrects the potential and forces for the dipole."
+    lepsilon: VaspData = NONE()
+    "Whether VASP computes the dielectric tensor with linear response."
     exit_status: VaspData = NONE()
     'How VASP finished: "success", "error", "killed", or "dry-run".'
     message_text: VaspData = NONE()

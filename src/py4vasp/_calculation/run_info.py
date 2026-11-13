@@ -62,7 +62,15 @@ _CORE_SETTINGS = (
     "idipol",
     "mpi_ranks",
 )
-_CORE_LOGICALS = ("lnoncollinear", "lsorbit", "lkpoints_opt")
+_CORE_LOGICALS = (
+    "lnoncollinear",
+    "lsorbit",
+    "lkpoints_opt",
+    "lasph",
+    "lhfcalc",
+    "ldipol",
+    "lepsilon",
+)
 _CORE_STRINGS = ("lreal",)
 
 
@@ -468,8 +476,8 @@ class RunInfo:
 
         >>> sorted(run_info["extensions"])
         ['dimensions', 'dipole', 'dos', 'electronic', 'exchange_correlation',
-         'ionic', 'kpoints_opt', 'metadata/build', 'metadata/performance',
-         'metadata/resources', 'vdw', 'write_flags']
+         'ionic', 'kpoints_opt', 'linear_response', 'metadata/build',
+         'metadata/performance', 'metadata/resources', 'vdw', 'write_flags']
         >>> run_info["extensions"]["dos"]
         {'ISMEAR': 0, 'SIGMA': 0.05}
         >>> run_info["extensions"]["exchange_correlation"]["functional_1/NAME"]

@@ -1219,6 +1219,22 @@
         "Optional[int]"
       ],
       [
+        "lasph",
+        "Optional[bool]"
+      ],
+      [
+        "ldipol",
+        "Optional[bool]"
+      ],
+      [
+        "lepsilon",
+        "Optional[bool]"
+      ],
+      [
+        "lhfcalc",
+        "Optional[bool]"
+      ],
+      [
         "lkpoints_opt",
         "Optional[bool]"
       ],

@@ -1139,6 +1139,14 @@ class RunInfoModel(_DatabaseModel):
     """The number of k-point groups treated in parallel (KPAR)."""
     mpi_ranks: Optional[int] = None
     """The number of MPI ranks the run used."""
+    lasph: Optional[bool] = None
+    """Whether VASP includes the nonspherical contributions of the gradient corrections inside the PAW spheres (LASPH)."""
+    lhfcalc: Optional[bool] = None
+    """Whether VASP computes exact exchange (LHFCALC), e.g., for hybrid functionals."""
+    ldipol: Optional[bool] = None
+    """Whether VASP corrects the potential and the forces for the dipole of the cell (LDIPOL)."""
+    lepsilon: Optional[bool] = None
+    """Whether VASP computes the static dielectric tensor with density-functional perturbation theory (LEPSILON)."""
 
     error_messages: Optional[List[str]] = None
     """The text of every distinct message of severity "error" VASP reported."""

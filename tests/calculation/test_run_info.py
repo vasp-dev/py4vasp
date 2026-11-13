@@ -112,7 +112,15 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
         assert getattr(models, field) == expected, field
 
 
-CORE_BOOLS = ("lnoncollinear", "lsorbit", "lkpoints_opt")
+CORE_BOOLS = (
+    "lnoncollinear",
+    "lsorbit",
+    "lkpoints_opt",
+    "lasph",
+    "lhfcalc",
+    "ldipol",
+    "lepsilon",
+)
 CORE_STRINGS = ("lreal",)
 CORE_SCALARS = (
     "sigma",
@@ -402,7 +410,7 @@ run info for Sr2TiO4:
     peak memory: 256.0 MB
     parallelization: 64 MPI ranks, KPAR=4, NCORE=8
     error messages: 1
-    extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, metadata/build, metadata/performance, metadata/resources, vdw, write_flags"""
+    extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, linear_response, metadata/build, metadata/performance, metadata/resources, vdw, write_flags"""
     assert actual == {"text/plain": reference}
 
 

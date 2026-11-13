@@ -30,6 +30,7 @@ _SETUP = {
         "EDIFF": (1e-06, "eV", "stopping criterion of the electronic minimization"),
         "NELECT": (40.0, None, "number of electrons"),
         "NUPDOWN": (-1.0, None, "fixed magnetic moment"),
+        "LASPH": (True, None, "nonspherical contributions inside the PAW spheres"),
     },
     "ionic": {
         "POTIM": (0.5, "fs", "time step"),
@@ -51,6 +52,7 @@ _SETUP = {
     },
     "dipole": {
         "IDIPOL": (0, None, "dipole correction"),
+        "LDIPOL": (False, None, "dipole correction of the potential"),
     },
     "kpoints_opt": {"LKPOINTS_OPT": (False, None, "evaluate KPOINTS_OPT")},
     "write_flags": {"LORBIT": (11, None, "projections onto local orbitals")},
@@ -58,6 +60,10 @@ _SETUP = {
         "functional_1/NAME": ("PBE", None, "name of the functional"),
         "AEXX": (0.0, None, "fraction of exact exchange"),
         "HFSCREEN": (0.0, None, "range-separation parameter"),
+        "LHFCALC": (False, None, "exact exchange"),
+    },
+    "linear_response": {
+        "LEPSILON": (False, None, "dielectric tensor from linear response"),
     },
 }
 # The /metadata group in the same layout; resources exist only for MPI builds.
@@ -149,6 +155,10 @@ def run_setup():
         "isym": ("ionic", "ISYM"),
         "lkpoints_opt": ("kpoints_opt", "LKPOINTS_OPT"),
         "lorbit": ("write_flags", "LORBIT"),
+        "lepsilon": ("linear_response", "LEPSILON"),
+        "ldipol": ("dipole", "LDIPOL"),
+        "lhfcalc": ("exchange_correlation", "LHFCALC"),
+        "lasph": ("electronic", "LASPH"),
         "ibrion": ("ionic", "IBRION"),
         "isif": ("ionic", "ISIF"),
         "nsw": ("ionic", "NSW"),
