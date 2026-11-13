@@ -481,9 +481,29 @@ run info for Sr2TiO4:
     wall time: 1834.5 s
     peak memory: 256.0 MiB
     parallelization: 64 MPI ranks, KPAR=4, NCORE=8
-    error messages: 1
+    error messages:
+        - The basis set is incomplete. (1×)
     extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, linear_response, metadata/build, metadata/performance, metadata/resources, vdw, write_flags"""
     assert actual == {"text/plain": reference}
+
+
+def test_print_lists_every_error_message_with_its_count(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.message_text = np.array([b"first error", b"a bug"])
+    raw_run_info.setup.message_severity = np.array([b"error", b"bug"])
+    raw_run_info.setup.message_count = np.array([2, 1])
+    expected = """\
+    error messages:
+        - first error (2×)
+        - a bug (1×)
+"""
+    assert expected in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_without_error_messages(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.number_messages = 0
+    assert "    error messages: none\n" in str(RunInfo.from_data(raw_run_info))
 
 
 def test_print_lists_extension_sections(raw_data):

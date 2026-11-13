@@ -175,10 +175,21 @@ class RunInfoHandler:
         parallelization = self._parallelization(data)
         if parallelization:
             yield f"    parallelization: {parallelization}"
-        if data["error_messages"] is not None:
-            yield f"    error messages: {len(data['error_messages'])}"
+        yield from self._error_message_lines(data)
         if data["extensions"]:
             yield f"    extensions: {', '.join(sorted(data['extensions']))}"
+
+    @staticmethod
+    def _error_message_lines(data):
+        messages, counts = data["error_messages"], data["error_message_counts"]
+        if messages is None:
+            return
+        if not messages:
+            yield "    error messages: none"
+            return
+        yield "    error messages:"
+        for message, count in zip(messages, counts):
+            yield f"        - {message} ({count}×)"
 
     @staticmethod
     def _parallelization(data):
