@@ -459,7 +459,7 @@ run info for Sr2TiO4:
     EFERMI: LEGACY
     NELM: 60
     wall time: 1834.5 s
-    peak memory: 256.0 MB
+    peak memory: 256.0 MiB
     parallelization: 64 MPI ranks, KPAR=4, NCORE=8
     error messages: 1
     extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, linear_response, metadata/build, metadata/performance, metadata/resources, vdw, write_flags"""

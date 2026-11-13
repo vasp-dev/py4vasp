@@ -163,7 +163,7 @@ class RunInfoHandler:
         if data["wall_time"] is not None:
             yield f"    wall time: {data['wall_time']:.1f} s"
         if data["peak_memory"] is not None:
-            yield f"    peak memory: {data['peak_memory'] / 1024:.1f} MB"
+            yield f"    peak memory: {data['peak_memory'] / 1024:.1f} MiB"
         parallelization = self._parallelization(data)
         if parallelization:
             yield f"    parallelization: {parallelization}"
