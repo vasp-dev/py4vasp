@@ -769,9 +769,11 @@ schema.add(
     setup=Link("run_setup", DEFAULT_SOURCE),
     extension=Link("run_info_extension", DEFAULT_SOURCE),
 )
+# The /setup, /metadata, and /messages groups VASP writes for run_info
+_SETUP_VERSION = raw.Version(6, 7)
 schema.add(
     raw.RunSetup,
-    required=raw.Version(6, 7),
+    required=_SETUP_VERSION,
     ngx="setup/dimensions/NGX",
     ngy="setup/dimensions/NGY",
     ngz="setup/dimensions/NGZ",
@@ -836,8 +838,13 @@ schema.add(
     message_count="messages/count",
 )
 # The /setup group has no index of its sections, so a data factory walks the whole
-# group. It checks for VASP 6.7 itself, because access skips the version check here.
-schema.add(raw.RunInfoExtension, data_factory=read.run_info_extension)
+# group. Access skips the version check of a data factory, so the factory checks the
+# required version of this source itself.
+schema.add(
+    raw.RunInfoExtension,
+    required=_SETUP_VERSION,
+    data_factory=read.run_info_extension,
+)
 #
 schema.add(
     raw.Stoichiometry,

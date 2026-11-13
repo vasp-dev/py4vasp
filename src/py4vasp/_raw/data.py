@@ -801,9 +801,9 @@ class RunInfo:
     "The phonon dispersion of the system."
 
     setup: Optional[RunSetup] = None
-    "The core settings and the exit status of the run (VASP 6.7 or newer)."
+    "The core settings and the exit status of the run."
     extension: Optional[RunInfoExtension] = None
-    "All settings VASP wrote into the /setup group (VASP 6.7 or newer)."
+    "All settings VASP wrote into the /setup and /metadata groups."
 
 
 @dataclasses.dataclass

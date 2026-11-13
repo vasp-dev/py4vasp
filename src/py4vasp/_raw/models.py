@@ -1058,7 +1058,7 @@ class RunInfoModel(_DatabaseModel):
     phonon_num_modes: Optional[int] = None
     """The number of phonon modes calculated."""
 
-    # core settings; a field that is exactly an INCAR tag is spelled like it (VASP 6.7 or newer)
+    # core settings; a field that is exactly an INCAR tag is spelled like it
     SIGMA: Optional[float] = None
     """The width of the smearing (SIGMA), in eV."""
     ISPIN: Optional[int] = None

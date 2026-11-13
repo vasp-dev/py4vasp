@@ -4,7 +4,7 @@ import numpy as np
 
 from py4vasp import _demo, raw
 
-# Settings of a nonpolarized run in the layout of the /setup group VASP 6.7 writes.
+# Settings of a nonpolarized run in the layout of the /setup group VASP writes.
 # Every entry is (value, units, description); units and description may be None.
 _SETUP = {
     "dimensions": {
@@ -222,7 +222,7 @@ def extension():
 
 
 def write_to_h5(h5f):
-    """Write the settings, metadata, and messages the way VASP 6.7 does.
+    """Write the settings, metadata, and messages the way VASP does.
 
     raw.write cannot handle the data factory of the extension, so the groups are
     written directly with h5py."""

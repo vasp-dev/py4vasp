@@ -18,9 +18,6 @@ def CONTCAR(filename):
         return parse.POSCAR(file.read())
 
 
-_RUN_INFO_EXTENSION_REQUIRED = data.Version(6, 7)
-
-
 def run_info_extension(filename):
     """Read every section of the /setup and /metadata groups VASP wrote into the file.
 
@@ -29,9 +26,12 @@ def run_info_extension(filename):
     keys like "functional_1/NAME". The data is read eagerly so that the file can be
     closed before returning. Because access does not check the version of
     data_factory sources, this function raises an OutdatedVaspVersion error itself
-    for files older than VASP 6.7."""
+    for files older than the version the schema requires for run_info_extension."""
+    from py4vasp._raw.definition import DEFAULT_SOURCE, schema  # imports this module
+
+    required = schema.sources["run_info_extension"][DEFAULT_SOURCE].required
     with h5py.File(filename, "r") as h5f:
-        _check_version(h5f, _RUN_INFO_EXTENSION_REQUIRED, filename)
+        _check_version(h5f, required, filename)
         sections = {
             **_read_sections(h5f, "setup", prefix=""),
             **_read_sections(h5f, "metadata", prefix="metadata/"),

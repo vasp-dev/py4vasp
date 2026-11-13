@@ -397,12 +397,11 @@ class RunInfo:
     The run info gathers a summary of the calculation in one place: the VASP version
     and the system, properties of the results such as the Fermi energy and whether
     the system is metallic, the number of ionic steps, and the phonon dispersion.
-    Since VASP 6.7, it adds the core INCAR settings, e.g., the spin (ISPIN and
-    LNONCOLLINEAR), the FFT
-    grids, the parallelization, the run time and peak memory, the build of the
-    executable, whether VASP terminated normally, the error messages, and, as
-    extensions, every setting and metadata entry VASP
-    wrote to the HDF5 file. Use :py:meth:`read` to get all of it as a dictionary and
+    If VASP records how the run was set up, it adds the core INCAR settings, e.g.,
+    the spin (ISPIN and LNONCOLLINEAR), the FFT grids, the parallelization, the run
+    time and peak memory, the build of the executable, whether VASP terminated
+    normally, the error messages, and, as extensions, every setting and metadata
+    entry VASP wrote to the HDF5 file. Use :py:meth:`read` to get all of it as a dictionary and
     :py:meth:`print` for a short overview.
     """
 
@@ -419,8 +418,8 @@ class RunInfo:
         """Convert the run information to a dictionary.
 
         The dictionary summarizes the calculation: the VASP version, the system, and
-        properties derived from the results like the Fermi energy. Since VASP 6.7, it
-        also contains
+        properties derived from the results like the Fermi energy. If VASP records
+        how the run was set up, it also contains
 
         - the core settings of the run under the name of their INCAR tag: the kind
           of run (``"IBRION"``, ``"ISIF"``, ``"NSW"``,
@@ -452,9 +451,9 @@ class RunInfo:
         A key that is exactly an INCAR tag is spelled like the tag in upper case,
         e.g. ``"SIGMA"``; every other key is lower case, e.g. ``"nkpts"``, which VASP
         takes from the KPOINTS file. A setting VASP did not write is None; in
-        particular, for VASP older than 6.7 the core settings, ``"is_success"``, the
-        error messages, the resources, and the build are None. VASP 6.7 does not
-        write ``"ALGO"`` yet, and serial builds write no resources.
+        particular, for files of VASP versions that do not record the setup, the core
+        settings, ``"is_success"``, the error messages, the resources, and the build
+        are None. Serial builds write no resources.
 
         Parameters
         ----------
@@ -473,7 +472,8 @@ class RunInfo:
             ``"metadata/resources"``, and ``"metadata/performance"`` describe the
             executable, the resources, and the performance of the run with lower-case
             keys. Nested groups are flattened into keys like ``"functional_1/NAME"``.
-            The extensions are empty for files of VASP older than 6.7.
+            The extensions are empty for files of VASP versions that do not record
+            the setup.
 
         Examples
         --------

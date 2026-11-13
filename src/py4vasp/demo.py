@@ -179,7 +179,7 @@ def _generate_default_data(h5f, waveh5f=None):
     write(h5f, _demo.partial_density.partial_density("Sr2TiO4"))
     write(h5f, _demo.nics.Sr2TiO4())
     write(h5f, _demo.potential.Sr2TiO4("all"))
-    # the settings, metadata, and messages of VASP 6.7 that run_info reports
+    # the settings, metadata, and messages that run_info reports
     _demo.run_info.write_to_h5(h5f)
 
 
