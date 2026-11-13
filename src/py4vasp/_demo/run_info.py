@@ -201,6 +201,7 @@ def run_setup():
         **{field: _value(*location) for field, location in setup.items()},
         **{field: _value(*location, _METADATA) for field, location in metadata.items()},
         exit_status=_EXIT_STATUS,
+        number_messages=len(_MESSAGES["text"]),
         message_text=np.array(_MESSAGES["text"]),
         message_severity=np.array(_MESSAGES["severity"]),
         message_count=np.array(_MESSAGES["count"]),

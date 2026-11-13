@@ -266,24 +266,19 @@ class RunInfoHandler:
         return self._setup_value("ldautype") is not None
 
     def _dict_from_messages(self) -> dict:
-        """Collect the messages of severity error; VASP omits the arrays without messages.
+        """Collect the messages of severity error or bug.
 
-        Incomplete message data yields None rather than an error, so that the rest of
-        the run info can still be stored in the database."""
-        unknown = {"error_messages": None, "error_message_counts": None}
-        # VASP writes the exit status together with the messages
-        if self._setup_value("exit_status") is None:
-            return unknown
-        setup = self._raw_run_info.setup
-        if check.is_none(setup.message_text):
+        VASP writes the messages together with their number when it stops regularly
+        and omits the arrays if there are none. A killed run wrote only the exit
+        status, so its messages are unknown."""
+        number_messages = self._setup_value("number_messages")
+        if number_messages is None:
+            return {"error_messages": None, "error_message_counts": None}
+        if number_messages == 0:
             return {"error_messages": [], "error_message_counts": []}
+        setup = self._raw_run_info.setup
         arrays = (setup.message_text, setup.message_severity, setup.message_count)
-        if any(check.is_none(array) for array in arrays):
-            return unknown
-        arrays = [np.atleast_1d(_unwrap(array)) for array in arrays]
-        if len({len(array) for array in arrays}) > 1:
-            return unknown
-        messages = zip(*arrays)
+        messages = zip(*(np.atleast_1d(_unwrap(array)) for array in arrays))
         errors = [
             (convert.fortran_text_to_string(text), int(count))
             for text, severity, count in messages

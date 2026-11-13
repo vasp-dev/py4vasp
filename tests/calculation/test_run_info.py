@@ -284,27 +284,6 @@ def test_single_message_as_scalars(raw_data, wrap):
     assert actual["error_message_counts"] == [3]
 
 
-@pytest.mark.parametrize("missing", ["message_severity", "message_count"])
-def test_partial_message_arrays_are_none(raw_data, missing):
-    raw_run_info = raw_data.run_info("Sr2TiO4")
-    setattr(raw_run_info.setup, missing, raw.VaspData(None))
-    handler = RunInfoHandler.from_data(raw_run_info)
-    actual = handler.to_dict()
-    assert actual["error_messages"] is None
-    assert actual["error_message_counts"] is None
-    handler.to_database()  # the rest of the record is still stored
-
-
-@pytest.mark.parametrize("shorter", ["message_severity", "message_count"])
-def test_message_arrays_of_different_length_are_none(raw_data, shorter):
-    # a message without severity or count must not vanish silently
-    raw_run_info = raw_data.run_info("Sr2TiO4")
-    setattr(raw_run_info.setup, shorter, getattr(raw_run_info.setup, shorter)[:1])
-    actual = RunInfo.from_data(raw_run_info).read()
-    assert actual["error_messages"] is None
-    assert actual["error_message_counts"] is None
-
-
 def test_error_messages_with_padded_severity(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.message_text = np.array([b"padded error    ", b"a warning  "])
@@ -347,13 +326,31 @@ def test_to_database_excludes_extensions(run_info_handler):
 
 
 def test_no_messages_is_empty_list(raw_data):
+    # VASP writes no message arrays if it issued no message
     raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.number_messages = 0
     raw_run_info.setup.message_text = raw.VaspData(None)
     raw_run_info.setup.message_severity = raw.VaspData(None)
     raw_run_info.setup.message_count = raw.VaspData(None)
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["error_messages"] == []
     assert actual["error_message_counts"] == []
+
+
+def test_messages_of_killed_run_are_unknown(raw_data):
+    # a killed run only wrote the exit status at startup, not the messages
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.exit_status = b"killed "
+    raw_run_info.setup.number_messages = raw.VaspData(None)
+    raw_run_info.setup.message_text = raw.VaspData(None)
+    raw_run_info.setup.message_severity = raw.VaspData(None)
+    raw_run_info.setup.message_count = raw.VaspData(None)
+    handler = RunInfoHandler.from_data(raw_run_info)
+    actual = handler.to_dict()
+    assert actual["exit_status"] == "killed"
+    assert actual["error_messages"] is None
+    assert actual["error_message_counts"] is None
+    handler.to_database()  # the rest of the record is still stored
 
 
 def test_to_dict_matches_read(run_info_handler):

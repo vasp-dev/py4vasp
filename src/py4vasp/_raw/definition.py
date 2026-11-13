@@ -834,6 +834,7 @@ schema.add(
     build_gpu="metadata/build/gpu",
     build_openmp="metadata/build/openmp",
     exit_status="messages/exit_status",
+    number_messages="messages/number_messages",
     message_text="messages/text",
     message_severity="messages/severity",
     message_count="messages/count",

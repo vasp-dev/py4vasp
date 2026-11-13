@@ -933,6 +933,8 @@ class RunSetup:
     "Whether VASP was built with OpenMP."
     exit_status: VaspData = NONE()
     'How VASP finished: "success", "error", "killed", or "dry-run".'
+    number_messages: VaspData = NONE()
+    """How many distinct messages VASP reported; not written if the run was killed."""
     message_text: VaspData = NONE()
     "The text of every distinct message VASP reported."
     message_severity: VaspData = NONE()
