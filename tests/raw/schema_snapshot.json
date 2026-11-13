@@ -1299,6 +1299,10 @@
         "Optional[str]"
       ],
       [
+        "fermi_energy",
+        "Optional[float]"
+      ],
+      [
         "gpus",
         "Optional[int]"
       ],

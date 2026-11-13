@@ -787,6 +787,9 @@ class RunInfo:
     runtime: Optional[RuntimeData] = None
     "Data about the runtime environment of the VASP calculation."
 
+    fermi_energy: Optional[float] = None
+    "Fermi energy obtained by VASP."
+
     structure: Optional[Structure] = None
     "Structural information about the system."
     contcar: Optional[CONTCAR] = None

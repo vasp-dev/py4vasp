@@ -21,6 +21,7 @@ def run_info(request, raw_data):
     run_info.ref = types.SimpleNamespace()
     run_info.ref.system_name = raw_run_info.system.system
     run_info.ref.runtime = raw_run_info.runtime
+    run_info.ref.fermi_energy = raw_run_info.fermi_energy
     run_info.ref.setup = raw_run_info.setup
     run_info.ref.extension = raw_run_info.extension
     run_info.ref.structure = StructureHandler.from_data(raw_run_info.structure)
@@ -38,6 +39,7 @@ def run_info_handler(request, raw_data):
     handler.ref = types.SimpleNamespace()
     handler.ref.system_name = raw_run_info.system.system
     handler.ref.runtime = raw_run_info.runtime
+    handler.ref.fermi_energy = raw_run_info.fermi_energy
     handler.ref.setup = raw_run_info.setup
     handler.ref.extension = raw_run_info.extension
     handler.ref.structure = StructureHandler.from_data(raw_run_info.structure)
@@ -88,6 +90,7 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
     assert list(models.grid_fine_shape) == [setup.ngxf, setup.ngyf, setup.ngzf]
     assert models.exit_status == setup.exit_status
     assert models.EFERMI == _decode(setup.efermi_method)
+    assert models.fermi_energy == runinfo_ref.fermi_energy
 
     # core settings
     for field, expected in _expected_core_settings(setup).items():
@@ -181,7 +184,6 @@ DROPPED_KEYS = (
     "is_noncollinear",
     "is_success",
     "is_metallic",
-    "fermi_energy",
 )
 
 

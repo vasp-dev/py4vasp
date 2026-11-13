@@ -1035,6 +1035,8 @@ class RunInfoModel(_DatabaseModel):
     """The shape of the fine grid used for the calculation, in the order (nx, ny, nz)."""
     exit_status: Optional[str] = None
     """How VASP finished: "success", "error", "killed", or "dry-run"."""
+    fermi_energy: Optional[float] = None
+    """The Fermi energy for the calculation according to the OUTCAR, in eV."""
 
     system_tag: Optional[str] = None
     """The system tag from the INCAR file, if set, which may provide additional information about the system or calculation."""
