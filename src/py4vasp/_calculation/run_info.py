@@ -18,8 +18,8 @@ from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.models import RunInfoModel
 from py4vasp._util import check, convert
 
-# core settings of raw.RunSetup; a key that is exactly an INCAR tag is reported in
-# upper case, every other one in lower case, and the raw field is the lower-case key
+# core settings of raw.RunSetup; a key that is exactly an INCAR tag is spelled in upper
+# case, every other one in lower case, both here and as field of raw.RunSetup
 _CORE_SETTINGS = (
     "SIGMA",
     "ISPIN",
@@ -278,20 +278,20 @@ class RunInfoHandler:
         VASP always writes the method, which is FORCE if the user set a number. Only
         then it writes the number, in eV, as well. A database column holds a single
         type, so the number is reported as text, too."""
-        value = self._setup_value("efermi")
+        value = self._setup_value("EFERMI")
         if value is not None:
             return str(value)
         return self._setup_string("efermi_method")
 
     def _dict_from_setup(self) -> dict:
         settings = {
-            **{key: self._setup_value(key.lower()) for key in _CORE_SETTINGS},
-            **{key: self._setup_bool(key.lower()) for key in _CORE_LOGICALS},
-            **{key: self._setup_string(key.lower()) for key in _CORE_STRINGS},
+            **{key: self._setup_value(key) for key in _CORE_SETTINGS},
+            **{key: self._setup_bool(key) for key in _CORE_LOGICALS},
+            **{key: self._setup_string(key) for key in _CORE_STRINGS},
         }
         return {
-            "grid_coarse_shape": self._setup_grid("ngx", "ngy", "ngz"),
-            "grid_fine_shape": self._setup_grid("ngxf", "ngyf", "ngzf"),
+            "grid_coarse_shape": self._setup_grid("NGX", "NGY", "NGZ"),
+            "grid_fine_shape": self._setup_grid("NGXF", "NGYF", "NGZF"),
             "exit_status": self._setup_string("exit_status"),
             **settings,
             "LDAU": self._is_ldau(settings),
@@ -303,7 +303,7 @@ class RunInfoHandler:
         Without any recorded INCAR setting, the absence of the group says nothing."""
         if all(value is None for key, value in settings.items() if key.isupper()):
             return None
-        return self._setup_value("ldautype") is not None
+        return self._setup_value("LDAUTYPE") is not None
 
     def _dict_from_messages(self) -> dict:
         """Collect the messages of severity error or bug.

@@ -87,8 +87,8 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
 
     # extra collection
     setup = runinfo_ref.setup
-    assert list(models.grid_coarse_shape) == [setup.ngx, setup.ngy, setup.ngz]
-    assert list(models.grid_fine_shape) == [setup.ngxf, setup.ngyf, setup.ngzf]
+    assert list(models.grid_coarse_shape) == [setup.NGX, setup.NGY, setup.NGZ]
+    assert list(models.grid_fine_shape) == [setup.NGXF, setup.NGYF, setup.NGZF]
     assert models.exit_status == setup.exit_status
     assert models.EFERMI == _decode(setup.efermi_method)
     assert models.fermi_energy == runinfo_ref.fermi_energy
@@ -159,9 +159,9 @@ CORE_SCALARS = (
 
 def _expected_core_settings(setup):
     return {
-        **{field: getattr(setup, field.lower()) for field in CORE_SCALARS},
-        **{field: bool(getattr(setup, field.lower())) for field in CORE_BOOLS},
-        **{field: _decode(getattr(setup, field.lower())) for field in CORE_STRINGS},
+        **{field: getattr(setup, field) for field in CORE_SCALARS},
+        **{field: bool(getattr(setup, field)) for field in CORE_BOOLS},
+        **{field: _decode(getattr(setup, field)) for field in CORE_STRINGS},
     }
 
 
@@ -208,7 +208,7 @@ def test_lreal_of_demo_is_vasp_string(run_info):
 @pytest.mark.parametrize("lreal", [b"Auto", b"On", b"F", b"T", b"Auto  ", "On"])
 def test_lreal_keeps_vasp_spelling(raw_data, lreal):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.lreal = lreal
+    raw_run_info.setup.LREAL = lreal
     actual = RunInfo.from_data(raw_run_info).read()["LREAL"]
     assert actual == _decode(lreal)
     assert (
@@ -229,7 +229,7 @@ def test_core_settings_without_setup_are_none(raw_data):
 
 def test_algo_missing_in_file_is_none(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.algo = raw.VaspData(None)
+    raw_run_info.setup.ALGO = raw.VaspData(None)
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["ALGO"] is None
     assert actual["PREC"] == "accurate"
@@ -244,7 +244,7 @@ def test_ldau_is_false_without_ldau_group(run_info):
 @pytest.mark.parametrize("ldautype", [1, 2, 4])
 def test_ldau_is_true_if_vasp_wrote_ldautype(raw_data, ldautype):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.ldautype = ldautype
+    raw_run_info.setup.LDAUTYPE = ldautype
     assert RunInfo.from_data(raw_run_info).read()["LDAU"] is True
 
 
@@ -394,9 +394,9 @@ def test_dispatcher_to_database(run_info):
 
 def test_read_grid_shapes(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.ngx, raw_run_info.setup.ngy, raw_run_info.setup.ngz = 12, 15, 18
-    raw_run_info.setup.ngxf = np.int64(24)
-    raw_run_info.setup.ngyf, raw_run_info.setup.ngzf = 30, 36
+    raw_run_info.setup.NGX, raw_run_info.setup.NGY, raw_run_info.setup.NGZ = 12, 15, 18
+    raw_run_info.setup.NGXF = np.int64(24)
+    raw_run_info.setup.NGYF, raw_run_info.setup.NGZF = 30, 36
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["grid_coarse_shape"] == [12, 15, 18]
     assert actual["grid_fine_shape"] == [24, 30, 36]
@@ -455,7 +455,7 @@ def test_efermi_set_to_a_number_is_reported_as_text(raw_data):
     # a single type, so the number is stored as the text of the value.
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.efermi_method = b"FORCE  "
-    raw_run_info.setup.efermi = np.float64(5.5)
+    raw_run_info.setup.EFERMI = np.float64(5.5)
     run_info = RunInfo.from_data(raw_run_info)
     assert run_info.read()["EFERMI"] == "5.5"
     assert run_info._to_database()["run_info"]["default"].EFERMI == "5.5"
@@ -580,8 +580,8 @@ def test_print_shows_every_core_setting(run_info):
 def test_print_omits_missing_tags_and_empty_groups(raw_data):
     # e.g. serial builds write no resources, so only what VASP wrote is shown
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.isif = raw.VaspData(None)
-    raw_run_info.setup.ivdw = raw.VaspData(None)
+    raw_run_info.setup.ISIF = raw.VaspData(None)
+    raw_run_info.setup.IVDW = raw.VaspData(None)
     actual = str(RunInfo.from_data(raw_run_info))
     assert "        IBRION: 2\n        NSW: 40\n" in actual
     assert "ISIF" not in actual
@@ -590,7 +590,7 @@ def test_print_omits_missing_tags_and_empty_groups(raw_data):
 
 def test_print_functional_with_lda_plus_u(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.ldautype = 2
+    raw_run_info.setup.LDAUTYPE = 2
     assert "    functional: pbe+U\n" in str(RunInfo.from_data(raw_run_info))
 
 
@@ -622,16 +622,16 @@ run info for Sr2TiO4:
 )
 def test_print_reports_the_spin_configuration(raw_data, ispin, lnoncollinear, expected):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.ispin = raw.VaspData(ispin)
-    raw_run_info.setup.lnoncollinear = lnoncollinear
+    raw_run_info.setup.ISPIN = raw.VaspData(ispin)
+    raw_run_info.setup.LNONCOLLINEAR = lnoncollinear
     assert f"    spin: {expected}\n" in str(RunInfo.from_data(raw_run_info))
 
 
 @pytest.mark.parametrize("ispin, lnoncollinear", [(None, 0), (2, None), (None, None)])
 def test_print_omits_unknown_spin_configuration(raw_data, ispin, lnoncollinear):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.ispin = raw.VaspData(ispin)
-    raw_run_info.setup.lnoncollinear = raw.VaspData(lnoncollinear)
+    raw_run_info.setup.ISPIN = raw.VaspData(ispin)
+    raw_run_info.setup.LNONCOLLINEAR = raw.VaspData(lnoncollinear)
     assert "spin:" not in str(RunInfo.from_data(raw_run_info))
 
 

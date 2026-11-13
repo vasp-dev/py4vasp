@@ -808,112 +808,112 @@ class RunInfo:
 class RunSetup:
     """The core settings of the VASP run and how it ended.
 
-    The field names are the INCAR tags in lower case. Logicals are stored as the
-    integers 0 and 1."""
+    A field that is exactly an INCAR tag is named like the tag in upper case, every
+    other field in lower case. Logicals are stored as the integers 0 and 1."""
 
-    ngx: VaspData = NONE()
+    NGX: VaspData = NONE()
     "Number of grid points of the coarse FFT grid along the first lattice vector."
-    ngy: VaspData = NONE()
+    NGY: VaspData = NONE()
     "Number of grid points of the coarse FFT grid along the second lattice vector."
-    ngz: VaspData = NONE()
+    NGZ: VaspData = NONE()
     "Number of grid points of the coarse FFT grid along the third lattice vector."
-    ngxf: VaspData = NONE()
+    NGXF: VaspData = NONE()
     "Number of grid points of the fine FFT grid along the first lattice vector."
-    ngyf: VaspData = NONE()
+    NGYF: VaspData = NONE()
     "Number of grid points of the fine FFT grid along the second lattice vector."
-    ngzf: VaspData = NONE()
+    NGZF: VaspData = NONE()
     "Number of grid points of the fine FFT grid along the third lattice vector."
-    ispin: VaspData = NONE()
+    ISPIN: VaspData = NONE()
     "1 for a nonpolarized and 2 for a spin-polarized calculation."
-    lnoncollinear: VaspData = NONE()
+    LNONCOLLINEAR: VaspData = NONE()
     "Whether the calculation is noncollinear."
-    lsorbit: VaspData = NONE()
+    LSORBIT: VaspData = NONE()
     "Whether spin-orbit coupling is included."
-    istart: VaspData = NONE()
+    ISTART: VaspData = NONE()
     "Whether VASP started from the WAVECAR file."
-    icharg: VaspData = NONE()
+    ICHARG: VaspData = NONE()
     "How VASP constructed the initial charge density."
-    nelm: VaspData = NONE()
+    NELM: VaspData = NONE()
     "Maximum number of electronic steps per ionic step."
-    lreal: VaspData = NONE()
+    LREAL: VaspData = NONE()
     "How the projection operators are evaluated: Auto, On, T (real space) or F."
-    lmaxmix: VaspData = NONE()
+    LMAXMIX: VaspData = NONE()
     "Maximum angular momentum of the one-center densities passed to the mixer."
-    sigma: VaspData = NONE()
+    SIGMA: VaspData = NONE()
     "Width of the smearing in eV."
-    potim: VaspData = NONE()
+    POTIM: VaspData = NONE()
     "Time step of molecular dynamics in fs or scaling of the ionic step."
-    tebeg: VaspData = NONE()
+    TEBEG: VaspData = NONE()
     "Temperature at the start of molecular dynamics in K."
-    teend: VaspData = NONE()
+    TEEND: VaspData = NONE()
     "Temperature at the end of molecular dynamics in K."
-    mdalgo: VaspData = NONE()
+    MDALGO: VaspData = NONE()
     "Algorithm (thermostat) used for molecular dynamics."
-    isym: VaspData = NONE()
+    ISYM: VaspData = NONE()
     "How VASP uses the symmetry of the system."
-    lkpoints_opt: VaspData = NONE()
+    LKPOINTS_OPT: VaspData = NONE()
     "Whether VASP evaluated the KPOINTS_OPT k-point set."
-    lorbit: VaspData = NONE()
+    LORBIT: VaspData = NONE()
     "Which projections onto local orbitals VASP computed."
-    ibrion: VaspData = NONE()
+    IBRION: VaspData = NONE()
     "How VASP updates the ions, e.g., relaxation or molecular dynamics."
-    isif: VaspData = NONE()
+    ISIF: VaspData = NONE()
     "Which degrees of freedom VASP relaxes and whether it computes the stress."
-    nsw: VaspData = NONE()
+    NSW: VaspData = NONE()
     "Maximum number of ionic steps."
-    ediffg: VaspData = NONE()
+    EDIFFG: VaspData = NONE()
     "Stopping criterion of the ionic relaxation."
-    encut: VaspData = NONE()
+    ENCUT: VaspData = NONE()
     "Cutoff energy of the plane-wave basis in eV."
-    ediff: VaspData = NONE()
+    EDIFF: VaspData = NONE()
     "Stopping criterion of the electronic self-consistency in eV."
-    nbands: VaspData = NONE()
+    NBANDS: VaspData = NONE()
     "Number of bands."
     nkpts: VaspData = NONE()
     "Number of k points."
-    nelect: VaspData = NONE()
+    NELECT: VaspData = NONE()
     "Number of electrons."
-    ismear: VaspData = NONE()
+    ISMEAR: VaspData = NONE()
     "Method used to smear the occupations."
-    aexx: VaspData = NONE()
+    AEXX: VaspData = NONE()
     "Fraction of exact exchange."
-    hfscreen: VaspData = NONE()
+    HFSCREEN: VaspData = NONE()
     "Range-separation parameter of screened hybrid functionals in 1/Å."
-    ivdw: VaspData = NONE()
+    IVDW: VaspData = NONE()
     "Which van der Waals correction VASP applies."
-    nupdown: VaspData = NONE()
+    NUPDOWN: VaspData = NONE()
     "Difference between the number of up and down electrons; -1 if not fixed."
-    idipol: VaspData = NONE()
+    IDIPOL: VaspData = NONE()
     "Direction of the dipole correction; 0 if VASP does not apply one."
-    images: VaspData = NONE()
+    IMAGES: VaspData = NONE()
     "Number of images, e.g., of a nudged elastic band calculation."
     peak_memory: VaspData = NONE()
     "The peak memory used by the run in kB."
-    ncore: VaspData = NONE()
+    NCORE: VaspData = NONE()
     "Number of cores working on an individual orbital."
-    kpar: VaspData = NONE()
+    KPAR: VaspData = NONE()
     "Number of k-point groups treated in parallel."
     mpi_ranks: VaspData = NONE()
     "Number of MPI ranks the run used."
-    lasph: VaspData = NONE()
+    LASPH: VaspData = NONE()
     "Whether VASP includes the nonspherical contributions inside the PAW spheres."
-    lhfcalc: VaspData = NONE()
+    LHFCALC: VaspData = NONE()
     "Whether VASP computes exact exchange, e.g., for hybrid functionals."
-    ldipol: VaspData = NONE()
+    LDIPOL: VaspData = NONE()
     "Whether VASP corrects the potential and forces for the dipole."
-    lepsilon: VaspData = NONE()
+    LEPSILON: VaspData = NONE()
     "Whether VASP computes the dielectric tensor with linear response."
-    prec: VaspData = NONE()
+    PREC: VaspData = NONE()
     "Precision of the calculation, e.g., normal or accurate."
-    algo: VaspData = NONE()
+    ALGO: VaspData = NONE()
     "Algorithm of the electronic minimization."
-    xc: VaspData = NONE()
+    XC: VaspData = NONE()
     "Name of the exchange-correlation functional, or mixture."
-    efermi: VaspData = NONE()
+    EFERMI: VaspData = NONE()
     "Fermi energy in eV if the user fixed it with EFERMI; VASP writes it only then."
     efermi_method: VaspData = NONE()
     "How VASP places the Fermi energy, e.g., LEGACY or MIDGAP."
-    ldautype: VaspData = NONE()
+    LDAUTYPE: VaspData = NONE()
     "Type of LDA+U; VASP writes it only if LDA+U is active."
     wall_time: VaspData = NONE()
     "Elapsed time of the run in s."

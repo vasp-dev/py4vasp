@@ -413,11 +413,11 @@ def test_run_setup_without_algo_reports_it_as_missing(tmp_path):
     # VASP writes no ALGO if the INCAR sets only an IALGO other than 38
     write_setup_file(tmp_path / DEFAULT_FILE, {"electronic/PREC": "accurate"})
     with raw.access("run_setup", path=tmp_path) as setup:
-        assert check.is_none(setup.algo)
-        assert setup.prec == b"accurate"
+        assert check.is_none(setup.ALGO)
+        assert setup.PREC == b"accurate"
 
 
 def test_run_setup_reads_ldautype_of_a_run_with_lda_plus_u(tmp_path):
     write_setup_file(tmp_path / DEFAULT_FILE, {"ldau/LDAUTYPE": 2})
     with raw.access("run_setup", path=tmp_path) as setup:
-        assert setup.ldautype == 2
+        assert setup.LDAUTYPE == 2
