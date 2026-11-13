@@ -72,6 +72,7 @@ _CORE_LOGICALS = (
 )
 # a bug in VASP is the most severe message, so it counts as an error as well
 _ERROR_SEVERITIES = ("error", "bug")
+_REQUIRES_NEWER_VASP = "unknown (requires a newer VASP)"
 _CORE_STRINGS = (
     "LREAL",
     "PREC",
@@ -125,8 +126,10 @@ class RunInfoHandler:
         version = data["vasp_version"]
         if version is not None:
             yield f"    VASP version: {convert.text_to_string(version)}"
-        if data["exit_status"] is not None:
-            yield f"    exit status: {data['exit_status']}"
+        # VASP writes the exit status at startup, so without it the file is too old
+        has_setup = data["exit_status"] is not None
+        exit_status = data["exit_status"] if has_setup else _REQUIRES_NEWER_VASP
+        yield f"    exit status: {exit_status}"
         if data["num_ionic_steps"] is not None:
             yield f"    ionic steps: {data['num_ionic_steps']}"
         spin = self._spin_string(data)
@@ -136,7 +139,10 @@ class RunInfoHandler:
         modes = data["phonon_num_modes"]
         if qpoints is not None and modes is not None:
             yield f"    phonon dispersion: {qpoints} q-points, {modes} modes"
-        yield from self._setup_summary_lines(data)
+        if has_setup:
+            yield from self._setup_summary_lines(data)
+        else:
+            yield f"    settings: {_REQUIRES_NEWER_VASP}"
 
     def _setup_summary_lines(self, data):
         coarse, fine = data["grid_coarse_shape"], data["grid_fine_shape"]

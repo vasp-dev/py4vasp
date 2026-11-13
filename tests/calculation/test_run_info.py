@@ -521,7 +521,9 @@ def test_print_functional_with_lda_plus_u(raw_data):
     assert "    functional: pbe+U\n" in str(RunInfo.from_data(raw_run_info))
 
 
-def test_print_omits_unknown_quantities(raw_data, format_):
+def test_print_of_vasp_without_setup(raw_data, format_):
+    # VASP writes the exit status at startup, so without it the file predates the
+    # setup writers; print says so instead of silently leaving the settings out
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.runtime = None
     raw_run_info.phonon_dispersion = None
@@ -530,7 +532,9 @@ def test_print_omits_unknown_quantities(raw_data, format_):
     actual, _ = format_(RunInfo.from_data(raw_run_info))
     reference = """\
 run info for Sr2TiO4:
-    ionic steps: 4"""
+    exit status: unknown (requires a newer VASP)
+    ionic steps: 4
+    settings: unknown (requires a newer VASP)"""
     assert actual == {"text/plain": reference}
 
 
