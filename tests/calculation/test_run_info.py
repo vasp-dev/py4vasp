@@ -492,7 +492,7 @@ def test_print_partial_ionic_update(raw_data):
 def test_print_functional_with_lda_plus_u(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.ldautype = 2
-    assert "    functional: pbe + LDA+U\n" in str(RunInfo.from_data(raw_run_info))
+    assert "    functional: pbe+U\n" in str(RunInfo.from_data(raw_run_info))
 
 
 def test_print_omits_unknown_quantities(raw_data, format_):

@@ -161,7 +161,7 @@ class RunInfoHandler:
         if ionic_update:
             yield f"    ionic update: {ionic_update}"
         if data["xc"] is not None:
-            yield f"    functional: {data['xc']}" + (" + LDA+U" if data["ldau"] else "")
+            yield f"    functional: {data['xc']}" + ("+U" if data["ldau"] else "")
         settings = (
             ("electronic", "ENCUT"),
             ("dos", "ISMEAR"),
