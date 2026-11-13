@@ -232,19 +232,24 @@ class RunInfoHandler:
         return self._setup_string("efermi_method")
 
     def _dict_from_setup(self) -> dict:
+        settings = {
+            **{key: self._setup_value(key.lower()) for key in _CORE_SETTINGS},
+            **{key: self._setup_bool(key.lower()) for key in _CORE_LOGICALS},
+            **{key: self._setup_string(key.lower()) for key in _CORE_STRINGS},
+        }
         return {
             "grid_coarse_shape": self._setup_grid("ngx", "ngy", "ngz"),
             "grid_fine_shape": self._setup_grid("ngxf", "ngyf", "ngzf"),
             "exit_status": self._setup_string("exit_status"),
-            **{key: self._setup_value(key.lower()) for key in _CORE_SETTINGS},
-            **{key: self._setup_bool(key.lower()) for key in _CORE_LOGICALS},
-            **{key: self._setup_string(key.lower()) for key in _CORE_STRINGS},
-            "LDAU": self._is_ldau(),
+            **settings,
+            "LDAU": self._is_ldau(settings),
         }
 
-    def _is_ldau(self):
-        "VASP writes the ldau group, and so LDAUTYPE, only if LDA+U is active."
-        if check.is_none(getattr(self._raw_run_info, "setup", None)):
+    def _is_ldau(self, settings):
+        """VASP writes the ldau group, and so LDAUTYPE, only if LDA+U is active.
+
+        Without any recorded INCAR setting, the absence of the group says nothing."""
+        if all(value is None for key, value in settings.items() if key.isupper()):
             return None
         return self._setup_value("ldautype") is not None
 
@@ -254,7 +259,8 @@ class RunInfoHandler:
         Incomplete message data yields None rather than an error, so that the rest of
         the run info can still be stored in the database."""
         unknown = {"error_messages": None, "error_message_counts": None}
-        if check.is_none(getattr(self._raw_run_info, "setup", None)):
+        # VASP writes the exit status together with the messages
+        if self._setup_value("exit_status") is None:
             return unknown
         setup = self._raw_run_info.setup
         if check.is_none(setup.message_text):

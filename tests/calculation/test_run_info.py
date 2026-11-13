@@ -403,6 +403,11 @@ def test_without_setup_derived_values_are_none(raw_data, missing_setup):
     assert actual["grid_fine_shape"] is None
     assert actual["exit_status"] is None
     assert actual["EFERMI"] is None
+    # nothing recorded means unknown, not "LDA+U off" or "no errors"
+    assert actual["LDAU"] is None
+    assert actual["error_messages"] is None
+    assert actual["error_message_counts"] is None
+    assert "error messages" not in str(RunInfo.from_data(raw_run_info))
 
 
 def test_efermi_is_the_method_vasp_used(run_info):
