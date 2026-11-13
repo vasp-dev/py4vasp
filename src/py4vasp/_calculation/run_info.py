@@ -243,16 +243,10 @@ class RunInfoHandler:
         if isinstance(fermi_energy, VaspData):
             fermi_energy = fermi_energy._data
 
-        is_metallic = self._is_metallic()
-        is_magnetic = None  # TODO implement
-        magnetic_order = None  # TODO implement
-
         return {
             **self._dict_from_setup(),
             "fermi_energy": fermi_energy,
-            "is_metallic": is_metallic,
-            "is_magnetic": is_magnetic,
-            "magnetization_order": magnetic_order,
+            "is_metallic": self._is_metallic(),
         }
 
     def _dict_from_setup(self) -> dict:

@@ -104,8 +104,6 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
     assert models.is_metallic == all(
         runinfo_ref.bandgap._output_gap("fundamental", to_string=False) <= 0.0
     )
-    assert models.is_magnetic is None
-    assert models.magnetization_order is None
 
     # core settings
     for field, expected in _expected_core_settings(setup).items():
@@ -190,6 +188,16 @@ def test_read(run_info):
     assert {key: actual[key] for key in expected} == expected
     actual.pop("extensions")  # checked separately, not part of the database model
     _check_dict(RunInfoModel(**actual), run_info.ref)
+
+
+DROPPED_KEYS = ("is_magnetic", "magnetization_order")
+
+
+@pytest.mark.parametrize("key", DROPPED_KEYS)
+def test_dropped_keys_are_absent(run_info, key):
+    # redundant with the core settings or never implemented
+    assert key not in run_info.read()
+    assert not hasattr(RunInfoModel(), key)
 
 
 def test_core_bools_are_bool(run_info):

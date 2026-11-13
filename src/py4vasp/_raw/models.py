@@ -1043,10 +1043,6 @@ class RunInfoModel(_DatabaseModel):
     """Whether the calculation was performed with non-collinear magnetism."""
     is_metallic: Optional[bool] = None
     """Whether the system is metallic based on the presence of states at the Fermi energy."""
-    is_magnetic: Optional[bool] = None
-    """Whether the system is magnetic based on the presence of a non-zero magnetic moment."""
-    magnetization_order: Optional[str] = None
-    """The order of the magnetization, e.g. ferromagnetic, antiferromagnetic, ferrimagnetic, etc."""
 
     system_tag: Optional[str] = None
     """The system tag from the INCAR file, if set, which may provide additional information about the system or calculation."""

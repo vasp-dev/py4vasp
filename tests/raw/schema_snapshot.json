@@ -1327,10 +1327,6 @@
         "Optional[bool]"
       ],
       [
-        "is_magnetic",
-        "Optional[bool]"
-      ],
-      [
         "is_metallic",
         "Optional[bool]"
       ],
@@ -1341,10 +1337,6 @@
       [
         "is_success",
         "Optional[bool]"
-      ],
-      [
-        "magnetization_order",
-        "Optional[str]"
       ],
       [
         "mpi_ranks",
