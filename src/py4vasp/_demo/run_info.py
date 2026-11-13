@@ -14,6 +14,8 @@ _SETUP = {
         "NGXF": (64, None, "fine FFT grid along the first lattice vector"),
         "NGYF": (64, None, "fine FFT grid along the second lattice vector"),
         "NGZF": (80, None, "fine FFT grid along the third lattice vector"),
+        "NBANDS": (48, None, "number of bands"),
+        "NKPTS": (20, None, "number of k points"),
     },
     "electronic": {
         "ISPIN": (1, None, "spin polarization"),
@@ -24,6 +26,10 @@ _SETUP = {
         "NELM": (60, None, "maximum number of electronic steps"),
         "LREAL": ("Auto", None, "real-space projection"),
         "LMAXMIX": (4, None, "maximum l passed to the mixer"),
+        "ENCUT": (520.0, "eV", "plane-wave cutoff"),
+        "EDIFF": (1e-06, "eV", "stopping criterion of the electronic minimization"),
+        "NELECT": (40.0, None, "number of electrons"),
+        "NUPDOWN": (-1.0, None, "fixed magnetic moment"),
     },
     "ionic": {
         "POTIM": (0.5, "fs", "time step"),
@@ -31,15 +37,27 @@ _SETUP = {
         "TEEND": (300.0, "K", "final temperature"),
         "MDALGO": (0, None, "molecular-dynamics algorithm"),
         "ISYM": (2, None, "symmetry treatment"),
+        "IBRION": (2, None, "ionic update"),
+        "ISIF": (3, None, "stress and relaxation"),
+        "NSW": (40, None, "number of ionic steps"),
+        "EDIFFG": (-0.01, None, "stopping criterion of the ionic relaxation"),
     },
     "dos": {
         "ISMEAR": (0, None, "smearing method"),
         "SIGMA": (0.05, "eV", "smearing width"),
     },
+    "vdw": {
+        "IVDW": (0, None, "van der Waals correction"),
+    },
+    "dipole": {
+        "IDIPOL": (0, None, "dipole correction"),
+    },
     "kpoints_opt": {"LKPOINTS_OPT": (False, None, "evaluate KPOINTS_OPT")},
     "write_flags": {"LORBIT": (11, None, "projections onto local orbitals")},
     "exchange_correlation": {
         "functional_1/NAME": ("PBE", None, "name of the functional"),
+        "AEXX": (0.0, None, "fraction of exact exchange"),
+        "HFSCREEN": (0.0, None, "range-separation parameter"),
     },
 }
 # The /metadata group in the same layout; resources exist only for MPI builds.
@@ -131,6 +149,21 @@ def run_setup():
         "isym": ("ionic", "ISYM"),
         "lkpoints_opt": ("kpoints_opt", "LKPOINTS_OPT"),
         "lorbit": ("write_flags", "LORBIT"),
+        "ibrion": ("ionic", "IBRION"),
+        "isif": ("ionic", "ISIF"),
+        "nsw": ("ionic", "NSW"),
+        "ediffg": ("ionic", "EDIFFG"),
+        "encut": ("electronic", "ENCUT"),
+        "ediff": ("electronic", "EDIFF"),
+        "nbands": ("dimensions", "NBANDS"),
+        "nkpts": ("dimensions", "NKPTS"),
+        "nelect": ("electronic", "NELECT"),
+        "ismear": ("dos", "ISMEAR"),
+        "aexx": ("exchange_correlation", "AEXX"),
+        "hfscreen": ("exchange_correlation", "HFSCREEN"),
+        "ivdw": ("vdw", "IVDW"),
+        "nupdown": ("electronic", "NUPDOWN"),
+        "idipol": ("dipole", "IDIPOL"),
     }
     return raw.RunSetup(
         **{field: _value(*location) for field, location in core.items()},

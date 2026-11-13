@@ -4,6 +4,7 @@ import pathlib
 from dataclasses import fields
 from unittest.mock import MagicMock, call, patch
 
+import h5py
 import numpy as np
 import pytest
 from util import VERSION, write_setup_file
@@ -12,6 +13,7 @@ import py4vasp.raw as raw
 from py4vasp import exception
 from py4vasp._raw.definition import DEFAULT_FILE
 from py4vasp._raw.mapping import Mapping
+from py4vasp._util import check
 
 
 @pytest.fixture
@@ -380,3 +382,25 @@ def test_run_info_extension_without_setup_group_is_empty(tmp_path):
     write_setup_file(tmp_path / DEFAULT_FILE, {})
     with raw.access("run_info_extension", path=tmp_path) as extension:
         assert extension.sections == {}
+
+
+def test_run_setup_reads_every_core_setting_the_demo_writes(tmp_path):
+    from py4vasp import _demo
+
+    with h5py.File(tmp_path / DEFAULT_FILE, "w") as h5f:
+        for name, number in zip(("major", "minor", "patch"), (6, 7, 0)):
+            h5f[f"version/{name}"] = number
+        _demo.run_info.write_to_h5(h5f)
+    expected = _demo.run_info.run_setup()
+    messages = ("exit_status", "message_text", "message_severity", "message_count")
+    with raw.access("run_setup", path=tmp_path) as setup:
+        for field in fields(raw.RunSetup):
+            if field.name in messages:
+                continue
+            actual = getattr(setup, field.name)
+            desired = getattr(expected, field.name)
+            assert not check.is_none(actual), field.name
+            actual = actual[()] if isinstance(actual, raw.VaspData) else actual
+            if isinstance(actual, bytes):
+                actual = actual.decode().strip()
+            assert actual == desired, field.name

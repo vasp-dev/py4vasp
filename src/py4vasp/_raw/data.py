@@ -863,6 +863,36 @@ class RunSetup:
     "Whether VASP evaluated the KPOINTS_OPT k-point set."
     lorbit: VaspData = NONE()
     "Which projections onto local orbitals VASP computed."
+    ibrion: VaspData = NONE()
+    "How VASP updates the ions, e.g., relaxation or molecular dynamics."
+    isif: VaspData = NONE()
+    "Which degrees of freedom VASP relaxes and whether it computes the stress."
+    nsw: VaspData = NONE()
+    "Maximum number of ionic steps."
+    ediffg: VaspData = NONE()
+    "Stopping criterion of the ionic relaxation."
+    encut: VaspData = NONE()
+    "Cutoff energy of the plane-wave basis in eV."
+    ediff: VaspData = NONE()
+    "Stopping criterion of the electronic self-consistency in eV."
+    nbands: VaspData = NONE()
+    "Number of bands."
+    nkpts: VaspData = NONE()
+    "Number of k points."
+    nelect: VaspData = NONE()
+    "Number of electrons."
+    ismear: VaspData = NONE()
+    "Method used to smear the occupations."
+    aexx: VaspData = NONE()
+    "Fraction of exact exchange."
+    hfscreen: VaspData = NONE()
+    "Range-separation parameter of screened hybrid functionals in 1/Å."
+    ivdw: VaspData = NONE()
+    "Which van der Waals correction VASP applies."
+    nupdown: VaspData = NONE()
+    "Difference between the number of up and down electrons; -1 if not fixed."
+    idipol: VaspData = NONE()
+    "Direction of the dipole correction; 0 if VASP does not apply one."
     images: VaspData = NONE()
     "Number of images, e.g., of a nudged elastic band calculation."
     peak_memory: VaspData = NONE()

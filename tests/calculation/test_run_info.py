@@ -132,6 +132,21 @@ CORE_SCALARS = (
     "ncore",
     "kpar",
     "mpi_ranks",
+    "ibrion",
+    "isif",
+    "nsw",
+    "ediffg",
+    "encut",
+    "ediff",
+    "nbands",
+    "nkpts",
+    "nelect",
+    "ismear",
+    "aexx",
+    "hfscreen",
+    "ivdw",
+    "nupdown",
+    "idipol",
 )
 
 
@@ -387,7 +402,7 @@ run info for Sr2TiO4:
     peak memory: 256.0 MB
     parallelization: 64 MPI ranks, KPAR=4, NCORE=8
     error messages: 1
-    extensions: dimensions, dos, electronic, exchange_correlation, ionic, kpoints_opt, metadata/build, metadata/performance, metadata/resources, write_flags"""
+    extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, metadata/build, metadata/performance, metadata/resources, vdw, write_flags"""
     assert actual == {"text/plain": reference}
 
 

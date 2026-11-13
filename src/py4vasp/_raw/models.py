@@ -1099,6 +1099,36 @@ class RunInfoModel(_DatabaseModel):
     """Whether VASP evaluated the KPOINTS_OPT k-point set (LKPOINTS_OPT)."""
     lorbit: Optional[int] = None
     """Which projections onto local orbitals VASP computed (LORBIT)."""
+    ibrion: Optional[int] = None
+    """How VASP updates the ions (IBRION), e.g., -1 for no update, 0 for molecular dynamics, 1-3 for relaxations, 5-8 for finite differences."""
+    isif: Optional[int] = None
+    """Which degrees of freedom VASP relaxes and whether it computes the stress tensor (ISIF)."""
+    nsw: Optional[int] = None
+    """The maximum number of ionic steps (NSW)."""
+    ediffg: Optional[float] = None
+    """The stopping criterion of the ionic relaxation (EDIFFG), in eV for the energy (positive) or in eV/Å for the forces (negative)."""
+    encut: Optional[float] = None
+    """The cutoff energy of the plane-wave basis (ENCUT), in eV."""
+    ediff: Optional[float] = None
+    """The stopping criterion of the electronic self-consistency (EDIFF), in eV."""
+    nbands: Optional[int] = None
+    """The number of bands (NBANDS)."""
+    nkpts: Optional[int] = None
+    """The number of k points in the irreducible Brillouin zone (NKPTS)."""
+    nelect: Optional[float] = None
+    """The number of electrons (NELECT)."""
+    ismear: Optional[int] = None
+    """The method used to smear the occupations (ISMEAR), e.g., 0 Gaussian, -1 Fermi-Dirac, -5 tetrahedron method."""
+    aexx: Optional[float] = None
+    """The fraction of exact exchange (AEXX)."""
+    hfscreen: Optional[float] = None
+    """The range-separation parameter of screened hybrid functionals (HFSCREEN), in 1/Å."""
+    ivdw: Optional[int] = None
+    """Which van der Waals correction VASP applies (IVDW); 0 means none."""
+    nupdown: Optional[float] = None
+    """The difference between the number of up and down electrons (NUPDOWN); -1 if VASP does not fix it."""
+    idipol: Optional[int] = None
+    """The direction of the dipole correction (IDIPOL); 0 if VASP does not apply one."""
     images: Optional[int] = None
     """The number of images, e.g., of a nudged elastic band calculation."""
     peak_memory: Optional[float] = None

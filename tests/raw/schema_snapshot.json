@@ -1103,6 +1103,22 @@
     ],
     "RunInfoModel": [
       [
+        "aexx",
+        "Optional[float]"
+      ],
+      [
+        "ediff",
+        "Optional[float]"
+      ],
+      [
+        "ediffg",
+        "Optional[float]"
+      ],
+      [
+        "encut",
+        "Optional[float]"
+      ],
+      [
         "error_message_counts",
         "Optional[list[int]]"
       ],
@@ -1135,7 +1151,19 @@
         "Optional[bool]"
       ],
       [
+        "hfscreen",
+        "Optional[float]"
+      ],
+      [
+        "ibrion",
+        "Optional[int]"
+      ],
+      [
         "icharg",
+        "Optional[int]"
+      ],
+      [
+        "idipol",
         "Optional[int]"
       ],
       [
@@ -1163,6 +1191,14 @@
         "Optional[bool]"
       ],
       [
+        "isif",
+        "Optional[int]"
+      ],
+      [
+        "ismear",
+        "Optional[int]"
+      ],
+      [
         "ispin",
         "Optional[int]"
       ],
@@ -1172,6 +1208,10 @@
       ],
       [
         "isym",
+        "Optional[int]"
+      ],
+      [
+        "ivdw",
         "Optional[int]"
       ],
       [
@@ -1215,16 +1255,36 @@
         "Optional[int]"
       ],
       [
+        "nbands",
+        "Optional[int]"
+      ],
+      [
         "ncore",
         "Optional[int]"
+      ],
+      [
+        "nelect",
+        "Optional[float]"
       ],
       [
         "nelm",
         "Optional[int]"
       ],
       [
+        "nkpts",
+        "Optional[int]"
+      ],
+      [
+        "nsw",
+        "Optional[int]"
+      ],
+      [
         "num_ionic_steps",
         "Optional[int]"
+      ],
+      [
+        "nupdown",
+        "Optional[float]"
       ],
       [
         "peak_memory",

@@ -45,6 +45,21 @@ _CORE_SETTINGS = (
     "peak_memory",
     "ncore",
     "kpar",
+    "ibrion",
+    "isif",
+    "nsw",
+    "ediffg",
+    "encut",
+    "ediff",
+    "nbands",
+    "nkpts",
+    "nelect",
+    "ismear",
+    "aexx",
+    "hfscreen",
+    "ivdw",
+    "nupdown",
+    "idipol",
     "mpi_ranks",
 )
 _CORE_LOGICALS = ("lnoncollinear", "lsorbit", "lkpoints_opt")
@@ -452,13 +467,13 @@ class RunInfo:
         Every entry VASP wrote is available in the extensions, grouped by section
 
         >>> sorted(run_info["extensions"])
-        ['dimensions', 'dos', 'electronic', 'exchange_correlation', 'ionic',
-         'kpoints_opt', 'metadata/build', 'metadata/performance',
-         'metadata/resources', 'write_flags']
+        ['dimensions', 'dipole', 'dos', 'electronic', 'exchange_correlation',
+         'ionic', 'kpoints_opt', 'metadata/build', 'metadata/performance',
+         'metadata/resources', 'vdw', 'write_flags']
         >>> run_info["extensions"]["dos"]
         {'ISMEAR': 0, 'SIGMA': 0.05}
-        >>> run_info["extensions"]["exchange_correlation"]
-        {'functional_1/NAME': 'PBE'}
+        >>> run_info["extensions"]["exchange_correlation"]["functional_1/NAME"]
+        'PBE'
         >>> run_info["extensions"]["metadata/build"]["variant"]
         'std'
         """
