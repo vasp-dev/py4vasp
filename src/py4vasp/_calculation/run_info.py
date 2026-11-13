@@ -132,9 +132,8 @@ class RunInfoHandler:
         version = data["vasp_version"]
         if version is not None:
             yield f"    VASP version: {convert.text_to_string(version)}"
-        exit_status = self._setup_value("exit_status")
-        if exit_status is not None:
-            yield f"    exit status: {convert.fortran_text_to_string(exit_status)}"
+        if data["exit_status"] is not None:
+            yield f"    exit status: {data['exit_status']}"
         if data["num_ionic_steps"] is not None:
             yield f"    ionic steps: {data['num_ionic_steps']}"
         if data["fermi_energy"] is not None:
@@ -245,15 +244,10 @@ class RunInfoHandler:
         }
 
     def _dict_from_setup(self) -> dict:
-        exit_status = self._setup_value("exit_status")
         return {
             "grid_coarse_shape": self._setup_grid("ngx", "ngy", "ngz"),
             "grid_fine_shape": self._setup_grid("ngxf", "ngyf", "ngzf"),
-            "is_success": (
-                None
-                if exit_status is None
-                else convert.fortran_text_to_string(exit_status) == "success"
-            ),
+            "exit_status": self._setup_string("exit_status"),
             **{key: self._setup_value(key.lower()) for key in _CORE_SETTINGS},
             **{key: self._setup_bool(key.lower()) for key in _CORE_LOGICALS},
             **{key: self._setup_string(key.lower()) for key in _CORE_STRINGS},
@@ -441,8 +435,9 @@ class RunInfo:
         - the build of the executable: ``"build_variant"`` ("gam", "std", or
           "ncl") and whether it was built with ``"build_gpu"`` or
           ``"build_openmp"`` support,
-        - ``"is_success"``, which is True if VASP terminated normally (exit status
-          "success"); it can be True while error messages exist,
+        - ``"exit_status"``, how VASP finished: "success" if it terminated
+          normally, or "error", "killed", or "dry-run"; a run can succeed while
+          error messages exist,
         - ``"error_messages"`` and ``"error_message_counts"``, the text of every
           distinct message of severity "error" and how often VASP reported it.
           Warnings and alerts are not reported here; they remain in the HDF5 file
@@ -452,7 +447,7 @@ class RunInfo:
         e.g. ``"SIGMA"``; every other key is lower case, e.g. ``"nkpts"``, which VASP
         takes from the KPOINTS file. A setting VASP did not write is None; in
         particular, for files of VASP versions that do not record the setup, the core
-        settings, ``"is_success"``, the error messages, the resources, and the build
+        settings, ``"exit_status"``, the error messages, the resources, and the build
         are None. Serial builds write no resources.
 
         Parameters
@@ -482,8 +477,8 @@ class RunInfo:
         >>> from py4vasp import demo
         >>> calculation = demo.calculation()
         >>> run_info = calculation.run_info.read()
-        >>> run_info["grid_coarse_shape"], run_info["SIGMA"], run_info["is_success"]
-        ([32, 32, 40], 0.05, True)
+        >>> run_info["grid_coarse_shape"], run_info["SIGMA"], run_info["exit_status"]
+        ([32, 32, 40], 0.05, 'success')
         >>> run_info["mpi_ranks"], run_info["KPAR"], run_info["NCORE"]
         (64, 4, 8)
 

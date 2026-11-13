@@ -1291,6 +1291,10 @@
         "Optional[list[str]]"
       ],
       [
+        "exit_status",
+        "Optional[str]"
+      ],
+      [
         "fermi_energy",
         "Optional[float]"
       ],
@@ -1320,10 +1324,6 @@
       ],
       [
         "is_metallic",
-        "Optional[bool]"
-      ],
-      [
-        "is_success",
         "Optional[bool]"
       ],
       [

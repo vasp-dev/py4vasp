@@ -91,7 +91,7 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
     setup = runinfo_ref.setup
     assert list(models.grid_coarse_shape) == [setup.ngx, setup.ngy, setup.ngz]
     assert list(models.grid_fine_shape) == [setup.ngxf, setup.ngyf, setup.ngzf]
-    assert models.is_success == (setup.exit_status == "success")
+    assert models.exit_status == setup.exit_status
     assert models.fermi_energy == runinfo_ref.fermi_energy
     assert models.is_metallic == all(
         runinfo_ref.bandgap._output_gap("fundamental", to_string=False) <= 0.0
@@ -187,6 +187,7 @@ DROPPED_KEYS = (
     "build_mpi",
     "is_collinear",
     "is_noncollinear",
+    "is_success",
 )
 
 
@@ -382,22 +383,21 @@ def test_read_grid_shapes(raw_data):
 
 @pytest.mark.parametrize(
     "exit_status, expected",
-    [("success", True), (b"success", True), ("error", False), ("killed", False)],
+    [
+        ("success", "success"),
+        (b"error", "error"),
+        ("killed    ", "killed"),
+        (b"dry-run   ", "dry-run"),
+    ],
 )
-def test_is_success(raw_data, exit_status, expected):
-    raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.exit_status = exit_status
-    assert RunInfo.from_data(raw_run_info).read()["is_success"] is expected
-
-
-@pytest.mark.parametrize("exit_status", ["success  ", b"success   "])
-def test_is_success_with_padded_status(raw_data, exit_status):
+def test_exit_status_is_trimmed_string(raw_data, exit_status, expected):
     # Fortran pads fixed-length character variables with blanks
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.exit_status = exit_status
     run_info = RunInfo.from_data(raw_run_info)
-    assert run_info.read()["is_success"] is True
-    assert "    exit status: success\n" in str(run_info)
+    assert run_info.read()["exit_status"] == expected
+    assert run_info._to_database()["run_info"]["default"].exit_status == expected
+    assert f"    exit status: {expected}\n" in str(run_info)
 
 
 @pytest.mark.parametrize("missing_setup", [None, raw.VaspData(None), raw.RunSetup()])
@@ -407,7 +407,7 @@ def test_without_setup_derived_values_are_none(raw_data, missing_setup):
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["grid_coarse_shape"] is None
     assert actual["grid_fine_shape"] is None
-    assert actual["is_success"] is None
+    assert actual["exit_status"] is None
 
 
 def test_print(run_info, format_):

@@ -1033,8 +1033,8 @@ class RunInfoModel(_DatabaseModel):
     """The shape of the coarse grid used for the calculation, in the order (nx, ny, nz)."""
     grid_fine_shape: Optional[IntVector] = None
     """The shape of the fine grid used for the calculation, in the order (nx, ny, nz)."""
-    is_success: Optional[bool] = None
-    """Whether the calculation completed successfully."""
+    exit_status: Optional[str] = None
+    """How VASP finished: "success", "error", "killed", or "dry-run"."""
     fermi_energy: Optional[float] = None
     """The Fermi energy for the calculation according to the OUTCAR, in eV."""
     is_metallic: Optional[bool] = None
