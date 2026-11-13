@@ -469,18 +469,75 @@ run info for Sr2TiO4:
     exit status: success
     ionic steps: 4
     spin: nonpolarized
+    functional: pbe
     phonon dispersion: 20 q-points, 21 modes
     FFT grid: 32 x 32 x 40 (fine 64 x 64 x 80)
-    ionic update: IBRION=2, ISIF=3, NSW=40
-    functional: pbe
-    ENCUT: 520.0 eV
-    ISMEAR: 0
-    SIGMA: 0.05 eV
-    EFERMI: LEGACY
-    NELM: 60
-    wall time: 1834.5 s
-    peak memory: 256.0 MiB
-    parallelization: 64 MPI ranks, KPAR=4, NCORE=8
+    ionic:
+        IBRION: 2
+        ISIF: 3
+        NSW: 40
+        EDIFFG: -0.01
+        POTIM: 0.5 fs
+        TEBEG: 300.0 K
+        TEEND: 300.0 K
+        MDALGO: 0
+        ISYM: 2
+    electronic:
+        ENCUT: 520.0 eV
+        PREC: accurate
+        ALGO: Normal
+        EDIFF: 1e-06 eV
+        NELM: 60
+        NELECT: 40.0
+        NUPDOWN: -1.0
+        ISPIN: 1
+        LNONCOLLINEAR: False
+        LSORBIT: False
+        LASPH: True
+        LREAL: Auto
+        LMAXMIX: 4
+        ISTART: 0
+        ICHARG: 2
+    dimensions:
+        NBANDS: 48
+        nkpts: 20
+    dos:
+        ISMEAR: 0
+        SIGMA: 0.05 eV
+        EFERMI: LEGACY
+    exchange_correlation:
+        XC: pbe
+        LDAU: False
+        LHFCALC: False
+        AEXX: 0.0
+        HFSCREEN: 0.0
+    vdw:
+        IVDW: 0
+    dipole:
+        LDIPOL: False
+        IDIPOL: 0
+    linear_response:
+        LEPSILON: False
+    kpoints_opt:
+        LKPOINTS_OPT: False
+    write_flags:
+        LORBIT: 11
+    resources:
+        mpi_ranks: 64
+        omp_threads: 1
+        nodes: 2
+        gpus: 0
+        KPAR: 4
+        NCORE: 8
+        IMAGES: 0
+    performance:
+        wall_time: 1834.5 s
+        cpu_time: 1790.2 s
+        peak_memory: 262144.0 kB
+    build:
+        build_variant: std
+        build_gpu: False
+        build_openmp: False
     error messages:
         - The basis set is incomplete. (1×)
     extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, linear_response, metadata/build, metadata/performance, metadata/resources, vdw, write_flags"""
@@ -514,25 +571,21 @@ def test_print_lists_extension_sections(raw_data):
     assert "    extensions: alpha, zeta" in str(RunInfo.from_data(raw_run_info))
 
 
-def test_print_partial_parallelization(raw_data):
-    # serial builds write no MPI resources, so only what VASP wrote is shown
-    raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.mpi_ranks = raw.VaspData(None)
-    raw_run_info.setup.ncore = raw.VaspData(None)
-    assert "    parallelization: KPAR=4\n" in str(RunInfo.from_data(raw_run_info))
-    raw_run_info.setup.kpar = raw.VaspData(None)
-    assert "parallelization" not in str(RunInfo.from_data(raw_run_info))
+def test_print_shows_every_core_setting(run_info):
+    actual = str(run_info)
+    for key in (*CORE_SCALARS, *CORE_BOOLS, *CORE_STRINGS, "EFERMI", "LDAU"):
+        assert f"\n        {key}: " in actual, key
 
 
-def test_print_partial_ionic_update(raw_data):
+def test_print_omits_missing_tags_and_empty_groups(raw_data):
+    # e.g. serial builds write no resources, so only what VASP wrote is shown
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.isif = raw.VaspData(None)
-    assert "    ionic update: IBRION=2, NSW=40\n" in str(
-        RunInfo.from_data(raw_run_info)
-    )
-    raw_run_info.setup.ibrion = raw.VaspData(None)
-    raw_run_info.setup.nsw = raw.VaspData(None)
-    assert "ionic update" not in str(RunInfo.from_data(raw_run_info))
+    raw_run_info.setup.ivdw = raw.VaspData(None)
+    actual = str(RunInfo.from_data(raw_run_info))
+    assert "        IBRION: 2\n        NSW: 40\n" in actual
+    assert "ISIF" not in actual
+    assert "\n    vdw:" not in actual
 
 
 def test_print_functional_with_lda_plus_u(raw_data):

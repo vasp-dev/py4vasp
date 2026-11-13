@@ -73,6 +73,53 @@ _CORE_LOGICALS = (
 # a bug in VASP is the most severe message, so it counts as an error as well
 _ERROR_SEVERITIES = ("error", "bug")
 _REQUIRES_NEWER_VASP = "unknown (requires a newer VASP)"
+# print groups the core settings like the sections VASP writes them to, so that the
+# units can be looked up in the extensions; the keys are the ones of read()
+_PRINTED_GROUPS = (
+    (
+        "ionic",
+        "ionic",
+        (
+            "IBRION",
+            "ISIF",
+            "NSW",
+            "EDIFFG",
+            "POTIM",
+            "TEBEG",
+            "TEEND",
+            "MDALGO",
+            "ISYM",
+        ),
+    ),
+    (
+        "electronic",
+        "electronic",
+        (
+            *("ENCUT", "PREC", "ALGO", "EDIFF", "NELM", "NELECT", "NUPDOWN", "ISPIN"),
+            *("LNONCOLLINEAR", "LSORBIT", "LASPH", "LREAL", "LMAXMIX", "ISTART"),
+            "ICHARG",
+        ),
+    ),
+    ("dimensions", "dimensions", ("NBANDS", "nkpts")),
+    ("dos", "dos", ("ISMEAR", "SIGMA", "EFERMI")),
+    (
+        "exchange_correlation",
+        "exchange_correlation",
+        ("XC", "LDAU", "LHFCALC", "AEXX", "HFSCREEN"),
+    ),
+    ("vdw", "vdw", ("IVDW",)),
+    ("dipole", "dipole", ("LDIPOL", "IDIPOL")),
+    ("linear_response", "linear_response", ("LEPSILON",)),
+    ("kpoints_opt", "kpoints_opt", ("LKPOINTS_OPT",)),
+    ("write_flags", "write_flags", ("LORBIT",)),
+    (
+        "resources",
+        "metadata/resources",
+        ("mpi_ranks", "omp_threads", "nodes", "gpus", "KPAR", "NCORE", "IMAGES"),
+    ),
+    ("performance", "metadata/performance", ("wall_time", "cpu_time", "peak_memory")),
+    ("build", "metadata/build", ("build_variant", "build_gpu", "build_openmp")),
+)
 _CORE_STRINGS = (
     "LREAL",
     "PREC",
@@ -135,6 +182,8 @@ class RunInfoHandler:
         spin = self._spin_string(data)
         if spin is not None:
             yield f"    spin: {spin}"
+        if data["XC"] is not None:
+            yield f"    functional: {data['XC']}" + ("+U" if data["LDAU"] else "")
         qpoints = data["phonon_num_qpoints"]
         modes = data["phonon_num_modes"]
         if qpoints is not None and modes is not None:
@@ -151,30 +200,15 @@ class RunInfoHandler:
             if fine is not None:
                 grid += f" (fine {' x '.join(map(str, fine))})"
             yield f"    FFT grid: {grid}"
-        ionic_update = self._tags(data, "IBRION", "ISIF", "NSW")
-        if ionic_update:
-            yield f"    ionic update: {ionic_update}"
-        if data["XC"] is not None:
-            yield f"    functional: {data['XC']}" + ("+U" if data["LDAU"] else "")
-        settings = (
-            ("electronic", "ENCUT"),
-            ("dos", "ISMEAR"),
-            ("dos", "SIGMA"),
-            ("dos", "EFERMI"),
-            ("electronic", "NELM"),
-        )
-        for section, tag in settings:
-            value = data[tag]
-            if value is not None:
-                unit = self._setup_unit(section, tag)
-                yield f"    {tag}: {value}" + (f" {unit}" if unit else "")
-        if data["wall_time"] is not None:
-            yield f"    wall time: {data['wall_time']:.1f} s"
-        if data["peak_memory"] is not None:
-            yield f"    peak memory: {data['peak_memory'] / 1024:.1f} MiB"
-        parallelization = self._parallelization(data)
-        if parallelization:
-            yield f"    parallelization: {parallelization}"
+        for group, section, keys in _PRINTED_GROUPS:
+            lines = [
+                f"        {key}: {data[key]}" + self._unit_suffix(section, key)
+                for key in keys
+                if data[key] is not None
+            ]
+            if lines:
+                yield f"    {group}:"
+                yield from lines
         yield from self._error_message_lines(data)
         if data["extensions"]:
             yield f"    extensions: {', '.join(sorted(data['extensions']))}"
@@ -191,25 +225,13 @@ class RunInfoHandler:
         for message, count in zip(messages, counts):
             yield f"        - {message} ({count}×)"
 
-    @staticmethod
-    def _parallelization(data):
-        parts = []
-        if data["mpi_ranks"] is not None:
-            parts.append(f"{data['mpi_ranks']} MPI ranks")
-        if tags := RunInfoHandler._tags(data, "KPAR", "NCORE"):
-            parts.append(tags)
-        return ", ".join(parts)
-
-    @staticmethod
-    def _tags(data, *tags):
-        "Join the INCAR tags VASP wrote as TAG=value."
-        return ", ".join(f"{tag}={data[tag]}" for tag in tags if data[tag] is not None)
-
-    def _setup_unit(self, section, tag):
+    def _unit_suffix(self, section, key):
+        "The units VASP attached to the dataset, if any."
         extension = getattr(self._raw_run_info, "extension", None)
         if check.is_none(extension) or section not in extension.sections:
-            return None
-        return extension.sections[section].units.get(tag)
+            return ""
+        unit = extension.sections[section].units.get(key)
+        return f" {unit}" if unit else ""
 
     @staticmethod
     def _spin_string(data):
