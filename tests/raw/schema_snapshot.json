@@ -1103,11 +1103,167 @@
     ],
     "RunInfoModel": [
       [
-        "aexx",
+        "AEXX",
         "Optional[float]"
       ],
       [
-        "algo",
+        "ALGO",
+        "Optional[str]"
+      ],
+      [
+        "EDIFF",
+        "Optional[float]"
+      ],
+      [
+        "EDIFFG",
+        "Optional[float]"
+      ],
+      [
+        "ENCUT",
+        "Optional[float]"
+      ],
+      [
+        "HFSCREEN",
+        "Optional[float]"
+      ],
+      [
+        "IBRION",
+        "Optional[int]"
+      ],
+      [
+        "ICHARG",
+        "Optional[int]"
+      ],
+      [
+        "IDIPOL",
+        "Optional[int]"
+      ],
+      [
+        "IMAGES",
+        "Optional[int]"
+      ],
+      [
+        "ISIF",
+        "Optional[int]"
+      ],
+      [
+        "ISMEAR",
+        "Optional[int]"
+      ],
+      [
+        "ISPIN",
+        "Optional[int]"
+      ],
+      [
+        "ISTART",
+        "Optional[int]"
+      ],
+      [
+        "ISYM",
+        "Optional[int]"
+      ],
+      [
+        "IVDW",
+        "Optional[int]"
+      ],
+      [
+        "KPAR",
+        "Optional[int]"
+      ],
+      [
+        "LASPH",
+        "Optional[bool]"
+      ],
+      [
+        "LDAU",
+        "Optional[bool]"
+      ],
+      [
+        "LDIPOL",
+        "Optional[bool]"
+      ],
+      [
+        "LEPSILON",
+        "Optional[bool]"
+      ],
+      [
+        "LHFCALC",
+        "Optional[bool]"
+      ],
+      [
+        "LKPOINTS_OPT",
+        "Optional[bool]"
+      ],
+      [
+        "LMAXMIX",
+        "Optional[int]"
+      ],
+      [
+        "LNONCOLLINEAR",
+        "Optional[bool]"
+      ],
+      [
+        "LORBIT",
+        "Optional[int]"
+      ],
+      [
+        "LREAL",
+        "Optional[str]"
+      ],
+      [
+        "LSORBIT",
+        "Optional[bool]"
+      ],
+      [
+        "MDALGO",
+        "Optional[int]"
+      ],
+      [
+        "NBANDS",
+        "Optional[int]"
+      ],
+      [
+        "NCORE",
+        "Optional[int]"
+      ],
+      [
+        "NELECT",
+        "Optional[float]"
+      ],
+      [
+        "NELM",
+        "Optional[int]"
+      ],
+      [
+        "NSW",
+        "Optional[int]"
+      ],
+      [
+        "NUPDOWN",
+        "Optional[float]"
+      ],
+      [
+        "POTIM",
+        "Optional[float]"
+      ],
+      [
+        "PREC",
+        "Optional[str]"
+      ],
+      [
+        "SIGMA",
+        "Optional[float]"
+      ],
+      [
+        "TEBEG",
+        "Optional[float]"
+      ],
+      [
+        "TEEND",
+        "Optional[float]"
+      ],
+      [
+        "XC",
         "Optional[str]"
       ],
       [
@@ -1128,18 +1284,6 @@
       ],
       [
         "cpu_time",
-        "Optional[float]"
-      ],
-      [
-        "ediff",
-        "Optional[float]"
-      ],
-      [
-        "ediffg",
-        "Optional[float]"
-      ],
-      [
-        "encut",
         "Optional[float]"
       ],
       [
@@ -1179,26 +1323,6 @@
         "Optional[bool]"
       ],
       [
-        "hfscreen",
-        "Optional[float]"
-      ],
-      [
-        "ibrion",
-        "Optional[int]"
-      ],
-      [
-        "icharg",
-        "Optional[int]"
-      ],
-      [
-        "idipol",
-        "Optional[int]"
-      ],
-      [
-        "images",
-        "Optional[int]"
-      ],
-      [
         "is_collinear",
         "Optional[bool]"
       ],
@@ -1219,103 +1343,11 @@
         "Optional[bool]"
       ],
       [
-        "isif",
-        "Optional[int]"
-      ],
-      [
-        "ismear",
-        "Optional[int]"
-      ],
-      [
-        "ispin",
-        "Optional[int]"
-      ],
-      [
-        "istart",
-        "Optional[int]"
-      ],
-      [
-        "isym",
-        "Optional[int]"
-      ],
-      [
-        "ivdw",
-        "Optional[int]"
-      ],
-      [
-        "kpar",
-        "Optional[int]"
-      ],
-      [
-        "lasph",
-        "Optional[bool]"
-      ],
-      [
-        "ldau",
-        "Optional[bool]"
-      ],
-      [
-        "ldipol",
-        "Optional[bool]"
-      ],
-      [
-        "lepsilon",
-        "Optional[bool]"
-      ],
-      [
-        "lhfcalc",
-        "Optional[bool]"
-      ],
-      [
-        "lkpoints_opt",
-        "Optional[bool]"
-      ],
-      [
-        "lmaxmix",
-        "Optional[int]"
-      ],
-      [
-        "lnoncollinear",
-        "Optional[bool]"
-      ],
-      [
-        "lorbit",
-        "Optional[int]"
-      ],
-      [
-        "lreal",
-        "Optional[str]"
-      ],
-      [
-        "lsorbit",
-        "Optional[bool]"
-      ],
-      [
         "magnetization_order",
         "Optional[str]"
       ],
       [
-        "mdalgo",
-        "Optional[int]"
-      ],
-      [
         "mpi_ranks",
-        "Optional[int]"
-      ],
-      [
-        "nbands",
-        "Optional[int]"
-      ],
-      [
-        "ncore",
-        "Optional[int]"
-      ],
-      [
-        "nelect",
-        "Optional[float]"
-      ],
-      [
-        "nelm",
         "Optional[int]"
       ],
       [
@@ -1327,16 +1359,8 @@
         "Optional[int]"
       ],
       [
-        "nsw",
-        "Optional[int]"
-      ],
-      [
         "num_ionic_steps",
         "Optional[int]"
-      ],
-      [
-        "nupdown",
-        "Optional[float]"
       ],
       [
         "omp_threads",
@@ -1355,28 +1379,8 @@
         "Optional[int]"
       ],
       [
-        "potim",
-        "Optional[float]"
-      ],
-      [
-        "prec",
-        "Optional[str]"
-      ],
-      [
-        "sigma",
-        "Optional[float]"
-      ],
-      [
         "system_tag",
         "Optional[str]"
-      ],
-      [
-        "tebeg",
-        "Optional[float]"
-      ],
-      [
-        "teend",
-        "Optional[float]"
       ],
       [
         "vasp_version",
@@ -1385,10 +1389,6 @@
       [
         "wall_time",
         "Optional[float]"
-      ],
-      [
-        "xc",
-        "Optional[str]"
       ]
     ],
     "StoichiometryModel": [

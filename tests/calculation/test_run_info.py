@@ -113,57 +113,57 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
 
 
 CORE_BOOLS = (
-    "lnoncollinear",
-    "lsorbit",
-    "lkpoints_opt",
-    "lasph",
-    "lhfcalc",
-    "ldipol",
-    "lepsilon",
+    "LNONCOLLINEAR",
+    "LSORBIT",
+    "LKPOINTS_OPT",
+    "LASPH",
+    "LHFCALC",
+    "LDIPOL",
+    "LEPSILON",
     "build_gpu",
     "build_mpi",
     "build_openmp",
 )
 CORE_STRINGS = (
-    "lreal",
-    "prec",
-    "algo",
-    "xc",
+    "LREAL",
+    "PREC",
+    "ALGO",
+    "XC",
     "build_variant",
 )
 CORE_SCALARS = (
-    "sigma",
-    "ispin",
-    "istart",
-    "icharg",
-    "nelm",
-    "lmaxmix",
-    "potim",
-    "tebeg",
-    "teend",
-    "mdalgo",
-    "isym",
-    "lorbit",
-    "images",
+    "SIGMA",
+    "ISPIN",
+    "ISTART",
+    "ICHARG",
+    "NELM",
+    "LMAXMIX",
+    "POTIM",
+    "TEBEG",
+    "TEEND",
+    "MDALGO",
+    "ISYM",
+    "LORBIT",
+    "IMAGES",
     "peak_memory",
-    "ncore",
-    "kpar",
+    "NCORE",
+    "KPAR",
     "mpi_ranks",
-    "ibrion",
-    "isif",
-    "nsw",
-    "ediffg",
-    "encut",
-    "ediff",
-    "nbands",
+    "IBRION",
+    "ISIF",
+    "NSW",
+    "EDIFFG",
+    "ENCUT",
+    "EDIFF",
+    "NBANDS",
     "nkpts",
-    "nelect",
-    "ismear",
-    "aexx",
-    "hfscreen",
-    "ivdw",
-    "nupdown",
-    "idipol",
+    "NELECT",
+    "ISMEAR",
+    "AEXX",
+    "HFSCREEN",
+    "IVDW",
+    "NUPDOWN",
+    "IDIPOL",
     "wall_time",
     "cpu_time",
     "omp_threads",
@@ -174,9 +174,9 @@ CORE_SCALARS = (
 
 def _expected_core_settings(setup):
     return {
-        **{field: getattr(setup, field) for field in CORE_SCALARS},
-        **{field: bool(getattr(setup, field)) for field in CORE_BOOLS},
-        **{field: _decode(getattr(setup, field)) for field in CORE_STRINGS},
+        **{field: getattr(setup, field.lower()) for field in CORE_SCALARS},
+        **{field: bool(getattr(setup, field.lower())) for field in CORE_BOOLS},
+        **{field: _decode(getattr(setup, field.lower())) for field in CORE_STRINGS},
     }
 
 
@@ -199,17 +199,17 @@ def test_core_bools_are_bool(run_info):
 
 
 def test_lreal_of_demo_is_vasp_string(run_info):
-    assert run_info.read()["lreal"] == "Auto"
+    assert run_info.read()["LREAL"] == "Auto"
 
 
 @pytest.mark.parametrize("lreal", [b"Auto", b"On", b"F", b"T", b"Auto  ", "On"])
 def test_lreal_keeps_vasp_spelling(raw_data, lreal):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.lreal = lreal
-    actual = RunInfo.from_data(raw_run_info).read()["lreal"]
+    actual = RunInfo.from_data(raw_run_info).read()["LREAL"]
     assert actual == _decode(lreal)
     assert (
-        RunInfo.from_data(raw_run_info)._to_database()["run_info"]["default"].lreal
+        RunInfo.from_data(raw_run_info)._to_database()["run_info"]["default"].LREAL
         == actual
     )
 
@@ -228,27 +228,27 @@ def test_algo_missing_in_file_is_none(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.algo = raw.VaspData(None)
     actual = RunInfo.from_data(raw_run_info).read()
-    assert actual["algo"] is None
-    assert actual["prec"] == "accurate"
+    assert actual["ALGO"] is None
+    assert actual["PREC"] == "accurate"
 
 
 def test_ldau_is_false_without_ldau_group(run_info):
     # VASP writes the ldau group only if LDA+U is active
-    assert run_info.read()["ldau"] is False
-    assert run_info._to_database()["run_info"]["default"].ldau is False
+    assert run_info.read()["LDAU"] is False
+    assert run_info._to_database()["run_info"]["default"].LDAU is False
 
 
 @pytest.mark.parametrize("ldautype", [1, 2, 4])
 def test_ldau_is_true_if_vasp_wrote_ldautype(raw_data, ldautype):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.ldautype = ldautype
-    assert RunInfo.from_data(raw_run_info).read()["ldau"] is True
+    assert RunInfo.from_data(raw_run_info).read()["LDAU"] is True
 
 
 def test_ldau_without_setup_is_none(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup = None
-    assert RunInfo.from_data(raw_run_info).read()["ldau"] is None
+    assert RunInfo.from_data(raw_run_info).read()["LDAU"] is None
 
 
 def test_error_messages_with_counts(raw_data):

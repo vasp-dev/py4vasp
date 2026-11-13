@@ -27,39 +27,40 @@ _TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
     TypeError,
     ValueError,
 )
-# core settings of raw.RunSetup reported under their own name
+# core settings of raw.RunSetup; a key that is exactly an INCAR tag is reported in
+# upper case, every other one in lower case, and the raw field is the lower-case key
 _CORE_SETTINGS = (
-    "sigma",
-    "ispin",
-    "istart",
-    "icharg",
-    "nelm",
-    "lmaxmix",
-    "potim",
-    "tebeg",
-    "teend",
-    "mdalgo",
-    "isym",
-    "lorbit",
-    "images",
+    "SIGMA",
+    "ISPIN",
+    "ISTART",
+    "ICHARG",
+    "NELM",
+    "LMAXMIX",
+    "POTIM",
+    "TEBEG",
+    "TEEND",
+    "MDALGO",
+    "ISYM",
+    "LORBIT",
+    "IMAGES",
     "peak_memory",
-    "ncore",
-    "kpar",
-    "ibrion",
-    "isif",
-    "nsw",
-    "ediffg",
-    "encut",
-    "ediff",
-    "nbands",
+    "NCORE",
+    "KPAR",
+    "IBRION",
+    "ISIF",
+    "NSW",
+    "EDIFFG",
+    "ENCUT",
+    "EDIFF",
+    "NBANDS",
     "nkpts",
-    "nelect",
-    "ismear",
-    "aexx",
-    "hfscreen",
-    "ivdw",
-    "nupdown",
-    "idipol",
+    "NELECT",
+    "ISMEAR",
+    "AEXX",
+    "HFSCREEN",
+    "IVDW",
+    "NUPDOWN",
+    "IDIPOL",
     "mpi_ranks",
     "wall_time",
     "cpu_time",
@@ -68,22 +69,22 @@ _CORE_SETTINGS = (
     "gpus",
 )
 _CORE_LOGICALS = (
-    "lnoncollinear",
-    "lsorbit",
-    "lkpoints_opt",
-    "lasph",
-    "lhfcalc",
-    "ldipol",
-    "lepsilon",
+    "LNONCOLLINEAR",
+    "LSORBIT",
+    "LKPOINTS_OPT",
+    "LASPH",
+    "LHFCALC",
+    "LDIPOL",
+    "LEPSILON",
     "build_gpu",
     "build_mpi",
     "build_openmp",
 )
 _CORE_STRINGS = (
-    "lreal",
-    "prec",
-    "algo",
-    "xc",
+    "LREAL",
+    "PREC",
+    "ALGO",
+    "XC",
     "build_variant",
 )
 
@@ -157,11 +158,11 @@ class RunInfoHandler:
             if fine is not None:
                 grid += f" (fine {' x '.join(map(str, fine))})"
             yield f"    FFT grid: {grid}"
-        ionic_update = self._tags(data, "ibrion", "isif", "nsw")
+        ionic_update = self._tags(data, "IBRION", "ISIF", "NSW")
         if ionic_update:
             yield f"    ionic update: {ionic_update}"
-        if data["xc"] is not None:
-            yield f"    functional: {data['xc']}" + ("+U" if data["ldau"] else "")
+        if data["XC"] is not None:
+            yield f"    functional: {data['XC']}" + ("+U" if data["LDAU"] else "")
         settings = (
             ("electronic", "ENCUT"),
             ("dos", "ISMEAR"),
@@ -169,7 +170,7 @@ class RunInfoHandler:
             ("electronic", "NELM"),
         )
         for section, tag in settings:
-            value = data[tag.lower()]
+            value = data[tag]
             if value is not None:
                 unit = self._setup_unit(section, tag)
                 yield f"    {tag}: {value}" + (f" {unit}" if unit else "")
@@ -190,16 +191,14 @@ class RunInfoHandler:
         parts = []
         if data["mpi_ranks"] is not None:
             parts.append(f"{data['mpi_ranks']} MPI ranks")
-        if tags := RunInfoHandler._tags(data, "kpar", "ncore"):
+        if tags := RunInfoHandler._tags(data, "KPAR", "NCORE"):
             parts.append(tags)
         return ", ".join(parts)
 
     @staticmethod
     def _tags(data, *tags):
         "Join the INCAR tags VASP wrote as TAG=value."
-        return ", ".join(
-            f"{tag.upper()}={data[tag]}" for tag in tags if data[tag] is not None
-        )
+        return ", ".join(f"{tag}={data[tag]}" for tag in tags if data[tag] is not None)
 
     def _setup_unit(self, section, tag):
         extension = getattr(self._raw_run_info, "extension", None)
@@ -272,10 +271,10 @@ class RunInfoHandler:
             "is_noncollinear": (
                 self._is_noncollinear() if lnoncollinear is None else lnoncollinear
             ),
-            **{key: self._setup_value(key) for key in _CORE_SETTINGS},
-            **{key: self._setup_bool(key) for key in _CORE_LOGICALS},
-            **{key: self._setup_string(key) for key in _CORE_STRINGS},
-            "ldau": self._is_ldau(),
+            **{key: self._setup_value(key.lower()) for key in _CORE_SETTINGS},
+            **{key: self._setup_bool(key.lower()) for key in _CORE_LOGICALS},
+            **{key: self._setup_string(key.lower()) for key in _CORE_STRINGS},
+            "LDAU": self._is_ldau(),
         }
 
     def _is_ldau(self):
@@ -457,22 +456,22 @@ class RunInfo:
         properties derived from the results like the Fermi energy. Since VASP 6.7, it
         also contains
 
-        - the core settings of the run under the name of their INCAR tag in lower
-          case: the kind of run (``"ibrion"``, ``"isif"``, ``"nsw"``,
-          ``"ediffg"``), the basis and accuracy (``"encut"`` in eV, ``"prec"``,
-          ``"ediff"`` in eV, ``"algo"``, ``"nbands"``, ``"nkpts"``, ``"nelect"``,
-          ``"lasph"``), the smearing (``"ismear"``, ``"sigma"`` in eV), the
-          Hamiltonian (``"xc"``, ``"lhfcalc"``, ``"aexx"``, ``"hfscreen"``,
-          ``"ivdw"``, ``"nupdown"``, ``"ldipol"``, ``"idipol"``, ``"lepsilon"``),
-          and further ones like ``"ispin"`` or ``"nelm"``. Logical tags are Python
-          bools; string tags keep VASP's spelling, e.g., ``"lreal"`` is "Auto",
-          "On", "T", or "F" and ``"xc"`` is a lower-case name such as "pbe",
+        - the core settings of the run under the name of their INCAR tag: the kind
+          of run (``"IBRION"``, ``"ISIF"``, ``"NSW"``,
+          ``"EDIFFG"``), the basis and accuracy (``"ENCUT"`` in eV, ``"PREC"``,
+          ``"EDIFF"`` in eV, ``"ALGO"``, ``"NBANDS"``, ``"nkpts"``, ``"NELECT"``,
+          ``"LASPH"``), the smearing (``"ISMEAR"``, ``"SIGMA"`` in eV), the
+          Hamiltonian (``"XC"``, ``"LHFCALC"``, ``"AEXX"``, ``"HFSCREEN"``,
+          ``"IVDW"``, ``"NUPDOWN"``, ``"LDIPOL"``, ``"IDIPOL"``, ``"LEPSILON"``),
+          and further ones like ``"ISPIN"`` or ``"NELM"``. Logical tags are Python
+          bools; string tags keep VASP's spelling, e.g., ``"LREAL"`` is "Auto",
+          "On", "T", or "F" and ``"XC"`` is a lower-case name such as "pbe",
           "hse06", or "mixture",
-        - ``"ldau"``, which is True if LDA+U is active; the U and J values are in
+        - ``"LDAU"``, which is True if LDA+U is active; the U and J values are in
           the extensions under ``"ldau"``,
         - the FFT grids ``"grid_coarse_shape"`` and ``"grid_fine_shape"``,
         - the resources ``"mpi_ranks"``, ``"omp_threads"``, ``"nodes"``,
-          ``"gpus"``, ``"kpar"``, and ``"ncore"`` and the performance
+          ``"gpus"``, ``"KPAR"``, and ``"NCORE"`` and the performance
           ``"wall_time"`` and ``"cpu_time"`` in s and ``"peak_memory"`` in kB,
         - the build of the executable: ``"build_variant"`` ("gam", "std", or
           "ncl") and whether it was built with ``"build_gpu"``, ``"build_mpi"``,
@@ -484,10 +483,12 @@ class RunInfo:
           Warnings and alerts are not reported here; they remain in the HDF5 file
           under /messages.
 
-        All top-level keys are lower case. A setting VASP did not write is None; in
+        A key that is exactly an INCAR tag is spelled like the tag in upper case,
+        e.g. ``"SIGMA"``; every other key is lower case, e.g. ``"nkpts"``, which VASP
+        takes from the KPOINTS file. A setting VASP did not write is None; in
         particular, for VASP older than 6.7 the core settings, ``"is_success"``, the
         error messages, the resources, and the build are None. VASP 6.7 does not
-        write ``"algo"`` yet, and serial builds write no resources.
+        write ``"ALGO"`` yet, and serial builds write no resources.
 
         Parameters
         ----------
@@ -515,16 +516,16 @@ class RunInfo:
         >>> from py4vasp import demo
         >>> calculation = demo.calculation()
         >>> run_info = calculation.run_info.read()
-        >>> run_info["grid_coarse_shape"], run_info["sigma"], run_info["is_success"]
+        >>> run_info["grid_coarse_shape"], run_info["SIGMA"], run_info["is_success"]
         ([32, 32, 40], 0.05, True)
-        >>> run_info["mpi_ranks"], run_info["kpar"], run_info["ncore"]
+        >>> run_info["mpi_ranks"], run_info["KPAR"], run_info["NCORE"]
         (64, 4, 8)
 
         The kind of run, the basis, and the functional tell how the results came about
 
-        >>> run_info["ibrion"], run_info["nsw"], run_info["encut"], run_info["prec"]
+        >>> run_info["IBRION"], run_info["NSW"], run_info["ENCUT"], run_info["PREC"]
         (2, 40, 520.0, 'accurate')
-        >>> run_info["xc"], run_info["lhfcalc"], run_info["ldau"]
+        >>> run_info["XC"], run_info["LHFCALC"], run_info["LDAU"]
         ('pbe', False, False)
         >>> run_info["wall_time"], run_info["build_variant"]
         (1834.5, 'std')

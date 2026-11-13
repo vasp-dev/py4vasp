@@ -1066,94 +1066,94 @@ class RunInfoModel(_DatabaseModel):
     phonon_num_modes: Optional[int] = None
     """The number of phonon modes calculated."""
 
-    # core settings named after the INCAR tag in lower case (VASP 6.7 or newer)
-    sigma: Optional[float] = None
+    # core settings; a field that is exactly an INCAR tag is spelled like it (VASP 6.7 or newer)
+    SIGMA: Optional[float] = None
     """The width of the smearing (SIGMA), in eV."""
-    ispin: Optional[int] = None
+    ISPIN: Optional[int] = None
     """1 for a nonpolarized and 2 for a spin-polarized calculation (ISPIN)."""
-    lnoncollinear: Optional[bool] = None
+    LNONCOLLINEAR: Optional[bool] = None
     """Whether the calculation is noncollinear (LNONCOLLINEAR)."""
-    lsorbit: Optional[bool] = None
+    LSORBIT: Optional[bool] = None
     """Whether spin-orbit coupling is included (LSORBIT)."""
-    istart: Optional[int] = None
+    ISTART: Optional[int] = None
     """Whether VASP started from the WAVECAR file (ISTART)."""
-    icharg: Optional[int] = None
+    ICHARG: Optional[int] = None
     """How VASP constructed the initial charge density (ICHARG)."""
-    nelm: Optional[int] = None
+    NELM: Optional[int] = None
     """The maximum number of electronic steps per ionic step (NELM)."""
-    lreal: Optional[str] = None
+    LREAL: Optional[str] = None
     """How the projection operators are evaluated (LREAL), spelled as VASP writes it: "Auto" or "On" for optimized real-space projectors, "T" for real space, "F" for reciprocal space."""
-    lmaxmix: Optional[int] = None
+    LMAXMIX: Optional[int] = None
     """The maximum angular momentum passed to the mixer (LMAXMIX)."""
-    potim: Optional[float] = None
+    POTIM: Optional[float] = None
     """The time step of molecular dynamics in fs or scaling of the ionic step (POTIM)."""
-    tebeg: Optional[float] = None
+    TEBEG: Optional[float] = None
     """The temperature at the start of molecular dynamics (TEBEG), in K."""
-    teend: Optional[float] = None
+    TEEND: Optional[float] = None
     """The temperature at the end of molecular dynamics (TEEND), in K."""
-    mdalgo: Optional[int] = None
+    MDALGO: Optional[int] = None
     """The algorithm used for molecular dynamics (MDALGO)."""
-    isym: Optional[int] = None
+    ISYM: Optional[int] = None
     """How VASP uses the symmetry of the system (ISYM)."""
-    lkpoints_opt: Optional[bool] = None
+    LKPOINTS_OPT: Optional[bool] = None
     """Whether VASP evaluated the KPOINTS_OPT k-point set (LKPOINTS_OPT)."""
-    lorbit: Optional[int] = None
+    LORBIT: Optional[int] = None
     """Which projections onto local orbitals VASP computed (LORBIT)."""
-    ibrion: Optional[int] = None
+    IBRION: Optional[int] = None
     """How VASP updates the ions (IBRION), e.g., -1 for no update, 0 for molecular dynamics, 1-3 for relaxations, 5-8 for finite differences."""
-    isif: Optional[int] = None
+    ISIF: Optional[int] = None
     """Which degrees of freedom VASP relaxes and whether it computes the stress tensor (ISIF)."""
-    nsw: Optional[int] = None
+    NSW: Optional[int] = None
     """The maximum number of ionic steps (NSW)."""
-    ediffg: Optional[float] = None
+    EDIFFG: Optional[float] = None
     """The stopping criterion of the ionic relaxation (EDIFFG), in eV for the energy (positive) or in eV/Å for the forces (negative)."""
-    encut: Optional[float] = None
+    ENCUT: Optional[float] = None
     """The cutoff energy of the plane-wave basis (ENCUT), in eV."""
-    ediff: Optional[float] = None
+    EDIFF: Optional[float] = None
     """The stopping criterion of the electronic self-consistency (EDIFF), in eV."""
-    nbands: Optional[int] = None
+    NBANDS: Optional[int] = None
     """The number of bands (NBANDS)."""
     nkpts: Optional[int] = None
     """The number of k points in the irreducible Brillouin zone (NKPTS)."""
-    nelect: Optional[float] = None
+    NELECT: Optional[float] = None
     """The number of electrons (NELECT)."""
-    ismear: Optional[int] = None
+    ISMEAR: Optional[int] = None
     """The method used to smear the occupations (ISMEAR), e.g., 0 Gaussian, -1 Fermi-Dirac, -5 tetrahedron method."""
-    aexx: Optional[float] = None
+    AEXX: Optional[float] = None
     """The fraction of exact exchange (AEXX)."""
-    hfscreen: Optional[float] = None
+    HFSCREEN: Optional[float] = None
     """The range-separation parameter of screened hybrid functionals (HFSCREEN), in 1/Å."""
-    ivdw: Optional[int] = None
+    IVDW: Optional[int] = None
     """Which van der Waals correction VASP applies (IVDW); 0 means none."""
-    nupdown: Optional[float] = None
+    NUPDOWN: Optional[float] = None
     """The difference between the number of up and down electrons (NUPDOWN); -1 if VASP does not fix it."""
-    idipol: Optional[int] = None
+    IDIPOL: Optional[int] = None
     """The direction of the dipole correction (IDIPOL); 0 if VASP does not apply one."""
-    images: Optional[int] = None
+    IMAGES: Optional[int] = None
     """The number of images, e.g., of a nudged elastic band calculation."""
     peak_memory: Optional[float] = None
     """The peak memory used by the run, in kB."""
-    ncore: Optional[int] = None
+    NCORE: Optional[int] = None
     """The number of cores working on an individual orbital (NCORE)."""
-    kpar: Optional[int] = None
+    KPAR: Optional[int] = None
     """The number of k-point groups treated in parallel (KPAR)."""
     mpi_ranks: Optional[int] = None
     """The number of MPI ranks the run used."""
-    lasph: Optional[bool] = None
+    LASPH: Optional[bool] = None
     """Whether VASP includes the nonspherical contributions of the gradient corrections inside the PAW spheres (LASPH)."""
-    lhfcalc: Optional[bool] = None
+    LHFCALC: Optional[bool] = None
     """Whether VASP computes exact exchange (LHFCALC), e.g., for hybrid functionals."""
-    ldipol: Optional[bool] = None
+    LDIPOL: Optional[bool] = None
     """Whether VASP corrects the potential and the forces for the dipole of the cell (LDIPOL)."""
-    lepsilon: Optional[bool] = None
+    LEPSILON: Optional[bool] = None
     """Whether VASP computes the static dielectric tensor with density-functional perturbation theory (LEPSILON)."""
-    prec: Optional[str] = None
+    PREC: Optional[str] = None
     """The precision of the calculation (PREC) as VASP writes it, e.g., "normal" or "accurate"."""
-    algo: Optional[str] = None
+    ALGO: Optional[str] = None
     """The algorithm of the electronic minimization (ALGO) as VASP writes it, e.g., "Normal" or "All"."""
-    xc: Optional[str] = None
+    XC: Optional[str] = None
     """The exchange-correlation functional (XC), e.g., "pbe", "hse06", or "scan"; "mixture" if it combines several components."""
-    ldau: Optional[bool] = None
+    LDAU: Optional[bool] = None
     """Whether LDA+U is active (LDAU)."""
     wall_time: Optional[float] = None
     """The elapsed (wall-clock) time of the run, in s."""
