@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -76,6 +76,12 @@ _ERROR_SEVERITIES = ("error", "bug")
 _REQUIRES_NEWER_VASP = "unknown (requires a newer VASP)"
 # print groups the core settings like the sections VASP writes them to, so that the
 # units can be looked up in the extensions; the keys are the ones of read()
+_PHONON_KEYS = (
+    "phonon_method",
+    "phonon_num_modes",
+    "phonon_num_qpoints",
+    "phonon_num_branches",
+)
 _PRINTED_GROUPS = (
     (
         "ionic",
@@ -148,7 +154,7 @@ class RunInfoHandler:
             **self._dict_from_structure(),
             **self._dict_additional_collection(),
             **self._dict_from_selective_dynamics(),
-            **self._dict_from_phonon_dispersion(),
+            **self._dict_from_phonons(),
             **self._dict_from_messages(),
             "extensions": self._dict_from_extension(),
         }
@@ -185,10 +191,7 @@ class RunInfoHandler:
             yield f"    spin: {spin}"
         if data["XC"] is not None:
             yield f"    functional: {data['XC']}" + ("+U" if data["LDAU"] else "")
-        qpoints = data["phonon_num_qpoints"]
-        modes = data["phonon_num_modes"]
-        if qpoints is not None and modes is not None:
-            yield f"    phonon dispersion: {qpoints} q-points, {modes} modes"
+        yield from self._group_lines(data, "phonons", "phonons", _PHONON_KEYS)
         if has_setup:
             yield from self._setup_summary_lines(data)
         else:
@@ -202,14 +205,7 @@ class RunInfoHandler:
                 grid += f" (fine {' x '.join(map(str, fine))})"
             yield f"    FFT grid: {grid}"
         for group, section, keys in _PRINTED_GROUPS:
-            lines = [
-                f"        {key}: {data[key]}" + self._unit_suffix(section, key)
-                for key in keys
-                if data[key] is not None
-            ]
-            if lines:
-                yield f"    {group}:"
-                yield from lines
+            yield from self._group_lines(data, group, section, keys)
         yield from self._error_message_lines(data)
         if data["extensions"]:
             yield f"    extensions: {', '.join(sorted(data['extensions']))}"
@@ -225,6 +221,17 @@ class RunInfoHandler:
         yield "    error messages:"
         for message, count in zip(messages, counts):
             yield f"        - {message} ({count}×)"
+
+    def _group_lines(self, data, group, section, keys):
+        "Print a group of keys in YAML style; leave it out if VASP wrote none of them."
+        lines = [
+            f"        {key}: {data[key]}" + self._unit_suffix(section, key)
+            for key in keys
+            if data[key] is not None
+        ]
+        if lines:
+            yield f"    {group}:"
+            yield from lines
 
     def _unit_suffix(self, section, key):
         "The units VASP attached to the dataset, if any."
@@ -248,29 +255,11 @@ class RunInfoHandler:
         data.pop("extensions")
         return RunInfoModel(**data)
 
-    def _read_attr(self, *keys: str):
-        data = self._raw_run_info
-        for key in keys:
-            data = getattr(data, key, None)
-            if data is None:
-                return None
-        try:
-            is_none = data.is_none() or data is None
-        except AttributeError:
-            is_none = False
-        return data[:] if not is_none else None
-
     def _dict_additional_collection(self) -> dict:
-        fermi_energy = None
-        with suppress(exception.NoData):
-            fermi_energy = self._raw_run_info.fermi_energy
-        if isinstance(fermi_energy, VaspData):
-            fermi_energy = fermi_energy._data
-
         return {
             **self._dict_from_setup(),
             "EFERMI": self._efermi(),
-            "fermi_energy": fermi_energy,
+            "fermi_energy": self._setup_value("fermi_energy"),
         }
 
     def _efermi(self):
@@ -370,18 +359,19 @@ class RunInfoHandler:
             selective_dynamics = self._setup_bool("poscar_selective_dynamics")
         return {"has_selective_dynamics": selective_dynamics}
 
-    def _dict_from_phonon_dispersion(self) -> dict:
-        phonon_num_qpoints = None
-        phonon_num_modes = None
-        # a calculation without phonons has no dispersion at all, so guard against the
-        # missing attribute the same way _dict_from_structure does
-        with suppress(exception.NoData, AttributeError):
-            eigenvalues = self._raw_run_info.phonon_dispersion.eigenvalues
-            phonon_num_qpoints = eigenvalues.shape[0]
-            phonon_num_modes = eigenvalues.shape[1]
+    def _dict_from_phonons(self) -> dict:
+        """VASP versions without the setup of the phonons only write the dispersion,
+        whose shape gives the number of q points and branches."""
+        qpoints = self._setup_value("phonon_num_qpoints")
+        branches = self._setup_value("phonon_num_branches")
+        frequencies = self._raw_run_info.phonon_frequencies
+        if qpoints is None and branches is None and not check.is_none(frequencies):
+            qpoints, branches = frequencies.shape
         return {
-            "phonon_num_qpoints": phonon_num_qpoints,
-            "phonon_num_modes": phonon_num_modes,
+            "phonon_method": self._setup_string("phonon_method"),
+            "phonon_num_modes": self._setup_value("phonon_num_modes"),
+            "phonon_num_qpoints": qpoints,
+            "phonon_num_branches": branches,
         }
 
 
@@ -532,7 +522,8 @@ class RunInfo:
         >>> sorted(run_info["extensions"])
         ['dimensions', 'dipole', 'dos', 'electronic', 'exchange_correlation',
          'ionic', 'kpoints_opt', 'ldau', 'linear_response', 'metadata/build',
-         'metadata/performance', 'metadata/resources', 'vdw', 'write_flags']
+         'metadata/performance', 'metadata/resources', 'phonons', 'vdw',
+         'write_flags']
         >>> run_info["extensions"]["dos"]
         {'EFERMI_METHOD': 'LEGACY', 'ISMEAR': 0, 'SIGMA': 0.05}
         >>> run_info["extensions"]["exchange_correlation"]["functional_1/NAME"]

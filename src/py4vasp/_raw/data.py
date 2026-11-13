@@ -795,8 +795,8 @@ class RunInfo:
     poscar_selective_dynamics: VaspData = NONE()
     "Whether the POSCAR file selects the directions the ions move along."
 
-    phonon_dispersion: Optional[Dispersion] = None
-    "The phonon dispersion of the system."
+    phonon_frequencies: VaspData = NONE()
+    "The frequencies of the phonon dispersion; only their shape is used."
 
     # The core settings and how the run ended, from the /setup, /metadata, and
     # /messages groups. A field that is exactly an INCAR tag is named like the tag in
@@ -908,6 +908,14 @@ class RunInfo:
     "Whether DFT+U is used."
     selective_dynamics: VaspData = NONE()
     "Whether the ions move with selective dynamics."
+    phonon_method: VaspData = NONE()
+    'How the force constants are computed, "finite differences" or "linear response".'
+    phonon_num_modes: VaspData = NONE()
+    "The number of phonon modes at the Gamma point of the supercell."
+    phonon_num_qpoints: VaspData = NONE()
+    "The number of q points of the phonon dispersion."
+    phonon_num_branches: VaspData = NONE()
+    "The number of phonon frequencies per q point of the dispersion."
     wall_time: VaspData = NONE()
     "Elapsed time of the run in s."
     cpu_time: VaspData = NONE()

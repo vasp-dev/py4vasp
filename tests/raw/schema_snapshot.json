@@ -1343,6 +1343,14 @@
         "Optional[float]"
       ],
       [
+        "phonon_method",
+        "Optional[str]"
+      ],
+      [
+        "phonon_num_branches",
+        "Optional[int]"
+      ],
+      [
         "phonon_num_modes",
         "Optional[int]"
       ],
@@ -1572,5 +1580,7 @@
       ]
     ]
   },
-  "changes": {}
+  "changes": {
+    "1": "RunInfoModel.phonon_num_modes counts the modes at the Gamma point of the supercell instead of the branches of the dispersion, which phonon_num_branches holds now"
+  }
 }

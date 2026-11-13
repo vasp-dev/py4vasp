@@ -433,6 +433,23 @@ def test_run_info_reads_both_selective_dynamics_flags(tmp_path):
         assert run_info.poscar_selective_dynamics == 0
 
 
+def test_run_info_reads_the_setup_of_the_phonons(tmp_path):
+    phonons = {
+        "phonons/method": "finite differences",
+        "phonons/num_modes": 12,
+        "phonons/num_qpoints": 20,
+        "phonons/num_branches": 6,
+        "/results/phonons/frequencies": np.zeros((20, 6)),
+    }
+    write_setup_file(tmp_path / DEFAULT_FILE, phonons)
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.phonon_method == b"finite differences"
+        assert run_info.phonon_num_modes == 12
+        assert run_info.phonon_num_qpoints == 20
+        assert run_info.phonon_num_branches == 6
+        assert run_info.phonon_frequencies.shape == (20, 6)
+
+
 def test_run_info_without_algo_reports_it_as_missing(tmp_path):
     # VASP writes no ALGO if the INCAR sets only IALGO
     write_setup_file(tmp_path / DEFAULT_FILE, {"electronic/PREC": "accurate"})

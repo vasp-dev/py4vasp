@@ -72,6 +72,13 @@ _SETUP = {
         "LEPSILON": (False, None, "dielectric tensor from linear response"),
     },
     "ldau": {"LDAU": (False, None, "DFT+U")},
+    # the same dispersion as the phonon band of the default demo calculation
+    "phonons": {
+        "method": ("finite differences", None, "method for the force constants"),
+        "num_modes": (21, None, "number of modes at Gamma"),
+        "num_qpoints": (164, None, "number of q points"),
+        "num_branches": (21, None, "number of branches"),
+    },
 }
 # The /metadata group in the same layout; resources exist only for MPI builds.
 _METADATA = {
@@ -114,7 +121,7 @@ def Sr2TiO4():
         fermi_energy=0.5,
         number_ionic_steps=len(_demo.structure.Sr2TiO4().positions),
         poscar_selective_dynamics=0,
-        phonon_dispersion=_demo.phonon.band.Sr2TiO4().dispersion,
+        phonon_frequencies=_demo.phonon.band.Sr2TiO4().dispersion.eigenvalues,
         **run_setup(),
         extension=extension(),
     )
@@ -173,6 +180,10 @@ def run_setup():
         "MDALGO": ("ionic", "MDALGO"),
         "ISYM": ("ionic", "ISYM"),
         "selective_dynamics": ("ionic", "selective_dynamics"),
+        "phonon_method": ("phonons", "method"),
+        "phonon_num_modes": ("phonons", "num_modes"),
+        "phonon_num_qpoints": ("phonons", "num_qpoints"),
+        "phonon_num_branches": ("phonons", "num_branches"),
         "XC": ("exchange_correlation", "XC"),
         "LDAU": ("ldau", "LDAU"),
         "LHFCALC": ("exchange_correlation", "LHFCALC"),

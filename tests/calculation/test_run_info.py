@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 from py4vasp import _demo, exception, raw
-from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
 from py4vasp._raw.models import RunInfoModel
 from py4vasp._util import check
@@ -23,9 +22,6 @@ def run_info(request, raw_data):
     run_info.ref.setup = raw_run_info
     run_info.ref.extension = raw_run_info.extension
     run_info.ref.number_ionic_steps = raw_run_info.number_ionic_steps
-    run_info.ref.phonon_dispersion = DispersionHandler.from_data(
-        raw_run_info.phonon_dispersion
-    )
     return run_info
 
 
@@ -39,9 +35,6 @@ def run_info_handler(request, raw_data):
     handler.ref.setup = raw_run_info
     handler.ref.extension = raw_run_info.extension
     handler.ref.number_ionic_steps = raw_run_info.number_ionic_steps
-    handler.ref.phonon_dispersion = DispersionHandler.from_data(
-        raw_run_info.phonon_dispersion
-    )
     return handler
 
 
@@ -57,15 +50,11 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
 
     assert models.has_selective_dynamics is False
 
-    # from phonon dispersion
-    assert (
-        models.phonon_num_qpoints
-        == runinfo_ref.phonon_dispersion._raw_dispersion.eigenvalues[:].shape[0]
-    )
-    assert (
-        models.phonon_num_modes
-        == runinfo_ref.phonon_dispersion._raw_dispersion.eigenvalues[:].shape[1]
-    )
+    # from the setup of the phonon calculation
+    assert models.phonon_method == "finite differences"
+    assert models.phonon_num_modes == 21
+    assert models.phonon_num_qpoints == 164
+    assert models.phonon_num_branches == 21
 
     # extra collection
     setup = runinfo_ref.setup
@@ -398,6 +387,48 @@ def test_selective_dynamics_falls_back_to_poscar(raw_data, setup, poscar, expect
     assert model.has_selective_dynamics is expected
 
 
+PHONON_SETUP = (
+    "phonon_method",
+    "phonon_num_modes",
+    "phonon_num_qpoints",
+    "phonon_num_branches",
+)
+
+
+def test_phonons_without_setup_fall_back_to_the_frequencies(raw_data):
+    # VASP versions without /setup/phonons only write the dispersion
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    for field in PHONON_SETUP:
+        setattr(raw_run_info, field, raw.VaspData(None))
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["phonon_num_qpoints"] == 20
+    assert actual["phonon_num_branches"] == 21
+    assert actual["phonon_method"] is None
+    assert actual["phonon_num_modes"] is None
+
+
+def test_phonons_of_a_run_at_gamma_only(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.phonon_num_qpoints = raw.VaspData(None)
+    raw_run_info.phonon_num_branches = raw.VaspData(None)
+    raw_run_info.phonon_frequencies = raw.VaspData(None)
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["phonon_method"] == "finite differences"
+    assert actual["phonon_num_modes"] == 21
+    assert actual["phonon_num_qpoints"] is None
+    assert actual["phonon_num_branches"] is None
+
+
+def test_without_phonons_nothing_is_reported(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    for field in PHONON_SETUP:
+        setattr(raw_run_info, field, raw.VaspData(None))
+    raw_run_info.phonon_frequencies = raw.VaspData(None)
+    run_info = RunInfo.from_data(raw_run_info)
+    assert all(run_info.read()[field] is None for field in PHONON_SETUP)
+    assert "phonons:" not in str(run_info)
+
+
 def test_to_dict_matches_read(run_info_handler):
     assert run_info_handler.to_dict() == run_info_handler.to_dict()
 
@@ -495,7 +526,11 @@ run info for Sr2TiO4:
     ionic steps: 4
     spin: nonpolarized
     functional: pbe
-    phonon dispersion: 20 q-points, 21 modes
+    phonons:
+        phonon_method: finite differences
+        phonon_num_modes: 21
+        phonon_num_qpoints: 164
+        phonon_num_branches: 21
     FFT grid: 32 x 32 x 40 (fine 64 x 64 x 80)
     ionic:
         IBRION: 2
@@ -565,7 +600,7 @@ run info for Sr2TiO4:
         build_openmp: False
     error messages:
         - The basis set is incomplete. (1×)
-    extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, ldau, linear_response, metadata/build, metadata/performance, metadata/resources, vdw, write_flags"""
+    extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, ldau, linear_response, metadata/build, metadata/performance, metadata/resources, phonons, vdw, write_flags"""
     assert actual == {"text/plain": reference}
 
 
@@ -624,7 +659,7 @@ def test_print_of_vasp_without_setup(raw_data, format_):
     # setup writers; print says so instead of silently leaving the settings out
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.vasp_version = raw.VaspData(None)
-    raw_run_info.phonon_dispersion = None
+    raw_run_info.phonon_frequencies = raw.VaspData(None)
     _without_setup(raw_run_info)
     raw_run_info.extension = None
     actual, _ = format_(RunInfo.from_data(raw_run_info))

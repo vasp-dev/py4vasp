@@ -37,7 +37,11 @@ __DB_SCHEMA__ = 1
 # reason recorded here. A change of meaning that rode along with a bump for changed
 # fields is recorded as well, because nothing else tells a consumer about it. Empty it
 # together with resetting __DB_SCHEMA__ on a new py4vasp minor release.
-__DB_SEMANTIC_CHANGES__ = {}
+__DB_SEMANTIC_CHANGES__ = {
+    1: "RunInfoModel.phonon_num_modes counts the modes at the Gamma point of the "
+    "supercell instead of the branches of the dispersion, which phonon_num_branches "
+    "holds now",
+}
 
 
 def schema_version() -> str:
@@ -1047,10 +1051,14 @@ class RunInfoModel(_DatabaseModel):
     has_selective_dynamics: Optional[bool] = None
     """Whether the calculation used selective dynamics."""
 
-    phonon_num_qpoints: Optional[int] = None
-    """The number of q-points used in the phonon calculation."""
+    phonon_method: Optional[str] = None
+    """How the force constants were computed, "finite differences" or "linear response"."""
     phonon_num_modes: Optional[int] = None
-    """The number of phonon modes calculated."""
+    """The number of phonon modes at the Gamma point of the supercell."""
+    phonon_num_qpoints: Optional[int] = None
+    """The number of q-points of the phonon dispersion."""
+    phonon_num_branches: Optional[int] = None
+    """The number of phonon frequencies per q-point of the dispersion."""
 
     # core settings; a field that is exactly an INCAR tag is spelled like it
     SIGMA: Optional[float] = None
