@@ -1315,14 +1315,6 @@
         "Optional[tuple[int, int, int]]"
       ],
       [
-        "has_ion_velocities",
-        "Optional[bool]"
-      ],
-      [
-        "has_lattice_velocities",
-        "Optional[bool]"
-      ],
-      [
         "has_selective_dynamics",
         "Optional[bool]"
       ],

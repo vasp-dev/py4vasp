@@ -763,7 +763,7 @@ schema.add(
     system_tag="input/incar/SYSTEM",
     fermi_energy="results/electron_dos/efermi",
     number_ionic_steps=Length("intermediate/ion_dynamics/position_ions"),
-    contcar=Link("CONTCAR", DEFAULT_SOURCE),
+    poscar_selective_dynamics="input/poscar/selective_dynamics",
     phonon_dispersion=Link("dispersion", "phonon"),
     # the /setup, /metadata, and /messages groups VASP writes for run_info
     NGX="setup/dimensions/NGX",
@@ -818,6 +818,7 @@ schema.add(
     EFERMI="setup/dos/EFERMI",
     efermi_method="setup/dos/EFERMI_METHOD",
     LDAU="setup/ldau/LDAU",
+    selective_dynamics="setup/ionic/selective_dynamics",
     wall_time="metadata/performance/wall_time",
     cpu_time="metadata/performance/cpu_time",
     omp_threads="metadata/resources/omp_threads",

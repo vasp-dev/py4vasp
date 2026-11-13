@@ -425,6 +425,14 @@ def test_run_info_counts_the_ionic_steps_without_reading_them(tmp_path):
         assert run_info.number_ionic_steps == 3
 
 
+def test_run_info_reads_both_selective_dynamics_flags(tmp_path):
+    flags = {"ionic/selective_dynamics": 1, "/input/poscar/selective_dynamics": 0}
+    write_setup_file(tmp_path / DEFAULT_FILE, flags)
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.selective_dynamics == 1
+        assert run_info.poscar_selective_dynamics == 0
+
+
 def test_run_info_without_algo_reports_it_as_missing(tmp_path):
     # VASP writes no ALGO if the INCAR sets only IALGO
     write_setup_file(tmp_path / DEFAULT_FILE, {"electronic/PREC": "accurate"})

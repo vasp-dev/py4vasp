@@ -1046,10 +1046,6 @@ class RunInfoModel(_DatabaseModel):
 
     has_selective_dynamics: Optional[bool] = None
     """Whether the calculation used selective dynamics."""
-    has_lattice_velocities: Optional[bool] = None
-    """Whether the calculation included lattice velocities."""
-    has_ion_velocities: Optional[bool] = None
-    """Whether the calculation stored ion velocities."""
 
     phonon_num_qpoints: Optional[int] = None
     """The number of q-points used in the phonon calculation."""

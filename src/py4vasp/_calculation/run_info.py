@@ -147,7 +147,7 @@ class RunInfoHandler:
             **self._dict_from_system(),
             **self._dict_from_structure(),
             **self._dict_additional_collection(),
-            **self._dict_from_contcar(),
+            **self._dict_from_selective_dynamics(),
             **self._dict_from_phonon_dispersion(),
             **self._dict_from_messages(),
             "extensions": self._dict_from_extension(),
@@ -363,25 +363,12 @@ class RunInfoHandler:
         steps = self._raw_run_info.number_ionic_steps
         return {"num_ionic_steps": None if check.is_none(steps) else int(steps)}
 
-    def _dict_from_contcar(self) -> dict:
-        has_selective_dynamics = None
-        has_lattice_velocities = None
-        has_ion_velocities = None
-        with suppress(exception.NoData):
-            has_selective_dynamics = not check.is_none(
-                self._read_attr("contcar", "selective_dynamics")
-            )
-            has_lattice_velocities = not check.is_none(
-                self._read_attr("contcar", "lattice_velocities")
-            )
-            has_ion_velocities = not check.is_none(
-                self._read_attr("contcar", "ion_velocities")
-            )
-        return {
-            "has_selective_dynamics": has_selective_dynamics,
-            "has_lattice_velocities": has_lattice_velocities,
-            "has_ion_velocities": has_ion_velocities,
-        }
+    def _dict_from_selective_dynamics(self) -> dict:
+        "Older VASP versions write the flag only for the POSCAR file."
+        selective_dynamics = self._setup_bool("selective_dynamics")
+        if selective_dynamics is None:
+            selective_dynamics = self._setup_bool("poscar_selective_dynamics")
+        return {"has_selective_dynamics": selective_dynamics}
 
     def _dict_from_phonon_dispersion(self) -> dict:
         phonon_num_qpoints = None

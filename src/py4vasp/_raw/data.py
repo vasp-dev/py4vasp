@@ -792,8 +792,8 @@ class RunInfo:
 
     number_ionic_steps: VaspData = NONE()
     "The number of ionic steps, i.e., the length of the trajectory."
-    contcar: Optional[CONTCAR] = None
-    "The data corresponding to the CONTCAR file."
+    poscar_selective_dynamics: VaspData = NONE()
+    "Whether the POSCAR file selects the directions the ions move along."
 
     phonon_dispersion: Optional[Dispersion] = None
     "The phonon dispersion of the system."
@@ -906,6 +906,8 @@ class RunInfo:
     "How VASP places the Fermi energy, e.g., LEGACY or MIDGAP."
     LDAU: VaspData = NONE()
     "Whether DFT+U is used."
+    selective_dynamics: VaspData = NONE()
+    "Whether the ions move with selective dynamics."
     wall_time: VaspData = NONE()
     "Elapsed time of the run in s."
     cpu_time: VaspData = NONE()

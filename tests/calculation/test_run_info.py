@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 from py4vasp import _demo, exception, raw
-from py4vasp._calculation._CONTCAR import CONTCARHandler
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
 from py4vasp._raw.models import RunInfoModel
@@ -24,7 +23,6 @@ def run_info(request, raw_data):
     run_info.ref.setup = raw_run_info
     run_info.ref.extension = raw_run_info.extension
     run_info.ref.number_ionic_steps = raw_run_info.number_ionic_steps
-    run_info.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
     run_info.ref.phonon_dispersion = DispersionHandler.from_data(
         raw_run_info.phonon_dispersion
     )
@@ -41,7 +39,6 @@ def run_info_handler(request, raw_data):
     handler.ref.setup = raw_run_info
     handler.ref.extension = raw_run_info.extension
     handler.ref.number_ionic_steps = raw_run_info.number_ionic_steps
-    handler.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
     handler.ref.phonon_dispersion = DispersionHandler.from_data(
         raw_run_info.phonon_dispersion
     )
@@ -58,16 +55,7 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
     # from system
     assert models.system_tag == runinfo_ref.system_name
 
-    # from contcar
-    assert models.has_selective_dynamics == (
-        not check.is_none(runinfo_ref.contcar._raw_contcar.selective_dynamics)
-    )
-    assert models.has_ion_velocities == (
-        not check.is_none(runinfo_ref.contcar._raw_contcar.ion_velocities)
-    )
-    assert models.has_lattice_velocities == (
-        not check.is_none(runinfo_ref.contcar._raw_contcar.lattice_velocities)
-    )
+    assert models.has_selective_dynamics is False
 
     # from phonon dispersion
     assert (
@@ -187,6 +175,9 @@ DROPPED_KEYS = (
     "is_noncollinear",
     "is_success",
     "is_metallic",
+    # IBRION, MDALGO, and ISIF tell whether the run moves ions and lattice
+    "has_ion_velocities",
+    "has_lattice_velocities",
 )
 
 
@@ -384,6 +375,27 @@ def test_without_ionic_steps_is_none(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.number_ionic_steps = raw.VaspData(None)
     assert RunInfo.from_data(raw_run_info).read()["num_ionic_steps"] is None
+
+
+@pytest.mark.parametrize(
+    "setup, poscar, expected",
+    [
+        (1, 0, True),
+        (0, 1, False),
+        (None, 1, True),
+        (None, 0, False),
+        (None, None, None),
+    ],
+)
+def test_selective_dynamics_falls_back_to_poscar(raw_data, setup, poscar, expected):
+    # VASP versions before the setup flag write it only for the POSCAR
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.selective_dynamics = raw.VaspData(setup)
+    raw_run_info.poscar_selective_dynamics = raw.VaspData(poscar)
+    run_info = RunInfo.from_data(raw_run_info)
+    assert run_info.read()["has_selective_dynamics"] is expected
+    model = run_info._to_database()["run_info"]["default"]
+    assert model.has_selective_dynamics is expected
 
 
 def test_to_dict_matches_read(run_info_handler):
