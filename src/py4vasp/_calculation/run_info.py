@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 
 import numpy as np
 
@@ -383,6 +383,21 @@ def _unwrap(data):
     return data[()] if isinstance(data, VaspData) else data
 
 
+@contextmanager
+def _hint_at_extensions(selection):
+    "The section names of the setup look like sources, so point to the extensions."
+    try:
+        yield
+    except exception.IncorrectUsage as error:
+        if selection is None:
+            raise
+        hint = (
+            " The settings VASP wrote are grouped by section in the extensions, "
+            f'e.g. read()["extensions"]["{selection}"].'
+        )
+        raise exception.IncorrectUsage(f"{error}{hint}") from error
+
+
 @quantity("run_info")
 class RunInfo:
     """Contains information about the VASP run.
@@ -519,13 +534,14 @@ class RunInfo:
         >>> run_info["extensions"]["metadata/build"]["variant"]
         'std'
         """
-        return merge_default(
-            self._source,
-            self._quantity_name,
-            selection,
-            RunInfoHandler.from_data,
-            RunInfoHandler.to_dict,
-        )
+        with _hint_at_extensions(selection):
+            return merge_default(
+                self._source,
+                self._quantity_name,
+                selection,
+                RunInfoHandler.from_data,
+                RunInfoHandler.to_dict,
+            )
 
     def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
@@ -565,13 +581,14 @@ class RunInfo:
         p.text(str(self))
 
     def __str__(self, selection=None) -> str:
-        return merge_strings(
-            self._source,
-            self._quantity_name,
-            selection,
-            RunInfoHandler.from_data,
-            RunInfoHandler.__str__,
-        )
+        with _hint_at_extensions(selection):
+            return merge_strings(
+                self._source,
+                self._quantity_name,
+                selection,
+                RunInfoHandler.from_data,
+                RunInfoHandler.__str__,
+            )
 
     def _to_database(self) -> dict:
         """Return {quantity[_selection]: handler_result} for database storage."""

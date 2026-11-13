@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import raw
+from py4vasp import exception, raw
 from py4vasp._calculation._CONTCAR import CONTCARHandler
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
@@ -361,6 +361,14 @@ def test_system_tag_is_text(raw_data, system):
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["system_tag"] == "Sr2TiO4 relaxed"
     json.dumps(actual["system_tag"])
+
+
+@pytest.mark.parametrize("method", ["read", "to_dict", "print"])
+def test_section_name_as_selection_points_to_extensions(run_info, method):
+    # section names look like sources, but they are keys of the extensions
+    with pytest.raises(exception.IncorrectUsage) as error:
+        getattr(run_info, method)("electronic")
+    assert 'read()["extensions"]["electronic"]' in str(error.value)
 
 
 def test_to_dict_matches_read(run_info_handler):
