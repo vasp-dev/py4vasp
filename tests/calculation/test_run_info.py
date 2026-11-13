@@ -262,12 +262,13 @@ def test_error_messages_with_counts(raw_data):
     raw_run_info.setup.message_count = np.array([2, 5, 1, 1])
     handler = RunInfoHandler.from_data(raw_run_info)
     actual = handler.to_dict()
-    assert actual["error_messages"] == ["first error", "second error"]
-    assert actual["error_message_counts"] == [2, 1]
+    # a bug in VASP is the most severe message, so it counts as an error
+    assert actual["error_messages"] == ["first error", "second error", "a bug"]
+    assert actual["error_message_counts"] == [2, 1, 1]
     assert all(type(count) is int for count in actual["error_message_counts"])
     model = handler.to_database()
-    assert model.error_messages == ["first error", "second error"]
-    assert model.error_message_counts == [2, 1]
+    assert model.error_messages == ["first error", "second error", "a bug"]
+    assert model.error_message_counts == [2, 1, 1]
 
 
 @pytest.mark.parametrize("wrap", [lambda x: x, np.array, raw.VaspData])

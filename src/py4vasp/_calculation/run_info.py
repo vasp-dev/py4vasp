@@ -70,6 +70,8 @@ _CORE_LOGICALS = (
     "build_gpu",
     "build_openmp",
 )
+# a bug in VASP is the most severe message, so it counts as an error as well
+_ERROR_SEVERITIES = ("error", "bug")
 _CORE_STRINGS = (
     "LREAL",
     "PREC",
@@ -275,7 +277,7 @@ class RunInfoHandler:
         errors = [
             (convert.fortran_text_to_string(text), int(count))
             for text, severity, count in messages
-            if convert.fortran_text_to_string(severity) == "error"
+            if convert.fortran_text_to_string(severity) in _ERROR_SEVERITIES
         ]
         return {
             "error_messages": [text for text, _ in errors],
@@ -432,9 +434,9 @@ class RunInfo:
           normally, or "error", "killed", or "dry-run"; a run can succeed while
           error messages exist,
         - ``"error_messages"`` and ``"error_message_counts"``, the text of every
-          distinct message of severity "error" and how often VASP reported it.
-          Warnings and alerts are not reported here; they remain in the HDF5 file
-          under /messages.
+          distinct message of severity "error" or "bug" and how often VASP
+          reported it. Warnings and alerts are not reported here; they remain in
+          the HDF5 file under /messages.
 
         A key that is exactly an INCAR tag is spelled like the tag in upper case,
         e.g. ``"SIGMA"``; every other key is lower case, e.g. ``"nkpts"``, which VASP
@@ -484,8 +486,8 @@ class RunInfo:
         >>> run_info["wall_time"], run_info["build_variant"]
         (1834.5, 'std')
 
-        Only messages of severity "error" are reported, so the warning of this run is
-        missing; the run still succeeded
+        Only messages of severity "error" or "bug" are reported, so the warning of
+        this run is missing; the run still succeeded
 
         >>> run_info["error_messages"], run_info["error_message_counts"]
         (['The basis set is incomplete.'], [1])

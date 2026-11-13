@@ -1163,7 +1163,7 @@ class RunInfoModel(_DatabaseModel):
     """Whether VASP was built with OpenMP."""
 
     error_messages: Optional[List[str]] = None
-    """The text of every distinct message of severity "error" VASP reported."""
+    """The text of every distinct message of severity "error" or "bug" VASP reported."""
     error_message_counts: Optional[List[int]] = None
     """How often VASP reported each of the error messages."""
 
