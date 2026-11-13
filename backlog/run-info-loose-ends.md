@@ -4,21 +4,6 @@
 exposes every other recorded setting as `read()["extensions"]`. These points were
 left open.
 
-**Depends on how VASP writes the setup.**
-- The message fields assume VASP writes `messages/{text,severity,count}` together
-  and with the same length. Otherwise py4vasp reports both message fields as None
-  instead of failing.
-- `metadata/resources` exists only in MPI builds, so `IMAGES`, `NCORE`, `KPAR`,
-  `mpi_ranks`, `omp_threads`, `nodes` and `gpus` are None for serial builds.
-- If the INCAR sets `IALGO` instead of `ALGO`, VASP writes no
-  `setup/electronic/ALGO` and `ALGO` is None; the numeric `IALGO` is only in the
-  extensions.
-- `LDAU` relies on VASP writing the `setup/ldau` group only if LDA+U is active. If
-  VASP ever writes it unconditionally, `LDAU` must read the LDAU flag instead.
-- `EFERMI` assumes VASP writes `setup/dos/EFERMI` only if the INCAR fixes the Fermi
-  energy to a number, and `setup/dos/EFERMI_METHOD` (LEGACY or MIDGAP) otherwise.
-  No output with a numeric EFERMI was available to check this.
-
 **Found by simulated users who only had the documentation.**
 - Nothing in `docs/` names `run_info`. The users found it only by listing
   `calculation.selections(only_available=True)` or `dir(calculation)`. A how-to

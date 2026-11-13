@@ -425,7 +425,11 @@ class RunInfo:
           ``"EDIFFG"`` is in eV if positive (energy) or eV/Å if negative (forces).
           Logical tags are Python bools; string tags keep VASP's spelling, e.g.,
           ``"LREAL"`` is "Auto", "On", "T", or "F" and ``"XC"`` is a lower-case
-          name such as "pbe", "hse06", or "mixture". ``"EFERMI"`` is the value set
+          name such as "pbe", "hse06", or "mixture". ``"ALGO"`` is the value as
+          typed in the INCAR file, e.g. "Fast", "VERYFAST", or "V", so compare it
+          ignoring case; in response-function runs it is that algorithm, e.g.
+          "EVGW0", and it is None if the INCAR sets only an ``IALGO`` other than 38.
+          ``"EFERMI"`` is the value set
           in the INCAR file, not the computed ``"fermi_energy"``: "LEGACY", "MIDGAP", or
           the Fermi energy in eV the user fixed, given as text, e.g. "5.5",
         - ``"LDAU"``, which is True if LDA+U is active; the U and J values are in
@@ -443,7 +447,8 @@ class RunInfo:
         - ``"error_messages"`` and ``"error_message_counts"``, the text of every
           distinct message of severity "error" or "bug" and how often VASP
           reported it. Warnings and alerts are not reported here; they remain in
-          the HDF5 file under /messages.
+          the HDF5 file under /messages. Both are None if the run was killed,
+          because VASP then writes no messages.
 
         A key that is exactly an INCAR tag is spelled like the tag in upper case,
         e.g. ``"SIGMA"``; every other key is lower case, e.g. ``"nkpts"``, which VASP
