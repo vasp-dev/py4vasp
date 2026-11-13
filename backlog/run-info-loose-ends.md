@@ -8,8 +8,12 @@ left open.
 - The message fields assume VASP writes `messages/{text,severity,count}` together.
   If one is missing, py4vasp reports both message fields as None instead of
   failing.
-- `metadata/resources` exists only in MPI builds, so `images`, `ncore`, `kpar` and
-  `mpi_ranks` are None for serial builds.
+- `metadata/resources` exists only in MPI builds, so `images`, `ncore`, `kpar`,
+  `mpi_ranks`, `omp_threads`, `nodes` and `gpus` are None for serial builds.
+- VASP 6.7 writes only the numeric `IALGO`, so `algo` (read from
+  `setup/electronic/ALGO`) is None until VASP writes the ALGO string there.
+- `ldau` relies on VASP writing the `setup/ldau` group only if LDA+U is active. If
+  VASP ever writes it unconditionally, `ldau` must read the LDAU flag instead.
 
 **Found by a simulated user who only had the documentation.**
 - Nothing in `docs/` names `run_info`. The user found it only by listing

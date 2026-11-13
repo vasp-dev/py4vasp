@@ -446,8 +446,13 @@ run info for Sr2TiO4:
     metallic: no
     phonon dispersion: 20 q-points, 21 modes
     FFT grid: 32 x 32 x 40 (fine 64 x 64 x 80)
+    ionic update: IBRION=2, ISIF=3, NSW=40
+    functional: pbe
+    ENCUT: 520.0 eV
+    ISMEAR: 0
     SIGMA: 0.05 eV
     NELM: 60
+    wall time: 1834.5 s
     peak memory: 256.0 MB
     parallelization: 64 MPI ranks, KPAR=4, NCORE=8
     error messages: 1
@@ -471,6 +476,23 @@ def test_print_partial_parallelization(raw_data):
     assert "    parallelization: KPAR=4\n" in str(RunInfo.from_data(raw_run_info))
     raw_run_info.setup.kpar = raw.VaspData(None)
     assert "parallelization" not in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_partial_ionic_update(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.isif = raw.VaspData(None)
+    assert "    ionic update: IBRION=2, NSW=40\n" in str(
+        RunInfo.from_data(raw_run_info)
+    )
+    raw_run_info.setup.ibrion = raw.VaspData(None)
+    raw_run_info.setup.nsw = raw.VaspData(None)
+    assert "ionic update" not in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_functional_with_lda_plus_u(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.ldautype = 2
+    assert "    functional: pbe + LDA+U\n" in str(RunInfo.from_data(raw_run_info))
 
 
 def test_print_omits_unknown_quantities(raw_data, format_):

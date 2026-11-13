@@ -157,11 +157,24 @@ class RunInfoHandler:
             if fine is not None:
                 grid += f" (fine {' x '.join(map(str, fine))})"
             yield f"    FFT grid: {grid}"
-        for section, tag in (("dos", "SIGMA"), ("electronic", "NELM")):
+        ionic_update = self._tags(data, "ibrion", "isif", "nsw")
+        if ionic_update:
+            yield f"    ionic update: {ionic_update}"
+        if data["xc"] is not None:
+            yield f"    functional: {data['xc']}" + (" + LDA+U" if data["ldau"] else "")
+        settings = (
+            ("electronic", "ENCUT"),
+            ("dos", "ISMEAR"),
+            ("dos", "SIGMA"),
+            ("electronic", "NELM"),
+        )
+        for section, tag in settings:
             value = data[tag.lower()]
             if value is not None:
                 unit = self._setup_unit(section, tag)
                 yield f"    {tag}: {value}" + (f" {unit}" if unit else "")
+        if data["wall_time"] is not None:
+            yield f"    wall time: {data['wall_time']:.1f} s"
         if data["peak_memory"] is not None:
             yield f"    peak memory: {data['peak_memory'] / 1024:.1f} MB"
         parallelization = self._parallelization(data)
@@ -177,12 +190,16 @@ class RunInfoHandler:
         parts = []
         if data["mpi_ranks"] is not None:
             parts.append(f"{data['mpi_ranks']} MPI ranks")
-        parts += [
-            f"{tag.upper()}={data[tag]}"
-            for tag in ("kpar", "ncore")
-            if data[tag] is not None
-        ]
+        if tags := RunInfoHandler._tags(data, "kpar", "ncore"):
+            parts.append(tags)
         return ", ".join(parts)
+
+    @staticmethod
+    def _tags(data, *tags):
+        "Join the INCAR tags VASP wrote as TAG=value."
+        return ", ".join(
+            f"{tag.upper()}={data[tag]}" for tag in tags if data[tag] is not None
+        )
 
     def _setup_unit(self, section, tag):
         extension = getattr(self._raw_run_info, "extension", None)
@@ -417,8 +434,9 @@ class RunInfo:
     and the system, properties of the results such as the Fermi energy, the spin
     configuration, and whether the system is metallic, the number of ionic steps, and
     the phonon dispersion. Since VASP 6.7, it adds the core INCAR settings, the FFT
-    grids, the parallelization, the peak memory, whether VASP terminated normally,
-    the error messages, and, as extensions, every setting and metadata entry VASP
+    grids, the parallelization, the run time and peak memory, the build of the
+    executable, whether VASP terminated normally, the error messages, and, as
+    extensions, every setting and metadata entry VASP
     wrote to the HDF5 file. Use :py:meth:`read` to get all of it as a dictionary and
     :py:meth:`print` for a short overview.
     """
@@ -440,11 +458,25 @@ class RunInfo:
         also contains
 
         - the core settings of the run under the name of their INCAR tag in lower
-          case, e.g. ``"sigma"``, ``"ispin"``, ``"nelm"``; logical tags are Python
-          bools, and ``"lreal"`` keeps VASP's spelling ("Auto", "On", "T" or "F"),
+          case: the kind of run (``"ibrion"``, ``"isif"``, ``"nsw"``,
+          ``"ediffg"``), the basis and accuracy (``"encut"`` in eV, ``"prec"``,
+          ``"ediff"`` in eV, ``"algo"``, ``"nbands"``, ``"nkpts"``, ``"nelect"``,
+          ``"lasph"``), the smearing (``"ismear"``, ``"sigma"`` in eV), the
+          Hamiltonian (``"xc"``, ``"lhfcalc"``, ``"aexx"``, ``"hfscreen"``,
+          ``"ivdw"``, ``"nupdown"``, ``"ldipol"``, ``"idipol"``, ``"lepsilon"``),
+          and further ones like ``"ispin"`` or ``"nelm"``. Logical tags are Python
+          bools; string tags keep VASP's spelling, e.g., ``"lreal"`` is "Auto",
+          "On", "T", or "F" and ``"xc"`` is a lower-case name such as "pbe",
+          "hse06", or "mixture",
+        - ``"ldau"``, which is True if LDA+U is active; the U and J values are in
+          the extensions under ``"ldau"``,
         - the FFT grids ``"grid_coarse_shape"`` and ``"grid_fine_shape"``,
-        - the parallelization ``"mpi_ranks"``, ``"kpar"``, and ``"ncore"`` and the
-          ``"peak_memory"`` in kB,
+        - the resources ``"mpi_ranks"``, ``"omp_threads"``, ``"nodes"``,
+          ``"gpus"``, ``"kpar"``, and ``"ncore"`` and the performance
+          ``"wall_time"`` and ``"cpu_time"`` in s and ``"peak_memory"`` in kB,
+        - the build of the executable: ``"build_variant"`` ("gam", "std", or
+          "ncl") and whether it was built with ``"build_gpu"``, ``"build_mpi"``,
+          or ``"build_openmp"`` support,
         - ``"is_success"``, which is True if VASP terminated normally (exit status
           "success"); it can be True while error messages exist,
         - ``"error_messages"`` and ``"error_message_counts"``, the text of every
@@ -454,7 +486,8 @@ class RunInfo:
 
         All top-level keys are lower case. A setting VASP did not write is None; in
         particular, for VASP older than 6.7 the core settings, ``"is_success"``, the
-        error messages, and the parallelization are None.
+        error messages, the resources, and the build are None. VASP 6.7 does not
+        write ``"algo"`` yet, and serial builds write no resources.
 
         Parameters
         ----------
@@ -486,6 +519,15 @@ class RunInfo:
         ([32, 32, 40], 0.05, True)
         >>> run_info["mpi_ranks"], run_info["kpar"], run_info["ncore"]
         (64, 4, 8)
+
+        The kind of run, the basis, and the functional tell how the results came about
+
+        >>> run_info["ibrion"], run_info["nsw"], run_info["encut"], run_info["prec"]
+        (2, 40, 520.0, 'accurate')
+        >>> run_info["xc"], run_info["lhfcalc"], run_info["ldau"]
+        ('pbe', False, False)
+        >>> run_info["wall_time"], run_info["build_variant"]
+        (1834.5, 'std')
 
         Only messages of severity "error" are reported, so the warning of this run is
         missing; the run still succeeded
