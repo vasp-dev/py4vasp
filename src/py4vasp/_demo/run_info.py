@@ -83,8 +83,15 @@ _METADATA = {
         "KPAR": (4, None, None),
         "NCORE": (8, None, None),
         "NPAR": (2, None, None),
+        "omp_threads": (1, None, "OpenMP threads per rank"),
+        "nodes": (2, None, "number of nodes"),
+        "gpus": (0, None, "number of GPUs, 0 for CPU builds"),
     },
-    "performance": {"peak_memory": (262144.0, "kB", "peak memory")},
+    "performance": {
+        "peak_memory": (262144.0, "kB", "peak memory"),
+        "wall_time": (1834.5, "s", "Elapsed time (sec)"),
+        "cpu_time": (1790.2, "s", "Total CPU time used (sec)"),
+    },
 }
 _GROUPS = {"setup": _SETUP, "metadata": _METADATA}
 _EXIT_STATUS = "success"
@@ -121,10 +128,6 @@ def _value(section, key, table=_SETUP):
     return int(value) if isinstance(value, bool) else value
 
 
-def _resource(key):
-    return _value("resources", key, _METADATA)
-
-
 def _sections():
     "Every section the data factory reads, with the name it reports it under."
     for group, table in _GROUPS.items():
@@ -135,13 +138,15 @@ def _sections():
 
 def run_setup():
     "Core settings of a nonpolarized run that finished successfully."
-    core = {
+    setup = {
         "ngx": ("dimensions", "NGX"),
         "ngy": ("dimensions", "NGY"),
         "ngz": ("dimensions", "NGZ"),
         "ngxf": ("dimensions", "NGXF"),
         "ngyf": ("dimensions", "NGYF"),
         "ngzf": ("dimensions", "NGZF"),
+        "nbands": ("dimensions", "NBANDS"),
+        "nkpts": ("dimensions", "NKPTS"),
         "ispin": ("electronic", "ISPIN"),
         "lnoncollinear": ("electronic", "LNONCOLLINEAR"),
         "lsorbit": ("electronic", "LSORBIT"),
@@ -150,44 +155,51 @@ def run_setup():
         "nelm": ("electronic", "NELM"),
         "lreal": ("electronic", "LREAL"),
         "lmaxmix": ("electronic", "LMAXMIX"),
+        "encut": ("electronic", "ENCUT"),
+        "prec": ("electronic", "PREC"),
+        "ediff": ("electronic", "EDIFF"),
+        "algo": ("electronic", "ALGO"),
+        "nelect": ("electronic", "NELECT"),
+        "nupdown": ("electronic", "NUPDOWN"),
+        "lasph": ("electronic", "LASPH"),
+        "ismear": ("dos", "ISMEAR"),
         "sigma": ("dos", "SIGMA"),
+        "ibrion": ("ionic", "IBRION"),
+        "isif": ("ionic", "ISIF"),
+        "nsw": ("ionic", "NSW"),
+        "ediffg": ("ionic", "EDIFFG"),
         "potim": ("ionic", "POTIM"),
         "tebeg": ("ionic", "TEBEG"),
         "teend": ("ionic", "TEEND"),
         "mdalgo": ("ionic", "MDALGO"),
         "isym": ("ionic", "ISYM"),
-        "lkpoints_opt": ("kpoints_opt", "LKPOINTS_OPT"),
-        "lorbit": ("write_flags", "LORBIT"),
         "xc": ("exchange_correlation", "XC"),
-        "algo": ("electronic", "ALGO"),
-        "prec": ("electronic", "PREC"),
-        "lepsilon": ("linear_response", "LEPSILON"),
-        "ldipol": ("dipole", "LDIPOL"),
         "lhfcalc": ("exchange_correlation", "LHFCALC"),
-        "lasph": ("electronic", "LASPH"),
-        "ibrion": ("ionic", "IBRION"),
-        "isif": ("ionic", "ISIF"),
-        "nsw": ("ionic", "NSW"),
-        "ediffg": ("ionic", "EDIFFG"),
-        "encut": ("electronic", "ENCUT"),
-        "ediff": ("electronic", "EDIFF"),
-        "nbands": ("dimensions", "NBANDS"),
-        "nkpts": ("dimensions", "NKPTS"),
-        "nelect": ("electronic", "NELECT"),
-        "ismear": ("dos", "ISMEAR"),
         "aexx": ("exchange_correlation", "AEXX"),
         "hfscreen": ("exchange_correlation", "HFSCREEN"),
         "ivdw": ("vdw", "IVDW"),
-        "nupdown": ("electronic", "NUPDOWN"),
+        "ldipol": ("dipole", "LDIPOL"),
         "idipol": ("dipole", "IDIPOL"),
+        "lepsilon": ("linear_response", "LEPSILON"),
+        "lkpoints_opt": ("kpoints_opt", "LKPOINTS_OPT"),
+        "lorbit": ("write_flags", "LORBIT"),
     }
+    metadata = {
+        "images": ("resources", "images"),
+        "ncore": ("resources", "NCORE"),
+        "kpar": ("resources", "KPAR"),
+        "mpi_ranks": ("resources", "mpi_ranks"),
+        "omp_threads": ("resources", "omp_threads"),
+        "nodes": ("resources", "nodes"),
+        "gpus": ("resources", "gpus"),
+        "peak_memory": ("performance", "peak_memory"),
+        "wall_time": ("performance", "wall_time"),
+        "cpu_time": ("performance", "cpu_time"),
+    }
+    # LDA+U is off, so VASP writes no ldau group and ldautype stays unset
     return raw.RunSetup(
-        **{field: _value(*location) for field, location in core.items()},
-        images=_resource("images"),
-        ncore=_resource("NCORE"),
-        kpar=_resource("KPAR"),
-        mpi_ranks=_resource("mpi_ranks"),
-        peak_memory=_value("performance", "peak_memory", _METADATA),
+        **{field: _value(*location) for field, location in setup.items()},
+        **{field: _value(*location, _METADATA) for field, location in metadata.items()},
         exit_status=_EXIT_STATUS,
         message_text=np.array(_MESSAGES["text"]),
         message_severity=np.array(_MESSAGES["severity"]),

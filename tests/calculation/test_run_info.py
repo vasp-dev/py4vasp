@@ -160,6 +160,11 @@ CORE_SCALARS = (
     "ivdw",
     "nupdown",
     "idipol",
+    "wall_time",
+    "cpu_time",
+    "omp_threads",
+    "nodes",
+    "gpus",
 )
 
 

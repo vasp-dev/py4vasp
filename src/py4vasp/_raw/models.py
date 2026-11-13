@@ -1155,6 +1155,16 @@ class RunInfoModel(_DatabaseModel):
     """The exchange-correlation functional (XC), e.g., "pbe", "hse06", or "scan"; "mixture" if it combines several components."""
     ldau: Optional[bool] = None
     """Whether LDA+U is active (LDAU)."""
+    wall_time: Optional[float] = None
+    """The elapsed (wall-clock) time of the run, in s."""
+    cpu_time: Optional[float] = None
+    """The total CPU time used by the run, in s."""
+    omp_threads: Optional[int] = None
+    """The number of OpenMP threads per MPI rank."""
+    nodes: Optional[int] = None
+    """The number of nodes the run used."""
+    gpus: Optional[int] = None
+    """The number of GPUs the run used; 0 for CPU builds."""
 
     error_messages: Optional[List[str]] = None
     """The text of every distinct message of severity "error" VASP reported."""

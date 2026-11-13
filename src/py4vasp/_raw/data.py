@@ -919,6 +919,16 @@ class RunSetup:
     "Name of the exchange-correlation functional, or mixture."
     ldautype: VaspData = NONE()
     "Type of LDA+U; VASP writes it only if LDA+U is active."
+    wall_time: VaspData = NONE()
+    "Elapsed time of the run in s."
+    cpu_time: VaspData = NONE()
+    "Total CPU time used by the run in s."
+    omp_threads: VaspData = NONE()
+    "Number of OpenMP threads per MPI rank."
+    nodes: VaspData = NONE()
+    "Number of nodes the run used."
+    gpus: VaspData = NONE()
+    "Number of GPUs the run used; 0 for CPU builds."
     exit_status: VaspData = NONE()
     'How VASP finished: "success", "error", "killed", or "dry-run".'
     message_text: VaspData = NONE()

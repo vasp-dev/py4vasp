@@ -61,6 +61,11 @@ _CORE_SETTINGS = (
     "nupdown",
     "idipol",
     "mpi_ranks",
+    "wall_time",
+    "cpu_time",
+    "omp_threads",
+    "nodes",
+    "gpus",
 )
 _CORE_LOGICALS = (
     "lnoncollinear",

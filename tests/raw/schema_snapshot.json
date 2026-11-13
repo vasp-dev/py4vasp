@@ -1111,6 +1111,10 @@
         "Optional[str]"
       ],
       [
+        "cpu_time",
+        "Optional[float]"
+      ],
+      [
         "ediff",
         "Optional[float]"
       ],
@@ -1133,6 +1137,10 @@
       [
         "fermi_energy",
         "Optional[float]"
+      ],
+      [
+        "gpus",
+        "Optional[int]"
       ],
       [
         "grid_coarse_shape",
@@ -1299,6 +1307,10 @@
         "Optional[int]"
       ],
       [
+        "nodes",
+        "Optional[int]"
+      ],
+      [
         "nsw",
         "Optional[int]"
       ],
@@ -1309,6 +1321,10 @@
       [
         "nupdown",
         "Optional[float]"
+      ],
+      [
+        "omp_threads",
+        "Optional[int]"
       ],
       [
         "peak_memory",
@@ -1349,6 +1365,10 @@
       [
         "vasp_version",
         "Optional[str]"
+      ],
+      [
+        "wall_time",
+        "Optional[float]"
       ],
       [
         "xc",
