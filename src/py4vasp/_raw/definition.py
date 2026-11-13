@@ -765,14 +765,7 @@ schema.add(
     structure=Link("structure", DEFAULT_SOURCE),
     contcar=Link("CONTCAR", DEFAULT_SOURCE),
     phonon_dispersion=Link("dispersion", "phonon"),
-    setup=Link("run_setup", DEFAULT_SOURCE),
-    extension=Link("run_info_extension", DEFAULT_SOURCE),
-)
-# The /setup, /metadata, and /messages groups VASP writes for run_info
-_SETUP_VERSION = raw.Version(6, 7)
-schema.add(
-    raw.RunSetup,
-    required=_SETUP_VERSION,
+    # the /setup, /metadata, and /messages groups VASP writes for run_info
     NGX="setup/dimensions/NGX",
     NGY="setup/dimensions/NGY",
     NGZ="setup/dimensions/NGZ",
@@ -838,13 +831,14 @@ schema.add(
     message_text="messages/text",
     message_severity="messages/severity",
     message_count="messages/count",
+    extension=Link("run_info_extension", DEFAULT_SOURCE),
 )
 # The /setup group has no index of its sections, so a data factory walks the whole
 # group. Access skips the version check of a data factory, so the factory checks the
 # required version of this source itself.
 schema.add(
     raw.RunInfoExtension,
-    required=_SETUP_VERSION,
+    required=raw.Version(6, 7),
     data_factory=read.run_info_extension,
 )
 #

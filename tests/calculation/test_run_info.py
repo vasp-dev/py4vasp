@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp import exception, raw
+from py4vasp import _demo, exception, raw
 from py4vasp._calculation._CONTCAR import CONTCARHandler
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
@@ -23,7 +23,7 @@ def run_info(request, raw_data):
     run_info.ref.system_name = raw_run_info.system.system
     run_info.ref.runtime = raw_run_info.runtime
     run_info.ref.fermi_energy = raw_run_info.fermi_energy
-    run_info.ref.setup = raw_run_info.setup
+    run_info.ref.setup = raw_run_info
     run_info.ref.extension = raw_run_info.extension
     run_info.ref.structure = StructureHandler.from_data(raw_run_info.structure)
     run_info.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
@@ -41,7 +41,7 @@ def run_info_handler(request, raw_data):
     handler.ref.system_name = raw_run_info.system.system
     handler.ref.runtime = raw_run_info.runtime
     handler.ref.fermi_energy = raw_run_info.fermi_energy
-    handler.ref.setup = raw_run_info.setup
+    handler.ref.setup = raw_run_info
     handler.ref.extension = raw_run_info.extension
     handler.ref.structure = StructureHandler.from_data(raw_run_info.structure)
     handler.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
@@ -165,6 +165,13 @@ def _expected_core_settings(setup):
     }
 
 
+def _without_setup(raw_run_info):
+    "The run info of a VASP version that does not write /setup, /metadata, /messages."
+    for field in _demo.run_info.run_setup():
+        setattr(raw_run_info, field, raw.VaspData(None))
+    return raw_run_info
+
+
 def _decode(text):
     return text.decode().strip() if isinstance(text, bytes) else text.strip()
 
@@ -208,7 +215,7 @@ def test_lreal_of_demo_is_vasp_string(run_info):
 @pytest.mark.parametrize("lreal", [b"Auto", b"On", b"F", b"T", b"Auto  ", "On"])
 def test_lreal_keeps_vasp_spelling(raw_data, lreal):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.LREAL = lreal
+    raw_run_info.LREAL = lreal
     actual = RunInfo.from_data(raw_run_info).read()["LREAL"]
     assert actual == _decode(lreal)
     assert (
@@ -219,7 +226,7 @@ def test_lreal_keeps_vasp_spelling(raw_data, lreal):
 
 def test_core_settings_without_setup_are_none(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup = None
+    _without_setup(raw_run_info)
     actual = RunInfo.from_data(raw_run_info).read()
     fields = CORE_BOOLS + CORE_STRINGS + CORE_SCALARS
     assert all(actual[field] is None for field in fields)
@@ -229,7 +236,7 @@ def test_core_settings_without_setup_are_none(raw_data):
 
 def test_algo_missing_in_file_is_none(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.ALGO = raw.VaspData(None)
+    raw_run_info.ALGO = raw.VaspData(None)
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["ALGO"] is None
     assert actual["PREC"] == "accurate"
@@ -244,25 +251,23 @@ def test_ldau_is_false_without_ldau_group(run_info):
 @pytest.mark.parametrize("ldautype", [1, 2, 4])
 def test_ldau_is_true_if_vasp_wrote_ldautype(raw_data, ldautype):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.LDAUTYPE = ldautype
+    raw_run_info.LDAUTYPE = ldautype
     assert RunInfo.from_data(raw_run_info).read()["LDAU"] is True
 
 
 def test_ldau_without_setup_is_none(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup = None
+    _without_setup(raw_run_info)
     assert RunInfo.from_data(raw_run_info).read()["LDAU"] is None
 
 
 def test_error_messages_with_counts(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.message_text = np.array(
+    raw_run_info.message_text = np.array(
         [b"first error", b"a warning", b"second error", b"a bug"]
     )
-    raw_run_info.setup.message_severity = np.array(
-        [b"error", b"warning", b"error", b"bug"]
-    )
-    raw_run_info.setup.message_count = np.array([2, 5, 1, 1])
+    raw_run_info.message_severity = np.array([b"error", b"warning", b"error", b"bug"])
+    raw_run_info.message_count = np.array([2, 5, 1, 1])
     handler = RunInfoHandler.from_data(raw_run_info)
     actual = handler.to_dict()
     # a bug in VASP is the most severe message, so it counts as an error
@@ -277,9 +282,9 @@ def test_error_messages_with_counts(raw_data):
 @pytest.mark.parametrize("wrap", [lambda x: x, np.array, raw.VaspData])
 def test_single_message_as_scalars(raw_data, wrap):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.message_text = wrap(b"the only error")
-    raw_run_info.setup.message_severity = wrap(b"error")
-    raw_run_info.setup.message_count = wrap(np.int64(3))
+    raw_run_info.message_text = wrap(b"the only error")
+    raw_run_info.message_severity = wrap(b"error")
+    raw_run_info.message_count = wrap(np.int64(3))
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["error_messages"] == ["the only error"]
     assert actual["error_message_counts"] == [3]
@@ -287,9 +292,9 @@ def test_single_message_as_scalars(raw_data, wrap):
 
 def test_error_messages_with_padded_severity(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.message_text = np.array([b"padded error    ", b"a warning  "])
-    raw_run_info.setup.message_severity = np.array([b"error  ", b"warning"])
-    raw_run_info.setup.message_count = np.array([4, 1])
+    raw_run_info.message_text = np.array([b"padded error    ", b"a warning  "])
+    raw_run_info.message_severity = np.array([b"error  ", b"warning"])
+    raw_run_info.message_count = np.array([4, 1])
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["error_messages"] == ["padded error"]
     assert actual["error_message_counts"] == [4]
@@ -329,10 +334,10 @@ def test_to_database_excludes_extensions(run_info_handler):
 def test_no_messages_is_empty_list(raw_data):
     # VASP writes no message arrays if it issued no message
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.number_messages = 0
-    raw_run_info.setup.message_text = raw.VaspData(None)
-    raw_run_info.setup.message_severity = raw.VaspData(None)
-    raw_run_info.setup.message_count = raw.VaspData(None)
+    raw_run_info.number_messages = 0
+    raw_run_info.message_text = raw.VaspData(None)
+    raw_run_info.message_severity = raw.VaspData(None)
+    raw_run_info.message_count = raw.VaspData(None)
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["error_messages"] == []
     assert actual["error_message_counts"] == []
@@ -341,11 +346,11 @@ def test_no_messages_is_empty_list(raw_data):
 def test_messages_of_killed_run_are_unknown(raw_data):
     # a killed run only wrote the exit status at startup, not the messages
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.exit_status = b"killed "
-    raw_run_info.setup.number_messages = raw.VaspData(None)
-    raw_run_info.setup.message_text = raw.VaspData(None)
-    raw_run_info.setup.message_severity = raw.VaspData(None)
-    raw_run_info.setup.message_count = raw.VaspData(None)
+    raw_run_info.exit_status = b"killed "
+    raw_run_info.number_messages = raw.VaspData(None)
+    raw_run_info.message_text = raw.VaspData(None)
+    raw_run_info.message_severity = raw.VaspData(None)
+    raw_run_info.message_count = raw.VaspData(None)
     handler = RunInfoHandler.from_data(raw_run_info)
     actual = handler.to_dict()
     assert actual["exit_status"] == "killed"
@@ -394,9 +399,9 @@ def test_dispatcher_to_database(run_info):
 
 def test_read_grid_shapes(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.NGX, raw_run_info.setup.NGY, raw_run_info.setup.NGZ = 12, 15, 18
-    raw_run_info.setup.NGXF = np.int64(24)
-    raw_run_info.setup.NGYF, raw_run_info.setup.NGZF = 30, 36
+    raw_run_info.NGX, raw_run_info.NGY, raw_run_info.NGZ = 12, 15, 18
+    raw_run_info.NGXF = np.int64(24)
+    raw_run_info.NGYF, raw_run_info.NGZF = 30, 36
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["grid_coarse_shape"] == [12, 15, 18]
     assert actual["grid_fine_shape"] == [24, 30, 36]
@@ -415,17 +420,15 @@ def test_read_grid_shapes(raw_data):
 def test_exit_status_is_trimmed_string(raw_data, exit_status, expected):
     # Fortran pads fixed-length character variables with blanks
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.exit_status = exit_status
+    raw_run_info.exit_status = exit_status
     run_info = RunInfo.from_data(raw_run_info)
     assert run_info.read()["exit_status"] == expected
     assert run_info._to_database()["run_info"]["default"].exit_status == expected
     assert f"    exit status: {expected}\n" in str(run_info)
 
 
-@pytest.mark.parametrize("missing_setup", [None, raw.VaspData(None), raw.RunSetup()])
-def test_without_setup_derived_values_are_none(raw_data, missing_setup):
-    raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup = missing_setup
+def test_without_setup_derived_values_are_none(raw_data):
+    raw_run_info = _without_setup(raw_data.run_info("Sr2TiO4"))
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["grid_coarse_shape"] is None
     assert actual["grid_fine_shape"] is None
@@ -445,7 +448,7 @@ def test_efermi_is_the_method_vasp_used(run_info):
 @pytest.mark.parametrize("method", [b"MIDGAP  ", "LEGACY"])
 def test_efermi_trims_the_method(raw_data, method):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.efermi_method = method
+    raw_run_info.efermi_method = method
     assert RunInfo.from_data(raw_run_info).read()["EFERMI"] == _decode(method)
 
 
@@ -454,8 +457,8 @@ def test_efermi_set_to_a_number_is_reported_as_text(raw_data):
     # VASP writes the method FORCE together with the value. A database column holds
     # a single type, so the number is stored as the text of the value.
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.efermi_method = b"FORCE  "
-    raw_run_info.setup.EFERMI = np.float64(5.5)
+    raw_run_info.efermi_method = b"FORCE  "
+    raw_run_info.EFERMI = np.float64(5.5)
     run_info = RunInfo.from_data(raw_run_info)
     assert run_info.read()["EFERMI"] == "5.5"
     assert run_info._to_database()["run_info"]["default"].EFERMI == "5.5"
@@ -546,9 +549,9 @@ run info for Sr2TiO4:
 
 def test_print_lists_every_error_message_with_its_count(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.message_text = np.array([b"first error", b"a bug"])
-    raw_run_info.setup.message_severity = np.array([b"error", b"bug"])
-    raw_run_info.setup.message_count = np.array([2, 1])
+    raw_run_info.message_text = np.array([b"first error", b"a bug"])
+    raw_run_info.message_severity = np.array([b"error", b"bug"])
+    raw_run_info.message_count = np.array([2, 1])
     expected = """\
     error messages:
         - first error (2×)
@@ -559,7 +562,7 @@ def test_print_lists_every_error_message_with_its_count(raw_data):
 
 def test_print_without_error_messages(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.number_messages = 0
+    raw_run_info.number_messages = 0
     assert "    error messages: none\n" in str(RunInfo.from_data(raw_run_info))
 
 
@@ -580,8 +583,8 @@ def test_print_shows_every_core_setting(run_info):
 def test_print_omits_missing_tags_and_empty_groups(raw_data):
     # e.g. serial builds write no resources, so only what VASP wrote is shown
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.ISIF = raw.VaspData(None)
-    raw_run_info.setup.IVDW = raw.VaspData(None)
+    raw_run_info.ISIF = raw.VaspData(None)
+    raw_run_info.IVDW = raw.VaspData(None)
     actual = str(RunInfo.from_data(raw_run_info))
     assert "        IBRION: 2\n        NSW: 40\n" in actual
     assert "ISIF" not in actual
@@ -590,7 +593,7 @@ def test_print_omits_missing_tags_and_empty_groups(raw_data):
 
 def test_print_functional_with_lda_plus_u(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.LDAUTYPE = 2
+    raw_run_info.LDAUTYPE = 2
     assert "    functional: pbe+U\n" in str(RunInfo.from_data(raw_run_info))
 
 
@@ -600,7 +603,7 @@ def test_print_of_vasp_without_setup(raw_data, format_):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.runtime = None
     raw_run_info.phonon_dispersion = None
-    raw_run_info.setup = None
+    _without_setup(raw_run_info)
     raw_run_info.extension = None
     actual, _ = format_(RunInfo.from_data(raw_run_info))
     reference = """\
@@ -622,16 +625,16 @@ run info for Sr2TiO4:
 )
 def test_print_reports_the_spin_configuration(raw_data, ispin, lnoncollinear, expected):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.ISPIN = raw.VaspData(ispin)
-    raw_run_info.setup.LNONCOLLINEAR = lnoncollinear
+    raw_run_info.ISPIN = raw.VaspData(ispin)
+    raw_run_info.LNONCOLLINEAR = lnoncollinear
     assert f"    spin: {expected}\n" in str(RunInfo.from_data(raw_run_info))
 
 
 @pytest.mark.parametrize("ispin, lnoncollinear", [(None, 0), (2, None), (None, None)])
 def test_print_omits_unknown_spin_configuration(raw_data, ispin, lnoncollinear):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.setup.ISPIN = raw.VaspData(ispin)
-    raw_run_info.setup.LNONCOLLINEAR = raw.VaspData(lnoncollinear)
+    raw_run_info.ISPIN = raw.VaspData(ispin)
+    raw_run_info.LNONCOLLINEAR = raw.VaspData(lnoncollinear)
     assert "spin:" not in str(RunInfo.from_data(raw_run_info))
 
 

@@ -18,8 +18,8 @@ from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.models import RunInfoModel
 from py4vasp._util import check, convert
 
-# core settings of raw.RunSetup; a key that is exactly an INCAR tag is spelled in upper
-# case, every other one in lower case, both here and as field of raw.RunSetup
+# core settings of raw.RunInfo; a key that is exactly an INCAR tag is spelled in upper
+# case, every other one in lower case, both here and as field of raw.RunInfo
 _CORE_SETTINGS = (
     "SIGMA",
     "ISPIN",
@@ -316,8 +316,12 @@ class RunInfoHandler:
             return {"error_messages": None, "error_message_counts": None}
         if number_messages == 0:
             return {"error_messages": [], "error_message_counts": []}
-        setup = self._raw_run_info.setup
-        arrays = (setup.message_text, setup.message_severity, setup.message_count)
+        raw_run_info = self._raw_run_info
+        arrays = (
+            raw_run_info.message_text,
+            raw_run_info.message_severity,
+            raw_run_info.message_count,
+        )
         messages = zip(*(np.atleast_1d(_unwrap(array)) for array in arrays))
         errors = [
             (convert.fortran_text_to_string(text), int(count))
@@ -341,10 +345,7 @@ class RunInfoHandler:
 
     def _setup_value(self, key):
         "Return a scalar of the core setup as a Python object, None if VASP did not write it."
-        setup = getattr(self._raw_run_info, "setup", None)
-        if check.is_none(setup):
-            return None
-        value = getattr(setup, key)
+        value = getattr(self._raw_run_info, key)
         if check.is_none(value):
             return None
         value = _unwrap(value)

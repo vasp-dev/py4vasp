@@ -114,7 +114,7 @@ def Sr2TiO4():
         structure=_demo.structure.Sr2TiO4(),
         contcar=_demo.CONTCAR.Sr2TiO4(),
         phonon_dispersion=_demo.phonon.band.Sr2TiO4().dispersion,
-        setup=run_setup(),
+        **run_setup(),
         extension=extension(),
     )
 
@@ -134,7 +134,7 @@ def _sections():
 
 
 def run_setup():
-    "Core settings of a nonpolarized run that finished successfully."
+    "Fields of the core settings of a nonpolarized run that finished successfully."
     setup = {
         "NGX": ("dimensions", "NGX"),
         "NGY": ("dimensions", "NGY"),
@@ -198,7 +198,7 @@ def run_setup():
         "build_openmp": ("build", "openmp"),
     }
     # LDA+U is off, so VASP writes no ldau group and ldautype stays unset
-    return raw.RunSetup(
+    return dict(
         **{field: _value(*location) for field, location in setup.items()},
         **{field: _value(*location, _METADATA) for field, location in metadata.items()},
         exit_status=_EXIT_STATUS,

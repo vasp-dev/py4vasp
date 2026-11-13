@@ -384,7 +384,7 @@ def test_run_info_extension_without_setup_group_is_empty(tmp_path):
         assert extension.sections == {}
 
 
-def test_run_setup_reads_every_core_setting_the_demo_writes(tmp_path):
+def test_run_info_reads_every_core_setting_the_demo_writes(tmp_path):
     from py4vasp import _demo
 
     with h5py.File(tmp_path / DEFAULT_FILE, "w") as h5f:
@@ -393,31 +393,39 @@ def test_run_setup_reads_every_core_setting_the_demo_writes(tmp_path):
         _demo.run_info.write_to_h5(h5f)
     expected = _demo.run_info.run_setup()
     messages = ("exit_status", "message_text", "message_severity", "message_count")
-    with raw.access("run_setup", path=tmp_path) as setup:
-        for field in fields(raw.RunSetup):
-            if field.name in messages:
+    with raw.access("run_info", path=tmp_path) as run_info:
+        for field, desired in expected.items():
+            if field in messages:
                 continue
-            actual = getattr(setup, field.name)
-            desired = getattr(expected, field.name)
+            actual = getattr(run_info, field)
             # the demo leaves some groups out, e.g., ldau for a run without LDA+U
-            assert check.is_none(actual) == check.is_none(desired), field.name
+            assert check.is_none(actual) == check.is_none(desired), field
             if check.is_none(desired):
                 continue
             actual = actual[()] if isinstance(actual, raw.VaspData) else actual
             if isinstance(actual, bytes):
                 actual = actual.decode().strip()
-            assert actual == desired, field.name
+            assert actual == desired, field
 
 
-def test_run_setup_without_algo_reports_it_as_missing(tmp_path):
-    # VASP writes no ALGO if the INCAR sets only an IALGO other than 38
+def test_run_info_of_vasp_without_setup_has_no_settings(tmp_path):
+    from py4vasp import _demo
+
+    write_setup_file(tmp_path / DEFAULT_FILE, {}, version=(6, 6, 1))
+    with raw.access("run_info", path=tmp_path) as run_info:
+        for field in _demo.run_info.run_setup():
+            assert check.is_none(getattr(run_info, field)), field
+
+
+def test_run_info_without_algo_reports_it_as_missing(tmp_path):
+    # VASP writes no ALGO if the INCAR sets only IALGO
     write_setup_file(tmp_path / DEFAULT_FILE, {"electronic/PREC": "accurate"})
-    with raw.access("run_setup", path=tmp_path) as setup:
-        assert check.is_none(setup.ALGO)
-        assert setup.PREC == b"accurate"
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert check.is_none(run_info.ALGO)
+        assert run_info.PREC == b"accurate"
 
 
-def test_run_setup_reads_ldautype_of_a_run_with_lda_plus_u(tmp_path):
+def test_run_info_reads_ldautype_of_a_run_with_lda_plus_u(tmp_path):
     write_setup_file(tmp_path / DEFAULT_FILE, {"ldau/LDAUTYPE": 2})
-    with raw.access("run_setup", path=tmp_path) as setup:
-        assert setup.LDAUTYPE == 2
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.LDAUTYPE == 2

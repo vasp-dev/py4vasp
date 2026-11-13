@@ -798,19 +798,10 @@ class RunInfo:
     phonon_dispersion: Optional[Dispersion] = None
     "The phonon dispersion of the system."
 
-    setup: Optional[RunSetup] = None
-    "The core settings and the exit status of the run."
-    extension: Optional[RunInfoExtension] = None
-    "All settings VASP wrote into the /setup and /metadata groups."
-
-
-@dataclasses.dataclass
-class RunSetup:
-    """The core settings of the VASP run and how it ended.
-
-    A field that is exactly an INCAR tag is named like the tag in upper case, every
-    other field in lower case. Logicals are stored as the integers 0 and 1."""
-
+    # The core settings and how the run ended, from the /setup, /metadata, and
+    # /messages groups. A field that is exactly an INCAR tag is named like the tag in
+    # upper case, every other field in lower case. Logicals are stored as the
+    # integers 0 and 1. VASP versions that do not write these groups leave them None.
     NGX: VaspData = NONE()
     "Number of grid points of the coarse FFT grid along the first lattice vector."
     NGY: VaspData = NONE()
@@ -941,6 +932,8 @@ class RunSetup:
     'The severity of every message, e.g., "bug", "error", "alert", or "warning".'
     message_count: VaspData = NONE()
     "How often VASP reported every message."
+    extension: Optional[RunInfoExtension] = None
+    "All settings VASP wrote into the /setup and /metadata groups."
 
 
 @dataclasses.dataclass
