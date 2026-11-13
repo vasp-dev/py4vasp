@@ -911,6 +911,12 @@ class RunSetup:
     "Whether VASP corrects the potential and forces for the dipole."
     lepsilon: VaspData = NONE()
     "Whether VASP computes the dielectric tensor with linear response."
+    prec: VaspData = NONE()
+    "Precision of the calculation, e.g., normal or accurate."
+    algo: VaspData = NONE()
+    "Algorithm of the electronic minimization."
+    xc: VaspData = NONE()
+    "Name of the exchange-correlation functional, or mixture."
     exit_status: VaspData = NONE()
     'How VASP finished: "success", "error", "killed", or "dry-run".'
     message_text: VaspData = NONE()

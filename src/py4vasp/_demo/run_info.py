@@ -31,6 +31,8 @@ _SETUP = {
         "NELECT": (40.0, None, "number of electrons"),
         "NUPDOWN": (-1.0, None, "fixed magnetic moment"),
         "LASPH": (True, None, "nonspherical contributions inside the PAW spheres"),
+        "PREC": ("accurate", None, "precision"),
+        "ALGO": ("Normal", None, "electronic minimization algorithm"),
     },
     "ionic": {
         "POTIM": (0.5, "fs", "time step"),
@@ -61,6 +63,7 @@ _SETUP = {
         "AEXX": (0.0, None, "fraction of exact exchange"),
         "HFSCREEN": (0.0, None, "range-separation parameter"),
         "LHFCALC": (False, None, "exact exchange"),
+        "XC": ("pbe", None, "functional components"),
     },
     "linear_response": {
         "LEPSILON": (False, None, "dielectric tensor from linear response"),
@@ -155,6 +158,9 @@ def run_setup():
         "isym": ("ionic", "ISYM"),
         "lkpoints_opt": ("kpoints_opt", "LKPOINTS_OPT"),
         "lorbit": ("write_flags", "LORBIT"),
+        "xc": ("exchange_correlation", "XC"),
+        "algo": ("electronic", "ALGO"),
+        "prec": ("electronic", "PREC"),
         "lepsilon": ("linear_response", "LEPSILON"),
         "ldipol": ("dipole", "LDIPOL"),
         "lhfcalc": ("exchange_correlation", "LHFCALC"),

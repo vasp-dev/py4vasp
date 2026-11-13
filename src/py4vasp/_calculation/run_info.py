@@ -71,7 +71,12 @@ _CORE_LOGICALS = (
     "ldipol",
     "lepsilon",
 )
-_CORE_STRINGS = ("lreal",)
+_CORE_STRINGS = (
+    "lreal",
+    "prec",
+    "algo",
+    "xc",
+)
 
 
 class RunInfoHandler:

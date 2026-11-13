@@ -1107,6 +1107,10 @@
         "Optional[float]"
       ],
       [
+        "algo",
+        "Optional[str]"
+      ],
+      [
         "ediff",
         "Optional[float]"
       ],
@@ -1319,6 +1323,10 @@
         "Optional[float]"
       ],
       [
+        "prec",
+        "Optional[str]"
+      ],
+      [
         "sigma",
         "Optional[float]"
       ],
@@ -1336,6 +1344,10 @@
       ],
       [
         "vasp_version",
+        "Optional[str]"
+      ],
+      [
+        "xc",
         "Optional[str]"
       ]
     ],

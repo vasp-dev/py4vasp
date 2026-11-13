@@ -1147,6 +1147,12 @@ class RunInfoModel(_DatabaseModel):
     """Whether VASP corrects the potential and the forces for the dipole of the cell (LDIPOL)."""
     lepsilon: Optional[bool] = None
     """Whether VASP computes the static dielectric tensor with density-functional perturbation theory (LEPSILON)."""
+    prec: Optional[str] = None
+    """The precision of the calculation (PREC) as VASP writes it, e.g., "normal" or "accurate"."""
+    algo: Optional[str] = None
+    """The algorithm of the electronic minimization (ALGO) as VASP writes it, e.g., "Normal" or "All"."""
+    xc: Optional[str] = None
+    """The exchange-correlation functional (XC), e.g., "pbe", "hse06", or "scan"; "mixture" if it combines several components."""
 
     error_messages: Optional[List[str]] = None
     """The text of every distinct message of severity "error" VASP reported."""

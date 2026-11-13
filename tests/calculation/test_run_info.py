@@ -121,7 +121,12 @@ CORE_BOOLS = (
     "ldipol",
     "lepsilon",
 )
-CORE_STRINGS = ("lreal",)
+CORE_STRINGS = (
+    "lreal",
+    "prec",
+    "algo",
+    "xc",
+)
 CORE_SCALARS = (
     "sigma",
     "ispin",
@@ -208,6 +213,14 @@ def test_core_settings_without_setup_are_none(raw_data):
     assert all(actual[field] is None for field in fields)
     assert actual["error_messages"] is None
     assert actual["error_message_counts"] is None
+
+
+def test_algo_missing_in_file_is_none(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.algo = raw.VaspData(None)
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["algo"] is None
+    assert actual["prec"] == "accurate"
 
 
 def test_error_messages_with_counts(raw_data):

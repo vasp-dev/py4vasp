@@ -404,3 +404,11 @@ def test_run_setup_reads_every_core_setting_the_demo_writes(tmp_path):
             if isinstance(actual, bytes):
                 actual = actual.decode().strip()
             assert actual == desired, field.name
+
+
+def test_run_setup_without_algo_reports_it_as_missing(tmp_path):
+    # VASP 6.7 does not write the ALGO of the electronic minimization yet
+    write_setup_file(tmp_path / DEFAULT_FILE, {"electronic/PREC": "accurate"})
+    with raw.access("run_setup", path=tmp_path) as setup:
+        assert check.is_none(setup.algo)
+        assert setup.prec == b"accurate"
