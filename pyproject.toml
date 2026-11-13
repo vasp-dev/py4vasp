@@ -34,7 +34,7 @@ dependencies = [
 plot = [
     "pandas>=2.2.2",
     "plotly>=6.1.1",
-    "kaleido>=1.0",
+    "kaleido>=1.0,!=1.5.1",
 ]
 structure = [
     "ase>=3.23",
