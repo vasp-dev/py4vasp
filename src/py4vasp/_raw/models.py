@@ -1035,8 +1035,6 @@ class RunInfoModel(_DatabaseModel):
     """The shape of the fine grid used for the calculation, in the order (nx, ny, nz)."""
     exit_status: Optional[str] = None
     """How VASP finished: "success", "error", "killed", or "dry-run"."""
-    fermi_energy: Optional[float] = None
-    """The Fermi energy for the calculation according to the OUTCAR, in eV."""
 
     system_tag: Optional[str] = None
     """The system tag from the INCAR file, if set, which may provide additional information about the system or calculation."""
@@ -1143,6 +1141,8 @@ class RunInfoModel(_DatabaseModel):
     """The algorithm of the electronic minimization (ALGO) as VASP writes it, e.g., "Normal" or "All"."""
     XC: Optional[str] = None
     """The exchange-correlation functional (XC), e.g., "pbe", "hse06", or "scan"; "mixture" if it combines several components."""
+    EFERMI: Optional[str] = None
+    """The EFERMI tag as set in the INCAR file: "LEGACY", "MIDGAP", or the Fermi energy in eV the user fixed, as text, e.g., "5.5"."""
     LDAU: Optional[bool] = None
     """Whether LDA+U is active (LDAU)."""
     wall_time: Optional[float] = None

@@ -127,8 +127,6 @@ class RunInfoHandler:
             yield f"    exit status: {data['exit_status']}"
         if data["num_ionic_steps"] is not None:
             yield f"    ionic steps: {data['num_ionic_steps']}"
-        if data["fermi_energy"] is not None:
-            yield f"    Fermi energy: {data['fermi_energy']:.3f}"
         spin = self._spin_string(data)
         if spin is not None:
             yield f"    spin: {spin}"
@@ -154,6 +152,7 @@ class RunInfoHandler:
             ("electronic", "ENCUT"),
             ("dos", "ISMEAR"),
             ("dos", "SIGMA"),
+            ("dos", "EFERMI"),
             ("electronic", "NELM"),
         )
         for section, tag in settings:
@@ -220,16 +219,17 @@ class RunInfoHandler:
         return data[:] if not is_none else None
 
     def _dict_additional_collection(self) -> dict:
-        fermi_energy = None
-        with suppress(exception.NoData):
-            fermi_energy = self._raw_run_info.fermi_energy
-        if isinstance(fermi_energy, VaspData):
-            fermi_energy = fermi_energy._data
+        return {**self._dict_from_setup(), "EFERMI": self._efermi()}
 
-        return {
-            **self._dict_from_setup(),
-            "fermi_energy": fermi_energy,
-        }
+    def _efermi(self):
+        """The EFERMI tag as set in the INCAR file: MIDGAP, LEGACY, or a number.
+
+        VASP writes the number only if the user set one. A database column holds a
+        single type, so the number is reported as text, too."""
+        value = self._setup_value("efermi")
+        if value is not None:
+            return str(value)
+        return self._setup_string("efermi_method")
 
     def _dict_from_setup(self) -> dict:
         return {
@@ -369,8 +369,7 @@ class RunInfo:
     """Contains information about the VASP run.
 
     The run info gathers a summary of the calculation in one place: the VASP version
-    and the system, properties of the results such as the Fermi energy, the number
-    of ionic steps, and the phonon dispersion.
+    and the system, the number of ionic steps, and the phonon dispersion.
     If VASP records how the run was set up, it adds the core INCAR settings, e.g.,
     the spin (ISPIN and LNONCOLLINEAR), the FFT grids, the parallelization, the run
     time and peak memory, the build of the executable, whether VASP terminated
@@ -392,20 +391,23 @@ class RunInfo:
         """Convert the run information to a dictionary.
 
         The dictionary summarizes the calculation: the VASP version, the system, and
-        properties derived from the results like the Fermi energy. If VASP records
+        properties derived from the results like the number of ionic steps. If VASP
+        records
         how the run was set up, it also contains
 
         - the core settings of the run under the name of their INCAR tag: the kind
-          of run (``"IBRION"``, ``"ISIF"``, ``"NSW"``,
-          ``"EDIFFG"``), the basis and accuracy (``"ENCUT"`` in eV, ``"PREC"``,
-          ``"EDIFF"`` in eV, ``"ALGO"``, ``"NBANDS"``, ``"nkpts"``, ``"NELECT"``,
-          ``"LASPH"``), the smearing (``"ISMEAR"``, ``"SIGMA"`` in eV), the
-          Hamiltonian (``"XC"``, ``"LHFCALC"``, ``"AEXX"``, ``"HFSCREEN"``,
-          ``"IVDW"``, ``"NUPDOWN"``, ``"LDIPOL"``, ``"IDIPOL"``, ``"LEPSILON"``),
-          and further ones like ``"ISPIN"`` or ``"NELM"``. Logical tags are Python
-          bools; string tags keep VASP's spelling, e.g., ``"LREAL"`` is "Auto",
-          "On", "T", or "F" and ``"XC"`` is a lower-case name such as "pbe",
-          "hse06", or "mixture",
+          of run (``"IBRION"``, ``"ISIF"``, ``"NSW"``, ``"EDIFFG"``), the basis
+          and accuracy (``"ENCUT"`` in eV, ``"PREC"``, ``"EDIFF"`` in eV,
+          ``"ALGO"``, ``"NBANDS"``, ``"nkpts"``, ``"NELECT"``, ``"LASPH"``), the
+          smearing and Fermi level (``"ISMEAR"``, ``"SIGMA"`` in eV,
+          ``"EFERMI"``), the Hamiltonian (``"XC"``, ``"LHFCALC"``, ``"AEXX"``,
+          ``"HFSCREEN"``, ``"IVDW"``, ``"NUPDOWN"``, ``"LDIPOL"``, ``"IDIPOL"``,
+          ``"LEPSILON"``), and further ones like ``"ISPIN"`` or ``"NELM"``.
+          Logical tags are Python bools; string tags keep VASP's spelling, e.g.,
+          ``"LREAL"`` is "Auto", "On", "T", or "F" and ``"XC"`` is a lower-case
+          name such as "pbe", "hse06", or "mixture". ``"EFERMI"`` is the value set
+          in the INCAR file, not the computed Fermi energy: "LEGACY", "MIDGAP", or
+          the Fermi energy in eV the user fixed, given as text, e.g. "5.5",
         - ``"LDAU"``, which is True if LDA+U is active; the U and J values are in
           the extensions under ``"ldau"``,
         - the FFT grids ``"grid_coarse_shape"`` and ``"grid_fine_shape"``,
@@ -484,7 +486,7 @@ class RunInfo:
          'ionic', 'kpoints_opt', 'linear_response', 'metadata/build',
          'metadata/performance', 'metadata/resources', 'vdw', 'write_flags']
         >>> run_info["extensions"]["dos"]
-        {'ISMEAR': 0, 'SIGMA': 0.05}
+        {'EFERMI_METHOD': 'LEGACY', 'ISMEAR': 0, 'SIGMA': 0.05}
         >>> run_info["extensions"]["exchange_correlation"]["functional_1/NAME"]
         'PBE'
         >>> run_info["extensions"]["metadata/build"]["variant"]

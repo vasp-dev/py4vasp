@@ -787,9 +787,6 @@ class RunInfo:
     runtime: Optional[RuntimeData] = None
     "Data about the runtime environment of the VASP calculation."
 
-    fermi_energy: Optional[float] = None
-    "Fermi energy obtained by VASP."
-
     structure: Optional[Structure] = None
     "Structural information about the system."
     contcar: Optional[CONTCAR] = None
@@ -909,6 +906,10 @@ class RunSetup:
     "Algorithm of the electronic minimization."
     xc: VaspData = NONE()
     "Name of the exchange-correlation functional, or mixture."
+    efermi: VaspData = NONE()
+    "Fermi energy in eV if the user fixed it with EFERMI; VASP writes it only then."
+    efermi_method: VaspData = NONE()
+    "How VASP places the Fermi energy, e.g., LEGACY or MIDGAP."
     ldautype: VaspData = NONE()
     "Type of LDA+U; VASP writes it only if LDA+U is active."
     wall_time: VaspData = NONE()

@@ -21,7 +21,6 @@ def run_info(request, raw_data):
     run_info.ref = types.SimpleNamespace()
     run_info.ref.system_name = raw_run_info.system.system
     run_info.ref.runtime = raw_run_info.runtime
-    run_info.ref.fermi_energy = raw_run_info.fermi_energy
     run_info.ref.setup = raw_run_info.setup
     run_info.ref.extension = raw_run_info.extension
     run_info.ref.structure = StructureHandler.from_data(raw_run_info.structure)
@@ -39,7 +38,6 @@ def run_info_handler(request, raw_data):
     handler.ref = types.SimpleNamespace()
     handler.ref.system_name = raw_run_info.system.system
     handler.ref.runtime = raw_run_info.runtime
-    handler.ref.fermi_energy = raw_run_info.fermi_energy
     handler.ref.setup = raw_run_info.setup
     handler.ref.extension = raw_run_info.extension
     handler.ref.structure = StructureHandler.from_data(raw_run_info.structure)
@@ -89,7 +87,7 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
     assert list(models.grid_coarse_shape) == [setup.ngx, setup.ngy, setup.ngz]
     assert list(models.grid_fine_shape) == [setup.ngxf, setup.ngyf, setup.ngzf]
     assert models.exit_status == setup.exit_status
-    assert models.fermi_energy == runinfo_ref.fermi_energy
+    assert models.EFERMI == _decode(setup.efermi_method)
 
     # core settings
     for field, expected in _expected_core_settings(setup).items():
@@ -183,6 +181,7 @@ DROPPED_KEYS = (
     "is_noncollinear",
     "is_success",
     "is_metallic",
+    "fermi_energy",
 )
 
 
@@ -403,6 +402,28 @@ def test_without_setup_derived_values_are_none(raw_data, missing_setup):
     assert actual["grid_coarse_shape"] is None
     assert actual["grid_fine_shape"] is None
     assert actual["exit_status"] is None
+    assert actual["EFERMI"] is None
+
+
+def test_efermi_is_the_method_vasp_used(run_info):
+    assert run_info.read()["EFERMI"] == "LEGACY"
+
+
+@pytest.mark.parametrize("method", [b"MIDGAP  ", "LEGACY"])
+def test_efermi_trims_the_method(raw_data, method):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.efermi_method = method
+    assert RunInfo.from_data(raw_run_info).read()["EFERMI"] == _decode(method)
+
+
+def test_efermi_set_to_a_number_is_reported_as_text(raw_data):
+    # https://vasp.at/wiki/EFERMI: EFERMI = MIDGAP | LEGACY | [real]; a database
+    # column holds a single type, so the number is stored as the text of the value
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.efermi = np.float64(5.5)
+    run_info = RunInfo.from_data(raw_run_info)
+    assert run_info.read()["EFERMI"] == "5.5"
+    assert run_info._to_database()["run_info"]["default"].EFERMI == "5.5"
 
 
 def test_print(run_info, format_):
@@ -412,7 +433,6 @@ run info for Sr2TiO4:
     VASP version: 99.99.99
     exit status: success
     ionic steps: 4
-    Fermi energy: 0.500
     spin: nonpolarized
     phonon dispersion: 20 q-points, 21 modes
     FFT grid: 32 x 32 x 40 (fine 64 x 64 x 80)
@@ -421,6 +441,7 @@ run info for Sr2TiO4:
     ENCUT: 520.0 eV
     ISMEAR: 0
     SIGMA: 0.05 eV
+    EFERMI: LEGACY
     NELM: 60
     wall time: 1834.5 s
     peak memory: 256.0 MB
@@ -474,8 +495,7 @@ def test_print_omits_unknown_quantities(raw_data, format_):
     actual, _ = format_(RunInfo.from_data(raw_run_info))
     reference = """\
 run info for Sr2TiO4:
-    ionic steps: 4
-    Fermi energy: 0.500"""
+    ionic steps: 4"""
     assert actual == {"text/plain": reference}
 
 

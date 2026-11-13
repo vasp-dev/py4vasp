@@ -48,6 +48,7 @@ _SETUP = {
     "dos": {
         "ISMEAR": (0, None, "smearing method"),
         "SIGMA": (0.05, "eV", "smearing width"),
+        "EFERMI_METHOD": ("LEGACY", None, "method to determine Fermi energy"),
     },
     "vdw": {
         "IVDW": (0, None, "van der Waals correction"),
@@ -108,7 +109,6 @@ def Sr2TiO4():
     return raw.RunInfo(
         system=raw.System("Sr2TiO4"),
         runtime=runtime_data,
-        fermi_energy=0.5,
         structure=_demo.structure.Sr2TiO4(),
         contcar=_demo.CONTCAR.Sr2TiO4(),
         phonon_dispersion=_demo.phonon.band.Sr2TiO4().dispersion,
@@ -159,6 +159,7 @@ def run_setup():
         "lasph": ("electronic", "LASPH"),
         "ismear": ("dos", "ISMEAR"),
         "sigma": ("dos", "SIGMA"),
+        "efermi_method": ("dos", "EFERMI_METHOD"),
         "ibrion": ("ionic", "IBRION"),
         "isif": ("ionic", "ISIF"),
         "nsw": ("ionic", "NSW"),

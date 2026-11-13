@@ -1119,6 +1119,10 @@
         "Optional[float]"
       ],
       [
+        "EFERMI",
+        "Optional[str]"
+      ],
+      [
         "ENCUT",
         "Optional[float]"
       ],
@@ -1293,10 +1297,6 @@
       [
         "exit_status",
         "Optional[str]"
-      ],
-      [
-        "fermi_energy",
-        "Optional[float]"
       ],
       [
         "gpus",
