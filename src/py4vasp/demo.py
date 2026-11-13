@@ -30,7 +30,9 @@ def calculation(
     directory contains the HDF5 files vaspout.h5 and vaspwave.h5 but none of the text
     files like INCAR or POSCAR. The numbers are made up to be consistent with each
     other and to illustrate the features of py4vasp; they are not the result of a real
-    VASP calculation, so do not compare them to a physical reference.
+    VASP calculation, so do not compare them to a physical reference. The default data
+    combine quantities that come from different kinds of VASP runs, e.g., a relaxation
+    and a phonon dispersion, which a single run would not produce together.
 
     Parameters
     ----------

@@ -57,7 +57,8 @@ _SETUP = {
         "IDIPOL": (0, None, "dipole correction"),
         "LDIPOL": (False, None, "dipole correction of the potential"),
     },
-    "kpoints_opt": {"LKPOINTS_OPT": (False, None, "evaluate KPOINTS_OPT")},
+    # the default demo contains bands and DOS on the KPOINTS_OPT mesh
+    "kpoints_opt": {"LKPOINTS_OPT": (True, None, "evaluate KPOINTS_OPT")},
     "write_flags": {"LORBIT": (11, None, "projections onto local orbitals")},
     "exchange_correlation": {
         "functional_1/NAME": ("PBE", None, "name of the functional"),

@@ -29,6 +29,12 @@ moduli; `ElasticModulus.read` now states its unit.
 - **`transport_function` is missing from `electron_phonon_transport.py:37-43`'s `UNITS`**,
   while `read()` returns it (`:100-108`). `_SeriesBuilderBase.ylabel` indexes that dict,
   so the quantity is unplottable rather than mislabelled.
+- **`RunInfo.read()` drops the units VASP attaches to the setup.** VASP writes a
+  `units` attribute next to datasets such as `ENCUT` (eV), `POTIM` (fs), `TEBEG` (K),
+  `wall_time` (s) and `peak_memory` (kB). `raw.SetupSection.units` keeps them and
+  `print` appends them, but `read()` and `read()["extensions"]` return bare numbers,
+  so only the docstring tells the user. `EDIFFG` has no fixed unit: eV if positive
+  (energy), eV/Å if negative (forces).
 - **`Bandgap`, `Workfunction`, `DielectricFunction.to_dict`,
   `ElectronPhononChemicalPotential.to_dict`** all return eV and say so only on the axis
   label, not in the method docstring.

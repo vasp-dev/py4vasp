@@ -519,7 +519,7 @@ run info for Sr2TiO4:
     linear_response:
         LEPSILON: False
     kpoints_opt:
-        LKPOINTS_OPT: False
+        LKPOINTS_OPT: True
     write_flags:
         LORBIT: 11
     resources:
