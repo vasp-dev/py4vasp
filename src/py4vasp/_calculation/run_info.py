@@ -412,13 +412,15 @@ class RunInfo:
           ``"EFERMI"``), the Hamiltonian (``"XC"``, ``"LHFCALC"``, ``"AEXX"``,
           ``"HFSCREEN"``, ``"IVDW"``, ``"NUPDOWN"``, ``"LDIPOL"``, ``"IDIPOL"``,
           ``"LEPSILON"``), and further ones like ``"ISPIN"`` or ``"NELM"``.
+          ``"POTIM"`` is in fs, ``"TEBEG"`` and ``"TEEND"`` are in K, and
+          ``"EDIFFG"`` is in eV if positive (energy) or eV/Å if negative (forces).
           Logical tags are Python bools; string tags keep VASP's spelling, e.g.,
           ``"LREAL"`` is "Auto", "On", "T", or "F" and ``"XC"`` is a lower-case
           name such as "pbe", "hse06", or "mixture". ``"EFERMI"`` is the value set
           in the INCAR file, not the computed Fermi energy: "LEGACY", "MIDGAP", or
           the Fermi energy in eV the user fixed, given as text, e.g. "5.5",
         - ``"LDAU"``, which is True if LDA+U is active; the U and J values are in
-          the extensions under ``"ldau"``,
+          ``read()["extensions"]["ldau"]``, which exists only if LDA+U is active,
         - the FFT grids ``"grid_coarse_shape"`` and ``"grid_fine_shape"``,
         - the resources ``"mpi_ranks"``, ``"omp_threads"``, ``"nodes"``,
           ``"gpus"``, ``"KPAR"``, and ``"NCORE"`` and the performance
