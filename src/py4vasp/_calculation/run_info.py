@@ -115,7 +115,7 @@ class RunInfoHandler:
 
     def __str__(self) -> str:
         data = self.to_dict()
-        system = convert.text_to_string(data["system_tag"] or "")
+        system = data["system_tag"]
         header = f"run info for {system}:" if system else "run info:"
         lines = [header, *self._summary_lines(data)]
         return "\n".join(lines)
@@ -319,6 +319,8 @@ class RunInfoHandler:
         system_tag = None
         with suppress(exception.NoData):
             system_tag = self._read_attr("system", "system")
+        if system_tag is not None:
+            system_tag = convert.fortran_text_to_string(system_tag)
         return {
             "system_tag": system_tag,
         }

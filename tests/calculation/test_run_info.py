@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import json
 import types
 
 import numpy as np
@@ -351,6 +352,15 @@ def test_messages_of_killed_run_are_unknown(raw_data):
     assert actual["error_messages"] is None
     assert actual["error_message_counts"] is None
     handler.to_database()  # the rest of the record is still stored
+
+
+@pytest.mark.parametrize("system", [b"Sr2TiO4 relaxed   ", "Sr2TiO4 relaxed"])
+def test_system_tag_is_text(raw_data, system):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.system = raw.System(system)
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["system_tag"] == "Sr2TiO4 relaxed"
+    json.dumps(actual["system_tag"])
 
 
 def test_to_dict_matches_read(run_info_handler):
