@@ -207,15 +207,11 @@ class RunInfoHandler:
 
     @staticmethod
     def _spin_string(data):
-        if data["is_collinear"]:
-            return "collinear"
-        if data["is_noncollinear"]:
+        if data["LNONCOLLINEAR"]:
             return "noncollinear"
-        # the two flags fall back to different fields, so one may be known while the
-        # other is not; a single False does not establish a nonpolarized calculation
-        if data["is_collinear"] is None or data["is_noncollinear"] is None:
+        if data["LNONCOLLINEAR"] is None or data["ISPIN"] is None:
             return None
-        return "nonpolarized"
+        return "collinear" if data["ISPIN"] == 2 else "nonpolarized"
 
     def to_database(self) -> dict:
         """Serialize run info for the database; only the core settings are stored."""
@@ -250,8 +246,6 @@ class RunInfoHandler:
 
     def _dict_from_setup(self) -> dict:
         exit_status = self._setup_value("exit_status")
-        ispin = self._setup_value("ispin")
-        lnoncollinear = self._setup_bool("lnoncollinear")
         return {
             "grid_coarse_shape": self._setup_grid("ngx", "ngy", "ngz"),
             "grid_fine_shape": self._setup_grid("ngxf", "ngyf", "ngzf"),
@@ -259,10 +253,6 @@ class RunInfoHandler:
                 None
                 if exit_status is None
                 else convert.fortran_text_to_string(exit_status) == "success"
-            ),
-            "is_collinear": self._is_collinear() if ispin is None else ispin == 2,
-            "is_noncollinear": (
-                self._is_noncollinear() if lnoncollinear is None else lnoncollinear
             ),
             **{key: self._setup_value(key.lower()) for key in _CORE_SETTINGS},
             **{key: self._setup_bool(key.lower()) for key in _CORE_LOGICALS},
@@ -325,24 +315,6 @@ class RunInfoHandler:
     def _setup_grid(self, *keys):
         shape = [self._setup_value(key) for key in keys]
         return None if None in shape else shape
-
-    def _is_collinear(self):
-        if not check.is_none(self._raw_run_info.len_dos):
-            return self._raw_run_info.len_dos == 2
-        else:
-            if not check.is_none(self._raw_run_info.band_dispersion_eigenvalues):
-                return len(self._raw_run_info.band_dispersion_eigenvalues) == 2
-            else:
-                return None
-
-    def _is_noncollinear(self):
-        if not check.is_none(self._raw_run_info.len_dos):
-            return self._raw_run_info.len_dos == 4
-        else:
-            if not check.is_none(self._raw_run_info.band_projections):
-                return len(self._raw_run_info.band_projections) == 4
-            else:
-                return None
 
     def _is_metallic(self):
         with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
@@ -423,9 +395,10 @@ class RunInfo:
     """Contains information about the VASP run.
 
     The run info gathers a summary of the calculation in one place: the VASP version
-    and the system, properties of the results such as the Fermi energy, the spin
-    configuration, and whether the system is metallic, the number of ionic steps, and
-    the phonon dispersion. Since VASP 6.7, it adds the core INCAR settings, the FFT
+    and the system, properties of the results such as the Fermi energy and whether
+    the system is metallic, the number of ionic steps, and the phonon dispersion.
+    Since VASP 6.7, it adds the core INCAR settings, e.g., the spin (ISPIN and
+    LNONCOLLINEAR), the FFT
     grids, the parallelization, the run time and peak memory, the build of the
     executable, whether VASP terminated normally, the error messages, and, as
     extensions, every setting and metadata entry VASP

@@ -1319,15 +1319,7 @@
         "Optional[bool]"
       ],
       [
-        "is_collinear",
-        "Optional[bool]"
-      ],
-      [
         "is_metallic",
-        "Optional[bool]"
-      ],
-      [
-        "is_noncollinear",
         "Optional[bool]"
       ],
       [

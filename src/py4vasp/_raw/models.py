@@ -1037,10 +1037,6 @@ class RunInfoModel(_DatabaseModel):
     """Whether the calculation completed successfully."""
     fermi_energy: Optional[float] = None
     """The Fermi energy for the calculation according to the OUTCAR, in eV."""
-    is_collinear: Optional[bool] = None
-    """Whether the calculation was performed with collinear magnetism."""
-    is_noncollinear: Optional[bool] = None
-    """Whether the calculation was performed with non-collinear magnetism."""
     is_metallic: Optional[bool] = None
     """Whether the system is metallic based on the presence of states at the Fermi energy."""
 

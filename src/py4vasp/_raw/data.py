@@ -791,12 +791,6 @@ class RunInfo:
     "Fermi energy obtained by VASP."
     bandgap: Optional[Bandgap] = None
     "The bandgap of the system."
-    len_dos: Optional[int] = None
-    "Dimensionality of DOS data. (1 for non-polarized, 2 for spin polarized, 4 for non-collinear calculations.)"
-    band_dispersion_eigenvalues: Optional[VaspData] = NONE()
-    "The eigenvalues of the band structure dispersion."
-    band_projections: Optional[VaspData] = NONE()
-    "If present, orbital projections of the band structure."
 
     structure: Optional[Structure] = None
     "Structural information about the system."
