@@ -1227,6 +1227,10 @@
         "Optional[bool]"
       ],
       [
+        "ldau",
+        "Optional[bool]"
+      ],
+      [
         "ldipol",
         "Optional[bool]"
       ],

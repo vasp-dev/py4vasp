@@ -917,6 +917,8 @@ class RunSetup:
     "Algorithm of the electronic minimization."
     xc: VaspData = NONE()
     "Name of the exchange-correlation functional, or mixture."
+    ldautype: VaspData = NONE()
+    "Type of LDA+U; VASP writes it only if LDA+U is active."
     exit_status: VaspData = NONE()
     'How VASP finished: "success", "error", "killed", or "dry-run".'
     message_text: VaspData = NONE()

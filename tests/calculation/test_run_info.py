@@ -223,6 +223,25 @@ def test_algo_missing_in_file_is_none(raw_data):
     assert actual["prec"] == "accurate"
 
 
+def test_ldau_is_false_without_ldau_group(run_info):
+    # VASP writes the ldau group only if LDA+U is active
+    assert run_info.read()["ldau"] is False
+    assert run_info._to_database()["run_info"]["default"].ldau is False
+
+
+@pytest.mark.parametrize("ldautype", [1, 2, 4])
+def test_ldau_is_true_if_vasp_wrote_ldautype(raw_data, ldautype):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.ldautype = ldautype
+    assert RunInfo.from_data(raw_run_info).read()["ldau"] is True
+
+
+def test_ldau_without_setup_is_none(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup = None
+    assert RunInfo.from_data(raw_run_info).read()["ldau"] is None
+
+
 def test_error_messages_with_counts(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.message_text = np.array(

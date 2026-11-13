@@ -1153,6 +1153,8 @@ class RunInfoModel(_DatabaseModel):
     """The algorithm of the electronic minimization (ALGO) as VASP writes it, e.g., "Normal" or "All"."""
     xc: Optional[str] = None
     """The exchange-correlation functional (XC), e.g., "pbe", "hse06", or "scan"; "mixture" if it combines several components."""
+    ldau: Optional[bool] = None
+    """Whether LDA+U is active (LDAU)."""
 
     error_messages: Optional[List[str]] = None
     """The text of every distinct message of severity "error" VASP reported."""

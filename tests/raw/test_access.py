@@ -399,7 +399,10 @@ def test_run_setup_reads_every_core_setting_the_demo_writes(tmp_path):
                 continue
             actual = getattr(setup, field.name)
             desired = getattr(expected, field.name)
-            assert not check.is_none(actual), field.name
+            # the demo leaves some groups out, e.g., ldau for a run without LDA+U
+            assert check.is_none(actual) == check.is_none(desired), field.name
+            if check.is_none(desired):
+                continue
             actual = actual[()] if isinstance(actual, raw.VaspData) else actual
             if isinstance(actual, bytes):
                 actual = actual.decode().strip()
@@ -412,3 +415,9 @@ def test_run_setup_without_algo_reports_it_as_missing(tmp_path):
     with raw.access("run_setup", path=tmp_path) as setup:
         assert check.is_none(setup.algo)
         assert setup.prec == b"accurate"
+
+
+def test_run_setup_reads_ldautype_of_a_run_with_lda_plus_u(tmp_path):
+    write_setup_file(tmp_path / DEFAULT_FILE, {"ldau/LDAUTYPE": 2})
+    with raw.access("run_setup", path=tmp_path) as setup:
+        assert setup.ldautype == 2

@@ -824,6 +824,7 @@ schema.add(
     prec="setup/electronic/PREC",
     algo="setup/electronic/ALGO",
     xc="setup/exchange_correlation/XC",
+    ldautype="setup/ldau/LDAUTYPE",
     exit_status="messages/exit_status",
     message_text="messages/text",
     message_severity="messages/severity",

@@ -249,7 +249,14 @@ class RunInfoHandler:
             **{key: self._setup_value(key) for key in _CORE_SETTINGS},
             **{key: self._setup_bool(key) for key in _CORE_LOGICALS},
             **{key: self._setup_string(key) for key in _CORE_STRINGS},
+            "ldau": self._is_ldau(),
         }
+
+    def _is_ldau(self):
+        "VASP writes the ldau group, and so LDAUTYPE, only if LDA+U is active."
+        if check.is_none(getattr(self._raw_run_info, "setup", None)):
+            return None
+        return self._setup_value("ldautype") is not None
 
     def _dict_from_messages(self) -> dict:
         """Collect the messages of severity error; VASP omits the arrays without messages.
