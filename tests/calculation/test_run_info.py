@@ -292,6 +292,16 @@ def test_partial_message_arrays_are_none(raw_data, missing):
     handler.to_database()  # the rest of the record is still stored
 
 
+@pytest.mark.parametrize("shorter", ["message_severity", "message_count"])
+def test_message_arrays_of_different_length_are_none(raw_data, shorter):
+    # a message without severity or count must not vanish silently
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    setattr(raw_run_info.setup, shorter, getattr(raw_run_info.setup, shorter)[:1])
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["error_messages"] is None
+    assert actual["error_message_counts"] is None
+
+
 def test_error_messages_with_padded_severity(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.setup.message_text = np.array([b"padded error    ", b"a warning  "])

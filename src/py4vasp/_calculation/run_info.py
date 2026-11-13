@@ -268,7 +268,10 @@ class RunInfoHandler:
         arrays = (setup.message_text, setup.message_severity, setup.message_count)
         if any(check.is_none(array) for array in arrays):
             return unknown
-        messages = zip(*(np.atleast_1d(_unwrap(array)) for array in arrays))
+        arrays = [np.atleast_1d(_unwrap(array)) for array in arrays]
+        if len({len(array) for array in arrays}) > 1:
+            return unknown
+        messages = zip(*arrays)
         errors = [
             (convert.fortran_text_to_string(text), int(count))
             for text, severity, count in messages
