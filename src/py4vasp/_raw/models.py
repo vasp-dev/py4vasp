@@ -1165,8 +1165,6 @@ class RunInfoModel(_DatabaseModel):
     """The variant of the VASP executable: "gam", "std", or "ncl"."""
     build_gpu: Optional[bool] = None
     """Whether VASP was built with GPU support."""
-    build_mpi: Optional[bool] = None
-    """Whether VASP was built with MPI."""
     build_openmp: Optional[bool] = None
     """Whether VASP was built with OpenMP."""
 

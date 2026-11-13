@@ -832,7 +832,6 @@ schema.add(
     gpus="metadata/resources/gpus",
     build_variant="metadata/build/variant",
     build_gpu="metadata/build/gpu",
-    build_mpi="metadata/build/mpi",
     build_openmp="metadata/build/openmp",
     exit_status="messages/exit_status",
     message_text="messages/text",

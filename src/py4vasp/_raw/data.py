@@ -933,8 +933,6 @@ class RunSetup:
     "Variant of the VASP executable: gam, std, or ncl."
     build_gpu: VaspData = NONE()
     "Whether VASP was built with GPU support."
-    build_mpi: VaspData = NONE()
-    "Whether VASP was built with MPI."
     build_openmp: VaspData = NONE()
     "Whether VASP was built with OpenMP."
     exit_status: VaspData = NONE()

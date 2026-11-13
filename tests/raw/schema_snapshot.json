@@ -1271,10 +1271,6 @@
         "Optional[bool]"
       ],
       [
-        "build_mpi",
-        "Optional[bool]"
-      ],
-      [
         "build_openmp",
         "Optional[bool]"
       ],

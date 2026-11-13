@@ -198,7 +198,6 @@ def run_setup():
         "cpu_time": ("performance", "cpu_time"),
         "build_variant": ("build", "variant"),
         "build_gpu": ("build", "gpu"),
-        "build_mpi": ("build", "mpi"),
         "build_openmp": ("build", "openmp"),
     }
     # LDA+U is off, so VASP writes no ldau group and ldautype stays unset

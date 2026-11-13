@@ -119,7 +119,6 @@ CORE_BOOLS = (
     "LDIPOL",
     "LEPSILON",
     "build_gpu",
-    "build_mpi",
     "build_openmp",
 )
 CORE_STRINGS = (
@@ -190,7 +189,7 @@ def test_read(run_info):
     _check_dict(RunInfoModel(**actual), run_info.ref)
 
 
-DROPPED_KEYS = ("is_magnetic", "magnetization_order")
+DROPPED_KEYS = ("is_magnetic", "magnetization_order", "build_mpi")
 
 
 @pytest.mark.parametrize("key", DROPPED_KEYS)

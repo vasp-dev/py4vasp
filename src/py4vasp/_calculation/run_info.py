@@ -77,7 +77,6 @@ _CORE_LOGICALS = (
     "LDIPOL",
     "LEPSILON",
     "build_gpu",
-    "build_mpi",
     "build_openmp",
 )
 _CORE_STRINGS = (
@@ -468,8 +467,8 @@ class RunInfo:
           ``"gpus"``, ``"KPAR"``, and ``"NCORE"`` and the performance
           ``"wall_time"`` and ``"cpu_time"`` in s and ``"peak_memory"`` in kB,
         - the build of the executable: ``"build_variant"`` ("gam", "std", or
-          "ncl") and whether it was built with ``"build_gpu"``, ``"build_mpi"``,
-          or ``"build_openmp"`` support,
+          "ncl") and whether it was built with ``"build_gpu"`` or
+          ``"build_openmp"`` support,
         - ``"is_success"``, which is True if VASP terminated normally (exit status
           "success"); it can be True while error messages exist,
         - ``"error_messages"`` and ``"error_message_counts"``, the text of every
