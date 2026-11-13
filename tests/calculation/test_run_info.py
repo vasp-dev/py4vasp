@@ -120,12 +120,16 @@ CORE_BOOLS = (
     "lhfcalc",
     "ldipol",
     "lepsilon",
+    "build_gpu",
+    "build_mpi",
+    "build_openmp",
 )
 CORE_STRINGS = (
     "lreal",
     "prec",
     "algo",
     "xc",
+    "build_variant",
 )
 CORE_SCALARS = (
     "sigma",

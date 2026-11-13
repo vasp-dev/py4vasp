@@ -76,6 +76,7 @@ _METADATA = {
         "mpi": (True, None, "built with MPI"),
         "openmp": (False, None, "built with OpenMP"),
         "configuration/fortran_compiler": ("demo-fortran", None, None),
+        "gpu": (False, None, "built with GPU support"),
     },
     "resources": {
         "mpi_ranks": (64, None, "number of MPI ranks"),
@@ -195,6 +196,10 @@ def run_setup():
         "peak_memory": ("performance", "peak_memory"),
         "wall_time": ("performance", "wall_time"),
         "cpu_time": ("performance", "cpu_time"),
+        "build_variant": ("build", "variant"),
+        "build_gpu": ("build", "gpu"),
+        "build_mpi": ("build", "mpi"),
+        "build_openmp": ("build", "openmp"),
     }
     # LDA+U is off, so VASP writes no ldau group and ldautype stays unset
     return raw.RunSetup(

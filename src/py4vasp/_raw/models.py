@@ -1165,6 +1165,14 @@ class RunInfoModel(_DatabaseModel):
     """The number of nodes the run used."""
     gpus: Optional[int] = None
     """The number of GPUs the run used; 0 for CPU builds."""
+    build_variant: Optional[str] = None
+    """The variant of the VASP executable: "gam", "std", or "ncl"."""
+    build_gpu: Optional[bool] = None
+    """Whether VASP was built with GPU support."""
+    build_mpi: Optional[bool] = None
+    """Whether VASP was built with MPI."""
+    build_openmp: Optional[bool] = None
+    """Whether VASP was built with OpenMP."""
 
     error_messages: Optional[List[str]] = None
     """The text of every distinct message of severity "error" VASP reported."""

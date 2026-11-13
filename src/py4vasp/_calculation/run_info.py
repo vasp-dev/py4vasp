@@ -75,12 +75,16 @@ _CORE_LOGICALS = (
     "lhfcalc",
     "ldipol",
     "lepsilon",
+    "build_gpu",
+    "build_mpi",
+    "build_openmp",
 )
 _CORE_STRINGS = (
     "lreal",
     "prec",
     "algo",
     "xc",
+    "build_variant",
 )
 
 

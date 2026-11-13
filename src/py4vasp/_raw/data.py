@@ -929,6 +929,14 @@ class RunSetup:
     "Number of nodes the run used."
     gpus: VaspData = NONE()
     "Number of GPUs the run used; 0 for CPU builds."
+    build_variant: VaspData = NONE()
+    "Variant of the VASP executable: gam, std, or ncl."
+    build_gpu: VaspData = NONE()
+    "Whether VASP was built with GPU support."
+    build_mpi: VaspData = NONE()
+    "Whether VASP was built with MPI."
+    build_openmp: VaspData = NONE()
+    "Whether VASP was built with OpenMP."
     exit_status: VaspData = NONE()
     'How VASP finished: "success", "error", "killed", or "dry-run".'
     message_text: VaspData = NONE()

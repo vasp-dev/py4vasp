@@ -1111,6 +1111,22 @@
         "Optional[str]"
       ],
       [
+        "build_gpu",
+        "Optional[bool]"
+      ],
+      [
+        "build_mpi",
+        "Optional[bool]"
+      ],
+      [
+        "build_openmp",
+        "Optional[bool]"
+      ],
+      [
+        "build_variant",
+        "Optional[str]"
+      ],
+      [
         "cpu_time",
         "Optional[float]"
       ],
