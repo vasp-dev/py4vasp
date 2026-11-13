@@ -762,7 +762,6 @@ schema.add(
     system=Link("system", DEFAULT_SOURCE),
     runtime=Link("runtime_data", DEFAULT_SOURCE),
     fermi_energy="results/electron_dos/efermi",
-    bandgap=Link("bandgap", DEFAULT_SOURCE),
     structure=Link("structure", DEFAULT_SOURCE),
     contcar=Link("CONTCAR", DEFAULT_SOURCE),
     phonon_dispersion=Link("dispersion", "phonon"),

@@ -109,7 +109,6 @@ def Sr2TiO4():
         system=raw.System("Sr2TiO4"),
         runtime=runtime_data,
         fermi_energy=0.5,
-        bandgap=_demo.bandgap.bandgap(None),
         structure=_demo.structure.Sr2TiO4(),
         contcar=_demo.CONTCAR.Sr2TiO4(),
         phonon_dispersion=_demo.phonon.band.Sr2TiO4().dispersion,

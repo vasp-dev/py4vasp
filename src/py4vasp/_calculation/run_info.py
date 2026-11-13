@@ -5,7 +5,6 @@ from contextlib import suppress
 import numpy as np
 
 from py4vasp import raw
-from py4vasp._calculation import bandgap as bandgap_module
 from py4vasp._calculation import exception
 from py4vasp._calculation.dispatch import (
     DataSource,
@@ -19,14 +18,6 @@ from py4vasp._raw.data_wrapper import VaspData
 from py4vasp._raw.models import RunInfoModel
 from py4vasp._util import check, convert
 
-_TO_DATABASE_SUPPRESSED_EXCEPTIONS = (
-    exception.Py4VaspError,
-    exception.OutdatedVaspVersion,
-    exception.NoData,
-    AttributeError,
-    TypeError,
-    ValueError,
-)
 # core settings of raw.RunSetup; a key that is exactly an INCAR tag is reported in
 # upper case, every other one in lower case, and the raw field is the lower-case key
 _CORE_SETTINGS = (
@@ -141,8 +132,6 @@ class RunInfoHandler:
         spin = self._spin_string(data)
         if spin is not None:
             yield f"    spin: {spin}"
-        if data["is_metallic"] is not None:
-            yield f"    metallic: {'yes' if data['is_metallic'] else 'no'}"
         qpoints = data["phonon_num_qpoints"]
         modes = data["phonon_num_modes"]
         if qpoints is not None and modes is not None:
@@ -240,7 +229,6 @@ class RunInfoHandler:
         return {
             **self._dict_from_setup(),
             "fermi_energy": fermi_energy,
-            "is_metallic": self._is_metallic(),
         }
 
     def _dict_from_setup(self) -> dict:
@@ -309,14 +297,6 @@ class RunInfoHandler:
     def _setup_grid(self, *keys):
         shape = [self._setup_value(key) for key in keys]
         return None if None in shape else shape
-
-    def _is_metallic(self):
-        with suppress(*_TO_DATABASE_SUPPRESSED_EXCEPTIONS):
-            if check.is_none(self._raw_run_info.bandgap):
-                return None
-            gap = bandgap_module.BandgapHandler.from_data(self._raw_run_info.bandgap)
-            return all(gap._output_gap("fundamental", to_string=False) <= 0.0)
-        return None
 
     def _dict_from_system(self) -> dict:
         system_tag = None
@@ -389,8 +369,8 @@ class RunInfo:
     """Contains information about the VASP run.
 
     The run info gathers a summary of the calculation in one place: the VASP version
-    and the system, properties of the results such as the Fermi energy and whether
-    the system is metallic, the number of ionic steps, and the phonon dispersion.
+    and the system, properties of the results such as the Fermi energy, the number
+    of ionic steps, and the phonon dispersion.
     If VASP records how the run was set up, it adds the core INCAR settings, e.g.,
     the spin (ISPIN and LNONCOLLINEAR), the FFT grids, the parallelization, the run
     time and peak memory, the build of the executable, whether VASP terminated

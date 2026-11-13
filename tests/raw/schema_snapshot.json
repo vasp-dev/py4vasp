@@ -1323,10 +1323,6 @@
         "Optional[bool]"
       ],
       [
-        "is_metallic",
-        "Optional[bool]"
-      ],
-      [
         "mpi_ranks",
         "Optional[int]"
       ],

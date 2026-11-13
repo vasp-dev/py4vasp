@@ -8,7 +8,6 @@ import pytest
 from py4vasp import raw
 from py4vasp._calculation._CONTCAR import CONTCARHandler
 from py4vasp._calculation._dispersion import DispersionHandler
-from py4vasp._calculation.bandgap import Bandgap, BandgapHandler
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import RunInfoModel
@@ -25,7 +24,6 @@ def run_info(request, raw_data):
     run_info.ref.fermi_energy = raw_run_info.fermi_energy
     run_info.ref.setup = raw_run_info.setup
     run_info.ref.extension = raw_run_info.extension
-    run_info.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
     run_info.ref.structure = StructureHandler.from_data(raw_run_info.structure)
     run_info.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
     run_info.ref.phonon_dispersion = DispersionHandler.from_data(
@@ -44,7 +42,6 @@ def run_info_handler(request, raw_data):
     handler.ref.fermi_energy = raw_run_info.fermi_energy
     handler.ref.setup = raw_run_info.setup
     handler.ref.extension = raw_run_info.extension
-    handler.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
     handler.ref.structure = StructureHandler.from_data(raw_run_info.structure)
     handler.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
     handler.ref.phonon_dispersion = DispersionHandler.from_data(
@@ -93,9 +90,6 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
     assert list(models.grid_fine_shape) == [setup.ngxf, setup.ngyf, setup.ngzf]
     assert models.exit_status == setup.exit_status
     assert models.fermi_energy == runinfo_ref.fermi_energy
-    assert models.is_metallic == all(
-        runinfo_ref.bandgap._output_gap("fundamental", to_string=False) <= 0.0
-    )
 
     # core settings
     for field, expected in _expected_core_settings(setup).items():
@@ -188,6 +182,7 @@ DROPPED_KEYS = (
     "is_collinear",
     "is_noncollinear",
     "is_success",
+    "is_metallic",
 )
 
 
@@ -419,7 +414,6 @@ run info for Sr2TiO4:
     ionic steps: 4
     Fermi energy: 0.500
     spin: nonpolarized
-    metallic: no
     phonon dispersion: 20 q-points, 21 modes
     FFT grid: 32 x 32 x 40 (fine 64 x 64 x 80)
     ionic update: IBRION=2, ISIF=3, NSW=40
@@ -481,8 +475,7 @@ def test_print_omits_unknown_quantities(raw_data, format_):
     reference = """\
 run info for Sr2TiO4:
     ionic steps: 4
-    Fermi energy: 0.500
-    metallic: no"""
+    Fermi energy: 0.500"""
     assert actual == {"text/plain": reference}
 
 

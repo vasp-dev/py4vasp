@@ -1037,8 +1037,6 @@ class RunInfoModel(_DatabaseModel):
     """How VASP finished: "success", "error", "killed", or "dry-run"."""
     fermi_energy: Optional[float] = None
     """The Fermi energy for the calculation according to the OUTCAR, in eV."""
-    is_metallic: Optional[bool] = None
-    """Whether the system is metallic based on the presence of states at the Fermi energy."""
 
     system_tag: Optional[str] = None
     """The system tag from the INCAR file, if set, which may provide additional information about the system or calculation."""

@@ -789,8 +789,6 @@ class RunInfo:
 
     fermi_energy: Optional[float] = None
     "Fermi energy obtained by VASP."
-    bandgap: Optional[Bandgap] = None
-    "The bandgap of the system."
 
     structure: Optional[Structure] = None
     "Structural information about the system."
