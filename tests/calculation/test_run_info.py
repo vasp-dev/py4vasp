@@ -432,9 +432,11 @@ def test_efermi_trims_the_method(raw_data, method):
 
 
 def test_efermi_set_to_a_number_is_reported_as_text(raw_data):
-    # https://vasp.at/wiki/EFERMI: EFERMI = MIDGAP | LEGACY | [real]; a database
-    # column holds a single type, so the number is stored as the text of the value
+    # https://vasp.at/wiki/EFERMI: EFERMI = MIDGAP | LEGACY | [real]; for a number
+    # VASP writes the method FORCE together with the value. A database column holds
+    # a single type, so the number is stored as the text of the value.
     raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.setup.efermi_method = b"FORCE  "
     raw_run_info.setup.efermi = np.float64(5.5)
     run_info = RunInfo.from_data(raw_run_info)
     assert run_info.read()["EFERMI"] == "5.5"

@@ -236,8 +236,9 @@ class RunInfoHandler:
     def _efermi(self):
         """The EFERMI tag as set in the INCAR file: MIDGAP, LEGACY, or a number.
 
-        VASP writes the number only if the user set one. A database column holds a
-        single type, so the number is reported as text, too."""
+        VASP always writes the method, which is FORCE if the user set a number. Only
+        then it writes the number, in eV, as well. A database column holds a single
+        type, so the number is reported as text, too."""
         value = self._setup_value("efermi")
         if value is not None:
             return str(value)
