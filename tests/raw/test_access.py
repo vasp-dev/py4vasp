@@ -417,6 +417,14 @@ def test_run_info_of_vasp_without_setup_has_no_settings(tmp_path):
             assert check.is_none(getattr(run_info, field)), field
 
 
+def test_run_info_counts_the_ionic_steps_without_reading_them(tmp_path):
+    positions = np.zeros((3, 4, 3))
+    path = "/intermediate/ion_dynamics/position_ions"
+    write_setup_file(tmp_path / DEFAULT_FILE, {path: positions})
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.number_ionic_steps == 3
+
+
 def test_run_info_without_algo_reports_it_as_missing(tmp_path):
     # VASP writes no ALGO if the INCAR sets only IALGO
     write_setup_file(tmp_path / DEFAULT_FILE, {"electronic/PREC": "accurate"})

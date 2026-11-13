@@ -790,8 +790,8 @@ class RunInfo:
     fermi_energy: Optional[float] = None
     "Fermi energy obtained by VASP."
 
-    structure: Optional[Structure] = None
-    "Structural information about the system."
+    number_ionic_steps: VaspData = NONE()
+    "The number of ionic steps, i.e., the length of the trajectory."
     contcar: Optional[CONTCAR] = None
     "The data corresponding to the CONTCAR file."
 

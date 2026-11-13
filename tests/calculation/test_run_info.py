@@ -10,7 +10,6 @@ from py4vasp import _demo, exception, raw
 from py4vasp._calculation._CONTCAR import CONTCARHandler
 from py4vasp._calculation._dispersion import DispersionHandler
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
-from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import RunInfoModel
 from py4vasp._util import check
 
@@ -24,7 +23,7 @@ def run_info(request, raw_data):
     run_info.ref.fermi_energy = raw_run_info.fermi_energy
     run_info.ref.setup = raw_run_info
     run_info.ref.extension = raw_run_info.extension
-    run_info.ref.structure = StructureHandler.from_data(raw_run_info.structure)
+    run_info.ref.number_ionic_steps = raw_run_info.number_ionic_steps
     run_info.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
     run_info.ref.phonon_dispersion = DispersionHandler.from_data(
         raw_run_info.phonon_dispersion
@@ -41,7 +40,7 @@ def run_info_handler(request, raw_data):
     handler.ref.fermi_energy = raw_run_info.fermi_energy
     handler.ref.setup = raw_run_info
     handler.ref.extension = raw_run_info.extension
-    handler.ref.structure = StructureHandler.from_data(raw_run_info.structure)
+    handler.ref.number_ionic_steps = raw_run_info.number_ionic_steps
     handler.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
     handler.ref.phonon_dispersion = DispersionHandler.from_data(
         raw_run_info.phonon_dispersion
@@ -54,10 +53,7 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
     assert models.vasp_version == "99.99.99"
 
     # from structure
-    assert (
-        models.num_ionic_steps
-        == runinfo_ref.structure._raw_structure.positions[:].shape[0]
-    )
+    assert models.num_ionic_steps == runinfo_ref.number_ionic_steps == 4
 
     # from system
     assert models.system_tag == runinfo_ref.system_name
@@ -378,6 +374,12 @@ def test_vasp_version_is_text(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
     raw_run_info.vasp_version = raw.Version(6, 7, 0)
     assert RunInfo.from_data(raw_run_info).read()["vasp_version"] == "6.7.0"
+
+
+def test_without_ionic_steps_is_none(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.number_ionic_steps = raw.VaspData(None)
+    assert RunInfo.from_data(raw_run_info).read()["num_ionic_steps"] is None
 
 
 def test_to_dict_matches_read(run_info_handler):

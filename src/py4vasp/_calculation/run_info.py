@@ -371,14 +371,8 @@ class RunInfoHandler:
         return {"vasp_version": ".".join(str(int(_unwrap(part))) for part in parts)}
 
     def _dict_from_structure(self) -> dict:
-        num_ion_steps = None
-        with suppress(exception.NoData, AttributeError):
-            positions = self._read_attr("structure", "positions")
-            if not check.is_none(positions):
-                num_ion_steps = 1 if positions.ndim == 2 else positions.shape[0]
-        return {
-            "num_ionic_steps": num_ion_steps,
-        }
+        steps = self._raw_run_info.number_ionic_steps
+        return {"num_ionic_steps": None if check.is_none(steps) else int(steps)}
 
     def _dict_from_contcar(self) -> dict:
         has_selective_dynamics = None

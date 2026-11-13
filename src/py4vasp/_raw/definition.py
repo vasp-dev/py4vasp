@@ -762,7 +762,7 @@ schema.add(
     vasp_version=Link("version", DEFAULT_SOURCE),
     system_tag="input/incar/SYSTEM",
     fermi_energy="results/electron_dos/efermi",
-    structure=Link("structure", DEFAULT_SOURCE),
+    number_ionic_steps=Length("intermediate/ion_dynamics/position_ions"),
     contcar=Link("CONTCAR", DEFAULT_SOURCE),
     phonon_dispersion=Link("dispersion", "phonon"),
     # the /setup, /metadata, and /messages groups VASP writes for run_info

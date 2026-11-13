@@ -110,7 +110,7 @@ def Sr2TiO4():
         vasp_version=raw.Version(99, 99, 99),
         system_tag="Sr2TiO4",
         fermi_energy=0.5,
-        structure=_demo.structure.Sr2TiO4(),
+        number_ionic_steps=len(_demo.structure.Sr2TiO4().positions),
         contcar=_demo.CONTCAR.Sr2TiO4(),
         phonon_dispersion=_demo.phonon.band.Sr2TiO4().dispersion,
         **run_setup(),
