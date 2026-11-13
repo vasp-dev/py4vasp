@@ -782,10 +782,10 @@ class Raman:
 class RunInfo:
     "Contains information about the VASP run."
 
-    system: Optional[System] = None
-    "Data of the system."
-    runtime: Optional[RuntimeData] = None
-    "Data about the runtime environment of the VASP calculation."
+    vasp_version: Optional[Version] = None
+    "The version of VASP that wrote the file."
+    system_tag: VaspData = NONE()
+    "The SYSTEM tag of the INCAR file."
 
     fermi_energy: Optional[float] = None
     "Fermi energy obtained by VASP."

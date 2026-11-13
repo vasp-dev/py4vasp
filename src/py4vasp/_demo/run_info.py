@@ -106,10 +106,9 @@ _MESSAGES = {
 
 
 def Sr2TiO4():
-    runtime_data = _demo.runtime_data.runtime_data("Sr2TiO4")
     return raw.RunInfo(
-        system=raw.System("Sr2TiO4"),
-        runtime=runtime_data,
+        vasp_version=raw.Version(99, 99, 99),
+        system_tag="Sr2TiO4",
         fermi_energy=0.5,
         structure=_demo.structure.Sr2TiO4(),
         contcar=_demo.CONTCAR.Sr2TiO4(),

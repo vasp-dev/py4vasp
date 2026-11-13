@@ -356,23 +356,19 @@ class RunInfoHandler:
         return None if None in shape else shape
 
     def _dict_from_system(self) -> dict:
-        system_tag = None
-        with suppress(exception.NoData):
-            system_tag = self._read_attr("system", "system")
-        if system_tag is not None:
-            system_tag = convert.fortran_text_to_string(system_tag)
-        return {
-            "system_tag": system_tag,
-        }
+        system_tag = self._raw_run_info.system_tag
+        if check.is_none(system_tag):
+            return {"system_tag": None}
+        return {"system_tag": convert.fortran_text_to_string(_unwrap(system_tag))}
 
     def _dict_from_runtime(self) -> dict:
-        vasp_version = None
-        with suppress(exception.NoData):
-            runtime_data = self._raw_run_info.runtime
-            vasp_version = None if runtime_data is None else runtime_data.vasp_version
-        return {
-            "vasp_version": vasp_version,
-        }
+        version = self._raw_run_info.vasp_version
+        if check.is_none(version):
+            return {"vasp_version": None}
+        parts = (version.major, version.minor, version.patch)
+        if any(check.is_none(part) for part in parts):
+            return {"vasp_version": None}
+        return {"vasp_version": ".".join(str(int(_unwrap(part))) for part in parts)}
 
     def _dict_from_structure(self) -> dict:
         num_ion_steps = None

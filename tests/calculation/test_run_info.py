@@ -20,8 +20,7 @@ def run_info(request, raw_data):
     raw_run_info = raw_data.run_info(request.param)
     run_info = RunInfo.from_data(raw_run_info)
     run_info.ref = types.SimpleNamespace()
-    run_info.ref.system_name = raw_run_info.system.system
-    run_info.ref.runtime = raw_run_info.runtime
+    run_info.ref.system_name = raw_run_info.system_tag
     run_info.ref.fermi_energy = raw_run_info.fermi_energy
     run_info.ref.setup = raw_run_info
     run_info.ref.extension = raw_run_info.extension
@@ -38,8 +37,7 @@ def run_info_handler(request, raw_data):
     raw_run_info = raw_data.run_info(request.param)
     handler = RunInfoHandler.from_data(raw_run_info)
     handler.ref = types.SimpleNamespace()
-    handler.ref.system_name = raw_run_info.system.system
-    handler.ref.runtime = raw_run_info.runtime
+    handler.ref.system_name = raw_run_info.system_tag
     handler.ref.fermi_energy = raw_run_info.fermi_energy
     handler.ref.setup = raw_run_info
     handler.ref.extension = raw_run_info.extension
@@ -53,7 +51,7 @@ def run_info_handler(request, raw_data):
 
 def _check_dict(models: RunInfoModel, runinfo_ref):
     # from runtime
-    assert models.vasp_version == runinfo_ref.runtime.vasp_version
+    assert models.vasp_version == "99.99.99"
 
     # from structure
     assert (
@@ -362,7 +360,7 @@ def test_messages_of_killed_run_are_unknown(raw_data):
 @pytest.mark.parametrize("system", [b"Sr2TiO4 relaxed   ", "Sr2TiO4 relaxed"])
 def test_system_tag_is_text(raw_data, system):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.system = raw.System(system)
+    raw_run_info.system_tag = system
     actual = RunInfo.from_data(raw_run_info).read()
     assert actual["system_tag"] == "Sr2TiO4 relaxed"
     json.dumps(actual["system_tag"])
@@ -374,6 +372,12 @@ def test_section_name_as_selection_points_to_extensions(run_info, method):
     with pytest.raises(exception.IncorrectUsage) as error:
         getattr(run_info, method)("electronic")
     assert 'read()["extensions"]["electronic"]' in str(error.value)
+
+
+def test_vasp_version_is_text(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.vasp_version = raw.Version(6, 7, 0)
+    assert RunInfo.from_data(raw_run_info).read()["vasp_version"] == "6.7.0"
 
 
 def test_to_dict_matches_read(run_info_handler):
@@ -601,7 +605,7 @@ def test_print_of_vasp_without_setup(raw_data, format_):
     # VASP writes the exit status at startup, so without it the file predates the
     # setup writers; print says so instead of silently leaving the settings out
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.runtime = None
+    raw_run_info.vasp_version = raw.VaspData(None)
     raw_run_info.phonon_dispersion = None
     _without_setup(raw_run_info)
     raw_run_info.extension = None

@@ -759,8 +759,8 @@ schema.add(
 )
 schema.add(
     raw.RunInfo,
-    system=Link("system", DEFAULT_SOURCE),
-    runtime=Link("runtime_data", DEFAULT_SOURCE),
+    vasp_version=Link("version", DEFAULT_SOURCE),
+    system_tag="input/incar/SYSTEM",
     fermi_energy="results/electron_dos/efermi",
     structure=Link("structure", DEFAULT_SOURCE),
     contcar=Link("CONTCAR", DEFAULT_SOURCE),
