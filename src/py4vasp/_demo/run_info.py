@@ -70,6 +70,7 @@ _SETUP = {
     "linear_response": {
         "LEPSILON": (False, None, "dielectric tensor from linear response"),
     },
+    "ldau": {"LDAU": (False, None, "DFT+U")},
 }
 # The /metadata group in the same layout; resources exist only for MPI builds.
 _METADATA = {
@@ -171,6 +172,7 @@ def run_setup():
         "MDALGO": ("ionic", "MDALGO"),
         "ISYM": ("ionic", "ISYM"),
         "XC": ("exchange_correlation", "XC"),
+        "LDAU": ("ldau", "LDAU"),
         "LHFCALC": ("exchange_correlation", "LHFCALC"),
         "AEXX": ("exchange_correlation", "AEXX"),
         "HFSCREEN": ("exchange_correlation", "HFSCREEN"),
@@ -196,7 +198,6 @@ def run_setup():
         "build_gpu": ("build", "gpu"),
         "build_openmp": ("build", "openmp"),
     }
-    # LDA+U is off, so VASP writes no ldau group and ldautype stays unset
     return dict(
         **{field: _value(*location) for field, location in setup.items()},
         **{field: _value(*location, _METADATA) for field, location in metadata.items()},

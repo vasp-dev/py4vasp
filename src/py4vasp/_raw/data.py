@@ -904,8 +904,8 @@ class RunInfo:
     "Fermi energy in eV if the user fixed it with EFERMI; VASP writes it only then."
     efermi_method: VaspData = NONE()
     "How VASP places the Fermi energy, e.g., LEGACY or MIDGAP."
-    LDAUTYPE: VaspData = NONE()
-    "Type of LDA+U; VASP writes it only if LDA+U is active."
+    LDAU: VaspData = NONE()
+    "Whether DFT+U is used."
     wall_time: VaspData = NONE()
     "Elapsed time of the run in s."
     cpu_time: VaspData = NONE()

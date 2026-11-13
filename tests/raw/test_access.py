@@ -398,7 +398,7 @@ def test_run_info_reads_every_core_setting_the_demo_writes(tmp_path):
             if field in messages:
                 continue
             actual = getattr(run_info, field)
-            # the demo leaves some groups out, e.g., ldau for a run without LDA+U
+            # the demo leaves some datasets out, e.g., EFERMI if it is not a number
             assert check.is_none(actual) == check.is_none(desired), field
             if check.is_none(desired):
                 continue
@@ -433,7 +433,7 @@ def test_run_info_without_algo_reports_it_as_missing(tmp_path):
         assert run_info.PREC == b"accurate"
 
 
-def test_run_info_reads_ldautype_of_a_run_with_lda_plus_u(tmp_path):
-    write_setup_file(tmp_path / DEFAULT_FILE, {"ldau/LDAUTYPE": 2})
+def test_run_info_reads_the_ldau_flag(tmp_path):
+    write_setup_file(tmp_path / DEFAULT_FILE, {"ldau/LDAU": 1, "ldau/LDAUTYPE": 2})
     with raw.access("run_info", path=tmp_path) as run_info:
-        assert run_info.LDAUTYPE == 2
+        assert run_info.LDAU == 1

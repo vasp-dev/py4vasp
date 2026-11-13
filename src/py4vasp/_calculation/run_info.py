@@ -60,6 +60,7 @@ _CORE_SETTINGS = (
     "gpus",
 )
 _CORE_LOGICALS = (
+    "LDAU",
     "LNONCOLLINEAR",
     "LSORBIT",
     "LKPOINTS_OPT",
@@ -284,26 +285,14 @@ class RunInfoHandler:
         return self._setup_string("efermi_method")
 
     def _dict_from_setup(self) -> dict:
-        settings = {
-            **{key: self._setup_value(key) for key in _CORE_SETTINGS},
-            **{key: self._setup_bool(key) for key in _CORE_LOGICALS},
-            **{key: self._setup_string(key) for key in _CORE_STRINGS},
-        }
         return {
             "grid_coarse_shape": self._setup_grid("NGX", "NGY", "NGZ"),
             "grid_fine_shape": self._setup_grid("NGXF", "NGYF", "NGZF"),
             "exit_status": self._setup_string("exit_status"),
-            **settings,
-            "LDAU": self._is_ldau(settings),
+            **{key: self._setup_value(key) for key in _CORE_SETTINGS},
+            **{key: self._setup_bool(key) for key in _CORE_LOGICALS},
+            **{key: self._setup_string(key) for key in _CORE_STRINGS},
         }
-
-    def _is_ldau(self, settings):
-        """VASP writes the ldau group, and so LDAUTYPE, only if LDA+U is active.
-
-        Without any recorded INCAR setting, the absence of the group says nothing."""
-        if all(value is None for key, value in settings.items() if key.isupper()):
-            return None
-        return self._setup_value("LDAUTYPE") is not None
 
     def _dict_from_messages(self) -> dict:
         """Collect the messages of severity error or bug.
@@ -479,8 +468,8 @@ class RunInfo:
           ``"EFERMI"`` is the value set
           in the INCAR file, not the computed ``"fermi_energy"``: "LEGACY", "MIDGAP", or
           the Fermi energy in eV the user fixed, given as text, e.g. "5.5",
-        - ``"LDAU"``, which is True if LDA+U is active; the U and J values are in
-          ``read()["extensions"]["ldau"]``, which exists only if LDA+U is active,
+        - ``"LDAU"``, which is True if DFT+U is used; the U and J values are then
+          in ``read()["extensions"]["ldau"]``,
         - the FFT grids ``"grid_coarse_shape"`` and ``"grid_fine_shape"``,
         - the resources ``"mpi_ranks"``, ``"omp_threads"``, ``"nodes"``,
           ``"gpus"``, ``"KPAR"``, and ``"NCORE"`` and the performance
@@ -555,7 +544,7 @@ class RunInfo:
 
         >>> sorted(run_info["extensions"])
         ['dimensions', 'dipole', 'dos', 'electronic', 'exchange_correlation',
-         'ionic', 'kpoints_opt', 'linear_response', 'metadata/build',
+         'ionic', 'kpoints_opt', 'ldau', 'linear_response', 'metadata/build',
          'metadata/performance', 'metadata/resources', 'vdw', 'write_flags']
         >>> run_info["extensions"]["dos"]
         {'EFERMI_METHOD': 'LEGACY', 'ISMEAR': 0, 'SIGMA': 0.05}

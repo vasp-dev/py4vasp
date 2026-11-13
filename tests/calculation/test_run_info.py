@@ -93,6 +93,7 @@ def _check_dict(models: RunInfoModel, runinfo_ref):
 
 
 CORE_BOOLS = (
+    "LDAU",
     "LNONCOLLINEAR",
     "LSORBIT",
     "LKPOINTS_OPT",
@@ -236,17 +237,20 @@ def test_algo_missing_in_file_is_none(raw_data):
     assert actual["PREC"] == "accurate"
 
 
-def test_ldau_is_false_without_ldau_group(run_info):
-    # VASP writes the ldau group only if LDA+U is active
-    assert run_info.read()["LDAU"] is False
-    assert run_info._to_database()["run_info"]["default"].LDAU is False
-
-
-@pytest.mark.parametrize("ldautype", [1, 2, 4])
-def test_ldau_is_true_if_vasp_wrote_ldautype(raw_data, ldautype):
+@pytest.mark.parametrize("flag, expected", [(0, False), (1, True)])
+def test_ldau_is_the_flag_vasp_wrote(raw_data, flag, expected):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.LDAUTYPE = ldautype
-    assert RunInfo.from_data(raw_run_info).read()["LDAU"] is True
+    raw_run_info.LDAU = flag
+    run_info = RunInfo.from_data(raw_run_info)
+    assert run_info.read()["LDAU"] is expected
+    assert run_info._to_database()["run_info"]["default"].LDAU is expected
+
+
+def test_ldau_without_flag_is_none(raw_data):
+    # VASP versions before the flag existed leave LDAU unknown
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.LDAU = raw.VaspData(None)
+    assert RunInfo.from_data(raw_run_info).read()["LDAU"] is None
 
 
 def test_ldau_without_setup_is_none(raw_data):
@@ -549,7 +553,7 @@ run info for Sr2TiO4:
         build_openmp: False
     error messages:
         - The basis set is incomplete. (1×)
-    extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, linear_response, metadata/build, metadata/performance, metadata/resources, vdw, write_flags"""
+    extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, ldau, linear_response, metadata/build, metadata/performance, metadata/resources, vdw, write_flags"""
     assert actual == {"text/plain": reference}
 
 
@@ -582,7 +586,7 @@ def test_print_lists_extension_sections(raw_data):
 
 def test_print_shows_every_core_setting(run_info):
     actual = str(run_info)
-    for key in (*CORE_SCALARS, *CORE_BOOLS, *CORE_STRINGS, "EFERMI", "LDAU"):
+    for key in (*CORE_SCALARS, *CORE_BOOLS, *CORE_STRINGS, "EFERMI"):
         assert f"\n        {key}: " in actual, key
 
 
@@ -599,7 +603,7 @@ def test_print_omits_missing_tags_and_empty_groups(raw_data):
 
 def test_print_functional_with_lda_plus_u(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.LDAUTYPE = 2
+    raw_run_info.LDAU = 1
     assert "    functional: pbe+U\n" in str(RunInfo.from_data(raw_run_info))
 
 

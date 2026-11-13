@@ -817,7 +817,7 @@ schema.add(
     XC="setup/exchange_correlation/XC",
     EFERMI="setup/dos/EFERMI",
     efermi_method="setup/dos/EFERMI_METHOD",
-    LDAUTYPE="setup/ldau/LDAUTYPE",
+    LDAU="setup/ldau/LDAU",
     wall_time="metadata/performance/wall_time",
     cpu_time="metadata/performance/cpu_time",
     omp_threads="metadata/resources/omp_threads",
