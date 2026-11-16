@@ -214,6 +214,8 @@ class RunInfoHandler:
     def _error_message_lines(data):
         messages, counts = data["error_messages"], data["error_message_counts"]
         if messages is None:
+            # VASP writes no messages if the run was killed
+            yield "    error messages: unknown"
             return
         if not messages:
             yield "    error messages: none"
@@ -449,11 +451,14 @@ class RunInfo:
           ``"EFERMI"``), the Hamiltonian (``"XC"``, ``"LHFCALC"``, ``"AEXX"``,
           ``"HFSCREEN"``, ``"IVDW"``, ``"NUPDOWN"``, ``"LDIPOL"``, ``"IDIPOL"``,
           ``"LEPSILON"``), and further ones like ``"ISPIN"`` or ``"NELM"``.
-          ``"POTIM"`` is in fs, ``"TEBEG"`` and ``"TEEND"`` are in K, and
+          ``"POTIM"`` is the time step in fs for molecular dynamics but the
+          displacement in Å for finite differences (IBRION = 5 or 6), and the
+          unit print shows is the one VASP attached. ``"TEBEG"`` and
+          ``"TEEND"`` are in K, and
           ``"EDIFFG"`` is in eV if positive (energy) or eV/Å if negative (forces).
           Logical tags are Python bools; string tags keep VASP's spelling, e.g.,
-          ``"LREAL"`` is "Auto", "On", "T", or "F" and ``"XC"`` is a lower-case
-          name such as "pbe", "hse06", or "mixture". ``"ALGO"`` is the value as
+          ``"LREAL"`` is "Auto", "On", "T", or "F" and ``"XC"`` is a name such
+          as "pbe", "hse06", "CA", or "mixture". ``"ALGO"`` is the value as
           typed in the INCAR file, e.g. "Fast", "VERYFAST", or "V", so compare it
           ignoring case; in response-function runs it is that algorithm, e.g.
           "EVGW0". It is "Normal" if the INCAR sets neither ALGO nor IALGO and None

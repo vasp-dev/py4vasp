@@ -712,3 +712,13 @@ def test_selections(run_info):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.run_info("Sr2TiO4")
     check_factory_methods(RunInfo, data, skip_methods=["selections"])
+
+
+def test_print_killed_run_has_unknown_error_messages(raw_data):
+    # a killed run wrote only the exit status, so VASP left no messages
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.exit_status = b"killed "
+    raw_run_info.number_messages = raw.VaspData(None)
+    actual = str(RunInfo.from_data(raw_run_info))
+    assert "    exit status: killed\n" in actual
+    assert "    error messages: unknown\n" in actual
