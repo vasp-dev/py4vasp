@@ -249,3 +249,26 @@ def test_should_load_run_info_with_data_factory_link(tmp_path):
             "run_info", DEFAULT_SOURCE, h5f, schema
         )
     assert "run_info_extension:default" in additional_keys
+
+
+@pytest.mark.parametrize("dataset, expected", [("second", True), (None, False)])
+def test_should_load_finds_a_fallback_dataset(tmp_path, dataset, expected):
+    import dataclasses
+
+    h5py = pytest.importorskip("h5py")
+    from py4vasp import raw
+    from py4vasp._raw.schema import Fallback, Schema
+
+    @dataclasses.dataclass
+    class WithFallback:
+        value: object
+
+    schema = Schema(raw.Version("version/major", "version/minor", "version/patch"))
+    schema.add(WithFallback, value=Fallback("first", "second"))
+    with h5py.File(tmp_path / "vaspout.h5", "w") as h5f:
+        if dataset:
+            h5f[dataset] = 1
+        should_load, *_ = database.should_load(
+            "with_fallback", DEFAULT_SOURCE, h5f, schema
+        )
+    assert should_load is expected

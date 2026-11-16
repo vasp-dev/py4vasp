@@ -14,7 +14,7 @@ from py4vasp import exception
 from py4vasp._raw.data import Version
 from py4vasp._raw.definition import DEFAULT_SOURCE, Schema, unique_selections
 from py4vasp._raw.models import _format_type, parse_schema_version
-from py4vasp._raw.schema import Length, Link
+from py4vasp._raw.schema import Fallback, Length, Link
 from py4vasp._util import convert
 
 
@@ -121,6 +121,10 @@ def should_load(
                     additional_keys.extend(subquantity_additional_keys)
                 elif isinstance(link, Length):
                     quantity_dict[key] = link.dataset in h5file
+                elif isinstance(link, Fallback):
+                    quantity_dict[key] = any(
+                        dataset in h5file for dataset in link.datasets
+                    )
                 elif link is not None and isinstance(link, str):
                     quantity_dict[key] = link in h5file
             quantity_dict = {k: v for k, v in quantity_dict.items() if v is True}

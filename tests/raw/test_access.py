@@ -462,3 +462,27 @@ def test_run_info_reads_the_ldau_flag(tmp_path):
     write_setup_file(tmp_path / DEFAULT_FILE, {"ldau/LDAU": 1, "ldau/LDAUTYPE": 2})
     with raw.access("run_info", path=tmp_path) as run_info:
         assert run_info.LDAU == 1
+
+
+@pytest.mark.parametrize(
+    "datasets, expected",
+    [({"first": 1, "second": 2}, 1), ({"second": 2}, 2), ({}, None)],
+)
+def test_access_fallback_reads_the_first_available_dataset(
+    tmp_path, datasets, expected
+):
+    from util import VERSION, WithFallback
+
+    from py4vasp._raw.schema import Fallback, Schema
+
+    schema = Schema(VERSION)
+    schema.add(WithFallback, value=Fallback("first", "second"))
+    with h5py.File(tmp_path / DEFAULT_FILE, "w") as h5f:
+        for key, value in datasets.items():
+            h5f[key] = value
+    with patch("py4vasp._raw.access.schema", schema):
+        with raw.access("with_fallback", path=tmp_path) as with_fallback:
+            if expected is None:
+                assert check.is_none(with_fallback.value)
+            else:
+                assert with_fallback.value == expected

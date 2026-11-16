@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
-from typing import Optional
+from typing import Any, Optional
 
 import h5py
 
@@ -38,6 +38,11 @@ class WithOptionalLink:
 @dataclasses.dataclass
 class WithLength:
     num_data: int
+
+
+@dataclasses.dataclass
+class WithFallback:
+    value: Any
 
 
 @dataclasses.dataclass

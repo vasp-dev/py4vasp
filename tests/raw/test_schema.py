@@ -3,10 +3,19 @@
 import dataclasses
 
 import pytest
-from util import VERSION, Mapping, OptionalArgument, Simple, WithLength, WithLink
+from util import (
+    VERSION,
+    Mapping,
+    OptionalArgument,
+    Simple,
+    WithFallback,
+    WithLength,
+    WithLink,
+)
 
 from py4vasp import exception, raw
 from py4vasp._raw.schema import (
+    Fallback,
     Length,
     Link,
     Schema,
@@ -395,3 +404,20 @@ def test_get_processed_selection(
         subquantity_chain,
     )
     assert active_selection == expected_selection
+
+
+def test_fallback():
+    with_fallback = WithFallback(Fallback("first", "second"))
+    schema = Schema(VERSION)
+    schema.add(WithFallback, value=with_fallback.value)
+    reference = {
+        "with_fallback": {"default": Source(with_fallback, labels=["default"])}
+    }
+    assert remove_version(schema.sources) == reference
+    assert with_fallback.value.datasets == ("first", "second")
+    assert str(with_fallback.value) == "fallback(first, second)"
+
+
+def test_fallback_needs_a_dataset():
+    with pytest.raises(exception._Py4VaspInternalError):
+        Fallback()
