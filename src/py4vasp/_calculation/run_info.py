@@ -376,18 +376,32 @@ def _unwrap(data):
 
 
 @contextmanager
-def _hint_at_extensions(selection):
-    "The section names of the setup look like sources, so point to the extensions."
+def _hint_at_existing_key(run_info, selection):
+    """Section names and INCAR tags look like sources, so point to the key that holds
+    them; leave the message alone if no key matches."""
     try:
         yield
     except exception.IncorrectUsage as error:
-        if selection is None:
+        hint = None if selection is None else _find_key(run_info, selection)
+        if hint is None:
             raise
-        hint = (
-            " The settings VASP wrote are grouped by section in the extensions, "
-            f'e.g. read()["extensions"]["{selection}"].'
-        )
-        raise exception.IncorrectUsage(f"{error}{hint}") from error
+        raise exception.IncorrectUsage(f"{error} {hint}") from error
+
+
+def _find_key(run_info, selection):
+    try:
+        data = run_info.read()
+    except exception.Py4VaspError:
+        return None
+    for section in (selection, f"metadata/{selection}"):
+        if section in data["extensions"]:
+            return (
+                "The settings VASP wrote are grouped by section in the extensions, "
+                f'e.g. read()["extensions"]["{section}"].'
+            )
+    if selection in data:
+        return f'It is a key of the run info: read()["{selection}"].'
+    return None
 
 
 @quantity("run_info")
@@ -533,7 +547,7 @@ class RunInfo:
         >>> run_info["extensions"]["metadata/build"]["variant"]
         'std'
         """
-        with _hint_at_extensions(selection):
+        with _hint_at_existing_key(self, selection):
             return merge_default(
                 self._source,
                 self._quantity_name,
@@ -580,7 +594,7 @@ class RunInfo:
         p.text(str(self))
 
     def __str__(self, selection=None) -> str:
-        with _hint_at_extensions(selection):
+        with _hint_at_existing_key(self, selection):
             return merge_strings(
                 self._source,
                 self._quantity_name,

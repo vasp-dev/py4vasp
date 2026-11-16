@@ -347,11 +347,27 @@ def test_system_tag_is_text(raw_data, system):
 
 
 @pytest.mark.parametrize("method", ["read", "to_dict", "print"])
-def test_section_name_as_selection_points_to_extensions(run_info, method):
-    # section names look like sources, but they are keys of the extensions
+@pytest.mark.parametrize(
+    "selection, hint",
+    [
+        # section names look like sources, but they are keys of the extensions
+        ("electronic", 'read()["extensions"]["electronic"]'),
+        # print groups the resources without the prefix of the metadata section
+        ("resources", 'read()["extensions"]["metadata/resources"]'),
+        ("ENCUT", 'read()["ENCUT"]'),
+    ],
+)
+def test_selection_error_points_to_the_existing_key(run_info, method, selection, hint):
     with pytest.raises(exception.IncorrectUsage) as error:
-        getattr(run_info, method)("electronic")
-    assert 'read()["extensions"]["electronic"]' in str(error.value)
+        getattr(run_info, method)(selection)
+    assert hint in str(error.value)
+
+
+def test_selection_error_without_matching_key_has_no_hint(run_info):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        run_info.read("defualt")
+    assert "extensions" not in str(error.value)
+    assert "read()[" not in str(error.value)
 
 
 def test_vasp_version_is_text(raw_data):
