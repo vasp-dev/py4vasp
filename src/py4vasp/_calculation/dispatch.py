@@ -22,7 +22,7 @@ from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_WAVEFILE
 from py4vasp._raw.definition import schema as _schema
 from py4vasp._raw.definition import selections as schema_selections
 from py4vasp._raw.definition import unique_selections as schema_unique_selections
-from py4vasp._raw.schema import DEFAULT_SELECTION, Link
+from py4vasp._raw.schema import DEFAULT_SELECTION, Fallback, Link
 from py4vasp._third_party.graph import Graph
 from py4vasp._util import archive, check, select
 
@@ -1071,12 +1071,19 @@ def _collect_missing(spec, raw_data, optional, missing, seen):
         if isinstance(specification, Link):
             _collect_missing_linked(specification, value, field_optional, missing, seen)
         elif check.is_none(value):
-            dataset = getattr(specification, "dataset", specification)
+            dataset = _dataset_name(specification)
             if "{" in dataset:
                 if not field_optional:
                     missing[2].append(dataset)
             elif dataset not in missing[field_optional]:
                 missing[field_optional].append(dataset)
+
+
+def _dataset_name(specification):
+    "The path of a field; a Fallback is named after where current VASP writes it."
+    if isinstance(specification, Fallback):
+        return specification.datasets[0]
+    return getattr(specification, "dataset", specification)
 
 
 def _collect_missing_linked(link, value, optional, missing, seen):
