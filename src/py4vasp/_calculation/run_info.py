@@ -353,11 +353,7 @@ class RunInfoHandler:
         return {"num_ionic_steps": None if check.is_none(steps) else int(steps)}
 
     def _dict_from_selective_dynamics(self) -> dict:
-        "Older VASP versions write the flag only for the POSCAR file."
-        selective_dynamics = self._setup_bool("selective_dynamics")
-        if selective_dynamics is None:
-            selective_dynamics = self._setup_bool("poscar_selective_dynamics")
-        return {"has_selective_dynamics": selective_dynamics}
+        return {"has_selective_dynamics": self._setup_bool("selective_dynamics")}
 
     def _dict_from_phonons(self) -> dict:
         """VASP versions without the setup of the phonons only write the dispersion,

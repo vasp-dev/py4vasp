@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp._raw.data as raw
 from py4vasp._raw import read
-from py4vasp._raw.schema import DEFAULT_SELECTION, Length, Link, Schema
+from py4vasp._raw.schema import DEFAULT_SELECTION, Fallback, Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
 DEFAULT_WAVEFILE = "vaspwave.h5"
@@ -763,7 +763,6 @@ schema.add(
     system_tag="input/incar/SYSTEM",
     fermi_energy="results/electron_dos/efermi",
     number_ionic_steps=Length("intermediate/ion_dynamics/position_ions"),
-    poscar_selective_dynamics="input/poscar/selective_dynamics",
     phonon_frequencies="results/phonons/frequencies",
     # the /setup, /metadata, and /messages groups VASP writes for run_info
     NGX="setup/dimensions/NGX",
@@ -818,7 +817,10 @@ schema.add(
     EFERMI="setup/dos/EFERMI",
     efermi_method="setup/dos/EFERMI_METHOD",
     LDAU="setup/ldau/LDAU",
-    selective_dynamics="setup/ionic/selective_dynamics",
+    # older VASP versions write the flag only for the POSCAR file
+    selective_dynamics=Fallback(
+        "setup/ionic/selective_dynamics", "input/poscar/selective_dynamics"
+    ),
     phonon_method="setup/phonons/method",
     phonon_num_modes="setup/phonons/num_modes",
     phonon_num_qpoints="setup/phonons/num_qpoints",

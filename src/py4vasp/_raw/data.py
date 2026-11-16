@@ -792,8 +792,6 @@ class RunInfo:
 
     number_ionic_steps: VaspData = NONE()
     "The number of ionic steps, i.e., the length of the trajectory."
-    poscar_selective_dynamics: VaspData = NONE()
-    "Whether the POSCAR file selects the directions the ions move along."
 
     phonon_frequencies: VaspData = NONE()
     "The frequencies of the phonon dispersion; only their shape is used."

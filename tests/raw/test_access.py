@@ -425,12 +425,20 @@ def test_run_info_counts_the_ionic_steps_without_reading_them(tmp_path):
         assert run_info.number_ionic_steps == 3
 
 
-def test_run_info_reads_both_selective_dynamics_flags(tmp_path):
-    flags = {"ionic/selective_dynamics": 1, "/input/poscar/selective_dynamics": 0}
+@pytest.mark.parametrize(
+    "flags, expected",
+    [
+        ({"ionic/selective_dynamics": 1, "/input/poscar/selective_dynamics": 0}, 1),
+        # VASP versions before the setup flag write it only for the POSCAR
+        ({"/input/poscar/selective_dynamics": 1}, 1),
+    ],
+)
+def test_run_info_reads_selective_dynamics_from_setup_or_poscar(
+    tmp_path, flags, expected
+):
     write_setup_file(tmp_path / DEFAULT_FILE, flags)
     with raw.access("run_info", path=tmp_path) as run_info:
-        assert run_info.selective_dynamics == 1
-        assert run_info.poscar_selective_dynamics == 0
+        assert run_info.selective_dynamics == expected
 
 
 def test_run_info_reads_the_setup_of_the_phonons(tmp_path):

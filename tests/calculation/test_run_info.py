@@ -366,21 +366,10 @@ def test_without_ionic_steps_is_none(raw_data):
     assert RunInfo.from_data(raw_run_info).read()["num_ionic_steps"] is None
 
 
-@pytest.mark.parametrize(
-    "setup, poscar, expected",
-    [
-        (1, 0, True),
-        (0, 1, False),
-        (None, 1, True),
-        (None, 0, False),
-        (None, None, None),
-    ],
-)
-def test_selective_dynamics_falls_back_to_poscar(raw_data, setup, poscar, expected):
-    # VASP versions before the setup flag write it only for the POSCAR
+@pytest.mark.parametrize("flag, expected", [(1, True), (0, False), (None, None)])
+def test_selective_dynamics_is_the_flag_vasp_wrote(raw_data, flag, expected):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.selective_dynamics = raw.VaspData(setup)
-    raw_run_info.poscar_selective_dynamics = raw.VaspData(poscar)
+    raw_run_info.selective_dynamics = raw.VaspData(flag)
     run_info = RunInfo.from_data(raw_run_info)
     assert run_info.read()["has_selective_dynamics"] is expected
     model = run_info._to_database()["run_info"]["default"]

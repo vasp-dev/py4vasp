@@ -120,7 +120,6 @@ def Sr2TiO4():
         system_tag="Sr2TiO4",
         fermi_energy=0.5,
         number_ionic_steps=len(_demo.structure.Sr2TiO4().positions),
-        poscar_selective_dynamics=0,
         phonon_frequencies=_demo.phonon.band.Sr2TiO4().dispersion.eigenvalues,
         **run_setup(),
         extension=extension(),
