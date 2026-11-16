@@ -466,10 +466,18 @@ def test_run_info_without_algo_reports_it_as_missing(tmp_path):
         assert run_info.PREC == b"accurate"
 
 
-def test_run_info_reads_the_ldau_flag(tmp_path):
-    write_setup_file(tmp_path / DEFAULT_FILE, {"ldau/LDAU": 1, "ldau/LDAUTYPE": 2})
+@pytest.mark.parametrize(
+    "flags, expected",
+    [
+        ({"ldau/LDAU": 0, "/input/incar/LDAU": 1}, 0),
+        # VASP versions before the setup flag record LDAU only if the INCAR sets it
+        ({"/input/incar/LDAU": 1}, 1),
+    ],
+)
+def test_run_info_reads_the_ldau_flag_from_setup_or_incar(tmp_path, flags, expected):
+    write_setup_file(tmp_path / DEFAULT_FILE, flags)
     with raw.access("run_info", path=tmp_path) as run_info:
-        assert run_info.LDAU == 1
+        assert run_info.LDAU == expected
 
 
 @pytest.mark.parametrize(

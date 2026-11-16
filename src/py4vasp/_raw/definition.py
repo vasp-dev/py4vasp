@@ -816,7 +816,8 @@ schema.add(
     XC="setup/exchange_correlation/XC",
     EFERMI="setup/dos/EFERMI",
     efermi_method="setup/dos/EFERMI_METHOD",
-    LDAU="setup/ldau/LDAU",
+    # older VASP versions record LDAU only if the INCAR sets it
+    LDAU=Fallback("setup/ldau/LDAU", "input/incar/LDAU"),
     # older VASP versions write the flag only for the POSCAR file
     selective_dynamics=Fallback(
         "setup/ionic/selective_dynamics", "input/poscar/selective_dynamics"
