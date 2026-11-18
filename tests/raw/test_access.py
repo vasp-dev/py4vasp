@@ -4,14 +4,16 @@ import pathlib
 from dataclasses import fields
 from unittest.mock import MagicMock, call, patch
 
+import h5py
 import numpy as np
 import pytest
-from util import VERSION
+from util import VERSION, write_setup_file
 
 import py4vasp.raw as raw
 from py4vasp import exception
 from py4vasp._raw.definition import DEFAULT_FILE
 from py4vasp._raw.mapping import Mapping
+from py4vasp._util import check
 
 
 @pytest.fixture
@@ -355,3 +357,148 @@ def test_access_without_keyword(mock_access):
     with pytest.raises(exception.IncorrectUsage):
         with raw.access("simple", "further arguments are keyword only"):
             pass
+
+
+def test_access_run_info_extension(tmp_path):
+    write_setup_file(tmp_path / DEFAULT_FILE, {"dos/SIGMA": 0.05, "dos/ISMEAR": 0})
+    with raw.access("run_info_extension", path=tmp_path) as extension:
+        assert extension.sections["dos"].values == {"SIGMA": 0.05, "ISMEAR": 0}
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.extension.sections["dos"].values["SIGMA"] == 0.05
+
+
+@pytest.mark.parametrize("version", [(6, 6, 1), None])
+def test_run_info_extension_outdated_version_is_none(tmp_path, version):
+    write_setup_file(tmp_path / DEFAULT_FILE, {"dos/SIGMA": 0.05}, version=version)
+    with pytest.raises(exception.OutdatedVaspVersion):
+        with raw.access("run_info_extension", path=tmp_path):
+            pass
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert isinstance(run_info.extension, raw.VaspData)
+        assert run_info.extension.is_none()
+
+
+def test_run_info_extension_without_setup_group_is_empty(tmp_path):
+    write_setup_file(tmp_path / DEFAULT_FILE, {})
+    with raw.access("run_info_extension", path=tmp_path) as extension:
+        assert extension.sections == {}
+
+
+def test_run_info_reads_every_core_setting_the_demo_writes(tmp_path):
+    from py4vasp import _demo
+
+    with h5py.File(tmp_path / DEFAULT_FILE, "w") as h5f:
+        for name, number in zip(("major", "minor", "patch"), (6, 7, 0)):
+            h5f[f"version/{name}"] = number
+        _demo.run_info.write_to_h5(h5f)
+    expected = _demo.run_info.run_setup()
+    messages = ("exit_status", "message_text", "message_severity", "message_count")
+    with raw.access("run_info", path=tmp_path) as run_info:
+        for field, desired in expected.items():
+            if field in messages:
+                continue
+            actual = getattr(run_info, field)
+            # the demo leaves some datasets out, e.g., EFERMI if it is not a number
+            assert check.is_none(actual) == check.is_none(desired), field
+            if check.is_none(desired):
+                continue
+            actual = actual[()] if isinstance(actual, raw.VaspData) else actual
+            if isinstance(actual, bytes):
+                actual = actual.decode().strip()
+            assert actual == desired, field
+
+
+def test_run_info_of_vasp_without_setup_has_no_settings(tmp_path):
+    from py4vasp import _demo
+
+    write_setup_file(tmp_path / DEFAULT_FILE, {}, version=(6, 6, 1))
+    with raw.access("run_info", path=tmp_path) as run_info:
+        for field in _demo.run_info.run_setup():
+            assert check.is_none(getattr(run_info, field)), field
+
+
+def test_run_info_counts_the_ionic_steps_without_reading_them(tmp_path):
+    positions = np.zeros((3, 4, 3))
+    path = "/intermediate/ion_dynamics/position_ions"
+    write_setup_file(tmp_path / DEFAULT_FILE, {path: positions})
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.number_ionic_steps == 3
+
+
+@pytest.mark.parametrize(
+    "flags, expected",
+    [
+        ({"ionic/selective_dynamics": 1, "/input/poscar/selective_dynamics": 0}, 1),
+        # VASP versions before the setup flag write it only for the POSCAR
+        ({"/input/poscar/selective_dynamics": 1}, 1),
+    ],
+)
+def test_run_info_reads_selective_dynamics_from_setup_or_poscar(
+    tmp_path, flags, expected
+):
+    write_setup_file(tmp_path / DEFAULT_FILE, flags)
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.selective_dynamics == expected
+
+
+def test_run_info_reads_the_setup_of_the_phonons(tmp_path):
+    phonons = {
+        "phonons/method": "finite differences",
+        "phonons/num_modes": 12,
+        "phonons/num_qpoints": 20,
+        "phonons/num_branches": 6,
+        "/results/phonons/frequencies": np.zeros((20, 6)),
+    }
+    write_setup_file(tmp_path / DEFAULT_FILE, phonons)
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.phonon_method == b"finite differences"
+        assert run_info.phonon_num_modes == 12
+        assert run_info.phonon_num_qpoints == 20
+        assert run_info.phonon_num_branches == 6
+        assert run_info.phonon_frequencies.shape == (20, 6)
+
+
+def test_run_info_without_algo_reports_it_as_missing(tmp_path):
+    # VASP writes no ALGO if the INCAR sets only IALGO
+    write_setup_file(tmp_path / DEFAULT_FILE, {"electronic/PREC": "accurate"})
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert check.is_none(run_info.ALGO)
+        assert run_info.PREC == b"accurate"
+
+
+@pytest.mark.parametrize(
+    "flags, expected",
+    [
+        ({"ldau/LDAU": 0, "/input/incar/LDAU": 1}, 0),
+        # VASP versions before the setup flag record LDAU only if the INCAR sets it
+        ({"/input/incar/LDAU": 1}, 1),
+    ],
+)
+def test_run_info_reads_the_ldau_flag_from_setup_or_incar(tmp_path, flags, expected):
+    write_setup_file(tmp_path / DEFAULT_FILE, flags)
+    with raw.access("run_info", path=tmp_path) as run_info:
+        assert run_info.LDAU == expected
+
+
+@pytest.mark.parametrize(
+    "datasets, expected",
+    [({"first": 1, "second": 2}, 1), ({"second": 2}, 2), ({}, None)],
+)
+def test_access_fallback_reads_the_first_available_dataset(
+    tmp_path, datasets, expected
+):
+    from util import VERSION, WithFallback
+
+    from py4vasp._raw.schema import Fallback, Schema
+
+    schema = Schema(VERSION)
+    schema.add(WithFallback, value=Fallback("first", "second"))
+    with h5py.File(tmp_path / DEFAULT_FILE, "w") as h5f:
+        for key, value in datasets.items():
+            h5f[key] = value
+    with patch("py4vasp._raw.access.schema", schema):
+        with raw.access("with_fallback", path=tmp_path) as with_fallback:
+            if expected is None:
+                assert check.is_none(with_fallback.value)
+            else:
+                assert with_fallback.value == expected

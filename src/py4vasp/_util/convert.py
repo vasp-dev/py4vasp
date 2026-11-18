@@ -36,6 +36,11 @@ def text_to_string(text):
         return _attempt_str_conversion(text)
 
 
+def fortran_text_to_string(text):
+    "Like text_to_string, but strips the blanks Fortran pads fixed-length strings with."
+    return text_to_string(text).strip()
+
+
 def _attempt_str_conversion(string) -> str:
     try:
         return str(string)

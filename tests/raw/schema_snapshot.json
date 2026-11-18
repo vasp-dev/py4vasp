@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.0+db.1",
   "models": {
     "BandModel": [
       [
@@ -1103,8 +1103,208 @@
     ],
     "RunInfoModel": [
       [
+        "AEXX",
+        "Optional[float]"
+      ],
+      [
+        "ALGO",
+        "Optional[str]"
+      ],
+      [
+        "EDIFF",
+        "Optional[float]"
+      ],
+      [
+        "EDIFFG",
+        "Optional[float]"
+      ],
+      [
+        "EFERMI",
+        "Optional[str]"
+      ],
+      [
+        "ENCUT",
+        "Optional[float]"
+      ],
+      [
+        "HFSCREEN",
+        "Optional[float]"
+      ],
+      [
+        "IBRION",
+        "Optional[int]"
+      ],
+      [
+        "ICHARG",
+        "Optional[int]"
+      ],
+      [
+        "IDIPOL",
+        "Optional[int]"
+      ],
+      [
+        "IMAGES",
+        "Optional[int]"
+      ],
+      [
+        "ISIF",
+        "Optional[int]"
+      ],
+      [
+        "ISMEAR",
+        "Optional[int]"
+      ],
+      [
+        "ISPIN",
+        "Optional[int]"
+      ],
+      [
+        "ISTART",
+        "Optional[int]"
+      ],
+      [
+        "ISYM",
+        "Optional[int]"
+      ],
+      [
+        "IVDW",
+        "Optional[int]"
+      ],
+      [
+        "KPAR",
+        "Optional[int]"
+      ],
+      [
+        "LASPH",
+        "Optional[bool]"
+      ],
+      [
+        "LDAU",
+        "Optional[bool]"
+      ],
+      [
+        "LDIPOL",
+        "Optional[bool]"
+      ],
+      [
+        "LEPSILON",
+        "Optional[bool]"
+      ],
+      [
+        "LHFCALC",
+        "Optional[bool]"
+      ],
+      [
+        "LKPOINTS_OPT",
+        "Optional[bool]"
+      ],
+      [
+        "LMAXMIX",
+        "Optional[int]"
+      ],
+      [
+        "LNONCOLLINEAR",
+        "Optional[bool]"
+      ],
+      [
+        "LORBIT",
+        "Optional[int]"
+      ],
+      [
+        "LREAL",
+        "Optional[str]"
+      ],
+      [
+        "LSORBIT",
+        "Optional[bool]"
+      ],
+      [
+        "MDALGO",
+        "Optional[int]"
+      ],
+      [
+        "NBANDS",
+        "Optional[int]"
+      ],
+      [
+        "NCORE",
+        "Optional[int]"
+      ],
+      [
+        "NELECT",
+        "Optional[float]"
+      ],
+      [
+        "NELM",
+        "Optional[int]"
+      ],
+      [
+        "NSW",
+        "Optional[int]"
+      ],
+      [
+        "NUPDOWN",
+        "Optional[float]"
+      ],
+      [
+        "POTIM",
+        "Optional[float]"
+      ],
+      [
+        "PREC",
+        "Optional[str]"
+      ],
+      [
+        "SIGMA",
+        "Optional[float]"
+      ],
+      [
+        "TEBEG",
+        "Optional[float]"
+      ],
+      [
+        "TEEND",
+        "Optional[float]"
+      ],
+      [
+        "XC",
+        "Optional[str]"
+      ],
+      [
+        "build_gpu",
+        "Optional[bool]"
+      ],
+      [
+        "build_openmp",
+        "Optional[bool]"
+      ],
+      [
+        "build_variant",
+        "Optional[str]"
+      ],
+      [
+        "cpu_time",
+        "Optional[float]"
+      ],
+      [
+        "error_message_counts",
+        "Optional[list[int]]"
+      ],
+      [
+        "error_messages",
+        "Optional[list[str]]"
+      ],
+      [
+        "exit_status",
+        "Optional[str]"
+      ],
+      [
         "fermi_energy",
         "Optional[float]"
+      ],
+      [
+        "gpus",
+        "Optional[int]"
       ],
       [
         "grid_coarse_shape",
@@ -1115,43 +1315,39 @@
         "Optional[tuple[int, int, int]]"
       ],
       [
-        "has_ion_velocities",
-        "Optional[bool]"
-      ],
-      [
-        "has_lattice_velocities",
-        "Optional[bool]"
-      ],
-      [
         "has_selective_dynamics",
         "Optional[bool]"
       ],
       [
-        "is_collinear",
-        "Optional[bool]"
+        "mpi_ranks",
+        "Optional[int]"
       ],
       [
-        "is_magnetic",
-        "Optional[bool]"
+        "nkpts",
+        "Optional[int]"
       ],
       [
-        "is_metallic",
-        "Optional[bool]"
-      ],
-      [
-        "is_noncollinear",
-        "Optional[bool]"
-      ],
-      [
-        "is_success",
-        "Optional[bool]"
-      ],
-      [
-        "magnetization_order",
-        "Optional[str]"
+        "nodes",
+        "Optional[int]"
       ],
       [
         "num_ionic_steps",
+        "Optional[int]"
+      ],
+      [
+        "omp_threads",
+        "Optional[int]"
+      ],
+      [
+        "peak_memory",
+        "Optional[float]"
+      ],
+      [
+        "phonon_method",
+        "Optional[str]"
+      ],
+      [
+        "phonon_num_branches",
         "Optional[int]"
       ],
       [
@@ -1169,6 +1365,10 @@
       [
         "vasp_version",
         "Optional[str]"
+      ],
+      [
+        "wall_time",
+        "Optional[float]"
       ]
     ],
     "StoichiometryModel": [
@@ -1380,5 +1580,7 @@
       ]
     ]
   },
-  "changes": {}
+  "changes": {
+    "1": "RunInfoModel.phonon_num_modes counts the modes at the Gamma point of the supercell instead of the branches of the dispersion, which phonon_num_branches holds now"
+  }
 }

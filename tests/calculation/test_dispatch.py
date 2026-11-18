@@ -1764,3 +1764,10 @@ class TestPathInjected:
         structure = dict(REGISTERED_CLASSES)["structure"]
         expected = "Returns the path from which the output is obtained."
         assert structure.path.__doc__ == expected
+
+    def test_missing_fallback_names_its_first_dataset(self, raw_data):
+        # current VASP writes the flag to the first dataset of the Fallback
+        run_info = raw_data.run_info("Sr2TiO4")
+        run_info.selective_dynamics = raw.VaspData(None)
+        _, optional = _missing_datasets("run_info", None, run_info)
+        assert "setup/ionic/selective_dynamics" in optional

@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import py4vasp._raw.data as raw
 from py4vasp._raw import read
-from py4vasp._raw.schema import DEFAULT_SELECTION, Length, Link, Schema
+from py4vasp._raw.schema import DEFAULT_SELECTION, Fallback, Length, Link, Schema
 
 DEFAULT_FILE = "vaspout.h5"
 DEFAULT_WAVEFILE = "vaspwave.h5"
@@ -759,16 +759,95 @@ schema.add(
 )
 schema.add(
     raw.RunInfo,
-    system=Link("system", DEFAULT_SOURCE),
-    runtime=Link("runtime_data", DEFAULT_SOURCE),
+    vasp_version=Link("version", DEFAULT_SOURCE),
+    system_tag="input/incar/SYSTEM",
     fermi_energy="results/electron_dos/efermi",
-    bandgap=Link("bandgap", DEFAULT_SOURCE),
-    band_dispersion_eigenvalues="results/electron_eigenvalues/eigenvalues",
-    band_projections="results/projectors/par",
-    len_dos=Length("results/electron_dos/dos"),
-    structure=Link("structure", DEFAULT_SOURCE),
-    contcar=Link("CONTCAR", DEFAULT_SOURCE),
-    phonon_dispersion=Link("dispersion", "phonon"),
+    number_ionic_steps=Length("intermediate/ion_dynamics/position_ions"),
+    phonon_frequencies="results/phonons/frequencies",
+    # the /setup, /metadata, and /messages groups VASP writes for run_info
+    NGX="setup/dimensions/NGX",
+    NGY="setup/dimensions/NGY",
+    NGZ="setup/dimensions/NGZ",
+    NGXF="setup/dimensions/NGXF",
+    NGYF="setup/dimensions/NGYF",
+    NGZF="setup/dimensions/NGZF",
+    ISPIN="setup/electronic/ISPIN",
+    LNONCOLLINEAR="setup/electronic/LNONCOLLINEAR",
+    LSORBIT="setup/electronic/LSORBIT",
+    ISTART="setup/electronic/ISTART",
+    ICHARG="setup/electronic/ICHARG",
+    NELM="setup/electronic/NELM",
+    LREAL="setup/electronic/LREAL",
+    LMAXMIX="setup/electronic/LMAXMIX",
+    SIGMA="setup/dos/SIGMA",
+    POTIM="setup/ionic/POTIM",
+    TEBEG="setup/ionic/TEBEG",
+    TEEND="setup/ionic/TEEND",
+    MDALGO="setup/ionic/MDALGO",
+    ISYM="setup/ionic/ISYM",
+    LKPOINTS_OPT="setup/kpoints_opt/LKPOINTS_OPT",
+    LORBIT="setup/write_flags/LORBIT",
+    IBRION="setup/ionic/IBRION",
+    ISIF="setup/ionic/ISIF",
+    NSW="setup/ionic/NSW",
+    EDIFFG="setup/ionic/EDIFFG",
+    ENCUT="setup/electronic/ENCUT",
+    EDIFF="setup/electronic/EDIFF",
+    NBANDS="setup/dimensions/NBANDS",
+    nkpts="setup/dimensions/NKPTS",
+    NELECT="setup/electronic/NELECT",
+    ISMEAR="setup/dos/ISMEAR",
+    AEXX="setup/exchange_correlation/AEXX",
+    HFSCREEN="setup/exchange_correlation/HFSCREEN",
+    IVDW="setup/vdw/IVDW",
+    NUPDOWN="setup/electronic/NUPDOWN",
+    IDIPOL="setup/dipole/IDIPOL",
+    IMAGES="metadata/resources/images",
+    peak_memory="metadata/performance/peak_memory",
+    NCORE="metadata/resources/NCORE",
+    KPAR="metadata/resources/KPAR",
+    mpi_ranks="metadata/resources/mpi_ranks",
+    LASPH="setup/electronic/LASPH",
+    LHFCALC="setup/exchange_correlation/LHFCALC",
+    LDIPOL="setup/dipole/LDIPOL",
+    LEPSILON="setup/linear_response/LEPSILON",
+    PREC="setup/electronic/PREC",
+    ALGO="setup/electronic/ALGO",
+    XC="setup/exchange_correlation/XC",
+    EFERMI="setup/dos/EFERMI",
+    efermi_method="setup/dos/EFERMI_METHOD",
+    # older VASP versions record LDAU only if the INCAR sets it
+    LDAU=Fallback("setup/ldau/LDAU", "input/incar/LDAU"),
+    # older VASP versions write the flag only for the POSCAR file
+    selective_dynamics=Fallback(
+        "setup/ionic/selective_dynamics", "input/poscar/selective_dynamics"
+    ),
+    phonon_method="setup/phonons/method",
+    phonon_num_modes="setup/phonons/num_modes",
+    phonon_num_qpoints="setup/phonons/num_qpoints",
+    phonon_num_branches="setup/phonons/num_branches",
+    wall_time="metadata/performance/wall_time",
+    cpu_time="metadata/performance/cpu_time",
+    omp_threads="metadata/resources/omp_threads",
+    nodes="metadata/resources/nodes",
+    gpus="metadata/resources/gpus",
+    build_variant="metadata/build/variant",
+    build_gpu="metadata/build/gpu",
+    build_openmp="metadata/build/openmp",
+    exit_status="messages/exit_status",
+    number_messages="messages/number_messages",
+    message_text="messages/text",
+    message_severity="messages/severity",
+    message_count="messages/count",
+    extension=Link("run_info_extension", DEFAULT_SOURCE),
+)
+# The /setup group has no index of its sections, so a data factory walks the whole
+# group. Access skips the version check of a data factory, so the factory checks the
+# required version of this source itself.
+schema.add(
+    raw.RunInfoExtension,
+    required=raw.Version(6, 7),
+    data_factory=read.run_info_extension,
 )
 #
 schema.add(

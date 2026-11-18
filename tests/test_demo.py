@@ -165,3 +165,18 @@ def test_graph_of_temporary_calculation_does_not_warn(tmp_path, monkeypatch):
     with patch.object(Graph, "to_plotly"), warnings.catch_warnings():
         warnings.simplefilter("error")
         graph.to_image("dos.png")
+
+
+def test_default_calculation_reports_the_phonon_dispersion_it_contains():
+    from py4vasp._demo import showcase
+
+    eigenvalues = showcase.phonon.band_Sr2TiO4().dispersion.eigenvalues
+    run_info = demo.calculation().run_info.read()
+    assert run_info["phonon_num_qpoints"] == eigenvalues.shape[0]
+    assert run_info["phonon_num_branches"] == eigenvalues.shape[1]
+
+
+def test_default_calculation_reports_the_kpoints_opt_it_contains():
+    calculation = demo.calculation()
+    assert calculation.band.read("kpoints_opt")  # the demo has kpoints_opt bands
+    assert calculation.run_info.read()["LKPOINTS_OPT"] is True

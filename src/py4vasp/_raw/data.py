@@ -782,29 +782,187 @@ class Raman:
 class RunInfo:
     "Contains information about the VASP run."
 
-    system: Optional[System] = None
-    "Data of the system."
-    runtime: Optional[RuntimeData] = None
-    "Data about the runtime environment of the VASP calculation."
+    vasp_version: Optional[Version] = None
+    "The version of VASP that wrote the file."
+    system_tag: VaspData = NONE()
+    "The SYSTEM tag of the INCAR file."
 
     fermi_energy: Optional[float] = None
     "Fermi energy obtained by VASP."
-    bandgap: Optional[Bandgap] = None
-    "The bandgap of the system."
-    len_dos: Optional[int] = None
-    "Dimensionality of DOS data. (1 for non-polarized, 2 for spin polarized, 4 for non-collinear calculations.)"
-    band_dispersion_eigenvalues: Optional[VaspData] = NONE()
-    "The eigenvalues of the band structure dispersion."
-    band_projections: Optional[VaspData] = NONE()
-    "If present, orbital projections of the band structure."
 
-    structure: Optional[Structure] = None
-    "Structural information about the system."
-    contcar: Optional[CONTCAR] = None
-    "The data corresponding to the CONTCAR file."
+    number_ionic_steps: VaspData = NONE()
+    "The number of ionic steps, i.e., the length of the trajectory."
 
-    phonon_dispersion: Optional[Dispersion] = None
-    "The phonon dispersion of the system."
+    phonon_frequencies: VaspData = NONE()
+    "The frequencies of the phonon dispersion; only their shape is used."
+
+    # The core settings and how the run ended, from the /setup, /metadata, and
+    # /messages groups. A field that is exactly an INCAR tag is named like the tag in
+    # upper case, every other field in lower case. Logicals are stored as the
+    # integers 0 and 1. VASP versions that do not write these groups leave them None.
+    NGX: VaspData = NONE()
+    "Number of grid points of the coarse FFT grid along the first lattice vector."
+    NGY: VaspData = NONE()
+    "Number of grid points of the coarse FFT grid along the second lattice vector."
+    NGZ: VaspData = NONE()
+    "Number of grid points of the coarse FFT grid along the third lattice vector."
+    NGXF: VaspData = NONE()
+    "Number of grid points of the fine FFT grid along the first lattice vector."
+    NGYF: VaspData = NONE()
+    "Number of grid points of the fine FFT grid along the second lattice vector."
+    NGZF: VaspData = NONE()
+    "Number of grid points of the fine FFT grid along the third lattice vector."
+    ISPIN: VaspData = NONE()
+    "1 for a nonpolarized and 2 for a spin-polarized calculation."
+    LNONCOLLINEAR: VaspData = NONE()
+    "Whether the calculation is noncollinear."
+    LSORBIT: VaspData = NONE()
+    "Whether spin-orbit coupling is included."
+    ISTART: VaspData = NONE()
+    "Whether VASP started from the WAVECAR file."
+    ICHARG: VaspData = NONE()
+    "How VASP constructed the initial charge density."
+    NELM: VaspData = NONE()
+    "Maximum number of electronic steps per ionic step."
+    LREAL: VaspData = NONE()
+    "How the projection operators are evaluated: Auto, On, T (real space) or F."
+    LMAXMIX: VaspData = NONE()
+    "Maximum angular momentum of the one-center densities passed to the mixer."
+    SIGMA: VaspData = NONE()
+    "Width of the smearing in eV."
+    POTIM: VaspData = NONE()
+    "Time step of molecular dynamics in fs or scaling of the ionic step."
+    TEBEG: VaspData = NONE()
+    "Temperature at the start of molecular dynamics in K."
+    TEEND: VaspData = NONE()
+    "Temperature at the end of molecular dynamics in K."
+    MDALGO: VaspData = NONE()
+    "Algorithm (thermostat) used for molecular dynamics."
+    ISYM: VaspData = NONE()
+    "How VASP uses the symmetry of the system."
+    LKPOINTS_OPT: VaspData = NONE()
+    "Whether VASP evaluated the KPOINTS_OPT k-point set."
+    LORBIT: VaspData = NONE()
+    "Which projections onto local orbitals VASP computed."
+    IBRION: VaspData = NONE()
+    "How VASP updates the ions, e.g., relaxation or molecular dynamics."
+    ISIF: VaspData = NONE()
+    "Which degrees of freedom VASP relaxes and whether it computes the stress."
+    NSW: VaspData = NONE()
+    "Maximum number of ionic steps."
+    EDIFFG: VaspData = NONE()
+    "Stopping criterion of the ionic relaxation."
+    ENCUT: VaspData = NONE()
+    "Cutoff energy of the plane-wave basis in eV."
+    EDIFF: VaspData = NONE()
+    "Stopping criterion of the electronic self-consistency in eV."
+    NBANDS: VaspData = NONE()
+    "Number of bands."
+    nkpts: VaspData = NONE()
+    "Number of k points."
+    NELECT: VaspData = NONE()
+    "Number of electrons."
+    ISMEAR: VaspData = NONE()
+    "Method used to smear the occupations."
+    AEXX: VaspData = NONE()
+    "Fraction of exact exchange."
+    HFSCREEN: VaspData = NONE()
+    "Range-separation parameter of screened hybrid functionals in 1/Å."
+    IVDW: VaspData = NONE()
+    "Which van der Waals correction VASP applies."
+    NUPDOWN: VaspData = NONE()
+    "Difference between the number of up and down electrons; -1 if not fixed."
+    IDIPOL: VaspData = NONE()
+    "Direction of the dipole correction; 0 if VASP does not apply one."
+    IMAGES: VaspData = NONE()
+    "Number of images, e.g., of a nudged elastic band calculation."
+    peak_memory: VaspData = NONE()
+    "The peak memory used by the run in kB."
+    NCORE: VaspData = NONE()
+    "Number of cores working on an individual orbital."
+    KPAR: VaspData = NONE()
+    "Number of k-point groups treated in parallel."
+    mpi_ranks: VaspData = NONE()
+    "Number of MPI ranks the run used."
+    LASPH: VaspData = NONE()
+    "Whether VASP includes the nonspherical contributions inside the PAW spheres."
+    LHFCALC: VaspData = NONE()
+    "Whether VASP computes exact exchange, e.g., for hybrid functionals."
+    LDIPOL: VaspData = NONE()
+    "Whether VASP corrects the potential and forces for the dipole."
+    LEPSILON: VaspData = NONE()
+    "Whether VASP computes the dielectric tensor with linear response."
+    PREC: VaspData = NONE()
+    "Precision of the calculation, e.g., normal or accurate."
+    ALGO: VaspData = NONE()
+    "Algorithm of the electronic minimization."
+    XC: VaspData = NONE()
+    "Name of the exchange-correlation functional, or mixture."
+    EFERMI: VaspData = NONE()
+    "Fermi energy in eV if the user fixed it with EFERMI; VASP writes it only then."
+    efermi_method: VaspData = NONE()
+    "How VASP places the Fermi energy, e.g., LEGACY or MIDGAP."
+    LDAU: VaspData = NONE()
+    "Whether DFT+U is used."
+    selective_dynamics: VaspData = NONE()
+    "Whether the ions move with selective dynamics."
+    phonon_method: VaspData = NONE()
+    'How the force constants are computed, "finite differences" or "linear response".'
+    phonon_num_modes: VaspData = NONE()
+    "The number of phonon modes at the Gamma point of the supercell."
+    phonon_num_qpoints: VaspData = NONE()
+    "The number of q points of the phonon dispersion."
+    phonon_num_branches: VaspData = NONE()
+    "The number of phonon frequencies per q point of the dispersion."
+    wall_time: VaspData = NONE()
+    "Elapsed time of the run in s."
+    cpu_time: VaspData = NONE()
+    "Total CPU time used by the run in s."
+    omp_threads: VaspData = NONE()
+    "Number of OpenMP threads per MPI rank."
+    nodes: VaspData = NONE()
+    "Number of nodes the run used."
+    gpus: VaspData = NONE()
+    "Number of GPUs the run used; 0 for CPU builds."
+    build_variant: VaspData = NONE()
+    "Variant of the VASP executable: gam, std, or ncl."
+    build_gpu: VaspData = NONE()
+    "Whether VASP was built with GPU support."
+    build_openmp: VaspData = NONE()
+    "Whether VASP was built with OpenMP."
+    exit_status: VaspData = NONE()
+    'How VASP finished: "success", "error", "killed", or "dry-run".'
+    number_messages: VaspData = NONE()
+    """How many distinct messages VASP reported; not written if the run was killed."""
+    message_text: VaspData = NONE()
+    "The text of every distinct message VASP reported."
+    message_severity: VaspData = NONE()
+    'The severity of every message, e.g., "bug", "error", "alert", or "warning".'
+    message_count: VaspData = NONE()
+    "How often VASP reported every message."
+    extension: Optional[RunInfoExtension] = None
+    "All settings VASP wrote into the /setup and /metadata groups."
+
+
+@dataclasses.dataclass
+class SetupSection:
+    "The settings VASP wrote into one section of the /setup group."
+
+    values: dict = dataclasses.field(default_factory=dict)
+    "Maps every key of the section to its value."
+    units: dict = dataclasses.field(default_factory=dict)
+    "Maps the keys that specify units to these units."
+    descriptions: dict = dataclasses.field(default_factory=dict)
+    "Maps the keys that come with a description to that description."
+
+
+@dataclasses.dataclass
+class RunInfoExtension:
+    """All settings VASP wrote into the /setup group, including sections that
+    py4vasp does not know about."""
+
+    sections: dict = dataclasses.field(default_factory=dict)
+    "Maps the name of every section to its raw.SetupSection."
 
 
 @dataclasses.dataclass

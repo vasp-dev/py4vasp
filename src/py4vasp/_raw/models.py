@@ -30,14 +30,18 @@ VoigtMatrix = Tuple[Voigt, Voigt, Voigt, Voigt, Voigt, Voigt]
 # series, e.g. "0.11". Increment it whenever any model below changes between releases
 # (a test enforces this, see tests/raw/test_schema_version.py); the version then reads
 # "0.11+db.1", "0.11+db.2", ... Reset it back to 0 on every new py4vasp minor release.
-__DB_SCHEMA__ = 0
+__DB_SCHEMA__ = 1
 # Fields that changed their meaning, keyed by the first value of the counter above from
 # which the new meaning holds. The fingerprint cannot see a field change its meaning,
 # e.g. its unit, so a bump without a changed field name or type is only accepted with a
 # reason recorded here. A change of meaning that rode along with a bump for changed
 # fields is recorded as well, because nothing else tells a consumer about it. Empty it
 # together with resetting __DB_SCHEMA__ on a new py4vasp minor release.
-__DB_SEMANTIC_CHANGES__ = {}
+__DB_SEMANTIC_CHANGES__ = {
+    1: "RunInfoModel.phonon_num_modes counts the modes at the Gamma point of the "
+    "supercell instead of the branches of the dispersion, which phonon_num_branches "
+    "holds now",
+}
 
 
 def schema_version() -> str:
@@ -1033,20 +1037,10 @@ class RunInfoModel(_DatabaseModel):
     """The shape of the coarse grid used for the calculation, in the order (nx, ny, nz)."""
     grid_fine_shape: Optional[IntVector] = None
     """The shape of the fine grid used for the calculation, in the order (nx, ny, nz)."""
-    is_success: Optional[bool] = None
-    """Whether the calculation completed successfully."""
+    exit_status: Optional[str] = None
+    """How VASP finished: "success", "error", "killed", or "dry-run"."""
     fermi_energy: Optional[float] = None
     """The Fermi energy for the calculation according to the OUTCAR, in eV."""
-    is_collinear: Optional[bool] = None
-    """Whether the calculation was performed with collinear magnetism."""
-    is_noncollinear: Optional[bool] = None
-    """Whether the calculation was performed with non-collinear magnetism."""
-    is_metallic: Optional[bool] = None
-    """Whether the system is metallic based on the presence of states at the Fermi energy."""
-    is_magnetic: Optional[bool] = None
-    """Whether the system is magnetic based on the presence of a non-zero magnetic moment."""
-    magnetization_order: Optional[str] = None
-    """The order of the magnetization, e.g. ferromagnetic, antiferromagnetic, ferrimagnetic, etc."""
 
     system_tag: Optional[str] = None
     """The system tag from the INCAR file, if set, which may provide additional information about the system or calculation."""
@@ -1056,15 +1050,128 @@ class RunInfoModel(_DatabaseModel):
 
     has_selective_dynamics: Optional[bool] = None
     """Whether the calculation used selective dynamics."""
-    has_lattice_velocities: Optional[bool] = None
-    """Whether the calculation included lattice velocities."""
-    has_ion_velocities: Optional[bool] = None
-    """Whether the calculation stored ion velocities."""
 
-    phonon_num_qpoints: Optional[int] = None
-    """The number of q-points used in the phonon calculation."""
+    phonon_method: Optional[str] = None
+    """How the force constants were computed, "finite differences" or "linear response"."""
     phonon_num_modes: Optional[int] = None
-    """The number of phonon modes calculated."""
+    """The number of phonon modes at the Gamma point of the supercell."""
+    phonon_num_qpoints: Optional[int] = None
+    """The number of q-points of the phonon dispersion."""
+    phonon_num_branches: Optional[int] = None
+    """The number of phonon frequencies per q-point of the dispersion."""
+
+    # core settings; a field that is exactly an INCAR tag is spelled like it
+    SIGMA: Optional[float] = None
+    """The width of the smearing (SIGMA), in eV."""
+    ISPIN: Optional[int] = None
+    """1 for a nonpolarized and 2 for a spin-polarized calculation (ISPIN)."""
+    LNONCOLLINEAR: Optional[bool] = None
+    """Whether the calculation is noncollinear (LNONCOLLINEAR)."""
+    LSORBIT: Optional[bool] = None
+    """Whether spin-orbit coupling is included (LSORBIT)."""
+    ISTART: Optional[int] = None
+    """Whether VASP started from the WAVECAR file (ISTART)."""
+    ICHARG: Optional[int] = None
+    """How VASP constructed the initial charge density (ICHARG)."""
+    NELM: Optional[int] = None
+    """The maximum number of electronic steps per ionic step (NELM)."""
+    LREAL: Optional[str] = None
+    """How the projection operators are evaluated (LREAL), spelled as VASP writes it: "Auto" or "On" for optimized real-space projectors, "T" for real space, "F" for reciprocal space."""
+    LMAXMIX: Optional[int] = None
+    """The maximum angular momentum passed to the mixer (LMAXMIX)."""
+    POTIM: Optional[float] = None
+    """The time step of molecular dynamics in fs or scaling of the ionic step (POTIM)."""
+    TEBEG: Optional[float] = None
+    """The temperature at the start of molecular dynamics (TEBEG), in K."""
+    TEEND: Optional[float] = None
+    """The temperature at the end of molecular dynamics (TEEND), in K."""
+    MDALGO: Optional[int] = None
+    """The algorithm used for molecular dynamics (MDALGO)."""
+    ISYM: Optional[int] = None
+    """How VASP uses the symmetry of the system (ISYM)."""
+    LKPOINTS_OPT: Optional[bool] = None
+    """Whether VASP evaluated the KPOINTS_OPT k-point set (LKPOINTS_OPT)."""
+    LORBIT: Optional[int] = None
+    """Which projections onto local orbitals VASP computed (LORBIT)."""
+    IBRION: Optional[int] = None
+    """How VASP updates the ions (IBRION), e.g., -1 for no update, 0 for molecular dynamics, 1-3 for relaxations, 5-8 for finite differences."""
+    ISIF: Optional[int] = None
+    """Which degrees of freedom VASP relaxes and whether it computes the stress tensor (ISIF)."""
+    NSW: Optional[int] = None
+    """The maximum number of ionic steps (NSW)."""
+    EDIFFG: Optional[float] = None
+    """The stopping criterion of the ionic relaxation (EDIFFG), in eV for the energy (positive) or in eV/Å for the forces (negative)."""
+    ENCUT: Optional[float] = None
+    """The cutoff energy of the plane-wave basis (ENCUT), in eV."""
+    EDIFF: Optional[float] = None
+    """The stopping criterion of the electronic self-consistency (EDIFF), in eV."""
+    NBANDS: Optional[int] = None
+    """The number of bands (NBANDS)."""
+    nkpts: Optional[int] = None
+    """The number of k points in the irreducible Brillouin zone (NKPTS)."""
+    NELECT: Optional[float] = None
+    """The number of electrons (NELECT)."""
+    ISMEAR: Optional[int] = None
+    """The method used to smear the occupations (ISMEAR), e.g., 0 Gaussian, -1 Fermi-Dirac, -5 tetrahedron method."""
+    AEXX: Optional[float] = None
+    """The fraction of exact exchange (AEXX)."""
+    HFSCREEN: Optional[float] = None
+    """The range-separation parameter of screened hybrid functionals (HFSCREEN), in 1/Å."""
+    IVDW: Optional[int] = None
+    """Which van der Waals correction VASP applies (IVDW); 0 means none."""
+    NUPDOWN: Optional[float] = None
+    """The difference between the number of up and down electrons (NUPDOWN); -1 if VASP does not fix it."""
+    IDIPOL: Optional[int] = None
+    """The direction of the dipole correction (IDIPOL); 0 if VASP does not apply one."""
+    IMAGES: Optional[int] = None
+    """The number of images, e.g., of a nudged elastic band calculation."""
+    peak_memory: Optional[float] = None
+    """The peak memory used by the run, in kB."""
+    NCORE: Optional[int] = None
+    """The number of cores working on an individual orbital (NCORE)."""
+    KPAR: Optional[int] = None
+    """The number of k-point groups treated in parallel (KPAR)."""
+    mpi_ranks: Optional[int] = None
+    """The number of MPI ranks the run used."""
+    LASPH: Optional[bool] = None
+    """Whether VASP includes the nonspherical contributions of the gradient corrections inside the PAW spheres (LASPH)."""
+    LHFCALC: Optional[bool] = None
+    """Whether VASP computes exact exchange (LHFCALC), e.g., for hybrid functionals."""
+    LDIPOL: Optional[bool] = None
+    """Whether VASP corrects the potential and the forces for the dipole of the cell (LDIPOL)."""
+    LEPSILON: Optional[bool] = None
+    """Whether VASP computes the static dielectric tensor with density-functional perturbation theory (LEPSILON)."""
+    PREC: Optional[str] = None
+    """The precision of the calculation (PREC) as VASP writes it, e.g., "normal" or "accurate"."""
+    ALGO: Optional[str] = None
+    """The algorithm of the electronic minimization (ALGO) as VASP writes it, e.g., "Normal" or "All"."""
+    XC: Optional[str] = None
+    """The exchange-correlation functional (XC), e.g., "pbe", "hse06", or "scan"; "mixture" if it combines several components."""
+    EFERMI: Optional[str] = None
+    """The EFERMI tag as set in the INCAR file: "LEGACY", "MIDGAP", or the Fermi energy in eV the user fixed, as text, e.g., "5.5"."""
+    LDAU: Optional[bool] = None
+    """Whether LDA+U is active (LDAU)."""
+    wall_time: Optional[float] = None
+    """The elapsed (wall-clock) time of the run, in s."""
+    cpu_time: Optional[float] = None
+    """The total CPU time used by the run, in s."""
+    omp_threads: Optional[int] = None
+    """The number of OpenMP threads per MPI rank."""
+    nodes: Optional[int] = None
+    """The number of nodes the run used."""
+    gpus: Optional[int] = None
+    """The number of GPUs the run used; 0 for CPU builds."""
+    build_variant: Optional[str] = None
+    """The variant of the VASP executable: "gam", "std", or "ncl"."""
+    build_gpu: Optional[bool] = None
+    """Whether VASP was built with GPU support."""
+    build_openmp: Optional[bool] = None
+    """Whether VASP was built with OpenMP."""
+
+    error_messages: Optional[List[str]] = None
+    """The text of every distinct message of severity "error" or "bug" VASP reported."""
+    error_message_counts: Optional[List[int]] = None
+    """How often VASP reported each of the error messages."""
 
 
 @dataclass

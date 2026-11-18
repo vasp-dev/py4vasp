@@ -1,14 +1,13 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import json
 import types
 
+import numpy as np
 import pytest
 
-from py4vasp._calculation._CONTCAR import CONTCARHandler
-from py4vasp._calculation._dispersion import DispersionHandler
-from py4vasp._calculation.bandgap import Bandgap, BandgapHandler
+from py4vasp import _demo, exception, raw
 from py4vasp._calculation.run_info import RunInfo, RunInfoHandler
-from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import RunInfoModel
 from py4vasp._util import check
 
@@ -18,18 +17,11 @@ def run_info(request, raw_data):
     raw_run_info = raw_data.run_info(request.param)
     run_info = RunInfo.from_data(raw_run_info)
     run_info.ref = types.SimpleNamespace()
-    run_info.ref.system_name = raw_run_info.system.system
-    run_info.ref.runtime = raw_run_info.runtime
+    run_info.ref.system_name = raw_run_info.system_tag
     run_info.ref.fermi_energy = raw_run_info.fermi_energy
-    run_info.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
-    run_info.ref.len_dos = raw_run_info.len_dos
-    run_info.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
-    run_info.ref.band_projections = raw_run_info.band_projections
-    run_info.ref.structure = StructureHandler.from_data(raw_run_info.structure)
-    run_info.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
-    run_info.ref.phonon_dispersion = DispersionHandler.from_data(
-        raw_run_info.phonon_dispersion
-    )
+    run_info.ref.setup = raw_run_info
+    run_info.ref.extension = raw_run_info.extension
+    run_info.ref.number_ionic_steps = raw_run_info.number_ionic_steps
     return run_info
 
 
@@ -38,71 +30,408 @@ def run_info_handler(request, raw_data):
     raw_run_info = raw_data.run_info(request.param)
     handler = RunInfoHandler.from_data(raw_run_info)
     handler.ref = types.SimpleNamespace()
-    handler.ref.system_name = raw_run_info.system.system
-    handler.ref.runtime = raw_run_info.runtime
+    handler.ref.system_name = raw_run_info.system_tag
     handler.ref.fermi_energy = raw_run_info.fermi_energy
-    handler.ref.bandgap = BandgapHandler.from_data(raw_run_info.bandgap)
-    handler.ref.len_dos = raw_run_info.len_dos
-    handler.ref.band_dispersion_eigenvalues = raw_run_info.band_dispersion_eigenvalues
-    handler.ref.band_projections = raw_run_info.band_projections
-    handler.ref.structure = StructureHandler.from_data(raw_run_info.structure)
-    handler.ref.contcar = CONTCARHandler.from_data(raw_run_info.contcar)
-    handler.ref.phonon_dispersion = DispersionHandler.from_data(
-        raw_run_info.phonon_dispersion
-    )
+    handler.ref.setup = raw_run_info
+    handler.ref.extension = raw_run_info.extension
+    handler.ref.number_ionic_steps = raw_run_info.number_ionic_steps
     return handler
 
 
 def _check_dict(models: RunInfoModel, runinfo_ref):
     # from runtime
-    assert models.vasp_version == runinfo_ref.runtime.vasp_version
+    assert models.vasp_version == "99.99.99"
 
     # from structure
-    assert (
-        models.num_ionic_steps
-        == runinfo_ref.structure._raw_structure.positions[:].shape[0]
-    )
+    assert models.num_ionic_steps == runinfo_ref.number_ionic_steps == 4
 
     # from system
     assert models.system_tag == runinfo_ref.system_name
 
-    # from contcar
-    assert models.has_selective_dynamics == (
-        not check.is_none(runinfo_ref.contcar._raw_contcar.selective_dynamics)
-    )
-    assert models.has_ion_velocities == (
-        not check.is_none(runinfo_ref.contcar._raw_contcar.ion_velocities)
-    )
-    assert models.has_lattice_velocities == (
-        not check.is_none(runinfo_ref.contcar._raw_contcar.lattice_velocities)
-    )
+    assert models.has_selective_dynamics is False
 
-    # from phonon dispersion
-    assert (
-        models.phonon_num_qpoints
-        == runinfo_ref.phonon_dispersion._raw_dispersion.eigenvalues[:].shape[0]
-    )
-    assert (
-        models.phonon_num_modes
-        == runinfo_ref.phonon_dispersion._raw_dispersion.eigenvalues[:].shape[1]
-    )
+    # from the setup of the phonon calculation
+    assert models.phonon_method == "finite differences"
+    assert models.phonon_num_modes == 21
+    assert models.phonon_num_qpoints == 164
+    assert models.phonon_num_branches == 21
 
     # extra collection
-    assert models.grid_coarse_shape is None
-    assert models.grid_fine_shape is None
-    assert models.is_success is None
+    setup = runinfo_ref.setup
+    assert list(models.grid_coarse_shape) == [setup.NGX, setup.NGY, setup.NGZ]
+    assert list(models.grid_fine_shape) == [setup.NGXF, setup.NGYF, setup.NGZF]
+    assert models.exit_status == setup.exit_status
+    assert models.EFERMI == _decode(setup.efermi_method)
     assert models.fermi_energy == runinfo_ref.fermi_energy
-    assert models.is_collinear == (runinfo_ref.len_dos == 2)
-    assert models.is_noncollinear == (runinfo_ref.len_dos == 4)
-    assert models.is_metallic == all(
-        runinfo_ref.bandgap._output_gap("fundamental", to_string=False) <= 0.0
-    )
-    assert models.is_magnetic is None
-    assert models.magnetization_order is None
+
+    # core settings
+    for field, expected in _expected_core_settings(setup).items():
+        assert getattr(models, field) == expected, field
+
+
+CORE_BOOLS = (
+    "LDAU",
+    "LNONCOLLINEAR",
+    "LSORBIT",
+    "LKPOINTS_OPT",
+    "LASPH",
+    "LHFCALC",
+    "LDIPOL",
+    "LEPSILON",
+    "build_gpu",
+    "build_openmp",
+)
+CORE_STRINGS = (
+    "LREAL",
+    "PREC",
+    "ALGO",
+    "XC",
+    "build_variant",
+)
+CORE_SCALARS = (
+    "SIGMA",
+    "ISPIN",
+    "ISTART",
+    "ICHARG",
+    "NELM",
+    "LMAXMIX",
+    "POTIM",
+    "TEBEG",
+    "TEEND",
+    "MDALGO",
+    "ISYM",
+    "LORBIT",
+    "IMAGES",
+    "peak_memory",
+    "NCORE",
+    "KPAR",
+    "mpi_ranks",
+    "IBRION",
+    "ISIF",
+    "NSW",
+    "EDIFFG",
+    "ENCUT",
+    "EDIFF",
+    "NBANDS",
+    "nkpts",
+    "NELECT",
+    "ISMEAR",
+    "AEXX",
+    "HFSCREEN",
+    "IVDW",
+    "NUPDOWN",
+    "IDIPOL",
+    "wall_time",
+    "cpu_time",
+    "omp_threads",
+    "nodes",
+    "gpus",
+)
+
+
+def _expected_core_settings(setup):
+    return {
+        **{field: getattr(setup, field) for field in CORE_SCALARS},
+        **{field: bool(getattr(setup, field)) for field in CORE_BOOLS},
+        **{field: _decode(getattr(setup, field)) for field in CORE_STRINGS},
+    }
+
+
+def _without_setup(raw_run_info):
+    "The run info of a VASP version that does not write /setup, /metadata, /messages."
+    for field in _demo.run_info.run_setup():
+        setattr(raw_run_info, field, raw.VaspData(None))
+    return raw_run_info
+
+
+def _decode(text):
+    return text.decode().strip() if isinstance(text, bytes) else text.strip()
 
 
 def test_read(run_info):
-    _check_dict(RunInfoModel(**run_info.read()), run_info.ref)
+    actual = run_info.read()
+    expected = _expected_core_settings(run_info.ref.setup)
+    assert {key: actual[key] for key in expected} == expected
+    actual.pop("extensions")  # checked separately, not part of the database model
+    _check_dict(RunInfoModel(**actual), run_info.ref)
+
+
+DROPPED_KEYS = (
+    "is_magnetic",
+    "magnetization_order",
+    "build_mpi",
+    "is_collinear",
+    "is_noncollinear",
+    "is_success",
+    "is_metallic",
+    # IBRION, MDALGO, and ISIF tell whether the run moves ions and lattice
+    "has_ion_velocities",
+    "has_lattice_velocities",
+)
+
+
+@pytest.mark.parametrize("key", DROPPED_KEYS)
+def test_dropped_keys_are_absent(run_info, key):
+    # redundant with the core settings or never implemented
+    assert key not in run_info.read()
+    assert not hasattr(RunInfoModel(), key)
+
+
+def test_core_bools_are_bool(run_info):
+    actual = run_info.read()
+    for field in CORE_BOOLS:
+        assert type(actual[field]) is bool, field
+
+
+def test_lreal_of_demo_is_vasp_string(run_info):
+    assert run_info.read()["LREAL"] == "Auto"
+
+
+@pytest.mark.parametrize("lreal", [b"Auto", b"On", b"F", b"T", b"Auto  ", "On"])
+def test_lreal_keeps_vasp_spelling(raw_data, lreal):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.LREAL = lreal
+    actual = RunInfo.from_data(raw_run_info).read()["LREAL"]
+    assert actual == _decode(lreal)
+    assert (
+        RunInfo.from_data(raw_run_info)._to_database()["run_info"]["default"].LREAL
+        == actual
+    )
+
+
+def test_core_settings_without_setup_are_none(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    _without_setup(raw_run_info)
+    actual = RunInfo.from_data(raw_run_info).read()
+    fields = CORE_BOOLS + CORE_STRINGS + CORE_SCALARS
+    assert all(actual[field] is None for field in fields)
+    assert actual["error_messages"] is None
+    assert actual["error_message_counts"] is None
+
+
+def test_algo_missing_in_file_is_none(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.ALGO = raw.VaspData(None)
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["ALGO"] is None
+    assert actual["PREC"] == "accurate"
+
+
+@pytest.mark.parametrize("flag, expected", [(0, False), (1, True)])
+def test_ldau_is_the_flag_vasp_wrote(raw_data, flag, expected):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.LDAU = flag
+    run_info = RunInfo.from_data(raw_run_info)
+    assert run_info.read()["LDAU"] is expected
+    assert run_info._to_database()["run_info"]["default"].LDAU is expected
+
+
+def test_ldau_without_flag_is_none(raw_data):
+    # VASP versions before the flag existed leave LDAU unknown
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.LDAU = raw.VaspData(None)
+    assert RunInfo.from_data(raw_run_info).read()["LDAU"] is None
+
+
+def test_ldau_without_setup_is_none(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    _without_setup(raw_run_info)
+    assert RunInfo.from_data(raw_run_info).read()["LDAU"] is None
+
+
+def test_error_messages_with_counts(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.message_text = np.array(
+        [b"first error", b"a warning", b"second error", b"a bug"]
+    )
+    raw_run_info.message_severity = np.array([b"error", b"warning", b"error", b"bug"])
+    raw_run_info.message_count = np.array([2, 5, 1, 1])
+    handler = RunInfoHandler.from_data(raw_run_info)
+    actual = handler.to_dict()
+    # a bug in VASP is the most severe message, so it counts as an error
+    assert actual["error_messages"] == ["first error", "second error", "a bug"]
+    assert actual["error_message_counts"] == [2, 1, 1]
+    assert all(type(count) is int for count in actual["error_message_counts"])
+    model = handler.to_database()
+    assert model.error_messages == ["first error", "second error", "a bug"]
+    assert model.error_message_counts == [2, 1, 1]
+
+
+@pytest.mark.parametrize("wrap", [lambda x: x, np.array, raw.VaspData])
+def test_single_message_as_scalars(raw_data, wrap):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.message_text = wrap(b"the only error")
+    raw_run_info.message_severity = wrap(b"error")
+    raw_run_info.message_count = wrap(np.int64(3))
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["error_messages"] == ["the only error"]
+    assert actual["error_message_counts"] == [3]
+
+
+def test_error_messages_with_padded_severity(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.message_text = np.array([b"padded error    ", b"a warning  "])
+    raw_run_info.message_severity = np.array([b"error  ", b"warning"])
+    raw_run_info.message_count = np.array([4, 1])
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["error_messages"] == ["padded error"]
+    assert actual["error_message_counts"] == [4]
+
+
+def test_read_contains_extensions(run_info):
+    raw_extension = run_info.ref.extension
+    expected = {
+        name: section.values for name, section in raw_extension.sections.items()
+    }
+    assert expected  # the demo data should contain some sections
+    assert run_info.read()["extensions"] == expected
+
+
+def test_unknown_section_appears(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.extension.sections["brand_new"] = raw.SetupSection(
+        values={"LFOO": True, "functional_1/NAME": "PBE"}, units={"LFOO": "none"}
+    )
+    actual = RunInfo.from_data(raw_run_info).read()["extensions"]
+    assert actual["brand_new"] == {"LFOO": True, "functional_1/NAME": "PBE"}
+
+
+@pytest.mark.parametrize("missing_extension", [None, raw.VaspData(None)])
+def test_read_without_extension_is_empty(raw_data, missing_extension):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.extension = missing_extension
+    assert RunInfo.from_data(raw_run_info).read()["extensions"] == {}
+
+
+def test_to_database_excludes_extensions(run_info_handler):
+    model = run_info_handler.to_database()
+    assert not hasattr(model, "extensions")
+    assert "extensions" in run_info_handler.to_dict()
+
+
+def test_no_messages_is_empty_list(raw_data):
+    # VASP writes no message arrays if it issued no message
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.number_messages = 0
+    raw_run_info.message_text = raw.VaspData(None)
+    raw_run_info.message_severity = raw.VaspData(None)
+    raw_run_info.message_count = raw.VaspData(None)
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["error_messages"] == []
+    assert actual["error_message_counts"] == []
+
+
+def test_messages_of_killed_run_are_unknown(raw_data):
+    # a killed run only wrote the exit status at startup, not the messages
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.exit_status = b"killed "
+    raw_run_info.number_messages = raw.VaspData(None)
+    raw_run_info.message_text = raw.VaspData(None)
+    raw_run_info.message_severity = raw.VaspData(None)
+    raw_run_info.message_count = raw.VaspData(None)
+    handler = RunInfoHandler.from_data(raw_run_info)
+    actual = handler.to_dict()
+    assert actual["exit_status"] == "killed"
+    assert actual["error_messages"] is None
+    assert actual["error_message_counts"] is None
+    handler.to_database()  # the rest of the record is still stored
+
+
+@pytest.mark.parametrize("system", [b"Sr2TiO4 relaxed   ", "Sr2TiO4 relaxed"])
+def test_system_tag_is_text(raw_data, system):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.system_tag = system
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["system_tag"] == "Sr2TiO4 relaxed"
+    json.dumps(actual["system_tag"])
+
+
+@pytest.mark.parametrize("method", ["read", "to_dict", "print"])
+@pytest.mark.parametrize(
+    "selection, hint",
+    [
+        # section names look like sources, but they are keys of the extensions
+        ("electronic", 'read()["extensions"]["electronic"]'),
+        # print groups the resources without the prefix of the metadata section
+        ("resources", 'read()["extensions"]["metadata/resources"]'),
+        ("ENCUT", 'read()["ENCUT"]'),
+    ],
+)
+def test_selection_error_points_to_the_existing_key(run_info, method, selection, hint):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        getattr(run_info, method)(selection)
+    assert hint in str(error.value)
+
+
+def test_selection_error_without_matching_key_has_no_hint(run_info):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        run_info.read("defualt")
+    assert "extensions" not in str(error.value)
+    assert "read()[" not in str(error.value)
+
+
+def test_vasp_version_is_text(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.vasp_version = raw.Version(6, 7, 0)
+    assert RunInfo.from_data(raw_run_info).read()["vasp_version"] == "6.7.0"
+
+
+def test_without_ionic_steps_is_none(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.number_ionic_steps = raw.VaspData(None)
+    assert RunInfo.from_data(raw_run_info).read()["num_ionic_steps"] is None
+
+
+@pytest.mark.parametrize("flag, expected", [(1, True), (0, False), (None, None)])
+def test_selective_dynamics_is_the_flag_vasp_wrote(raw_data, flag, expected):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.selective_dynamics = raw.VaspData(flag)
+    run_info = RunInfo.from_data(raw_run_info)
+    assert run_info.read()["has_selective_dynamics"] is expected
+    model = run_info._to_database()["run_info"]["default"]
+    assert model.has_selective_dynamics is expected
+
+
+PHONON_SETUP = (
+    "phonon_method",
+    "phonon_num_modes",
+    "phonon_num_qpoints",
+    "phonon_num_branches",
+)
+
+
+def test_phonons_without_setup_fall_back_to_the_frequencies(raw_data):
+    # VASP versions without /setup/phonons only write the dispersion
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    for field in PHONON_SETUP:
+        setattr(raw_run_info, field, raw.VaspData(None))
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["phonon_num_qpoints"] == 20
+    assert actual["phonon_num_branches"] == 21
+    assert actual["phonon_method"] is None
+    assert actual["phonon_num_modes"] is None
+
+
+def test_phonons_of_a_run_at_gamma_only(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.phonon_num_qpoints = raw.VaspData(None)
+    raw_run_info.phonon_num_branches = raw.VaspData(None)
+    raw_run_info.phonon_frequencies = raw.VaspData(None)
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["phonon_method"] == "finite differences"
+    assert actual["phonon_num_modes"] == 21
+    assert actual["phonon_num_qpoints"] is None
+    assert actual["phonon_num_branches"] is None
+
+
+def test_without_phonons_nothing_is_reported(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    for field in PHONON_SETUP:
+        setattr(raw_run_info, field, raw.VaspData(None))
+    raw_run_info.phonon_frequencies = raw.VaspData(None)
+    run_info = RunInfo.from_data(raw_run_info)
+    assert all(run_info.read()[field] is None for field in PHONON_SETUP)
+    assert "phonons:" not in str(run_info)
 
 
 def test_to_dict_matches_read(run_info_handler):
@@ -126,66 +455,248 @@ def test_dispatcher_to_database(run_info):
     assert isinstance(result["run_info"]["default"], RunInfoModel)
 
 
+def test_read_grid_shapes(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.NGX, raw_run_info.NGY, raw_run_info.NGZ = 12, 15, 18
+    raw_run_info.NGXF = np.int64(24)
+    raw_run_info.NGYF, raw_run_info.NGZF = 30, 36
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["grid_coarse_shape"] == [12, 15, 18]
+    assert actual["grid_fine_shape"] == [24, 30, 36]
+    assert all(type(n) is int for n in actual["grid_fine_shape"])
+
+
+@pytest.mark.parametrize(
+    "exit_status, expected",
+    [
+        ("success", "success"),
+        (b"error", "error"),
+        ("killed    ", "killed"),
+        (b"dry-run   ", "dry-run"),
+    ],
+)
+def test_exit_status_is_trimmed_string(raw_data, exit_status, expected):
+    # Fortran pads fixed-length character variables with blanks
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.exit_status = exit_status
+    run_info = RunInfo.from_data(raw_run_info)
+    assert run_info.read()["exit_status"] == expected
+    assert run_info._to_database()["run_info"]["default"].exit_status == expected
+    assert f"    exit status: {expected}\n" in str(run_info)
+
+
+def test_without_setup_derived_values_are_none(raw_data):
+    raw_run_info = _without_setup(raw_data.run_info("Sr2TiO4"))
+    actual = RunInfo.from_data(raw_run_info).read()
+    assert actual["grid_coarse_shape"] is None
+    assert actual["grid_fine_shape"] is None
+    assert actual["exit_status"] is None
+    assert actual["EFERMI"] is None
+    # nothing recorded means unknown, not "LDA+U off" or "no errors"
+    assert actual["LDAU"] is None
+    assert actual["error_messages"] is None
+    assert actual["error_message_counts"] is None
+    assert "error messages" not in str(RunInfo.from_data(raw_run_info))
+
+
+def test_efermi_is_the_method_vasp_used(run_info):
+    assert run_info.read()["EFERMI"] == "LEGACY"
+
+
+@pytest.mark.parametrize("method", [b"MIDGAP  ", "LEGACY"])
+def test_efermi_trims_the_method(raw_data, method):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.efermi_method = method
+    assert RunInfo.from_data(raw_run_info).read()["EFERMI"] == _decode(method)
+
+
+def test_efermi_set_to_a_number_is_reported_as_text(raw_data):
+    # https://vasp.at/wiki/EFERMI: EFERMI = MIDGAP | LEGACY | [real]; for a number
+    # VASP writes the method FORCE together with the value. A database column holds
+    # a single type, so the number is stored as the text of the value.
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.efermi_method = b"FORCE  "
+    raw_run_info.EFERMI = np.float64(5.5)
+    run_info = RunInfo.from_data(raw_run_info)
+    assert run_info.read()["EFERMI"] == "5.5"
+    assert run_info._to_database()["run_info"]["default"].EFERMI == "5.5"
+
+
 def test_print(run_info, format_):
     actual, _ = format_(run_info)
     reference = """\
 run info for Sr2TiO4:
     VASP version: 99.99.99
+    exit status: success
     ionic steps: 4
-    Fermi energy: 0.500
     spin: nonpolarized
-    metallic: no
-    phonon dispersion: 20 q-points, 21 modes"""
+    functional: pbe
+    phonons:
+        phonon_method: finite differences
+        phonon_num_modes: 21
+        phonon_num_qpoints: 164
+        phonon_num_branches: 21
+    FFT grid: 32 x 32 x 40 (fine 64 x 64 x 80)
+    ionic:
+        IBRION: 2
+        ISIF: 3
+        NSW: 40
+        EDIFFG: -0.01
+        POTIM: 0.5 fs
+        TEBEG: 300.0 K
+        TEEND: 300.0 K
+        MDALGO: 0
+        ISYM: 2
+    electronic:
+        ENCUT: 520.0 eV
+        PREC: accurate
+        ALGO: Normal
+        EDIFF: 1e-06 eV
+        NELM: 60
+        NELECT: 40.0
+        NUPDOWN: -1.0
+        ISPIN: 1
+        LNONCOLLINEAR: False
+        LSORBIT: False
+        LASPH: True
+        LREAL: Auto
+        LMAXMIX: 4
+        ISTART: 0
+        ICHARG: 2
+    dimensions:
+        NBANDS: 48
+        nkpts: 20
+    dos:
+        ISMEAR: 0
+        SIGMA: 0.05 eV
+        EFERMI: LEGACY
+    exchange_correlation:
+        XC: pbe
+        LDAU: False
+        LHFCALC: False
+        AEXX: 0.0
+        HFSCREEN: 0.0
+    vdw:
+        IVDW: 0
+    dipole:
+        LDIPOL: False
+        IDIPOL: 0
+    linear_response:
+        LEPSILON: False
+    kpoints_opt:
+        LKPOINTS_OPT: True
+    write_flags:
+        LORBIT: 11
+    resources:
+        mpi_ranks: 64
+        omp_threads: 1
+        nodes: 2
+        gpus: 0
+        KPAR: 4
+        NCORE: 8
+        IMAGES: 0
+    performance:
+        wall_time: 1834.5 s
+        cpu_time: 1790.2 s
+        peak_memory: 262144.0 kB
+    build:
+        build_variant: std
+        build_gpu: False
+        build_openmp: False
+    error messages:
+        - The basis set is incomplete. (1×)
+    extensions: dimensions, dipole, dos, electronic, exchange_correlation, ionic, kpoints_opt, ldau, linear_response, metadata/build, metadata/performance, metadata/resources, phonons, vdw, write_flags"""
     assert actual == {"text/plain": reference}
 
 
-def test_print_omits_unknown_quantities(raw_data, format_):
+def test_print_lists_every_error_message_with_its_count(raw_data):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.runtime = None
-    raw_run_info.phonon_dispersion = None
-    actual, _ = format_(RunInfo.from_data(raw_run_info))
-    reference = """\
-run info for Sr2TiO4:
-    ionic steps: 4
-    Fermi energy: 0.500
-    spin: nonpolarized
-    metallic: no"""
-    assert actual == {"text/plain": reference}
-
-
-@pytest.mark.parametrize(
-    "len_dos, expected",
-    [
-        (2, "    spin: collinear"),
-        (4, "    spin: noncollinear"),
-        (1, "    spin: nonpolarized"),
-    ],
-)
-def test_print_reports_the_spin_configuration(raw_data, len_dos, expected):
-    raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.len_dos = len_dos
+    raw_run_info.message_text = np.array([b"first error", b"a bug"])
+    raw_run_info.message_severity = np.array([b"error", b"bug"])
+    raw_run_info.message_count = np.array([2, 1])
+    expected = """\
+    error messages:
+        - first error (2×)
+        - a bug (1×)
+"""
     assert expected in str(RunInfo.from_data(raw_run_info))
 
 
+def test_print_without_error_messages(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.number_messages = 0
+    assert "    error messages: none\n" in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_lists_extension_sections(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.extension = raw.RunInfoExtension(
+        sections={"zeta": raw.SetupSection(), "alpha": raw.SetupSection()}
+    )
+    assert "    extensions: alpha, zeta" in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_shows_every_core_setting(run_info):
+    actual = str(run_info)
+    for key in (*CORE_SCALARS, *CORE_BOOLS, *CORE_STRINGS, "EFERMI"):
+        assert f"\n        {key}: " in actual, key
+
+
+def test_print_omits_missing_tags_and_empty_groups(raw_data):
+    # e.g. serial builds write no resources, so only what VASP wrote is shown
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.ISIF = raw.VaspData(None)
+    raw_run_info.IVDW = raw.VaspData(None)
+    actual = str(RunInfo.from_data(raw_run_info))
+    assert "        IBRION: 2\n        NSW: 40\n" in actual
+    assert "ISIF" not in actual
+    assert "\n    vdw:" not in actual
+
+
+def test_print_functional_with_lda_plus_u(raw_data):
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.LDAU = 1
+    assert "    functional: pbe+U\n" in str(RunInfo.from_data(raw_run_info))
+
+
+def test_print_of_vasp_without_setup(raw_data, format_):
+    # VASP writes the exit status at startup, so without it the file predates the
+    # setup writers; print says so instead of silently leaving the settings out
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.vasp_version = raw.VaspData(None)
+    raw_run_info.phonon_frequencies = raw.VaspData(None)
+    _without_setup(raw_run_info)
+    raw_run_info.extension = None
+    actual, _ = format_(RunInfo.from_data(raw_run_info))
+    reference = """\
+run info for Sr2TiO4:
+    exit status: unknown (requires a newer VASP)
+    ionic steps: 4
+    settings: unknown (requires a newer VASP)"""
+    assert actual == {"text/plain": reference}
+
+
 @pytest.mark.parametrize(
-    "known_field", ("band_dispersion_eigenvalues", "band_projections")
+    "ispin, lnoncollinear, expected",
+    [
+        (2, 0, "collinear"),
+        (1, 1, "noncollinear"),
+        (None, 1, "noncollinear"),
+        (1, 0, "nonpolarized"),
+    ],
 )
-def test_print_omits_half_known_spin_configuration(raw_data, known_field):
-    # without a DOS the two flags fall back to different fields, so one of them may be
-    # False while the other is simply unknown; that is not enough to claim nonpolarized
+def test_print_reports_the_spin_configuration(raw_data, ispin, lnoncollinear, expected):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.len_dos = None
-    for field in ("band_dispersion_eigenvalues", "band_projections"):
-        if field != known_field:
-            setattr(raw_run_info, field, None)
-    assert "spin:" not in str(RunInfo.from_data(raw_run_info))
+    raw_run_info.ISPIN = raw.VaspData(ispin)
+    raw_run_info.LNONCOLLINEAR = lnoncollinear
+    assert f"    spin: {expected}\n" in str(RunInfo.from_data(raw_run_info))
 
 
-def test_print_omits_unknown_spin_configuration(raw_data):
+@pytest.mark.parametrize("ispin, lnoncollinear", [(None, 0), (2, None), (None, None)])
+def test_print_omits_unknown_spin_configuration(raw_data, ispin, lnoncollinear):
     raw_run_info = raw_data.run_info("Sr2TiO4")
-    raw_run_info.len_dos = None
-    raw_run_info.band_dispersion_eigenvalues = None
-    raw_run_info.band_projections = None
+    raw_run_info.ISPIN = raw.VaspData(ispin)
+    raw_run_info.LNONCOLLINEAR = raw.VaspData(lnoncollinear)
     assert "spin:" not in str(RunInfo.from_data(raw_run_info))
 
 
@@ -201,3 +712,13 @@ def test_selections(run_info):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.run_info("Sr2TiO4")
     check_factory_methods(RunInfo, data, skip_methods=["selections"])
+
+
+def test_print_killed_run_has_unknown_error_messages(raw_data):
+    # a killed run wrote only the exit status, so VASP left no messages
+    raw_run_info = raw_data.run_info("Sr2TiO4")
+    raw_run_info.exit_status = b"killed "
+    raw_run_info.number_messages = raw.VaspData(None)
+    actual = str(RunInfo.from_data(raw_run_info))
+    assert "    exit status: killed\n" in actual
+    assert "    error messages: unknown\n" in actual

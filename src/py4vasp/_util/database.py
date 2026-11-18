@@ -14,7 +14,7 @@ from py4vasp import exception
 from py4vasp._raw.data import Version
 from py4vasp._raw.definition import DEFAULT_SOURCE, Schema, unique_selections
 from py4vasp._raw.models import _format_type, parse_schema_version
-from py4vasp._raw.schema import Length, Link
+from py4vasp._raw.schema import Fallback, Length, Link
 from py4vasp._util import convert
 
 
@@ -121,6 +121,10 @@ def should_load(
                     additional_keys.extend(subquantity_additional_keys)
                 elif isinstance(link, Length):
                     quantity_dict[key] = link.dataset in h5file
+                elif isinstance(link, Fallback):
+                    quantity_dict[key] = any(
+                        dataset in h5file for dataset in link.datasets
+                    )
                 elif link is not None and isinstance(link, str):
                     quantity_dict[key] = link in h5file
             quantity_dict = {k: v for k, v in quantity_dict.items() if v is True}
@@ -138,8 +142,10 @@ def should_load(
         else:
             should_load_ = False
             should_attempt_read = True
-            # data_factory might be set
-            if schema.sources[quantity][source].data_factory is not None:
+            # data_factory might be set; a quantity whose default source is itself a
+            # data factory (e.g. run_info_extension) has no h5 default to fall back to
+            is_factory = schema.sources[quantity][source].data_factory is not None
+            if is_factory and source != DEFAULT_SOURCE:
                 _, version, _, additional_keys = should_load(
                     quantity, DEFAULT_SOURCE, h5file, schema, version, print_debug
                 )

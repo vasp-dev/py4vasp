@@ -196,6 +196,24 @@ class Length:
     __str__ = lambda self: f"length({self.dataset})"
 
 
+@dataclasses.dataclass(init=False)
+class Fallback:
+    """Read the first of several datasets that exists in the file.
+
+    Use it when VASP writes the same data in a new place: list the current location
+    first and the locations older versions of VASP wrote it to after it."""
+
+    datasets: tuple[str, ...]
+
+    def __init__(self, *datasets: str):
+        if not datasets:
+            message = "A Fallback needs at least one dataset to read from."
+            raise exception._Py4VaspInternalError(message)
+        self.datasets = datasets
+
+    __str__ = lambda self: f"fallback({', '.join(self.datasets)})"
+
+
 @dataclasses.dataclass
 class Sequence(abc.Sequence):
     size: int

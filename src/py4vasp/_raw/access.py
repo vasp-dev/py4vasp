@@ -10,7 +10,7 @@ import h5py
 from py4vasp import exception, raw
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_SOURCE, schema
 from py4vasp._raw.mapping import Mapping
-from py4vasp._raw.schema import Length, Link, error_message
+from py4vasp._raw.schema import Fallback, Length, Link, error_message
 from py4vasp._util import check, convert
 
 
@@ -161,9 +161,17 @@ class _State:
         if isinstance(key, Length):
             dataset = h5f.get(key.dataset)
             return len(dataset) if dataset else raw.VaspData(None)
+        if isinstance(key, Fallback):
+            return self._parse_first_available(h5f, key.datasets)
         if key.format(0) == key or valid_indices is None:
             return self._parse_dataset(h5f, key)
         return [self._parse_dataset(h5f, key, index) for index in valid_indices]
+
+    def _parse_first_available(self, h5f, datasets):
+        for dataset in datasets:
+            if h5f.get(dataset) is not None:
+                return self._parse_dataset(h5f, dataset)
+        return raw.VaspData(None)
 
     def _resolve_link(self, key):
         try:

@@ -36,6 +36,7 @@ from py4vasp._calculation import (  # noqa: F401 — imports submodules as _calc
     projector,
     raman,
     reaction_path,
+    run_info,
     stress,
     structure,
     symmetry,
@@ -84,6 +85,7 @@ def _all_calculation_examples():
         + find_examples(_calculation.projector)
         + find_examples(_calculation.raman)
         + find_examples(_calculation.reaction_path)
+        + find_examples(_calculation.run_info)
         + find_examples(_calculation.stress)
         + find_examples(_calculation.structure)
         + find_examples(_calculation.symmetry)

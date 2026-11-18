@@ -106,3 +106,19 @@ def test_write_skips_absent_mapping_entries(tmp_path):
         assert f"{group}/selfen_fan" in h5f
         assert f"{group}/nbands_sum" not in h5f
         assert f"{group}/delta" not in h5f
+
+
+def test_write_fallback_to_the_first_dataset(tmp_path):
+    from unittest.mock import patch
+
+    from util import VERSION, WithFallback
+
+    from py4vasp._raw.schema import Fallback, Schema
+
+    schema = Schema(VERSION)
+    schema.add(WithFallback, value=Fallback("first", "second"))
+    with patch("py4vasp._raw.write.schema", schema):
+        with h5py.File(tmp_path / DEFAULT_FILE, "w") as h5f:
+            write(h5f, WithFallback(3))
+            assert h5f["first"][()] == 3
+            assert "second" not in h5f

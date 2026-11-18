@@ -6,7 +6,7 @@ import numpy as np
 
 from py4vasp._raw.definition import DEFAULT_SOURCE, schema
 from py4vasp._raw.mapping import Mapping
-from py4vasp._raw.schema import Length, Link
+from py4vasp._raw.schema import Fallback, Length, Link
 from py4vasp._util import check, convert
 
 
@@ -32,6 +32,10 @@ def _write_dataset(h5f, target, data, valid_indices=None):
         return
     if isinstance(target, Link):
         write(h5f, data, selection=target.source)
+    elif isinstance(target, Fallback):
+        # write where current VASP versions write, unless any location holds the data
+        if not any(dataset in h5f for dataset in target.datasets):
+            h5f[target.datasets[0]] = _encode_strings(data)
     elif isinstance(target, Length) or target in h5f:
         return
     elif (
