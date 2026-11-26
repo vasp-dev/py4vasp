@@ -16,7 +16,7 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._raw.definition import unique_selections as _schema_sources
 from py4vasp._raw.models import DielectricFunctionModel
 from py4vasp._third_party import graph
-from py4vasp._util import check, convert, index, select
+from py4vasp._util import check, convert, form, index, select
 
 # The name of this quantity in the schema and in the dictionary selections returns, so
 # that the key naming the sources matches the attribute the user reaches them through.
@@ -370,10 +370,10 @@ class DielectricFunction(graph.Mixin):
 
         Parameters
         ----------
-        selection : str
-            Choose which dielectric function VASP computed and which part of it you
-            want: a direction, a component, the real or the imaginary part, or a
-            combination. Without any of those you get the whole 3x3 tensor.
+        selection : str | None
+            Choose the source, i.e. which dielectric function VASP computed, and which
+            part of it you want: a direction, a component, the real or the imaginary
+            part, or a combination. Without any of those you get the whole 3x3 tensor.
             Use :py:meth:`selections` to see every list.
 
         Returns
@@ -433,10 +433,12 @@ class DielectricFunction(graph.Mixin):
 
         Parameters
         ----------
-        selection : str
+        selection : str | None
             Specify along which directions and which components of the dielectric
             function you want to plot. Defaults to *isotropic* and both the real
-            and the complex part. You can use the `selections` routine if you are
+            and the complex part. Nest them inside a source to plot another
+            dielectric function VASP computed than the default one, e.g.
+            ``"bse(xx)"``. You can use the `selections` routine if you are
             not sure which options are available.
 
         Returns
@@ -539,3 +541,14 @@ class DielectricFunction(graph.Mixin):
             DielectricFunctionHandler.from_data,
             DielectricFunctionHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("read", "to_dict", "to_graph"):
+            return []
+        selections = self.selections()
+        complex_parts = [form.token("real", ["Re"]), form.token("imag", ["Im"])]
+        return [
+            *form.axes_from_selections(selections, ("components", "directions")),
+            form.choice_axis("complex", complex_parts),
+        ]

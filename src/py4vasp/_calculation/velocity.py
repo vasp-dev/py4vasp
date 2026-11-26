@@ -228,7 +228,7 @@ class Velocity(view.Mixin):
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -350,7 +350,11 @@ class Velocity(view.Mixin):
             VelocityHandler.to_numpy,
         )
 
-    def to_view(self, supercell=None, selection: str | None = None) -> view.View:
+    def to_view(
+        self,
+        supercell: int | tuple[int, int, int] | None = None,
+        selection: str | None = None,
+    ) -> view.View:
         """Plot the velocities as vectors in the structure.
 
         This method adds arrows to the atoms in the structure sized according to the
@@ -359,7 +363,7 @@ class Velocity(view.Mixin):
 
         Parameters
         ----------
-        supercell : int or np.ndarray
+        supercell : int | tuple[int, int, int] | None
             If present the structure is replicated the specified number of times
             along each direction.
 

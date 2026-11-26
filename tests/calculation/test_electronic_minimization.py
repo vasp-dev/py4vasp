@@ -296,7 +296,9 @@ def test_print_writes_to_stdout(electronic_minimization, capsys):
 
 def test_selections(electronic_minimization):
     assert electronic_minimization.selections() == {
-        "electronic_minimization": ["default"]
+        "electronic_minimization": ["default"],
+        # VASP's label rms(c) clashes with the selection grammar, so it reads rms_c
+        "column": ["N", "E", "dE", "deps", "ncg", "rms", "rms_c"],
     }
 
 

@@ -6,7 +6,7 @@ import types
 import numpy as np
 import pytest
 
-from py4vasp._calculation.partial_density import PartialDensity
+from py4vasp._calculation.partial_density import _SPINS, _STM_MODES, PartialDensity
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._util.bader import BaderAnalysis
 from py4vasp._util.slicing import plane
@@ -452,7 +452,13 @@ def test_print_writes_to_stdout(AnyPartialDensity, capsys):
 
 
 def test_selections(AnyPartialDensity):
-    assert AnyPartialDensity.selections() == {"partial_density": ["default"]}
+    spin_polarized = AnyPartialDensity.ref.partial_density.shape[2] == 2
+    modes = [name for names in _STM_MODES.values() for name in names]
+    assert AnyPartialDensity.selections() == {
+        "partial_density": ["default"],
+        "spin": list(_SPINS) if spin_polarized else ["total"],
+        "mode": modes,
+    }
 
 
 def test_factory_methods(raw_data, check_factory_methods):

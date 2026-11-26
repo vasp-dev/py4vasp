@@ -220,7 +220,9 @@ def test_print_writes_to_stdout(current_density, capsys):
 
 
 def test_selections(current_density):
-    assert current_density.selections() == {"current_density": ["nmr"]}
+    directions = [d for d in "xyz" if hasattr(current_density.ref, f"current_{d}")]
+    expected = {"current_density": ["nmr"], "direction": directions}
+    assert current_density.selections() == expected
 
 
 def test_factory_methods(raw_data, check_factory_methods):
@@ -253,3 +255,27 @@ def test_read_nmr(tmp_path, method):
     actual = getattr(current_density, method)("nmr")
     assert "structure" in actual
     assert any(key.startswith("current_") for key in actual)
+
+
+@pytest.mark.parametrize("selection", (None, "nmr", "x", "nmr(x)"))
+def test_print_takes_the_selections_of_read(tmp_path, selection, capsys):
+    # a tool prints a quantity with the source it read it from, so printing must
+    # succeed or fail exactly as reading does
+    from py4vasp import demo
+
+    current_density = demo.calculation(tmp_path / "example").current_density
+
+    def outcome(method):
+        try:
+            method(selection)
+        except exception.Py4VaspError as error:
+            return type(error)
+        return "success"
+
+    expected = outcome(current_density.read)
+    assert outcome(current_density.__str__) == expected
+    assert outcome(current_density.print) == expected
+    if expected == "success":
+        capsys.readouterr()
+        current_density.print(selection)
+        assert capsys.readouterr().out == current_density.__str__(selection) + "\n"

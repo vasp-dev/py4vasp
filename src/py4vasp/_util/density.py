@@ -9,7 +9,7 @@ import numpy as np
 from py4vasp._calculation.structure import Structure
 from py4vasp._third_party.graph import Contour, Graph
 from py4vasp._third_party.view import GridQuantity, View
-from py4vasp._util import documentation, index, slicing
+from py4vasp._util import documentation, form, index, slicing
 from py4vasp.exception import IncorrectUsage
 
 _DATA_DICT_PARAMETER = """\
@@ -283,3 +283,40 @@ class Visualizer:
         if supercell is not None:
             contour.supercell = np.ones(2, dtype=np.int_) * supercell
         return contour
+
+
+_COMPONENT_DESCRIPTIONS = {
+    0: "the sum over both spins (sigma_0)",
+    1: "the spin part along x (sigma_x)",
+    2: "the spin part along y (sigma_y)",
+    3: "the spin part along z (sigma_z); the magnetization of a collinear calculation",
+}
+_COMPONENTS_PER_POLARIZATION = {1: (0,), 2: (0, 3), 4: (0, 1, 2, 3)}
+
+
+def component_axis(names, number_components, extra_aliases=None):
+    """The spin components a quantity on a grid offers, named after Pauli matrices.
+
+    Parameters
+    ----------
+    names : dict[int, list[str]]
+        Every name of each component; the first one is its token, names starting with
+        an underscore are internal.
+    number_components : int
+        1 without spin polarization, 2 for a collinear, 4 for a noncollinear calculation.
+    extra_aliases : dict[int, list[str]] | None
+        Further names of a component, e.g. "magnetization" in a collinear calculation.
+
+    Returns
+    -------
+    dict
+        A ``choice`` axis as :mod:`py4vasp._util.form` describes it.
+    """
+    extra_aliases = extra_aliases or {}
+    tokens = []
+    for component in _COMPONENTS_PER_POLARIZATION[number_components]:
+        public = [name for name in names[component] if not name.startswith("_")]
+        aliases = public[1:] + list(extra_aliases.get(component, ()))
+        description = _COMPONENT_DESCRIPTIONS[component]
+        tokens.append(form.token(public[0], aliases, description))
+    return form.choice_axis("component", tokens)

@@ -197,7 +197,7 @@ class Stress:
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         "Convert the stress to a format similar to the OUTCAR file."
         return merge_strings(
             self._source,

@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
 import itertools
-from typing import Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 
@@ -16,15 +16,17 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import PotentialModel
-from py4vasp._third_party import view
+from py4vasp._third_party import graph, view
 from py4vasp._util import (
     check,
     density,
     documentation,
+    form,
     index,
     select,
     slicing,
@@ -42,7 +44,7 @@ _COMPONENTS = {
 _MAGNETIC_COMPONENTS = {choice for key in (1, 2, 3) for choice in _COMPONENTS[key]}
 _COMMON_PARAMETERS = f"""\
 {slicing.PARAMETERS}
-supercell : int or np.ndarray
+supercell : int | tuple[int, int] | None
     Replicate the contour plot periodically a given number of times. If you
     provide two different numbers, the resulting cell will be the two remaining
     lattice vectors multiplied by the specific number.
@@ -219,6 +221,12 @@ class PotentialHandler:
     def _get_potential(self, kind):
         return getattr(self._raw_potential, f"{kind}_potential")
 
+    def _kinds_and_components(self):
+        kinds = [
+            kind for kind in VALID_KINDS if not check.is_none(self._get_potential(kind))
+        ]
+        return kinds, len(self._raw_potential.total_potential)
+
     def _create_map(self, potential):
         if _is_nonpolarized(potential):
             return {choice: 0 for choice in _COMPONENTS[0]}
@@ -355,9 +363,10 @@ class Potential(view.Mixin):
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
 
-        The returned dictionary contains a single item with the name of the quantity
-        mapping to all possible selections. Each of these selections may be passed to
-        the other methods of this quantity to choose which output of VASP is used.
+        The returned dictionary maps the name of the quantity to all its sources; each
+        may be passed to the other methods of this quantity to choose which output of
+        VASP is used. The other items list the tokens the selection of those methods
+        combines, provided this calculation contains the data they are read from.
         Not every calculation contains every source; use :py:meth:`is_available` to
         check which ones this calculation contains.
 
@@ -369,9 +378,12 @@ class Potential(view.Mixin):
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -416,19 +428,19 @@ class Potential(view.Mixin):
     def to_view(
         self,
         selection: str = "total",
-        supercell: Optional[Union[int, np.ndarray]] = None,
-        **user_options,
-    ):
+        supercell: int | tuple[int, int, int] | None = None,
+        **user_options: Any,
+    ) -> view.View:
         """Plot an isosurface of a selected potential.
 
         Parameters
         ----------
         selection : str
             Select the kind of potential of which you want the isosurface.
-        supercell : int or np.ndarray
+        supercell : int | tuple[int, int, int] | None
             If present the data is replicated the specified number of times along each
             direction.
-        user_options
+        user_options : Any
             Settings of the isosurface; any other keyword raises an error:
 
             - *isolevel* (default 0): the value in eV at which the isosurface is
@@ -460,12 +472,12 @@ class Potential(view.Mixin):
         self,
         selection: str = "total",
         *,
-        a: Optional[float] = None,
-        b: Optional[float] = None,
-        c: Optional[float] = None,
-        normal: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
-    ):
+        a: slicing.CutFraction = None,
+        b: slicing.CutFraction = None,
+        c: slicing.CutFraction = None,
+        normal: Literal["x", "y", "z", "auto"] | None = None,
+        supercell: int | tuple[int, int] | None = None,
+    ) -> graph.Graph:
         """Generate a 2D contour plot of the selected potential on a slice through the cell.
 
         {plane}
@@ -517,8 +529,15 @@ class Potential(view.Mixin):
 
     @documentation.format(plane=slicing.PLANE, parameters=_COMMON_PARAMETERS)
     def to_quiver(
-        self, selection="total", *, a=None, b=None, c=None, normal=None, supercell=None
-    ):
+        self,
+        selection: str = "total",
+        *,
+        a: slicing.CutFraction = None,
+        b: slicing.CutFraction = None,
+        c: slicing.CutFraction = None,
+        normal: Literal["x", "y", "z", "auto"] | None = None,
+        supercell: int | tuple[int, int] | None = None,
+    ) -> graph.Graph:
         """Generate a 2D quiver plot of the magnetic part of the potential on a slice.
 
         This method visualizes the vector field of the magnetization potential
@@ -608,6 +627,28 @@ class Potential(view.Mixin):
             PotentialHandler.from_data,
             PotentialHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("to_view", "to_contour", "to_quiver"):
+            return []
+        kinds, number_components = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: handler._kinds_and_components(),
+        )
+        if method == "to_quiver":
+            magnetic = [kind for kind in kinds if kind in ("total", "xc")]
+            return [form.choice_axis("kind", magnetic)] if number_components > 1 else []
+        components = density.component_axis(_COMPONENTS, number_components)
+        if number_components == 2:
+            components["tokens"] += [
+                form.token("up", description="the spin-up channel"),
+                form.token("down", description="the spin-down channel"),
+            ]
+        return [form.choice_axis("kind", kinds), components]
 
 
 class _PotentialReduction(index.Reduction):

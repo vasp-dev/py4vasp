@@ -4,6 +4,7 @@ import copy
 import itertools
 import math
 from collections import Counter
+from collections.abc import Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from functools import reduce
@@ -19,6 +20,7 @@ from py4vasp._calculation.dispatch import (
     DataSource,
     SuppressErrorsSourceWrapper,
     _result_has_data,
+    count_steps,
     is_available_raw,
     merge_default,
     merge_strings,
@@ -603,13 +605,19 @@ Atoms # atomic
 
     @property
     def _last_step_in_slice(self):
-        return (self._slice.stop or 0) - 1
+        return self._selected_steps()[-1]
+
+    def _selected_steps(self):
+        return range(len(self._raw_structure.positions))[self._slice]
 
     def _step_string(self):
-        if self._is_slice:
-            range_ = range(len(self._raw_structure.positions))[self._steps]
-            return f" from step {range_.start + 1} to {range_.stop + 1}"
-        elif self._steps == -1:
+        if self._is_slice and self._is_trajectory:
+            # the printout shows the last step, so name it and the range it is from
+            steps = self._selected_steps()
+            first, last = steps[0] + 1, steps[-1] + 1
+            return f" (step {last} of range {first}:{last})"
+        elif self._is_slice or self._steps == -1:
+            # all steps of a single structure are the structure itself
             return ""
         else:
             return f" (step {self._steps + 1})"
@@ -944,7 +952,7 @@ class Structure(view.Mixin):
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         "Generate a string representing the final structure usable as a POSCAR file."
         return merge_strings(
             self._source,
@@ -966,7 +974,9 @@ class Structure(view.Mixin):
             StructureHandler._repr_html_,
         )
 
-    def read(self, ion_types=None, selection: str | None = None):
+    def read(
+        self, ion_types: Sequence[str] | None = None, selection: str | None = None
+    ) -> dict:
         """Read the structural information into a dictionary.
 
         The returned dictionary contains the following keys:
@@ -980,7 +990,7 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        ion_types : Sequence
+        ion_types : Sequence[str] | None
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
 
@@ -1038,11 +1048,18 @@ class Structure(view.Mixin):
             ion_types,
         )
 
-    def to_dict(self, ion_types=None, selection: str | None = None):
+    def to_dict(
+        self, ion_types: Sequence[str] | None = None, selection: str | None = None
+    ) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(ion_types=ion_types, selection=selection)
 
-    def to_view(self, supercell=None, ion_types=None, selection: str | None = None):
+    def to_view(
+        self,
+        supercell: int | tuple[int, int, int] | None = None,
+        ion_types: Sequence[str] | None = None,
+        selection: str | None = None,
+    ) -> view.View:
         """Generate a 3d representation of the structure(s).
 
         This method uses the `View` class to create a 3d visualization of the atomic
@@ -1050,10 +1067,10 @@ class Structure(view.Mixin):
 
         Parameters
         ----------
-        supercell : int or np.ndarray
+        supercell : int | tuple[int, int, int] | None
             If present the structure is replicated the specified number of times
             along each direction.
-        ion_types : Sequence
+        ion_types : Sequence[str] | None
             Overwrite the ion types present in the raw data. You can use this to quickly
             generate different stoichiometries without modifying the underlying raw data.
 
@@ -1606,7 +1623,7 @@ class Structure(view.Mixin):
             StructureHandler.number_atoms,
         )
 
-    def number_steps(self, selection: str | None = None):
+    def number_steps(self, selection: str | None = None) -> int:
         """Return the number of structures in the trajectory.
 
         Parameters
@@ -2108,6 +2125,16 @@ class Structure(view.Mixin):
         """
         models = _collect_structure_database(self._source, self._quantity_name)
         return {"structure": models} if models else {}
+
+    def _number_steps(self, source: str) -> int:
+        "How many steps the given source holds; data without steps holds one."
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            source,
+            lambda raw: raw,
+            lambda raw: count_steps(raw.positions, 2),
+        )
 
 
 def _collect_structure_database(source, quantity_name):

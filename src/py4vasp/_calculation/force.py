@@ -228,7 +228,7 @@ class Force(view.Mixin):
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         "Convert the forces to a format similar to the OUTCAR file."
         return merge_strings(
             self._source,
@@ -303,7 +303,11 @@ class Force(view.Mixin):
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection)
 
-    def to_view(self, supercell=None, selection: str | None = None) -> view.View:
+    def to_view(
+        self,
+        supercell: int | tuple[int, int, int] | None = None,
+        selection: str | None = None,
+    ) -> view.View:
         """Visualize the forces showing arrows at the atoms.
 
         This method adds arrows to the atoms in the structure sized according to the
@@ -312,7 +316,7 @@ class Force(view.Mixin):
 
         Parameters
         ----------
-        supercell : int or np.ndarray
+        supercell : int | tuple[int, int, int] | None
             If present the structure is replicated the specified number of times
             along each direction.
 

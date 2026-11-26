@@ -845,7 +845,8 @@ def test_print_writes_to_stdout(multiple_bands, capsys):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.band("multiple")
     parameters = {"to_quiver": {"selection": "x~y(band=1)"}}
-    check_factory_methods(Band, data, parameters)
+    # selections reads the data again to offer the tokens of every routine
+    check_factory_methods(Band, data, parameters, skip_methods=["selections"])
 
 
 def test_is_available_to_quiver(raw_data):

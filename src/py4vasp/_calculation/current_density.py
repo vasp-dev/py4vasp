@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 
@@ -13,12 +13,13 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import CurrentDensityModel
 from py4vasp._third_party import graph
-from py4vasp._util import check, documentation, import_, slicing
+from py4vasp._util import check, convert, documentation, form, import_, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 _COMMON_PARAMETERS = f"""selection : str | None = None
@@ -26,7 +27,7 @@ _COMMON_PARAMETERS = f"""selection : str | None = None
     `selections` method for all available choices.
 
 {slicing.PARAMETERS}
-supercell : int | np.ndarray | None = None
+supercell : int | tuple[int, int] | None = None
     Replicate the contour plot periodically a given number of times. If you
     provide two different numbers, the resulting cell will be the two remaining
     lattice vectors multiplied by the specific number."""
@@ -208,9 +209,10 @@ class CurrentDensity:
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
 
-        The returned dictionary contains a single item with the name of the quantity
-        mapping to all possible selections. Each of these selections may be passed to
-        the other methods of this quantity to choose which output of VASP is used.
+        The returned dictionary maps the name of the quantity to all its sources; each
+        may be passed to the other methods of this quantity to choose which output of
+        VASP is used. The other items list the tokens the selection of those methods
+        combines, provided this calculation contains the data they are read from.
         Not every calculation contains every source; use :py:meth:`is_available` to
         check which ones this calculation contains.
 
@@ -222,9 +224,12 @@ class CurrentDensity:
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -276,11 +281,11 @@ class CurrentDensity:
         self,
         selection: Optional[str] = None,
         *,
-        a: Optional[float] = None,
-        b: Optional[float] = None,
-        c: Optional[float] = None,
-        normal: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
+        a: slicing.CutFraction = None,
+        b: slicing.CutFraction = None,
+        c: slicing.CutFraction = None,
+        normal: Literal["x", "y", "z", "auto"] | None = None,
+        supercell: int | tuple[int, int] | None = None,
     ) -> graph.Graph:
         """Generate a contour plot of current density.
 
@@ -331,11 +336,11 @@ class CurrentDensity:
         self,
         selection: Optional[str] = None,
         *,
-        a: Optional[float] = None,
-        b: Optional[float] = None,
-        c: Optional[float] = None,
-        normal: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
+        a: slicing.CutFraction = None,
+        b: slicing.CutFraction = None,
+        c: slicing.CutFraction = None,
+        normal: Literal["x", "y", "z", "auto"] | None = None,
+        supercell: int | tuple[int, int] | None = None,
     ) -> graph.Graph:
         """Generate a quiver plot of current density.
 
@@ -388,3 +393,16 @@ class CurrentDensity:
             CurrentDensityHandler.from_data,
             CurrentDensityHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("to_contour", "to_quiver"):
+            return []
+        directions = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: list(handler._raw_current_density.valid_indices),
+        )
+        return [form.choice_axis("direction", map(convert.text_to_string, directions))]

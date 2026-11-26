@@ -10,14 +10,16 @@ from numpy.typing import ArrayLike
 from py4vasp import exception, raw
 from py4vasp._calculation.dispatch import (
     DataSource,
+    is_available_raw,
     merge_default,
     merge_strings,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._third_party import graph
-from py4vasp._util import convert, index, select
+from py4vasp._util import convert, form, index, select
 
 DIRECTIONS = {
     None: [0, 4, 8],
@@ -456,10 +458,21 @@ class ElectronPhononTransportHandler(abc.Sequence):
         series_list = [
             series
             for sel in select.Tree.from_selection(selection).selections()
-            for series in builder.build(sel, self._get_instances(sel))
+            for series in builder.build(sel, self._get_matching_instances(sel))
         ]
         xlabel = self._accumulator().chemical_potential_label()
         return graph.Graph(series_list, xlabel=xlabel, ylabel=builder.ylabel)
+
+    def _get_matching_instances(self, selection):
+        instances = self._get_instances(selection)
+        if not instances:
+            text = select.selections_to_string((selection,))
+            message = (
+                f"No instance of the transport calculation matches the selection "
+                f"'{text}'. Use `selections` to see which values this run contains."
+            )
+            raise exception.IncorrectUsage(message)
+        return instances
 
     def _get_instances(self, selection):
         selection_string = select.selections_to_string((selection,))
@@ -512,7 +525,7 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -524,7 +537,7 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> Dict[str, Any]:
+    def read(self, selection: str | None = None) -> Dict[str, Any]:
         """Return a dictionary that lists how many accumulators are available
 
         Returns
@@ -540,19 +553,25 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
             ElectronPhononTransportHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> Dict[str, Any]:
+    def to_dict(self, selection: str | None = None) -> Dict[str, Any]:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
-    def selections(self, selection=None) -> Dict[str, Any]:
+    def selections(self, selection: str | None = None) -> Dict[str, Any]:
         """Return a dictionary describing what options are available to read the transport.
 
         Returns
         -------
         -
             Dictionary containing available selection options with their possible values.
-            Keys include selection criteria like "nbands_sum", "selfen_approx", "selfen_delta".
+            Keys include selection criteria like "nbands_sum", "scattering_approx", and
+            "selfen_delta".
         """
+        return selections_with_axes(
+            self, self._filter_selections(selection), methods=("to_graph",)
+        )
+
+    def _filter_selections(self, selection=None):
         return merge_default(
             self._source,
             self._quantity_name,
@@ -600,7 +619,7 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
             A string specifying which instances we would like to select. You specify a
             particular string like "nbands_sum=800" to select all instances that were
             run with that setup. If you provide multiple selections the results will be
-            merged.
+            merged. The instances always come from the default source.
 
         Returns
         -------
@@ -615,7 +634,7 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
 
         To select instances with a specific scattering approximation, such as SERTA:
 
-        >>> calculation.electron_phonon.transport.select("selfen_approx=SERTA")
+        >>> calculation.electron_phonon.transport.select("scattering_approx=SERTA")
 
         You can also combine multiple selection criteria. For example, to select instances
         with a sum of 800 bands and a delta value of 0.1:
@@ -631,7 +650,7 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
 
         Parameters
         ----------
-        selection
+        selection : str
             Use this string to specify what you want to plot. You must always specify
             a transport quantity like "mobility" or "seebeck". You can optionally also
             specify a direction like "xx" or "isotropic". If you do not specify a
@@ -639,7 +658,8 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
             particular temperature by adding "T=300" to the selection. If you do not
             specify a temperature, results for all temperatures will be plotted.
             Finally, you can also filter the instances that are used for plotting by
-            adding criteria like "nbands_sum=800" or "selfen_delta=0.1".
+            adding criteria like "nbands_sum=800" or "selfen_delta=0.1". The data
+            always comes from the default source.
 
         Returns
         -------
@@ -677,6 +697,34 @@ class ElectronPhononTransport(abc.Sequence, graph.Mixin):
     def __len__(self):
         with self._source.access(self._quantity_name) as raw:
             return len(self._handler_factory(raw))
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method != "to_graph":
+            return []
+        # the instances are filtered by their setup, e.g. "nbands_sum=800", with the
+        # values this run contains, and the temperatures by "T=300"
+        selections = self._filter_selections()
+        not_filters = {self._quantity_name, "transport"}
+        filters = {
+            key: form.choice_axis(key, [str(value) for value in values])
+            for key, values in selections.items()
+            if key not in not_filters and len(values) > 0
+        }
+        temperatures = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: np.unique(handler._raw_data.temperatures),
+        )
+        if len(temperatures) > 0:
+            filters["T"] = form.choice_axis("T", [str(value) for value in temperatures])
+        return [
+            form.choice_axis("transport", list(UNITS)),
+            form.choice_axis("direction", [key for key in DIRECTIONS if key]),
+            form.assignment_axis("filter", filters),
+        ]
 
 
 class _SeriesBuilderBase:

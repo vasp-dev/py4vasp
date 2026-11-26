@@ -106,8 +106,11 @@ def test_print_writes_to_stdout(phonon_mode, capsys):
     assert capsys.readouterr().out == str(phonon_mode) + "\n"
 
 
-def test_selections(phonon_mode):
-    assert phonon_mode.selections() == {"phonon_mode": ["default", "dispersion"]}
+def test_selections(phonon_mode, raw_data):
+    number_modes = np.shape(raw_data.phonon_mode("default").frequencies)[-1]
+    modes = [str(index + 1) for index in range(number_modes)]
+    expected = {"phonon_mode": ["default", "dispersion"], "mode": modes}
+    assert phonon_mode.selections() == expected
 
 
 @pytest.fixture

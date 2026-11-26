@@ -159,7 +159,7 @@ class Polarization:
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,

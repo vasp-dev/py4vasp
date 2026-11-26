@@ -12,13 +12,13 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import ProjectorModel
-from py4vasp._util import check, convert, index, select
+from py4vasp._util import check, convert, form, index, select
 
 SPIN_PROJECTION = "is_spin_projection"
 selection_doc = """\
-selection : str
-    A string specifying the projection of the orbitals. There are four distinct
-    possibilities:
+selection : str | None
+    A string specifying the projection of the orbitals, the source of the data, or
+    both. There are four distinct possibilities:
 
     -   To specify the **atom**, you can either use its element name (Si, Al, ...)
         or its index as given in the input file (1, 2, ...). For the latter
@@ -26,8 +26,10 @@ selection : str
     -   To select a particular **orbital** you can give a string (s, px, dxz, ...)
         or select multiple orbitals by their angular momentum (s, p, d, f).
     -   For the **spin**, you have the options up, down, or total.
-    -   If you used a different **k**-point mesh choose "kpoints_opt" or "kpoints_wan"
-        to select them instead of the default mesh specified in the KPOINTS file.
+    -   To select a **source** other than the default mesh specified in the KPOINTS
+        file, choose e.g. "kpoints_opt" if you used a KPOINTS_OPT file, or "qp" after a
+        GW calculation; :py:meth:`selections` lists every source. Nest a projection
+        inside the source, e.g. `kpoints_opt(Sr(d))`, if VASP wrote projections for it.
 
     You separate multiple selections by commas or whitespace and can nest them using
     parenthesis, e.g. `Sr(s, p)` or `s(up), p(down)`. The order of the selections
@@ -38,13 +40,36 @@ selection : str
     "Ti(d) - O(p)" would project onto the d orbitals of Ti and the p orbitals of O and
     then compute the difference of these two selections.
 
-    If you are unsure about the specific projections that are available, you can use
-
-    >>> calculation.projector.selections()
-    {\'atom\': [...], \'orbital\': [...], \'spin\': [...]}
-
-    to get a list of all available ones.
+    If you are unsure about the specific projections that are available, the
+    examples below show how to list them.
 """
+# The example belongs to the Examples section of every routine that documents its
+# selection with selection_doc, after the example data has been created there.
+selections_example = """\
+If you are unsure about the specific projections that are available, you can use
+
+>>> calculation.projector.selections()
+{'atom': [...], 'orbital': [...], 'spin': [...]}
+
+to get a list of all available ones.
+"""
+
+
+def projection_axes(selections):
+    """The axes of a selection projecting on the atoms, orbitals, and spins.
+
+    Parameters
+    ----------
+    selections : dict
+        The selections of the quantity; without projectors it lists no atoms.
+
+    Returns
+    -------
+    list[dict]
+        The axes as :mod:`py4vasp._util.form` describes them.
+    """
+    names = [name for name in ("atom", "orbital", "spin") if name in selections]
+    return form.axes_from_selections(selections, names)
 
 
 def has_projector_data(raw_projectors) -> bool:
@@ -280,7 +305,11 @@ class ProjectorHandler:
 
     def _raise_error_if_orbitals_missing(self):
         if not has_projector_data(self._raw_projector):
-            message = "Projectors are not available, rerun VASP setting LORBIT >= 10."
+            message = (
+                "The selected source contains no projections on atoms and orbitals. "
+                "VASP writes them only with LORBIT >= 10, separately for every "
+                "k-point mesh; select a source that has them or rerun VASP."
+            )
             raise exception.IncorrectUsage(message)
 
 
@@ -318,7 +347,7 @@ class Projector:
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -330,7 +359,7 @@ class Projector:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Return a map from labels to indices in the arrays produced by VASP.
 
         Returns
@@ -365,11 +394,11 @@ class Projector:
             ProjectorHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
-    def selections(self, selection=None) -> dict:
+    def selections(self, selection: str | None = None) -> dict:
         from py4vasp._raw import definition as raw_module
 
         handler_selections = merge_default(

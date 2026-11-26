@@ -554,7 +554,7 @@ def test_convert_example_dos_to_dict(sphinx_app):
     expected_class_content = """
 {{< method name="to_dict" class="Dos" module="example_dos" breadcrumbs="" >}}
 {{< signature >}}
-(*selection*: `str` = None) → `dict`
+(*selection*: `str | None` = None) → `dict`
 {{< /signature >}}
 
 {{< docstring >}}
@@ -575,10 +575,10 @@ projection.
 
 
 
-*selection*: `str` = None
+*selection*: `str | None` = None
 : <!---->
-    A string specifying the projection of the orbitals. There are four distinct
-    possibilities:
+    A string specifying the projection of the orbitals, the source of the data, or
+    both. There are four distinct possibilities:
 
     *   To specify the **atom**, you can either use its element name (Si, Al, …)
         or its index as given in the input file (1, 2, …). For the latter
@@ -589,8 +589,10 @@ projection.
 
     *   For the **spin**, you have the options up, down, or total.
 
-    *   If you used a different **k**-point mesh choose “kpoints_opt” or “kpoints_wan”
-        to select them instead of the default mesh specified in the KPOINTS file.
+    *   To select a **source** other than the default mesh specified in the KPOINTS
+        file, choose e.g. “kpoints_opt” if you used a KPOINTS_OPT file, or “qp” after a
+        GW calculation; [`selections()`](Dos/selections) lists every source. Nest a projection
+        inside the source, e.g. *kpoints_opt(Sr(d))*, if VASP wrote projections for it.
 
 
     You separate multiple selections by commas or whitespace and can nest them using
@@ -602,14 +604,8 @@ projection.
     “Ti(d) - O(p)” would project onto the d orbitals of Ti and the p orbitals of O and
     then compute the difference of these two selections.
 
-    If you are unsure about the specific projections that are available, you can use
-
-    ~~~python
-    >>> calculation.projector.selections()
-    {'atom': [...], 'orbital': [...], 'spin': [...]}
-    ~~~
-
-    to get a list of all available ones.
+    If you are unsure about the specific projections that are available, the
+    examples below show how to list them.
 
 
 
@@ -687,7 +683,7 @@ def test_convert_example_dos_to_graph(sphinx_app):
     expected_class_content = """
 {{< method name="to_graph" class="Dos" module="example_dos" breadcrumbs="" >}}
 {{< signature >}}
-(*selection*: `str` = None) → `Graph`
+(*selection*: `str | None` = None) → `Graph`
 {{< /signature >}}
 
 {{< docstring >}}
@@ -706,10 +702,10 @@ corresponding to the selected projections.
 
 
 
-*selection*: `str` = None
+*selection*: `str | None` = None
 : <!---->
-    A string specifying the projection of the orbitals. There are four distinct
-    possibilities:
+    A string specifying the projection of the orbitals, the source of the data, or
+    both. There are four distinct possibilities:
 
     *   To specify the **atom**, you can either use its element name (Si, Al, …)
         or its index as given in the input file (1, 2, …). For the latter
@@ -720,8 +716,10 @@ corresponding to the selected projections.
 
     *   For the **spin**, you have the options up, down, or total.
 
-    *   If you used a different **k**-point mesh choose “kpoints_opt” or “kpoints_wan”
-        to select them instead of the default mesh specified in the KPOINTS file.
+    *   To select a **source** other than the default mesh specified in the KPOINTS
+        file, choose e.g. “kpoints_opt” if you used a KPOINTS_OPT file, or “qp” after a
+        GW calculation; [`selections()`](Dos/selections) lists every source. Nest a projection
+        inside the source, e.g. *kpoints_opt(Sr(d))*, if VASP wrote projections for it.
 
 
     You separate multiple selections by commas or whitespace and can nest them using
@@ -733,14 +731,8 @@ corresponding to the selected projections.
     “Ti(d) - O(p)” would project onto the d orbitals of Ti and the p orbitals of O and
     then compute the difference of these two selections.
 
-    If you are unsure about the specific projections that are available, you can use
-
-    ~~~python
-    >>> calculation.projector.selections()
-    {'atom': [...], 'orbital': [...], 'spin': [...]}
-    ~~~
-
-    to get a list of all available ones.
+    If you are unsure about the specific projections that are available, the
+    examples below show how to list them.
 
 
 

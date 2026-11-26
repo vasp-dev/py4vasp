@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 selection_doc = """\
-selection : str
+selection : str | None
     A string specifying the projection of the phonon modes onto atoms and directions.
     Please specify selections using one of the following:
 

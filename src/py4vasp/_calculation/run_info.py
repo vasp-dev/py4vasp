@@ -598,7 +598,7 @@ class RunInfo:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         with _hint_at_existing_key(self, selection):
             return merge_strings(
                 self._source,

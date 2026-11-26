@@ -19,7 +19,7 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._raw.definition import unique_selections as _schema_sources
 from py4vasp._raw.models import OpticsModel
 from py4vasp._third_party import graph
-from py4vasp._util import convert, index, select
+from py4vasp._util import convert, form, index, select
 from py4vasp._util.color import Color
 
 # The optics quantity owns no raw data of its own; it derives every quantity from the
@@ -351,8 +351,9 @@ class Optics(graph.Mixin):
 
         Parameters
         ----------
-        selection : str
-            Select which dielectric function and which direction(s) to evaluate.
+        selection : str | None
+            Select the source, i.e. which dielectric function VASP computed, and which
+            direction(s) to evaluate.
             Defaults to the isotropic average. Use the `selections` routine to discover
             the available options.
 
@@ -420,7 +421,8 @@ class Optics(graph.Mixin):
         Parameters
         ----------
         selection : str
-            Select which dielectric function and which direction(s) to evaluate.
+            Select the source, i.e. which dielectric function VASP computed, and which
+            direction(s) to evaluate.
             Defaults to the isotropic average.
 
         Returns
@@ -470,7 +472,8 @@ class Optics(graph.Mixin):
         Parameters
         ----------
         selection : str
-            Select the dielectric function, the coefficient (``reflectivity``,
+            Select the source, i.e. which dielectric function VASP computed, the
+            coefficient (``reflectivity``,
             ``transmission``, ``absorption``), and the direction(s) to evaluate.
             Defaults to the reflectivity of the isotropic average.
         illuminant : str
@@ -522,9 +525,10 @@ class Optics(graph.Mixin):
 
         Parameters
         ----------
-        selection : str
-            Select which dielectric function, coefficient(s), and direction(s) to
-            evaluate. Defaults to all three coefficients of the isotropic average.
+        selection : str | None
+            Select the source, i.e. which dielectric function VASP computed, the
+            coefficient(s), and direction(s) to evaluate. Defaults to all three
+            coefficients of the isotropic average.
 
         Returns
         -------
@@ -601,4 +605,12 @@ class Optics(graph.Mixin):
             OpticsHandler.from_data,
             OpticsHandler.to_database,
             key_name="optics",
+        )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("read", "to_dict", "to_graph"):
+            return []
+        return form.axes_from_selections(
+            self.selections(), ("components", "directions")
         )

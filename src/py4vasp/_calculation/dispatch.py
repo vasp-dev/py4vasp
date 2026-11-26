@@ -18,13 +18,14 @@ import numpy as np
 
 from py4vasp import exception
 from py4vasp import raw as _raw_module
+from py4vasp._raw import mapping
 from py4vasp._raw.definition import DEFAULT_FILE, DEFAULT_WAVEFILE
 from py4vasp._raw.definition import schema as _schema
 from py4vasp._raw.definition import selections as schema_selections
 from py4vasp._raw.definition import unique_selections as schema_unique_selections
 from py4vasp._raw.schema import DEFAULT_SELECTION, Fallback, Link
 from py4vasp._third_party.graph import Graph
-from py4vasp._util import archive, check, select
+from py4vasp._util import archive, check, form, select
 
 _REGISTRY = {}
 
@@ -99,6 +100,11 @@ def quantity(name, group=None):
         # The graph mixin calls this before it writes a file with a relative name to the
         # directory of the quantity; for the demo data that directory is temporary.
         cls._warn_about_output = _warn_about_output
+
+        # A quantity whose routines take more than a source in their selection declares
+        # the tokens they combine; see py4vasp._util.form for the axes.
+        if "_selection_axes" not in cls.__dict__:
+            cls._selection_axes = _no_selection_axes
 
         if group is None:
             _REGISTRY[name] = cls
@@ -741,6 +747,50 @@ def _availability_quantity_of(instance):
     return getattr(instance, "_availability_quantity", None) or instance._quantity_name
 
 
+_ROUTINES_WITH_TOKENS = (
+    "read",
+    "to_dict",
+    "to_graph",
+    "to_frame",
+    "to_numpy",
+    "to_view",
+    "to_contour",
+    "to_quiver",
+    "to_stm",
+)
+
+
+def selections_with_axes(instance, selections, methods=_ROUTINES_WITH_TOKENS):
+    """Add the tokens the selection of the routines combines to *selections*.
+
+    Entries already in *selections* are kept as they are; the tokens of every axis that
+    *instance* declares for one of *methods* are added under the name of the axis, if
+    the calculation contains the data the method needs. Without the data the tokens are
+    built from, only *selections* remains.
+    """
+    axes = {}
+    try:
+        for method in methods:
+            declared = instance._selection_axes(method)
+            if declared and instance.is_available(method=method):
+                for axis in declared:
+                    axes.setdefault(axis["name"], axis)
+    except _UNAVAILABLE_EXCEPTIONS:
+        return selections
+    added = form.selections_from_axes(axes.values())
+    return {**selections, **{key: added[key] for key in added if key not in selections}}
+
+
+def _no_selection_axes(self, method):
+    """The axes of the selection of *method* besides its source: none by default.
+
+    A quantity overrides this when the selection of some routine also takes tokens,
+    e.g. the orbitals a DOS is projected on. The axes are built from the data, so this
+    may raise the same errors as reading the data.
+    """
+    return []
+
+
 def _warn_about_output(self):
     if isinstance(self._source, TemporarySource):
         # skip this function, the graph mixin, and its public method to reach the user
@@ -847,7 +897,15 @@ def is_available_raw(
         field is present.
     """
     spec = _schema_specification(quantity_name, selection)
-    return _data_available(spec, raw_data, enforce_optional, enforce_optional_linked)
+    if not _data_available(spec, raw_data, enforce_optional, enforce_optional_linked):
+        return False
+    return not _has_no_instances(raw_data)
+
+
+def _has_no_instances(raw_data):
+    """Whether a quantity made of instances, e.g. the perturbations of an NMR current,
+    holds none of them. The file may contain its group without any instance in it."""
+    return isinstance(raw_data, mapping.Mapping) and len(raw_data.valid_indices) == 0
 
 
 def data_available(
@@ -1136,6 +1194,24 @@ def slice_steps(data, steps, default_ndim):
             "Please check that it is a valid integer or slice."
         )
         raise exception.IncorrectUsage(message) from error
+
+
+def count_steps(data, default_ndim):
+    """How many steps *data* holds, as :func:`slice_steps` sees it.
+
+    Parameters
+    ----------
+    data : array-like
+        Array that may have a leading step dimension.
+    default_ndim : int
+        The expected number of dimensions without a step axis.
+
+    Returns
+    -------
+    int
+        The length of the step dimension, or 1 if the data has none.
+    """
+    return len(data) if np.ndim(data) > default_ndim else 1
 
 
 def check_single_step(steps):

@@ -257,7 +257,7 @@ class Kpoint:
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -269,15 +269,16 @@ class Kpoint:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the **k** points data into a dictionary.
 
         Parameters
         ----------
-        selection : str, optional
-            You can select "kpoints_opt" or "kpoints_wan" here, to read from those
-            meshes instead of the default one defined by the KPOINTS file. After a GW
-            calculation, "qp" selects the **k** points of the quasiparticle energies.
+        selection : str | None, optional
+            Select the source of the **k** points: "kpoints_opt" or "kpoints_wan"
+            read from those meshes instead of the default one defined by the KPOINTS
+            file. After a GW calculation, "qp" selects the **k** points of the
+            quasiparticle energies.
 
         Returns
         -------
@@ -312,7 +313,7 @@ class Kpoint:
             KpointHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
@@ -518,6 +519,8 @@ class Kpoint:
         finish
             The ending **k** point of the path segment in fractional (crystal)
             coordinates. Expects exactly 3 coordinates.
+        selection
+            Select the source of the **k** points, as for :py:meth:`read`.
 
         Returns
         -------

@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+from typing import Annotated
 
 import numpy as np
 
@@ -23,7 +24,7 @@ particularly useful if the lattice vector you cut is aligned with a Cartesian
 direction.
 """
 PARAMETERS = """\
-a, b, c : float
+a, b, c : float | None
     You must select exactly one of these to specify which of the three lattice
     vectors you want to remove to form a plane. The assigned value represents
     the fractional length along this lattice vector, so `a = 0.3` will remove
@@ -31,7 +32,7 @@ a, b, c : float
     of the first vector in the b-c plane. The fractional height uses periodic
     boundary conditions.
 
-normal : str | None
+normal : Literal["x", "y", "z", "auto"] | None
     If not set, py4vasp will align the first remaining lattice vector with the
     x-axis and the second one such that the angle between the lattice vectors
     is preserved. You can set it to "x", "y", or "z"; then py4vasp will rotate
@@ -40,6 +41,41 @@ normal : str | None
     Cartesian axis. You may also set it to "auto" so that py4vasp chooses a
     close Cartesian axis if it can find any.
 """
+
+
+@dataclasses.dataclass(frozen=True)
+class ExclusiveGroup:
+    """Marks a parameter as one of a group of which a caller sets at most one.
+
+    Attach it to the annotation of every member of the group with ``Annotated``. Tools
+    that build a form from the annotations read it with
+    ``typing.get_type_hints(..., include_extras=True)``; type checkers ignore it.
+    """
+
+    name: str
+    "All parameters marked with the same name form one group."
+    required: bool = False
+    "If set, exactly one parameter of the group must be given."
+
+
+@dataclasses.dataclass(frozen=True)
+class Range:
+    """Marks the interval of values that is meaningful for a numeric parameter.
+
+    It describes the parameter; py4vasp does not reject a value outside it.
+    """
+
+    minimum: float | None = None
+    "The smallest meaningful value, or None if there is no lower bound."
+    maximum: float | None = None
+    "The largest meaningful value, or None if there is no upper bound."
+
+
+# The cut is periodic, so a fraction of 1.3 selects the same plane as 0.3. The unit
+# interval therefore contains every distinct plane. PARAMETERS documents a, b, and c.
+CutFraction = Annotated[
+    float | None, ExclusiveGroup("cut", required=True), Range(minimum=0.0, maximum=1.0)
+]
 
 
 @dataclasses.dataclass

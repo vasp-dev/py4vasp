@@ -137,8 +137,11 @@ def test_print_writes_to_stdout(exciton_density, capsys):
     assert capsys.readouterr().out == str(exciton_density) + "\n"
 
 
-def test_selections(exciton_density):
-    assert exciton_density.selections() == {"exciton_density": ["default"]}
+def test_selections(exciton_density, raw_data):
+    number_excitons = len(raw_data.exciton_density().exciton_charge)
+    excitons = [str(index + 1) for index in range(number_excitons)]
+    expected = {"exciton_density": ["default"], "exciton": excitons}
+    assert exciton_density.selections() == expected
 
 
 def test_factory_methods(raw_data, check_factory_methods):

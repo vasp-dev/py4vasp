@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 from py4vasp import exception, raw
 from py4vasp._calculation.dispatch import (
     DataSource,
+    is_available_raw,
     merge_default,
     merge_strings,
     quantity,
@@ -162,7 +163,7 @@ class ElectronPhononChemicalPotential:
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         """
         Return a formatted string representation of the electron-phonon chemical potential object.
         """
@@ -201,7 +202,7 @@ class ElectronPhononChemicalPotential:
             ElectronPhononChemicalPotentialHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> Dict[str, Any]:
+    def to_dict(self, selection: str | None = None) -> Dict[str, Any]:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection)
 
@@ -258,3 +259,10 @@ class ElectronPhononChemicalPotential:
             self._handler_factory,
             ElectronPhononChemicalPotentialHandler.label,
         )
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        # VASP writes only the doping set in the INCAR file, so one of them suffices
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
+            return False
+        dopings = (raw_data.carrier_den, raw_data.carrier_per_cell, raw_data.mu)
+        return not all(check.is_none(doping) for doping in dopings)

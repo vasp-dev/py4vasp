@@ -595,8 +595,14 @@ def test_print_writes_to_stdout(nics, capsys):
     assert capsys.readouterr().out == str(nics) + "\n"
 
 
-def test_selections(nics):
-    assert nics.selections() == {"nics": ["default"]}
+def test_selections_on_a_grid(nics_on_a_grid):
+    elements = list(NicsHandler._init_directions_dict())
+    assert nics_on_a_grid.selections() == {"nics": ["default"], "element": elements}
+
+
+def test_selections_at_points(nics_at_points):
+    # only a grid can be shown or cut, so the points take no tensor element
+    assert nics_at_points.selections() == {"nics": ["default"]}
 
 
 def test_factory_methods(raw_data, check_factory_methods):
