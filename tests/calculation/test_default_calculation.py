@@ -66,6 +66,17 @@ def test_selections_only_available_reports_present_data(tmp_path):
     assert "piezoelectric_tensor" not in actual
 
 
+def test_selections_only_available_from_file(tmp_path):
+    # from_file reads every source from the given file, so the POSCAR source cannot
+    # be read and is left out instead of failing the whole listing
+    path = tmp_path / "demo_calculation"
+    demo.calculation(path)
+    calc = Calculation.from_file(path / "vaspout.h5")
+    actual = calc.selections(only_available=True)
+    assert "default" in actual["structure"]
+    assert "poscar" not in actual["structure"]
+
+
 def test_selections_evaluable(tmp_path):
     calculation = demo.calculation(tmp_path / "demo_calculation")
     # selections with method parameter should work and return available sources

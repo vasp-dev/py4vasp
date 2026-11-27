@@ -73,6 +73,9 @@ class _State:
         except FileNotFoundError:
             message = f"{path} could not be opened. Please make sure the file exists."
             raise exception.FileAccessError(message) from None
+        except UnicodeDecodeError:
+            message = f"{path} is not a text file and cannot be read as {source.file}."
+            raise exception.FileAccessError(message) from None
 
     def _get_source(self, quantity, source):
         source = source or DEFAULT_SOURCE
