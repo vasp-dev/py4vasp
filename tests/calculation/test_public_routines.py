@@ -8,6 +8,7 @@ the docstrings must parse and read as prose outside the examples.
 """
 
 import inspect
+import re
 import typing
 
 import pytest
@@ -60,6 +61,32 @@ def test_docstring_is_prose_outside_the_examples(routine):
     prose += [entry.description for entry in parsed.parameters + parsed.returns]
     prose += [text for name, text in parsed.sections.items() if name != "Examples"]
     assert not any(">>>" in text for text in prose)
+
+
+# A tool shows the documentation of a routine without its Examples section, so the
+# rest must not send the reader there; it can give a short example inline instead.
+_POINTS_TO_THE_EXAMPLES = re.compile(
+    r"\bexamples?\s+(below|above)\b|\bthe\s+examples\b|\bexamples\s+section\b",
+    re.IGNORECASE,
+)
+
+
+def _all_public_routines():
+    for cls in _quantity_classes():
+        for name in sorted(name for name in dir(cls) if not name.startswith("_")):
+            routine = getattr(cls, name)
+            if callable(routine) and inspect.getdoc(routine):
+                yield pytest.param(routine, id=f"{cls.__name__}.{name}")
+
+
+@pytest.mark.parametrize("routine", _all_public_routines())
+def test_prose_does_not_point_to_the_examples(routine):
+    parsed = docstring.parse(inspect.getdoc(routine))
+    prose = [parsed.summary, parsed.extended_summary]
+    prose += [entry.description for entry in parsed.parameters + parsed.returns]
+    prose += [text for name, text in parsed.sections.items() if name != "Examples"]
+    pointers = [text for text in prose if _POINTS_TO_THE_EXAMPLES.search(text)]
+    assert pointers == []
 
 
 @pytest.mark.parametrize("routine", _routines())

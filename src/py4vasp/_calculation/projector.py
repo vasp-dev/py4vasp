@@ -40,8 +40,8 @@ selection : str | None
     "Ti(d) - O(p)" would project onto the d orbitals of Ti and the p orbitals of O and
     then compute the difference of these two selections.
 
-    If you are unsure about the specific projections that are available, the
-    examples below show how to list them.
+    If you are unsure about the specific projections that are available,
+    :py:meth:`selections` lists them under the keys "atom", "orbital", and "spin".
 """
 # The example belongs to the Examples section of every routine that documents its
 # selection with selection_doc, after the example data has been created there.

@@ -604,8 +604,8 @@ projection.
     “Ti(d) - O(p)” would project onto the d orbitals of Ti and the p orbitals of O and
     then compute the difference of these two selections.
 
-    If you are unsure about the specific projections that are available, the
-    examples below show how to list them.
+    If you are unsure about the specific projections that are available,
+    [`selections()`](Dos/selections) lists them under the keys “atom”, “orbital”, and “spin”.
 
 
 
@@ -731,8 +731,8 @@ corresponding to the selected projections.
     “Ti(d) - O(p)” would project onto the d orbitals of Ti and the p orbitals of O and
     then compute the difference of these two selections.
 
-    If you are unsure about the specific projections that are available, the
-    examples below show how to list them.
+    If you are unsure about the specific projections that are available,
+    [`selections()`](Dos/selections) lists them under the keys “atom”, “orbital”, and “spin”.
 
 
 

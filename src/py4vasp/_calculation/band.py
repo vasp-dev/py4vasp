@@ -854,8 +854,9 @@ class Band(graph.Mixin):
             "Ti(d) - O(p)" would project onto the d orbitals of Ti and the p orbitals of O
             and then compute the difference of these two selections.
 
-            If you are unsure about the specific projections that are available, the
-            examples below show how to list them.
+            If you are unsure about the specific projections that are available,
+            :py:meth:`selections` lists them under the keys "atom", "orbital", and
+            "spin".
         normal : Literal["x", "y", "z", "auto"] | None
             Set the Cartesian direction "x", "y", or "z" parallel to which the normal of
             the plane is rotated. Alteratively, set it to "auto" to rotate to the closest
