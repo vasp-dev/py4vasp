@@ -319,8 +319,7 @@ def inspect(calculation, quantity: str, method: str) -> Routine:
     ({'kind': 'number', 'minimum': 0.0, 'maximum': 1.0}, 'cut')
     >>> routine["groups"]
     {'cut': {'exclusive': True, 'required': True, 'fields': ['a', 'b', 'c'],
-     'description': 'Which of the three lattice vectors to remove to form a plane.
-     The plane is spanned by the other two.'}}
+     'description': '...'}}
     """
     return _describe.describe(calculation, quantity, method)
 
@@ -365,7 +364,8 @@ def call(
         ``"3"``, ``"-1"``, ``"2:8"``, or ``"::2"``. Steps count from 0, while printed
         labels count from 1. Only a quantity with steps takes them, only a range if
         :func:`inspect` reports ``"slice"``. A single step must exist in the source, and
-        a range must select at least one of its steps.
+        a range must select at least one of its steps; as in Python, a range that
+        reaches past the last step ends there.
         Without steps, the routine reads the ``default_steps`` :func:`inspect` reports.
     selection : str | None
         What the routine selects from the source, e.g. ``"Sr(d)"``, combined from the
@@ -385,8 +385,8 @@ def call(
     ------
     IncorrectUsage
         If the quantity, routine, or source does not exist, the routine takes no such
-        argument, a required one is missing, more than one of an exclusive group is set,
-        a value does not fit its field, or the steps do not fit the source. An error
+        argument, a required one is missing, more than one of an exclusive group or
+        none of a required one is set, a value does not fit its field, or the steps do not fit the source. An error
         found before the routine runs names the field to mark as invalid in its
         attribute ``field``: the name of the argument or of the exclusive group, or
         ``"source"``, ``"steps"``, or ``"selection"``.

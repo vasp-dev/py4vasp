@@ -60,7 +60,7 @@ class Group(TypedDict):
     fields : list[str]
         The names of the members.
     description : str
-        What the choice between the members means, fit for a heading of the group;
+        What the choice between the members means, fit as help text for the group;
         empty if py4vasp gives none.
     """
 
@@ -503,7 +503,7 @@ def _index_steps(instance, kind, steps, number_steps):
     if isinstance(parsed, slice) and number_steps is not None:
         if not range(number_steps)[parsed]:
             message = (
-                f"The steps {steps} select none of the {number_steps} step(s) the "
+                f"The steps {steps!r} select none of the {number_steps} step(s) the "
                 "source holds, counted from 0."
             )
             raise _invalid("steps", message)

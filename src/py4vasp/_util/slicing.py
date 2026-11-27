@@ -57,7 +57,7 @@ class ExclusiveGroup:
     required: bool = False
     "If set, exactly one parameter of the group must be given."
     description: str = ""
-    "What the choice between the parameters means, e.g. as a heading for the group."
+    "What the choice between the parameters means, e.g. as help text for the group."
 
 
 @dataclasses.dataclass(frozen=True)

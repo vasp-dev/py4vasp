@@ -32,7 +32,12 @@ description. A few things are not described yet:
   int] | None", "Select a single step of Dos" and "PhononBand has no steps" name
   classes, the steps count "from 0" while printouts label them from 1, and `NoData`
   advises passing the source "as the selection, e.g. selection="default"", which
-  `call` forbids.
+  `call` forbids. The descriptions of the selection fields, written for the Python
+  interface, suggest the same.
+- **A reversed range of steps.** `call(calculation, "structure", "to_view",
+  steps="::-1")` passes the check of `call`, since the range selects steps, but the
+  view then raises a bare `ValueError` ("Step must be >= 1") instead of a py4vasp
+  error; energy accepts the same range.
 - **What a form still has to guess.** There is no call that lists the routines of a
   quantity (a tool keeps its own list); the atom axis gives the elements and the
   index range but not which indices belong to which element; `operators` is the same
