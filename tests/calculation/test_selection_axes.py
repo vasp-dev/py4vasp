@@ -122,6 +122,8 @@ def _quantity_with_data(calculations, call_name, method):
         selection = _DEFAULT_SELECTIONS.get(name, {})
         try:
             routine(**required, **({"selection": selection} if selection else {}))
+        except exception.ModuleNotInstalled as error:
+            pytest.skip(str(error))  # the core installation lacks an optional package
         except exception.Py4VaspError:
             continue
         return quantity, required

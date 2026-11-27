@@ -482,7 +482,7 @@ def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4[[0, 1]].read()
     with pytest.raises(exception.IncorrectUsage):
-        Ca3AsBr3[0]
+        Ca3AsBr3[1].read()
 
 
 def test_Sr2TiO4_to_lammps(Sr2TiO4):
@@ -545,6 +545,23 @@ def test_print_all_steps_of_single_structure(raw_data, source):
     structure = Structure(source=DictSource(data))[:]
     assert structure.__str__(source) == str(Structure.from_data(single))
     assert structure.number_steps(source) == 1
+
+
+@pytest.mark.parametrize("steps", (0, -1, slice(None), slice(0, 1), slice(-1, None)))
+def test_single_structure_takes_the_steps_of_its_one_step(raw_data, steps):
+    # A single structure behaves like a trajectory with one step, also as the default
+    # source; it has no steps to label.
+    structure = Structure.from_data(raw_data.structure("Ca3AsBr3"))
+    assert str(structure[steps]) == str(structure)
+    np.testing.assert_equal(structure[steps].read(), structure.read())
+    assert structure[steps].number_steps() == 1
+
+
+@pytest.mark.parametrize("steps", (1, -2, slice(1, 3)))
+def test_single_structure_has_no_other_step(raw_data, steps):
+    structure = Structure.from_data(raw_data.structure("Ca3AsBr3"))
+    with pytest.raises(exception.IncorrectUsage, match="has 1 step"):
+        structure[steps].read()
 
 
 def get_reference_output(step_string, ion_types=None):
@@ -714,7 +731,6 @@ def test_selections(Sr2TiO4):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.structure("Sr2TiO4")
-    parameters = {"__getitem__": {"steps": slice(None)}}
     # the Sr2TiO4 trajectory carries no symmetry, so the symmetry-derived methods
     # raise NoData; they are exercised on the perovskite fixture instead
     # the schema-only selections never opens the data file, so it cannot satisfy the
@@ -726,7 +742,7 @@ def test_factory_methods(raw_data, check_factory_methods):
         "standardized_cell",
         "prototype",
     ]
-    check_factory_methods(Structure, data, parameters, skip_methods=skip_methods)
+    check_factory_methods(Structure, data, skip_methods=skip_methods)
 
 
 # ---------------------------------------------------------------------------

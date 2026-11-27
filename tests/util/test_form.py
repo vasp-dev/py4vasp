@@ -81,6 +81,24 @@ def test_array_like_is_a_number_or_a_list_of_numbers():
     expected = {"kind": "union", "options": [{"kind": "number"}, numbers]}
     assert form.type_spec(numpy.typing.ArrayLike) == expected
     assert form.type_spec(numpy.typing.ArrayLike | None) == expected
+    assert form.type_spec(_array_like_merged_with_none()) == expected
+
+
+def _array_like_merged_with_none():
+    """ArrayLike | None as older numpy versions form it.
+
+    There ArrayLike is a plain union, so adding None merges its members and None into
+    one union; newer versions keep ArrayLike whole as an alias.
+    """
+    array_like = getattr(numpy.typing.ArrayLike, "__value__", numpy.typing.ArrayLike)
+    return typing.Union[(*typing.get_args(array_like), None)]
+
+
+def test_array_like_merged_with_none_takes_numbers_and_none():
+    annotation = _array_like_merged_with_none()
+    assert form.from_json(0.002, annotation) == 0.002
+    assert form.from_json([0.1, 0.2], annotation) == [0.1, 0.2]
+    assert form.from_json(None, annotation) is None
 
 
 def test_type_spec_leaves_out_none():

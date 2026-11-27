@@ -287,6 +287,8 @@ def test_default_steps_are_what_reading_without_steps_reads(kinds_of_data, quant
         arguments = _READ_ARGUMENTS.get(quantity, {})
         try:
             expected = instance.read(**arguments)
+        except exception.ModuleNotInstalled as error:
+            pytest.skip(str(error))  # the core installation lacks an optional package
         except exception.IncorrectUsage:
             continue  # e.g. a structure of one atom has no pair to measure
         indexed = instance[_parse_steps(routine["default_steps"])]

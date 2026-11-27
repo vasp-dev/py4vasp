@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from py4vasp import broadening, demo, exception
-from py4vasp._calculation._describe import call
+from py4vasp._calculation._describe import call, describe
 
 
 @pytest.fixture(scope="module")
@@ -89,6 +89,14 @@ def test_steps_of_a_quantity_without_steps(calculation):
         call(calculation, "density", "to_contour", steps="0", arguments={"a": 0.1})
 
 
+def test_default_steps_fit_a_single_structure(tmp_path):
+    calculation = demo.calculation(tmp_path / "data", selection="surface")
+    routine = describe(calculation, "structure", "print")
+    assert routine["sources"][0]["steps"] == 1
+    actual = call(calculation, "structure", "print", steps=routine["default_steps"])
+    assert actual == call(calculation, "structure", "print")
+
+
 def test_single_step_takes_no_range(calculation):
     with pytest.raises(exception.IncorrectUsage):
         call(calculation, "dos", "to_graph", steps="0:2")
@@ -112,14 +120,11 @@ def test_invalid_arguments_name_their_field(calculation, arguments, field):
 
 
 def test_required_argument(calculation):
-    with pytest.raises(exception.IncorrectUsage, match="cutoff") as error:
-        call(calculation, "neighbor_list", "read")
-    assert error.value.field == "cutoff"
-    actual = call(calculation, "neighbor_list", "read", arguments={"cutoff": 4.0})
-    expected = calculation.neighbor_list.read(cutoff=4.0)
-    assert actual.keys() == expected.keys()
-    for key in expected:
-        assert np.array_equal(actual[key], expected[key])
+    with pytest.raises(exception.IncorrectUsage, match="laser") as error:
+        call(calculation, "raman", "intensity")
+    assert error.value.field == "laser"
+    actual = call(calculation, "raman", "intensity", arguments={"laser": 2.0})
+    np.testing.assert_equal(actual, calculation.raman.intensity(laser=2.0))
 
 
 def test_unknown_source(calculation):
@@ -143,10 +148,10 @@ def test_routine_taking_only_a_selection(calculation):
 
 
 def test_argument_without_annotation_is_passed_on(calculation):
-    actual = call(
-        calculation, "structure", "to_ase", arguments={"supercell": [2, 1, 1]}
-    )
-    assert len(actual) == 2 * len(calculation.structure.to_ase())
+    arguments = {"supercell": [2, 1, 1]}
+    actual = call(calculation, "structure", "to_POSCAR", arguments=arguments)
+    assert actual == calculation.structure.to_POSCAR(supercell=[2, 1, 1])
+    assert actual != calculation.structure.to_POSCAR()
 
 
 def test_data_read_comes_back_as_a_tree(calculation):

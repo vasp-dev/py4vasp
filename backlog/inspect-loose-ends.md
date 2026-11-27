@@ -27,6 +27,10 @@ description. A few things are not described yet:
   and orbitals even if VASP wrote no projections for that mesh, and the routine then
   refuses them. Likewise `selections(selection=...)` adds the axes of the default
   source. Describing the axes per source would fix both.
+- **Ranges of steps reach the routine unchecked.** `call` checks that a single step
+  exists in the source, but passes a range on as it is. A range that selects no step,
+  e.g. `steps="20:30"` on 12 steps, makes the structure raise an error with `field`
+  None instead of `"steps"`, while energy reads an empty range without complaint.
 - **What a form still has to guess.** There is no call that lists the routines of a
   quantity (a tool keeps its own list); the atom axis gives the elements and the
   index range but not which indices belong to which element; `operators` is the same

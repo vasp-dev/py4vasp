@@ -52,6 +52,13 @@ from py4vasp import exception
 from py4vasp._util import docstring, select, slicing
 
 _NONE = type(None)
+# Older numpy versions write ArrayLike as a plain union, so "ArrayLike | None" merges its
+# members and None into one union; newer versions keep ArrayLike whole as an alias.
+_ARRAY_LIKE_MEMBERS = frozenset(
+    typing.get_args(
+        getattr(numpy.typing.ArrayLike, "__value__", numpy.typing.ArrayLike)
+    )
+)
 _SIMPLE = {bool: "boolean", int: "integer", float: "number", str: "text"}
 _LISTS = (list, collections.abc.Sequence)
 _MAPPINGS = (dict, collections.abc.Mapping)
@@ -266,8 +273,15 @@ def _is_union(annotation):
     return typing.get_origin(annotation) in (typing.Union, types.UnionType)
 
 
-def _spec(annotation):
+def _is_array_like(annotation):
     if annotation is numpy.typing.ArrayLike:
+        return True
+    members = {arg for arg in typing.get_args(annotation) if arg is not _NONE}
+    return _is_union(annotation) and members == _ARRAY_LIKE_MEMBERS
+
+
+def _spec(annotation):
+    if _is_array_like(annotation):
         # a form holds a single number or a list of them, numpy accepts much more
         return {"kind": "union", "options": [_spec(float), _spec(list[float])]}
     if _is_union(annotation):
@@ -369,7 +383,7 @@ def _from_json(value, annotation):
         if is_nullable(annotation):
             return None
         raise _mismatch(value, annotation)
-    if annotation is numpy.typing.ArrayLike:
+    if _is_array_like(annotation):
         return _from_json(value, float | list[float])
     if _is_union(annotation):
         return _union_from_json(value, annotation)

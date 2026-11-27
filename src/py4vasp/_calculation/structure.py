@@ -611,13 +611,14 @@ Atoms # atomic
         return range(len(self._raw_structure.positions))[self._slice]
 
     def _step_string(self):
-        if self._is_slice and self._is_trajectory:
+        if not self._is_trajectory:
+            return ""  # a single structure has no steps to label
+        if self._is_slice:
             # the printout shows the last step, so name it and the range it is from
             steps = self._selected_steps()
             first, last = steps[0] + 1, steps[-1] + 1
             return f" (step {last} of range {first}:{last})"
-        elif self._is_slice or self._steps == -1:
-            # all steps of a single structure are the structure itself
+        elif self._steps == -1:
             return ""
         else:
             return f" (step {self._steps + 1})"
@@ -813,6 +814,9 @@ class Structure(view.Mixin):
     1
     >>> calculation.structure[1:4].number_steps()
     3
+
+    A single structure, e.g., of a static calculation, behaves like a trajectory with
+    one step: ``[0]``, ``[-1]``, and ``[:]`` select it, any other step raises an error.
     """
 
     A_to_nm = 0.1
@@ -852,14 +856,8 @@ class Structure(view.Mixin):
         )
 
     def __getitem__(self, steps) -> "Structure":
-        with self._source.access(self._quantity_name) as raw_structure:
-            is_trajectory = raw_structure.positions.ndim == 3
-        if not is_trajectory:
-            message = (
-                "The structure is not a Trajectory so accessing individual "
-                "elements is not allowed."
-            )
-            raise exception.IncorrectUsage(message)
+        # the handler checks the steps against the source it reads; a single structure
+        # behaves like a trajectory with one step
         new = copy.copy(self)
         new._steps = steps
         return new
