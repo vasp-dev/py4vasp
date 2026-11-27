@@ -283,6 +283,17 @@ def test_access_data_factory_missing_file(tmp_path):
             pass
 
 
+def test_access_data_factory_binary_file(tmp_path):
+    # a file passed explicitly replaces the POSCAR file, e.g. with the HDF5 file;
+    # 0x81 decodes neither as UTF-8 nor as cp1252, the default on Windows
+    (tmp_path / "vaspout.h5").write_bytes(b"\x89HDF\r\n\x1a\n\x81")
+    with pytest.raises(exception.FileAccessError):
+        with raw.access(
+            "structure", path=tmp_path, file="vaspout.h5", selection="poscar"
+        ):
+            pass
+
+
 def test_access_version(mock_access):
     quantity = "version"
     mock_file, sources = mock_access
