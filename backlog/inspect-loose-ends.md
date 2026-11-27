@@ -27,10 +27,6 @@ description. A few things are not described yet:
   and orbitals even if VASP wrote no projections for that mesh, and the routine then
   refuses them. Likewise `selections(selection=...)` adds the axes of the default
   source. Describing the axes per source would fix both.
-- **Ranges of steps reach the routine unchecked.** `call` checks that a single step
-  exists in the source, but passes a range on as it is. A range that selects no step,
-  e.g. `steps="20:30"` on 12 steps, makes the structure raise an error with `field`
-  None instead of `"steps"`, while energy reads an empty range without complaint.
 - **Messages written for Python users.** `call` passes the routine's messages on, and
   some do not fit a form: a value of the wrong type is "not a int | tuple[int, int,
   int] | None", "Select a single step of Dos" and "PhononBand has no steps" name

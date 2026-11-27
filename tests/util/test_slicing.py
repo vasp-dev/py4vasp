@@ -189,7 +189,9 @@ def test_cut_fraction_is_a_required_exclusive_group_of_fractions():
     base, *metadata = typing.get_args(slicing.CutFraction)
     assert typing.get_origin(slicing.CutFraction) is typing.Annotated
     assert base == float | None
-    assert slicing.ExclusiveGroup("cut", required=True) in metadata
+    (group,) = [item for item in metadata if isinstance(item, slicing.ExclusiveGroup)]
+    assert (group.name, group.required) == ("cut", True)
+    assert "lattice vectors" in group.description
     # the fraction wraps periodically, so this interval holds every distinct cut
     assert slicing.Range(minimum=0.0, maximum=1.0) in metadata
 

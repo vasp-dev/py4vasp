@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import dataclasses
+import inspect
 import json
 import typing
 
@@ -11,6 +12,7 @@ from py4vasp import demo, exception
 from py4vasp._calculation import _public_quantities, _quantity_object
 from py4vasp._calculation._describe import (
     _default_steps,
+    _groups,
     _hints,
     _parse_steps,
     _step_selection,
@@ -21,7 +23,7 @@ from py4vasp._calculation.electron_phonon_bandgap import ElectronPhononBandgap
 from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
 from py4vasp._calculation.electron_phonon_transport import ElectronPhononTransport
 from py4vasp._calculation.electronic_minimization import ElectronicMinimization
-from py4vasp._util import form
+from py4vasp._util import form, slicing
 from py4vasp.raw import VaspData
 
 
@@ -85,8 +87,28 @@ def test_cut_plane_forms_a_required_exclusive_group(calculation):
     assert a["group"] == "cut"
     normal = _field(routine, "normal")
     assert normal["type"]["choices"] == ["x", "y", "z", "auto"]
-    group = {"exclusive": True, "required": True, "fields": ["a", "b", "c"]}
+    description = (
+        "Which of the three lattice vectors to remove to form a plane. The plane is "
+        "spanned by the other two."
+    )
+    group = {
+        "exclusive": True,
+        "required": True,
+        "fields": ["a", "b", "c"],
+        "description": description,
+    }
     assert routine["groups"] == {"cut": group}
+
+
+def test_group_without_description():
+    member = typing.Annotated[int | None, slicing.ExclusiveGroup("pick")]
+
+    def routine(first: member = None, second: member = None):
+        pass
+
+    parameters = inspect.signature(routine).parameters.values()
+    groups = _groups(parameters, _hints(routine))
+    assert groups["pick"]["description"] == ""
 
 
 def test_aliases_are_documented_where_they_point(calculation):

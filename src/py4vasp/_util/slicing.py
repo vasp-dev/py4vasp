@@ -56,6 +56,8 @@ class ExclusiveGroup:
     "All parameters marked with the same name form one group."
     required: bool = False
     "If set, exactly one parameter of the group must be given."
+    description: str = ""
+    "What the choice between the parameters means, e.g. as a heading for the group."
 
 
 @dataclasses.dataclass(frozen=True)
@@ -73,9 +75,15 @@ class Range:
 
 # The cut is periodic, so a fraction of 1.3 selects the same plane as 0.3. The unit
 # interval therefore contains every distinct plane. PARAMETERS documents a, b, and c.
-CutFraction = Annotated[
-    float | None, ExclusiveGroup("cut", required=True), Range(minimum=0.0, maximum=1.0)
-]
+_CUT = ExclusiveGroup(
+    "cut",
+    required=True,
+    description=(
+        "Which of the three lattice vectors to remove to form a plane. The plane is "
+        "spanned by the other two."
+    ),
+)
+CutFraction = Annotated[float | None, _CUT, Range(minimum=0.0, maximum=1.0)]
 
 
 @dataclasses.dataclass

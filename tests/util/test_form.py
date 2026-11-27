@@ -131,7 +131,7 @@ def test_is_nullable(annotation, expected):
 
 def test_find_marker():
     group = form.find_marker(slicing.CutFraction, slicing.ExclusiveGroup)
-    assert group == slicing.ExclusiveGroup("cut", required=True)
+    assert (group.name, group.required) == ("cut", True)
     assert form.find_marker(float | None, slicing.ExclusiveGroup) is None
 
 

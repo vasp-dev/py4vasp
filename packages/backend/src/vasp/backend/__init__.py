@@ -318,7 +318,9 @@ def inspect(calculation, quantity: str, method: str) -> Routine:
     >>> cut["type"], cut["group"]
     ({'kind': 'number', 'minimum': 0.0, 'maximum': 1.0}, 'cut')
     >>> routine["groups"]
-    {'cut': {'exclusive': True, 'required': True, 'fields': ['a', 'b', 'c']}}
+    {'cut': {'exclusive': True, 'required': True, 'fields': ['a', 'b', 'c'],
+     'description': 'Which of the three lattice vectors to remove to form a plane.
+     The plane is spanned by the other two.'}}
     """
     return _describe.describe(calculation, quantity, method)
 
@@ -362,7 +364,8 @@ def call(
         The steps to select, written as Python indexes a sequence without the brackets:
         ``"3"``, ``"-1"``, ``"2:8"``, or ``"::2"``. Steps count from 0, while printed
         labels count from 1. Only a quantity with steps takes them, only a range if
-        :func:`inspect` reports ``"slice"``, and a single step must exist in the source.
+        :func:`inspect` reports ``"slice"``. A single step must exist in the source, and
+        a range must select at least one of its steps.
         Without steps, the routine reads the ``default_steps`` :func:`inspect` reports.
     selection : str | None
         What the routine selects from the source, e.g. ``"Sr(d)"``, combined from the

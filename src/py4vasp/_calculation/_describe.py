@@ -59,11 +59,15 @@ class Group(TypedDict):
         If true, exactly one member must be set; otherwise at most one.
     fields : list[str]
         The names of the members.
+    description : str
+        What the choice between the members means, fit for a heading of the group;
+        empty if py4vasp gives none.
     """
 
     exclusive: bool
     required: bool
     fields: list[str]
+    description: str
 
 
 class Field(TypedDict):
@@ -401,10 +405,12 @@ def _groups(parameters, hints):
         if marker is None:
             continue
         group = groups.setdefault(
-            marker.name, {"exclusive": True, "required": False, "fields": []}
+            marker.name,
+            {"exclusive": True, "required": False, "fields": [], "description": ""},
         )
         group["required"] = group["required"] or marker.required
         group["fields"].append(parameter.name)
+        group["description"] = group["description"] or marker.description
     return groups
 
 
@@ -492,6 +498,13 @@ def _index_steps(instance, kind, steps, number_steps):
             message = (
                 f"The step {parsed} does not exist, the source holds {number_steps} "
                 "step(s) counted from 0."
+            )
+            raise _invalid("steps", message)
+    if isinstance(parsed, slice) and number_steps is not None:
+        if not range(number_steps)[parsed]:
+            message = (
+                f"The steps {steps} select none of the {number_steps} step(s) the "
+                "source holds, counted from 0."
             )
             raise _invalid("steps", message)
     return instance[parsed]

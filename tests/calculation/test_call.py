@@ -87,6 +87,21 @@ def test_single_step_beyond_the_history(calculation):
     assert error.value.field == "steps"
 
 
+@pytest.mark.parametrize("quantity", ("structure", "energy"))
+def test_range_of_steps_beyond_the_history(calculation, quantity):
+    # the default sources hold 12 steps, so the range selects none of them
+    with pytest.raises(exception.IncorrectUsage, match="20:30") as error:
+        call(calculation, quantity, "read", steps="20:30")
+    assert error.value.field == "steps"
+
+
+def test_range_of_steps_that_reaches_past_the_history(calculation):
+    # as in Python, a range is cut to the steps that exist
+    actual = call(calculation, "energy", "read", steps="10:30")
+    expected = calculation.energy[10:30].read()
+    assert actual.keys() == expected.keys()
+
+
 def test_steps_of_a_quantity_without_steps(calculation):
     with pytest.raises(exception.IncorrectUsage):
         call(calculation, "density", "to_contour", steps="0", arguments={"a": 0.1})
