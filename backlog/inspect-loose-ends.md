@@ -34,6 +34,15 @@ description. A few things are not described yet:
   advises passing the source "as the selection, e.g. selection="default"", which
   `call` forbids. The descriptions of the selection fields, written for the Python
   interface, suggest the same.
+- **Pointers to text a tool does not show.** A tool shows the summary, the parameters,
+  the returns and the notes of a routine, but not the docstring of its class.
+  `raman.intensity` ends the description of `minimum_frequency` with "see the Notes of
+  this class", which a form cannot follow. The point of those notes fits in one
+  sentence: VASP stores only the magnitude of each frequency, so an unstable mode looks
+  like a stable one, and `phonon.mode` reports it as imaginary. Likewise,
+  `force_constant.read` says "see the class documentation for the sign convention". The
+  test that keeps the prose from pointing to the Examples section
+  (`test_prose_does_not_point_to_the_examples`) could also catch pointers to the class.
 - **A reversed range of steps.** `call(calculation, "structure", "to_view",
   steps="::-1")` passes the check of `call`, since the range selects steps, but the
   view then raises a bare `ValueError` ("Step must be >= 1") instead of a py4vasp

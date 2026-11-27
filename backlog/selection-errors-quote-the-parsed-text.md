@@ -28,3 +28,13 @@ More uneven messages, found by a simulated user of the selections:
 - `structure.read("fianl")` passes the typo to the ion types and then advises
   `selection="fianl"`.
 - Out-of-range steps are quoted as Python objects, e.g. `slice(120, 130, None)`.
+
+Found by a simulated user of the projections of dos and band:
+- An atom index outside the structure, `8(d)` in a cell of 7 atoms or `0(d)` (indices
+  start at 1), answers "Could not parse the selection "8", please check the spelling
+  and capitalization" instead of saying how many atoms there are.
+- VASP's own name for an orbital, `x2-y2` as in the PROCAR, is split at the minus sign:
+  `Ti(x2-y2)` complains about "x2" and suggests "fzx2". `Ti(dx2-y2)` does get the
+  right suggestion, `dx2y2`.
+- `3(d)` is labelled `Ti_1_d` in the result. The label counts within the element, the
+  selection counts in the order of the POSCAR, so `Ti_1` reads like atom 1.
