@@ -103,7 +103,7 @@ def _part_mask(part, elements, source, neighbor):
         f"The selection '{part}' is not supported. Please select pairs of atom "
         "types with a tilde, e.g. 'Sr~Ti', or a single atom type, e.g. 'Sr'."
     )
-    raise exception.IncorrectUsage(message)
+    raise exception.IncorrectUsage(message, field="selection")
 
 
 def _raise_if_unknown(atom_type, elements):
@@ -113,7 +113,7 @@ def _raise_if_unknown(atom_type, elements):
             f"The atom type '{atom_type}' is not present in the structure. "
             f"The available atom types are: {available}."
         )
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
 
 class NeighborListHandler:

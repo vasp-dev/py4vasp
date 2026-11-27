@@ -10,6 +10,12 @@
   selects steps, indexing a density selects a source. Both are documented, but a user
   who learned one expects the other to work the same way.
 
+- **Some selections crash with a TypeError.** `raman.to_graph`, `activity`, and
+  `excitation_profile` with `selection="Sr~O"`, `"1:2"`, or `"band=x"` raise "sequence
+  item 0: expected str instance, Group found"; `bandgap.to_graph(selection="band=x")`
+  raises "unhashable type: 'Assignment'". Both should reject the selection with an
+  `IncorrectUsage` that names it (`field="selection"`).
+
 Open question found earlier: `born_effective_charge.print()` says "cumulative output"
 where OUTCAR says "cummulative output" (`linear_response.F:967`, `pead.F:2356,2368`), so
 grepping one for the other fails. Copy VASP's spelling, or keep the correct one?

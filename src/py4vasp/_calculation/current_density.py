@@ -137,7 +137,8 @@ class CurrentDensityHandler:
         if key not in self._raw_current_density.valid_indices:
             raise exception.IncorrectUsage(
                 f"Selection {key!r} is not available. "
-                f"Please use one of {list(self._raw_current_density.valid_indices)}."
+                f"Please use one of {list(self._raw_current_density.valid_indices)}.",
+                field="selection",
             )
         return f"current_{key}", self._raw_current_density[key].current_density[:].T
 

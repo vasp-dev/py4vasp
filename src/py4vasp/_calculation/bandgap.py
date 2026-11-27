@@ -225,7 +225,8 @@ Fermi energy:    {fermi_energy}"""
     def _raise_error_if_unused_selection(self, selection):
         if rest := set(selection).difference(GAPS).difference(COMPONENTS):
             raise exception.IncorrectUsage(
-                f"A part of your selection {rest} could not be mapped to a valid selection"
+                f"A part of your selection {rest} could not be mapped to a valid selection",
+                field="selection",
             )
 
     def _parse_components(self, selection):
@@ -234,7 +235,8 @@ Fermi energy:    {fermi_energy}"""
             components = ("independent",)
         elif not self._spin_polarized():
             raise exception.IncorrectUsage(
-                f"You selected a component {components} but the VASP calculation did not include spin polarization."
+                f"You selected a component {components} but the VASP calculation did not include spin polarization.",
+                field="selection",
             )
         return components
 
@@ -244,7 +246,8 @@ Fermi energy:    {fermi_energy}"""
             labels = GAPS.keys()
         elif len(labels) > 1:
             raise exception.IncorrectUsage(
-                f"Two conflicting labels selected {labels}. Please check your input."
+                f"Two conflicting labels selected {labels}. Please check your input.",
+                field="selection",
             )
         return labels
 

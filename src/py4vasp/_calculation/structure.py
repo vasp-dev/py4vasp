@@ -815,8 +815,10 @@ class Structure(view.Mixin):
     >>> calculation.structure[1:4].number_steps()
     3
 
-    A single structure, e.g., of a static calculation, behaves like a trajectory with
-    one step: ``[0]``, ``[-1]``, and ``[:]`` select it, any other step raises an error.
+    A single structure, e.g., read from a POSCAR file, has no other steps: ``[0]``,
+    ``[-1]``, and ``[:]`` all select the structure itself, and any other step raises an
+    error. Unlike for a trajectory, a range of steps then adds no axis for the steps,
+    so the volume is a single number and the lattice vectors a 3x3 matrix.
     """
 
     A_to_nm = 0.1

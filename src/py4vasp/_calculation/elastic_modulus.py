@@ -699,7 +699,7 @@ def _parse_tensor_selection(selection):
                 f"of the elastic moduli {', '.join(_TENSORS)}. Select one or both of "
                 "them, separated by a comma."
             )
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         choices.append(parts[0])
     return tuple(choices)
 

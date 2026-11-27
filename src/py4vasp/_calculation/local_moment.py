@@ -256,12 +256,13 @@ class LocalMomentHandler:
 
     def _raise_error_if_selection_not_available(self, selection):
         if len(selection) != 1:
-            raise exception.IncorrectUsage()
+            raise exception.IncorrectUsage(field="selection")
         selection = selection[0]
         if selection not in ("spin", "orbital", "total"):
             raise exception.IncorrectUsage(
                 f"The selection {selection} is incorrect. Please check if it is spelled "
-                "correctly. Possible choices are total, spin, or orbital."
+                "correctly. Possible choices are total, spin, or orbital.",
+                field="selection",
             )
         if selection != "orbital" or self._has_orbital_moments:
             return
@@ -850,4 +851,6 @@ def _color(selection):
         return _config.VASP_COLORS["purple"]
     if selection == "orbital":
         return _config.VASP_COLORS["red"]
-    raise exception.IncorrectUsage(f"Unknown component {selection} selected.")
+    raise exception.IncorrectUsage(
+        f"Unknown component {selection} selected.", field="selection"
+    )

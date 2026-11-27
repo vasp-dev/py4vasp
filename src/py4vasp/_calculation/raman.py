@@ -378,7 +378,7 @@ class RamanHandler:
             f"crystallite, or one of {directions} for a single element of the tensor "
             "of an oriented crystal."
         )
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def intensity(
         self,

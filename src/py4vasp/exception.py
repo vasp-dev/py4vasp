@@ -7,7 +7,19 @@ The design goal is that all foreseeable exceptions in py4vasp issue an exception
 
 
 class Py4VaspError(Exception):
-    """Base class for all exceptions raised by py4vasp"""
+    """Base class for all exceptions raised by py4vasp
+
+    Parameters
+    ----------
+    field : str | None
+        The name of the argument that holds the unsuitable input, e.g. "selection",
+        so that a tool can point the user at it. None if no argument is to blame or
+        it is not known.
+    """
+
+    def __init__(self, *args, field=None):
+        super().__init__(*args)
+        self.field = field
 
 
 class RefinementError(Py4VaspError):
@@ -16,18 +28,7 @@ class RefinementError(Py4VaspError):
 
 
 class IncorrectUsage(Py4VaspError):
-    """The user provided input is not suitable for processing
-
-    Parameters
-    ----------
-    field : str | None
-        The name of the argument that holds the unsuitable input, e.g. "selection",
-        so that a tool can point the user at it. None if it is not known.
-    """
-
-    def __init__(self, *args, field=None):
-        super().__init__(*args)
-        self.field = field
+    """The user provided input is not suitable for processing"""
 
 
 class DataMismatch(Py4VaspError):

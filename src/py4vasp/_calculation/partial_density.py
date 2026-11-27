@@ -115,7 +115,7 @@ class PartialDensityHandler:
         if selection == "down":
             return parchg[:, :, :, :, band, kpoint] @ np.array([0.5, -0.5])
         message = f"Spin '{selection}' not understood. Use 'up', 'down' or 'total'."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def to_view(
         self,
@@ -259,7 +259,7 @@ class PartialDensityHandler:
     def _raise_error_if_selection_not_understood(self, selection, mode, spin):
         if len(selection) != int(mode is not None) + int(spin is not None):
             message = f"STM mode '{selection}' was parsed as mode='{mode}' and spin='{spin}' which could not be used. Please use 'constant_height' or 'constant_current' as mode and 'up', 'down', or 'total' as spin."
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
 
     def _get_stm_data(self, spin, stm_settings):
         if 0 not in self.bands() or 0 not in self.kpoints():

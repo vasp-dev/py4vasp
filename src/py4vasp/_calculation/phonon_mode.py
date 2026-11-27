@@ -328,7 +328,7 @@ class PhononModeHandler:
             "combinations like '1 + 2' are not implemented; please select the modes "
             "one by one, e.g. '1, 2, 3'."
         )
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def _number_modes(self) -> int:
         # a dispersion reports the modes of every q point, so they are the last axis
@@ -345,7 +345,7 @@ class PhononModeHandler:
                 f"'{label}' is not a phonon mode of this structure. Please select a "
                 f"mode by the number print labels it with, from 1 to {number_modes}."
             )
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         return number - 1
 
     def _raise_error_if_modes_are_resolved_by_qpoint(self):

@@ -160,7 +160,9 @@ class Routine(TypedDict):
         The explanation of the docstring between its summary and its first section;
         it may contain reStructuredText roles.
     returns : list[Return]
-        What the routine returns, each with its type and description.
+        What the routine returns, each with its type and description; empty if the
+        docstring describes nothing, e.g. for ``print``, which shows text and returns
+        None (call returns that text instead).
     notes : str
         The notes of the docstring, empty if it has none.
     steps : "slice" | "single" | None
@@ -168,7 +170,7 @@ class Routine(TypedDict):
         not at all (None). Each source says how many steps it holds.
     default_steps : str | None
         The steps the routine reads when none are selected, in the notation of the
-        steps of call: "-1" for the last step, ":" for all of them. None if the
+        steps of call: either "-1", the last step, or ":", all of them. None if the
         quantity has no steps.
     sources : list[Source]
         The sources the routine can read from; the first one is the default.

@@ -687,14 +687,14 @@ def _raise_error_if_kind_incorrect(kind, valid_kinds=VALID_KINDS):
 The selection "{kind}" is not a selection for the potential. Only the following \
 selections are allowed: "{'", "'.join(VALID_KINDS)}". \
 {suggest.did_you_mean(kind, valid_kinds)}Please check for spelling errors."""
-    raise exception.IncorrectUsage(message)
+    raise exception.IncorrectUsage(message, field="selection")
 
 
 def _raise_error_if_component_selected(component):
     if not component:
         return
     message = f"Selecting a component {component} is not implemented for quiver plots."
-    raise exception.NotImplemented(message)
+    raise exception.NotImplemented(message, field="selection")
 
 
 def _raise_error_if_no_data(data, kind="total"):

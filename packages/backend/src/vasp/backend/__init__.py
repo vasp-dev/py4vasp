@@ -386,9 +386,12 @@ def call(
         a value does not fit its field, or the steps do not fit the source. An error
         found before the routine runs names the field to mark as invalid in its
         attribute ``field``: the name of the argument or of the exclusive group, or
-        ``"source"``, ``"steps"``, or ``"selection"``. The routine itself names
-        ``"selection"`` when it cannot parse or resolve the selection; any other error
-        of the routine has ``field`` None.
+        ``"source"``, ``"steps"``, or ``"selection"``.
+    Py4VaspError
+        Whatever else the routine raises, e.g. :class:`~py4vasp.exception.NoData`
+        if the source lacks the data. Every error of py4vasp has the attribute
+        ``field``: the routine names ``"selection"`` when it rejects the selection and
+        ``"masses"`` when it rejects the masses; otherwise ``field`` is None.
 
     Examples
     --------

@@ -177,7 +177,7 @@ def _parse_selections(quantity_name, selection):
                 "default source explicitly, e.g. 'default(1, 2)' instead of "
                 "'default, 2'."
             )
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         grouped[DEFAULT_SELECTION] = named + unnamed
     result = []
     for source_name, remaining_list in grouped.items():
@@ -451,7 +451,7 @@ def _dispatch(
                 "further selections. Use `selections` or `is_available` to see "
                 "which sources exist."
             )
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         # a quantity without a default source uses its sole source, as is_available
         selection_name = _effective_source(quantity_name, ctx.selection_name)
         try:

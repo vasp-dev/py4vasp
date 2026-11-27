@@ -31,8 +31,16 @@ description. A few things are not described yet:
   exists in the source, but passes a range on as it is. A range that selects no step,
   e.g. `steps="20:30"` on 12 steps, makes the structure raise an error with `field`
   None instead of `"steps"`, while energy reads an empty range without complaint.
+- **Messages written for Python users.** `call` passes the routine's messages on, and
+  some do not fit a form: a value of the wrong type is "not a int | tuple[int, int,
+  int] | None", "Select a single step of Dos" and "PhononBand has no steps" name
+  classes, the steps count "from 0" while printouts label them from 1, and `NoData`
+  advises passing the source "as the selection, e.g. selection="default"", which
+  `call` forbids.
 - **What a form still has to guess.** There is no call that lists the routines of a
   quantity (a tool keeps its own list); the atom axis gives the elements and the
   index range but not which indices belong to which element; `operators` is the same
   for every routine although not every routine uses arithmetic, pairs, or
-  assignments; and there is no way to check a selection without running the routine.
+  assignments; there is no way to check a selection without running the routine; and
+  nothing says what a step is for a quantity (an ionic step, a QP iteration), so a
+  steps selector can only be labelled "step".

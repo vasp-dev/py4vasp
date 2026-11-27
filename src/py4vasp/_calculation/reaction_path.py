@@ -448,7 +448,7 @@ select pairs of atoms by their index, e.g. '1~2', or by element if it occurs onc
     def to_path(self, selection=None) -> "ReactionPathHandler.Path":
         if not selection:
             message = "Please select the pairs of atoms whose distances define the path, e.g. '1~2, 1~3'. Use `selections` to list all pairs."
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         selections = list(select.Tree.from_selection(selection).selections())
         labels = [_selection_label(selection) for selection in selections]
         atom_pairs = [self._atom_pair(selection) for selection in selections]
@@ -466,7 +466,7 @@ select pairs of atoms by their index, e.g. '1~2', or by element if it occurs onc
         first, second = (_atom_index(atom, elements) for atom in selection[0].group)
         if first == second:
             message = f"The selection '{_selection_label(selection)}' measures the distance of atom {first} to itself. Please select two different atoms."
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         return [first, second]
 
     def _distances(self, first, second):
@@ -590,7 +590,7 @@ def _raise_if_not_pair(selection):
     )
     if not is_pair:
         message = f"The selection '{_selection_label(selection)}' is not a pair of atoms. Please join exactly two atoms with a tilde, e.g. '1~2' or 'C~H', and separate pairs with commas."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
 
 def _atom_index(atom, elements):
@@ -604,13 +604,13 @@ def _atom_index(atom, elements):
         message = f"The element '{atom}' is not present in the structure. The available elements are: {available}."
     else:
         message = f"The element '{atom}' occurs {len(indices)} times in the structure, at the atoms {indices}. Please select the atom by its index instead."
-    raise exception.IncorrectUsage(message)
+    raise exception.IncorrectUsage(message, field="selection")
 
 
 def _check_index(index, number_atoms):
     if not 1 <= index <= number_atoms:
         message = f"The atom index {index} is out of range. Atoms are counted from 1 in the order of the POSCAR file, and the structure has {number_atoms} atoms."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
     return index
 
 

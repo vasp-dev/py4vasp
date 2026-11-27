@@ -130,7 +130,9 @@ class ElectronicMinimizationHandler:
                 key = selectors[0].label(sel)
                 columns = [selector[sel] for selector in selectors]
             except exception.IncorrectUsage as error:
-                raise exception.RefinementError(_SELECTION_ERROR_MESSAGE) from error
+                raise exception.RefinementError(
+                    _SELECTION_ERROR_MESSAGE, field="selection"
+                ) from error
             if sanitize:
                 columns = [self._sanitize(column) for column in columns]
             values = [list(column) for column in columns]
