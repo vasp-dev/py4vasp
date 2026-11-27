@@ -124,6 +124,25 @@ class Field(TypedDict):
     group: NotRequired[str]
 
 
+class Return(TypedDict):
+    """One value a routine returns, as its docstring describes it.
+
+    Attributes
+    ----------
+    name : str
+        The name of the value; empty for the usual single, unnamed value.
+    type : str
+        The type as the docstring writes it, e.g. "dict" or "Graph"; empty if the
+        docstring gives none.
+    description : str
+        What the value contains; it may contain reStructuredText roles.
+    """
+
+    name: str
+    type: str
+    description: str
+
+
 class Routine(TypedDict):
     """How a routine of a quantity is called and what it does.
 
@@ -138,11 +157,19 @@ class Routine(TypedDict):
     summary : str
         The first line of the docstring, fit for a title.
     description : str
-        The explanation, what the routine returns, and notes, without examples; it
-        may contain reStructuredText roles.
+        The explanation of the docstring between its summary and its first section;
+        it may contain reStructuredText roles.
+    returns : list[Return]
+        What the routine returns, each with its type and description.
+    notes : str
+        The notes of the docstring, empty if it has none.
     steps : "slice" | "single" | None
         How the quantity selects steps: a range ("slice"), one step ("single"), or
         not at all (None). Each source says how many steps it holds.
+    default_steps : str | None
+        The steps the routine reads when none are selected, in the notation of the
+        steps of call: "-1" for the last step, ":" for all of them. None if the
+        quantity has no steps.
     sources : list[Source]
         The sources the routine can read from; the first one is the default.
     fields : list[Field]
@@ -156,7 +183,10 @@ class Routine(TypedDict):
     available: bool
     summary: str
     description: str
+    returns: list[Return]
+    notes: str
     steps: Literal["slice", "single"] | None
+    default_steps: str | None
     sources: list[Source]
     fields: list[Field]
     groups: dict[str, Group]
@@ -178,12 +208,14 @@ def describe(calculation, quantity: str, method: str) -> Routine:
     -------
     dict
         ``quantity`` and ``method`` as given; ``available``, whether any source has
-        the data the routine needs; ``summary`` and ``description``, the docstring
-        without its examples; ``steps``, "slice" if the quantity takes a range of
-        steps by indexing, "single" if it takes one step, None if it has no steps;
-        ``sources``, each with its ``name``, ``aliases``, whether it is ``available``,
-        and its number of ``steps`` (None if unknown); ``fields``, one per parameter;
-        and ``groups``, the parameters of which only one may be set.
+        the data the routine needs; ``summary``, ``description``, ``returns``, and
+        ``notes``, the parts of the docstring without its examples; ``steps``,
+        "slice" if the quantity takes a range of steps by indexing, "single" if it
+        takes one step, None if it has no steps; ``default_steps``, the steps read
+        without indexing; ``sources``, each with its ``name``, ``aliases``, whether
+        it is ``available``, and its number of ``steps`` (None if unknown);
+        ``fields``, one per parameter; and ``groups``, the parameters of which only
+        one may be set.
 
     Raises
     ------
@@ -214,8 +246,11 @@ def describe(calculation, quantity: str, method: str) -> Routine:
         "method": method,
         "available": available,
         "summary": doc.summary,
-        "description": _description(doc),
+        "description": doc.extended_summary,
+        "returns": _returns(doc),
+        "notes": doc.sections.get("Notes", ""),
         "steps": steps,
+        "default_steps": _default_steps(type(instance), steps),
         "sources": sources,
         "fields": fields,
         "groups": _groups(parameters, hints),
@@ -269,10 +304,16 @@ def _called_routine(instance, method):
     return method
 
 
-def _description(doc):
-    parts = [doc.extended_summary, *(entry.description for entry in doc.returns)]
-    parts.append(doc.sections.get("Notes", ""))
-    return "\n\n".join(part for part in parts if part)
+def _returns(doc):
+    # py4vasp writes "-" where it gives no type for what a routine returns
+    return [
+        {
+            "name": entry.name,
+            "type": "" if entry.type == "-" else entry.type,
+            "description": entry.description,
+        }
+        for entry in doc.returns
+    ]
 
 
 def _step_selection(cls):
@@ -283,6 +324,13 @@ def _step_selection(cls):
     if parameters[:1] != ["steps"]:
         return None  # the index selects something else, e.g. a source or an instance
     return getattr(cls, "_step_selection", "slice")
+
+
+def _default_steps(cls, steps):
+    if steps is None:
+        return None
+    # a quantity that reads more than the last step by default says so
+    return getattr(cls, "_steps_by_default", "-1")
 
 
 def _sources(instance, method, steps):
@@ -418,9 +466,7 @@ def call(
 
 def _invalid(field, message):
     "An error that names the field of the form that holds the wrong value."
-    error = exception.IncorrectUsage(message)
-    error.field = field
-    return error
+    return exception.IncorrectUsage(message, field=field)
 
 
 def _number_steps_of(source, sources):

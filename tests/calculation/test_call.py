@@ -164,3 +164,17 @@ def test_selection_of_projector_reads_as_text(calculation):
     actual = call(calculation, "projector", "read")
     assert actual["atom"]["Sr"] == "1:2"
     assert actual["atom"]["1"] == "1"
+
+
+@pytest.mark.parametrize("selection", ("Xe", "Sr(", "Sr~"))
+def test_selection_the_routine_cannot_read_names_the_selection(calculation, selection):
+    with pytest.raises(exception.IncorrectUsage) as error:
+        call(calculation, "dos", "to_graph", selection=selection)
+    assert error.value.field == "selection"
+
+
+def test_other_errors_of_the_routine_name_no_field(calculation):
+    # only the routine knows that a supercell must repeat the cell at least once
+    with pytest.raises(exception.IncorrectUsage) as error:
+        call(calculation, "structure", "to_view", arguments={"supercell": [0, 1, 1]})
+    assert error.value.field is None

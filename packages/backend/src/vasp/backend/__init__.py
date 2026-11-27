@@ -15,8 +15,8 @@ consumer only ever has to catch py4vasp's own exception hierarchy.
 
 The two data containers, :class:`CalculationMetaData` and :class:`DatabaseData`, are
 re-exported unchanged; their fields are documented on the py4vasp dataclasses. So are
-the typed dictionaries :class:`Routine`, :class:`Source`, :class:`Field`, and
-:class:`Group` that describe the result of :func:`inspect`.
+the typed dictionaries :class:`Routine`, :class:`Source`, :class:`Field`,
+:class:`Group`, and :class:`Return` that describe the result of :func:`inspect`.
 
 Nothing here is part of py4vasp's public API and none of it appears in the py4vasp
 documentation. The distribution is released in lockstep with py4vasp and pins
@@ -29,7 +29,7 @@ from typing import Dict, List, Optional, Tuple
 
 from py4vasp import exception
 from py4vasp._calculation import _describe, dispatch
-from py4vasp._calculation._describe import Field, Group, Routine, Source
+from py4vasp._calculation._describe import Field, Group, Return, Routine, Source
 from py4vasp._raw import models
 from py4vasp._raw.data import CalculationMetaData
 from py4vasp._raw.data import _DatabaseData as DatabaseData
@@ -43,6 +43,7 @@ __all__ = [
     "DatabaseData",
     "Field",
     "Group",
+    "Return",
     "Routine",
     "Source",
     "all_database_keys",
@@ -362,6 +363,7 @@ def call(
         ``"3"``, ``"-1"``, ``"2:8"``, or ``"::2"``. Steps count from 0, while printed
         labels count from 1. Only a quantity with steps takes them, only a range if
         :func:`inspect` reports ``"slice"``, and a single step must exist in the source.
+        Without steps, the routine reads the ``default_steps`` :func:`inspect` reports.
     selection : str | None
         What the routine selects from the source, e.g. ``"Sr(d)"``, combined from the
         axes :func:`inspect` lists for the field ``selection``. Choose the source with
@@ -384,7 +386,9 @@ def call(
         a value does not fit its field, or the steps do not fit the source. An error
         found before the routine runs names the field to mark as invalid in its
         attribute ``field``: the name of the argument or of the exclusive group, or
-        ``"source"``, ``"steps"``, or ``"selection"``.
+        ``"source"``, ``"steps"``, or ``"selection"``. The routine itself names
+        ``"selection"`` when it cannot parse or resolve the selection; any other error
+        of the routine has ``field`` None.
 
     Examples
     --------

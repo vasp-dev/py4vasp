@@ -83,6 +83,8 @@ def test_keys_follow_the_typed_dictionaries(calculations):
     assert set(routine) == set(typing.get_type_hints(backend.Routine))
     assert set(routine["sources"][0]) == set(typing.get_type_hints(backend.Source))
     assert set(routine["groups"]["cut"]) == set(typing.get_type_hints(backend.Group))
+    returned = backend.inspect(calculations["with data"], "phonon.band", "read")
+    assert set(returned["returns"][0]) == set(typing.get_type_hints(backend.Return))
     field_keys = set(typing.get_type_hints(backend.Field))
     for field in routine["fields"]:
         assert set(field) <= field_keys

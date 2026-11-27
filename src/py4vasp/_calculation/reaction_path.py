@@ -678,6 +678,9 @@ class ReactionPath:
     # is_available checks the structure, which is where the data actually lives.
     _availability_quantity = _DATA_QUANTITY
 
+    # Without indexing, the path covers every step (in the notation of backend.call).
+    _steps_by_default = ":"
+
     def __init__(self, source, quantity_name: str = "reaction_path", steps=slice(None)):
         self._source = source
         self._quantity_name = quantity_name

@@ -88,7 +88,7 @@ class Tree:
         tree = cls(_internal=True)
         selection = selection or ""
         message = f"Selection must be a string. The passed argument {selection} is not allowed."
-        check.raise_error_if_not_string(selection, message)
+        check.raise_error_if_not_string(selection, message, field="selection")
         tree._parse_selection_character_by_character(selection)
         return tree
 
@@ -308,7 +308,7 @@ class Tree:
         if len(left_op) == 1:
             return
         message = f"Left argument of {self._content.character} should only contain one element and not {'('.join(left_op) + (len(left_op) - 1)* ')'}."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def _raise_error_if_opening_parenthesis_without_argument(self):
         if len(self._children) > 0:
@@ -339,7 +339,7 @@ class Tree:
 
     def _raise_error_that_content_and_argument_are_incompatible(self, argument):
         message = f"The argument `{argument}` has a qualitatively different behavior then the content `{self}`. This may occur when a filter would replace the last element."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
 
 @dataclasses.dataclass
@@ -411,7 +411,7 @@ def _raise_error_if_parsing_failed(error, selection, ii):
   {selection}
   {" " * ii}^
 {error}"""
-    raise exception.IncorrectUsage(message)
+    raise exception.IncorrectUsage(message, field="selection")
 
 
 def _raise_error_if_not_internal_call(internal):

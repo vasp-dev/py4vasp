@@ -232,14 +232,14 @@ class Selector:
         if dim1 == dim2:
             return dim1
         message = f"The range {range_} could not be read, because the components correspond to different dimensions."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def _merge_slice(self, range_):
         _, left = self._map[range_.group[0]]
         _, right = self._map[range_.group[1]]
         if not _data_contiguous(left) or not _data_contiguous(right):
             message = f"Cannot read range {range_} because the data is not contiguous."
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         else:
             return slice(left.start, right.stop)
 
@@ -288,7 +288,7 @@ class Selector:
             message = f"""\
 The expected format for '{key}' is integer. The value '{value}' could not be converted \
 to an integer."""
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
 
     def _cast_to_float(self, key, value):
         try:
@@ -297,7 +297,7 @@ to an integer."""
             message = f"""\
 The expected format for '{key}' is float. The value '{value}' could not be converted \
 to a float."""
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
 
     def _raise_error_if_key_not_found(self, key):
         if key in self._map:
@@ -307,7 +307,7 @@ to a float."""
 and capitalization. {did_you_mean(key, valid_keys)}py4vasp supports any of the following \
 selections: "{'", "'.join(valid_keys)}". If some of the selections you expected are not \
 available, please check your INCAR file and the VASP version you are using."""
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def _raise_error_if_assignment_not_allowed(self, assignment, mapping):
         if isinstance(mapping, dict):
@@ -316,7 +316,7 @@ available, please check your INCAR file and the VASP version you are using."""
         message = f"""\
 The key "{assignment.left_operand}" does not support assignments. You used "{assignment}" \
 but py4vasp only support "{'", "'.join(valid_keys)}"."""
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def _raise_error_if_only_assignment_allowed(self, key, mapping):
         if not isinstance(mapping, dict):
@@ -325,7 +325,7 @@ but py4vasp only support "{'", "'.join(valid_keys)}"."""
         message = f"""\
 You tried to access the selection "{key}". However, you need to specify which value you \
 want to select like "{key}=<value>" where <value> is one of "{'", "'.join(valid_keys)}"."""
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def _raise_error_that_argument_not_in_mapping(self, assignment, mapping):
         valid_keys = [str(key) for key in mapping.keys()]
@@ -333,7 +333,7 @@ want to select like "{key}=<value>" where <value> is one of "{'", "'.join(valid_
 Could not parse the selection "{assignment.right_operand}", please check the spelling \
 and capitalization. {did_you_mean(assignment.right_operand, valid_keys)}py4vasp supports \
 any of the following selections: "{'", "'.join(valid_keys)}"."""
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
 
 def _merge_operator(first_operator, second_operator):
@@ -443,7 +443,7 @@ def _raise_error_if_index_used_twice(left_key, right_key):
     if not left_key or not right_key:
         return
     message = f"Conflicting keys '{left_key}' and '{right_key}' act on the same index."
-    raise exception.IncorrectUsage(message)
+    raise exception.IncorrectUsage(message, field="selection")
 
 
 def _raise_error_if_list_not_empty(list_, message):

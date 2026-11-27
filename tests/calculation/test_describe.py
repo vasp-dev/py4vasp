@@ -4,11 +4,18 @@ import dataclasses
 import json
 import typing
 
+import numpy as np
 import pytest
 
 from py4vasp import demo, exception
 from py4vasp._calculation import _public_quantities, _quantity_object
-from py4vasp._calculation._describe import _hints, _step_selection, describe
+from py4vasp._calculation._describe import (
+    _default_steps,
+    _hints,
+    _parse_steps,
+    _step_selection,
+    describe,
+)
 from py4vasp._calculation.current_density import CurrentDensity
 from py4vasp._calculation.electron_phonon_bandgap import ElectronPhononBandgap
 from py4vasp._calculation.electron_phonon_self_energy import ElectronPhononSelfEnergy
@@ -233,3 +240,69 @@ def test_annotations_that_cannot_be_resolved_are_taken_as_anything():
 def test_neighbor_list_takes_a_single_step(calculation):
     # the neighbors are found in one structure, a range of steps is not supported
     assert describe(calculation, "neighbor_list", "read")["steps"] == "single"
+
+
+def test_returns_and_notes_are_described_apart(calculation):
+    routine = describe(calculation, "phonon.band", "read")
+    (returned,) = routine["returns"]
+    assert returned["name"] == ""
+    assert returned["type"] == "dict"
+    assert returned["description"].startswith("Contains the **q**-point path")
+    assert routine["notes"].startswith("VASP reports the branches in THz")
+    assert "Contains the" not in routine["description"]
+    assert "VASP reports" not in routine["description"]
+
+
+def test_return_without_type(calculation):
+    # py4vasp writes "-" where a docstring gives no type for what a routine returns
+    (returned,) = describe(calculation, "energy", "selections")["returns"]
+    assert returned["type"] == ""
+    assert returned["description"] != ""
+
+
+def test_default_steps(calculation):
+    # written as the steps of call: the last step, or all of them
+    assert describe(calculation, "structure", "to_view")["default_steps"] == "-1"
+    assert describe(calculation, "dos", "to_graph")["default_steps"] == "-1"
+    assert describe(calculation, "reaction_path", "read")["default_steps"] == ":"
+    assert describe(calculation, "density", "to_contour")["default_steps"] is None
+
+
+_READ_ARGUMENTS = {
+    "neighbor_list": {"cutoff": 3.0},
+    "reaction_path": {"selection": "1~2"},
+}
+
+
+@pytest.mark.parametrize("quantity", _quantities_with_steps())
+def test_default_steps_are_what_reading_without_steps_reads(kinds_of_data, quantity):
+    # With a single step, every default reads the same; only more steps tell them apart.
+    compared = 0
+    for calculation in kinds_of_data:
+        routine = describe(calculation, quantity, "read")
+        source = routine["sources"][0]
+        if not source["available"] or (source["steps"] or 0) < 2:
+            continue
+        instance = _quantity_object(calculation, quantity)
+        arguments = _READ_ARGUMENTS.get(quantity, {})
+        try:
+            expected = instance.read(**arguments)
+        except exception.IncorrectUsage:
+            continue  # e.g. a structure of one atom has no pair to measure
+        indexed = instance[_parse_steps(routine["default_steps"])]
+        np.testing.assert_equal(indexed.read(**arguments), expected)
+        compared += 1
+    if not compared:
+        pytest.skip(f"the demo data holds no {quantity} of more than one step")
+
+
+def test_default_steps_of_the_electronic_minimization(raw_data):
+    first, last = (raw_data.electronic_minimization() for _ in range(2))
+    joined = np.concatenate((first.convergence_data, last.convergence_data))
+    raw = dataclasses.replace(
+        first, convergence_data=VaspData(joined), is_elmin_converged=[0, 0]
+    )
+    quantity = ElectronicMinimization.from_data(raw)
+    kind = _step_selection(ElectronicMinimization)
+    default = _parse_steps(_default_steps(ElectronicMinimization, kind))
+    np.testing.assert_equal(quantity[default].read(), quantity.read())

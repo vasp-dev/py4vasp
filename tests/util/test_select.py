@@ -1,9 +1,19 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import contextlib
+
 import pytest
 
 from py4vasp import exception
 from py4vasp._util import select
+
+
+@contextlib.contextmanager
+def raises_selection_error():
+    "The error names the selection, so a tool can point at it."
+    with pytest.raises(exception.IncorrectUsage) as error:
+        yield
+    assert error.value.field == "selection"
 
 
 def test_empty_tree():
@@ -331,7 +341,7 @@ def test_filter_multiple(unfiltered, filtered):
 
 @pytest.mark.parametrize("selection", ("A + B", "B + A", "A - B", "B - A"))
 def test_incorrect_combination(selection):
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selections(selection, filter={"A"})
 
 
@@ -366,19 +376,19 @@ def test_contains(selection, expected):
 
 
 def test_incorrect_selection_raises_error():
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         select.Tree.from_selection(1)
 
 
 @pytest.mark.parametrize("selection", [":1", "1:", "1:,2", "a~", "a~,b", "~a"])
 def test_broken_group_raises_error(selection):
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         select.Tree.from_selection(selection)
 
 
 @pytest.mark.parametrize("selection", ["A(B):C", "x(A(1) ~ B)"])
 def test_group_subselection_on_left_raises_error(selection):
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selections(selection)
 
 
@@ -387,19 +397,19 @@ def test_group_subselection_on_left_raises_error(selection):
     ["(", "A(", "A,(", ")", "A)", "A+B)", "A~B)", "A=B)"],
 )
 def test_broken_parenthesis(selection):
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         select.Tree.from_selection(selection)
 
 
 @pytest.mark.parametrize("selection", ["a+", "b-", "a-,b"])
 def test_missing_operand(selection):
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         select.Tree.from_selection(selection)
 
 
 @pytest.mark.parametrize("selection", ["=a", "b=", "a(b)=c"])
 def test_broken_assignment_raises_error(selection):
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selections(selection)
 
 
