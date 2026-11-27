@@ -511,3 +511,12 @@ def test_to_frame_without_projectors(raw_data):
     pytest.importorskip("pandas")
     without_projectors = Dos.from_data(raw_data.dos("Sr2TiO4"))
     assert without_projectors.to_frame() is not None
+
+
+def test_source_without_projections_says_so(tmp_path):
+    # the example data projects only the default mesh, not the KPOINTS_OPT one
+    from py4vasp import demo
+
+    calculation = demo.calculation(tmp_path / "example")
+    with pytest.raises(exception.IncorrectUsage, match="source"):
+        calculation.dos.read("kpoints_opt(Sr(d))")

@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
 import itertools
-from typing import Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 
@@ -21,7 +21,9 @@ from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._raw.schema import DEFAULT_SELECTION
 from py4vasp._third_party import graph, view
-from py4vasp._util import check, documentation, import_, index, select, slicing
+from py4vasp._util import check
+from py4vasp._util import density as _density
+from py4vasp._util import documentation, form, import_, index, select, slicing
 from py4vasp._util.density import SliceArguments, Visualizer
 
 _DEFAULT = 0
@@ -36,7 +38,7 @@ _MAGNETIZATION = ("magnetization", "mag", "m")
 _OPTIONS = ("isolevel", "color", "opacity")
 _COMMON_PARAMETERS = f"""\
 {slicing.PARAMETERS}
-supercell : int | np.ndarray | None = None
+supercell : int | tuple[int, int] | None = None
     Replicate the contour plot periodically a given number of times. If you
     provide two different numbers, the resulting cell will be the two remaining
     lattice vectors multiplied by the specific number.
@@ -420,7 +422,7 @@ class Density(view.Mixin):
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -549,8 +551,8 @@ class Density(view.Mixin):
     def to_view(
         self,
         selection: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
-        **user_options,
+        supercell: int | tuple[int, int, int] | None = None,
+        **user_options: Any,
     ) -> view.View:
         """Plot the selected density as a 3d isosurface within the structure.
 
@@ -561,14 +563,15 @@ class Density(view.Mixin):
             should be visualized.  For a noncollinear calculation, the density has
             4 components which can be represented in a 2x2 matrix. Specify the
             component of the density in terms of the Pauli matrices: sigma_1,
-            sigma_2, sigma_3. You can also select which density VASP computed, e.g.
-            ``"kinetic_energy"``, or both at once like ``"kinetic_energy(3)"``.
+            sigma_2, sigma_3. You can also select the source, i.e. which density VASP
+            computed, e.g. ``"kinetic_energy"``, or both at once like
+            ``"kinetic_energy(3)"``.
 
-        supercell : int | np.ndarray | None = None
+        supercell : int | tuple[int, int, int] | None = None
             If present the data is replicated the specified number of times along each
             direction.
 
-        user_options : dict
+        user_options : Any
             Settings of the isosurface; any other keyword raises an error:
 
             - *isolevel* (default 0.2): the value at which the isosurface is drawn. A
@@ -614,11 +617,11 @@ class Density(view.Mixin):
         self,
         selection: Optional[str] = None,
         *,
-        a: Optional[float] = None,
-        b: Optional[float] = None,
-        c: Optional[float] = None,
-        normal: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
+        a: slicing.CutFraction = None,
+        b: slicing.CutFraction = None,
+        c: slicing.CutFraction = None,
+        normal: Literal["x", "y", "z", "auto"] | None = None,
+        supercell: int | tuple[int, int] | None = None,
     ) -> graph.Graph:
         """Generate a contour plot of the selected component of the density.
 
@@ -627,10 +630,10 @@ class Density(view.Mixin):
         Parameters
         ----------
         selection : str | None = None
-            Select which component of the density you want to visualize, which
-            density VASP computed, e.g. ``"kinetic_energy"``, or both at once like
-            ``"kinetic_energy(3)"``. Please use the `selections` method to get all
-            available choices.
+            Select which component of the density you want to visualize, the source,
+            i.e. which density VASP computed, e.g. ``"kinetic_energy"``, or both at
+            once like ``"kinetic_energy(3)"``. Please use the `selections` method to
+            get all available choices.
 
         {common_parameters}
 
@@ -673,11 +676,11 @@ class Density(view.Mixin):
         self,
         selection: Optional[str] = None,
         *,
-        a: Optional[float] = None,
-        b: Optional[float] = None,
-        c: Optional[float] = None,
-        normal: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
+        a: slicing.CutFraction = None,
+        b: slicing.CutFraction = None,
+        c: slicing.CutFraction = None,
+        normal: Literal["x", "y", "z", "auto"] | None = None,
+        supercell: int | tuple[int, int] | None = None,
     ) -> graph.Graph:
         """Generate a quiver plot of magnetization density.
 
@@ -801,6 +804,20 @@ class Density(view.Mixin):
         {...}
         """
         return bader.charge(self, selection, bader_analysis=bader_analysis)
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("to_view", "to_contour"):
+            return []
+        number_components = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: len(handler._raw_density.charge),
+        )
+        magnetization = {3: list(_MAGNETIZATION)} if number_components == 2 else {}
+        return [_density.component_axis(_COMPONENTS, number_components, magnetization)]
 
 
 def _raise_error_if_color_is_specified(color):

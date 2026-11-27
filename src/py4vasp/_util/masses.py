@@ -88,6 +88,15 @@ def resolve(masses, stoichiometry) -> np.ndarray:
     np.ndarray
         One positive mass per atom in atomic mass units.
     """
+    try:
+        return _resolve(masses, stoichiometry)
+    except exception.IncorrectUsage as error:
+        # the keys read like selections, but the argument at fault is the masses
+        error.field = "masses"
+        raise
+
+
+def _resolve(masses, stoichiometry):
     if masses is None:
         return of(stoichiometry.elements())
     if isinstance(masses, Mapping):

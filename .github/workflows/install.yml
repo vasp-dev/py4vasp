@@ -55,11 +55,14 @@ jobs:
         pip install --progress-bar=off dist/py4vasp-*.whl dist/py4vasp_core-*.whl
         pip install --progress-bar=off pytest hypothesis
         pip install --progress-bar=off ipykernel
+    # conda does not see the numpy that pip installed for py4vasp-core, so without the
+    # pin it may replace it with numpy 1.x, which breaks the h5py wheel built for numpy 2.
     - name: Install mdtraj with conda
       shell: bash -el {0}
       run: |
         conda info
-        conda install -q conda-forge::mdtraj
+        conda install -q conda-forge::mdtraj "conda-forge::numpy>=2"
+        conda list "^(numpy|h5py|hdf5|pytables|mdtraj)$"
     - name: Check that both distributions are installed and the wrapper ships no code
       shell: bash -el {0}
       run: |

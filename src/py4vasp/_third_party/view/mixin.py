@@ -1,6 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
+from typing import Any
 
 from py4vasp._third_party.view.view import View
 
@@ -14,7 +15,7 @@ class Mixin(abc.ABC):
     def to_view(self, *args, **kwargs) -> View:
         pass
 
-    def plot(self, *args, **kwargs) -> View:
+    def plot(self, *args: Any, **kwargs: Any) -> View:
         """Wrapper around :meth:`to_view` method.
 
         This method will visualize the quantity in the structure. Please refer to

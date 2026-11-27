@@ -1,6 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -12,10 +12,11 @@ from py4vasp._calculation.dispatch import (
     merge_default,
     merge_strings,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._third_party import view
-from py4vasp._util import check, index, select
+from py4vasp._util import check, form, index, select
 
 _OPTIONS = ("isolevel", "color", "opacity")
 
@@ -169,9 +170,10 @@ class ExcitonDensity(view.Mixin):
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
 
-        The returned dictionary contains a single item with the name of the quantity
-        mapping to all possible selections. Each of these selections may be passed to
-        the other methods of this quantity to choose which output of VASP is used.
+        The returned dictionary maps the name of the quantity to all its sources; each
+        may be passed to the other methods of this quantity to choose which output of
+        VASP is used. The other items list the tokens the selection of those methods
+        combines, provided this calculation contains the data they are read from.
         Not every calculation contains every source; use :py:meth:`is_available` to
         check which ones this calculation contains.
 
@@ -183,9 +185,12 @@ class ExcitonDensity(view.Mixin):
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -197,7 +202,7 @@ class ExcitonDensity(view.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the exciton density into a dictionary.
 
         Returns
@@ -214,7 +219,7 @@ class ExcitonDensity(view.Mixin):
             ExcitonDensityHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
@@ -237,9 +242,9 @@ class ExcitonDensity(view.Mixin):
     def to_view(
         self,
         selection: str | None = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
+        supercell: int | tuple[int, int, int] | None = None,
         center: bool = False,
-        **user_options,
+        **user_options: Any,
     ) -> view.View:
         """Plot the selected exciton density as a 3d isosurface within the structure.
 
@@ -248,7 +253,7 @@ class ExcitonDensity(view.Mixin):
         selection : str | None = None
             Can be exciton index or a combination, i.e., "1" or "1+2+3"
 
-        supercell : int | np.ndarray | None = None
+        supercell : int | tuple[int, int, int] | None = None
             If present the data is replicated the specified number of times along each
             direction.
 
@@ -256,7 +261,7 @@ class ExcitonDensity(view.Mixin):
             Shift the origin of the unit cell to the center. This is helpful if
             the exciton is at the corner of the cell.
 
-        user_options
+        user_options : Any
             Settings of the isosurface; any other keyword raises an error:
 
             - *isolevel* (default 0.8): the value at which the isosurface is
@@ -323,6 +328,19 @@ class ExcitonDensity(view.Mixin):
         {...}
         """
         return bader.charge(self, selection, bader_analysis=bader_analysis)
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method != "to_view":
+            return []
+        number_excitons = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: len(handler._raw_exciton_density.exciton_charge),
+        )
+        return [form.index_axis("exciton", number_excitons)]
 
 
 def _raise_error_if_no_data(data):

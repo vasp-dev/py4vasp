@@ -1,5 +1,8 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
+import typing
+
 import numpy as np
 import pytest
 
@@ -180,3 +183,28 @@ def test_slice_grid_vector_nontrivial_cell(cut, index, Assert):
         ).T
     actual_data = slicing.grid_vector(grid_vector, plane, fraction)
     Assert.allclose(actual_data, expected_data)
+
+
+def test_cut_fraction_is_a_required_exclusive_group_of_fractions():
+    base, *metadata = typing.get_args(slicing.CutFraction)
+    assert typing.get_origin(slicing.CutFraction) is typing.Annotated
+    assert base == float | None
+    (group,) = [item for item in metadata if isinstance(item, slicing.ExclusiveGroup)]
+    assert (group.name, group.required) == ("cut", True)
+    assert "lattice vectors" in group.description
+    # the fraction wraps periodically, so this interval holds every distinct cut
+    assert slicing.Range(minimum=0.0, maximum=1.0) in metadata
+
+
+@pytest.mark.parametrize(
+    "marker", (slicing.ExclusiveGroup("cut"), slicing.Range(minimum=0.0))
+)
+def test_markers_cannot_be_changed(marker):
+    field = dataclasses.fields(marker)[0].name
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        setattr(marker, field, None)
+
+
+def test_group_and_range_are_optional_by_default():
+    assert slicing.ExclusiveGroup("cut").required is False
+    assert slicing.Range() == slicing.Range(minimum=None, maximum=None)

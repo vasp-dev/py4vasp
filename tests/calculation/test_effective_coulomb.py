@@ -569,3 +569,12 @@ def test_is_available(raw_data):
     assert multiple_frequencies.is_available("default", method="to_graph") is True
     # reading the data works regardless of the number of frequencies
     assert single_frequency.is_available("default") is True
+
+
+def test_plot_takes_the_frequencies_as_a_list(nonpolarized_crpar):
+    # the frequencies a form holds arrive as a list rather than an array
+    pytest.importorskip("scipy")
+    omega = [0.0, 2.5, 5.0]
+    from_list = nonpolarized_crpar.plot("U", omega=omega)
+    from_array = nonpolarized_crpar.plot("U", omega=np.array(omega))
+    assert np.allclose(from_list[0].y, from_array[0].y)

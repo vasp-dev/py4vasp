@@ -271,11 +271,12 @@ def expected_color(selection):
 
 def test_selections(example_moments):
     actual = example_moments.selections()
-    assert actual == {
-        "local_moment": ["default"],
-        "orbital_projection": example_moments.ref.projections,
-        "component": example_moments.ref.components,
-    }
+    # read returns the charge, but to_view only shows the moments
+    moments = [name for name in example_moments.ref.components if name != "charge"]
+    expected = {"local_moment": ["default"]}
+    if moments:
+        expected["component"] = moments
+    assert actual == expected
 
 
 def test_collinear_print(collinear_moments, format_):
@@ -347,7 +348,8 @@ def test_print_writes_to_stdout(collinear_moments, capsys):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.local_moment("collinear")
-    check_factory_methods(LocalMoment, data)
+    # selections reads the data again to offer the tokens of to_view
+    check_factory_methods(LocalMoment, data, skip_methods=["selections"])
 
 
 def test_is_available(raw_data):

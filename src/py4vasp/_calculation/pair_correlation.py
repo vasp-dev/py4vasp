@@ -13,10 +13,11 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._raw.models import PairCorrelationModel
 from py4vasp._third_party import graph
-from py4vasp._util import check, convert, documentation, index, select
+from py4vasp._util import check, convert, documentation, form, index, select
 
 # Minimum height of the total pair correlation function for a local maximum to be
 # considered the first peak. The value corresponds to the ideal-gas baseline, so
@@ -24,9 +25,9 @@ from py4vasp._util import check, convert, documentation, index, select
 _FIRST_PEAK_THRESHOLD = 1.0
 
 
-def _selection_string(default):
+def _selection_string(default, type_="str | None"):
     return f"""\
-selection : str
+selection : {type_}
     String specifying which pair-correlation functions are used. Select
     'total' for the total pair-correlation function or the name of any
     two ion types (e.g. 'Sr~Ti') for a specific pair-correlation function.
@@ -208,7 +209,7 @@ class PairCorrelation(graph.Mixin):
         return PairCorrelationHandler.from_data(raw_data, steps=self._steps)
 
     @documentation.format(selection=_selection_string("all possibilities are read"))
-    def read(self, selection=None) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the pair-correlation function and store it in a dictionary.
 
         Parameters
@@ -251,14 +252,16 @@ class PairCorrelation(graph.Mixin):
             PairCorrelationHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
     @documentation.format(
-        selection=_selection_string("the total pair-correlation function is used")
+        selection=_selection_string(
+            "the total pair-correlation function is used", type_="str"
+        )
     )
-    def to_graph(self, selection="total") -> graph.Graph:
+    def to_graph(self, selection: str = "total") -> graph.Graph:
         """Plot selected pair-correlation functions.
 
         Parameters
@@ -338,9 +341,10 @@ class PairCorrelation(graph.Mixin):
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
 
-        The returned dictionary contains a single item with the name of the quantity
-        mapping to all possible selections. Each of these selections may be passed to
-        the other methods of this quantity to choose which output of VASP is used.
+        The returned dictionary maps the name of the quantity to all its sources; each
+        may be passed to the other methods of this quantity to choose which output of
+        VASP is used. The other items list the tokens the selection of those methods
+        combines, provided this calculation contains the data they are read from.
         Not every calculation contains every source; use :py:meth:`is_available` to
         check which ones this calculation contains.
 
@@ -352,9 +356,12 @@ class PairCorrelation(graph.Mixin):
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -373,4 +380,20 @@ class PairCorrelation(graph.Mixin):
             self._quantity_name,
             PairCorrelationHandler.from_data,
             PairCorrelationHandler.to_database,
+        )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("read", "to_dict", "to_graph"):
+            return []
+        return [form.choice_axis("function", list(self.labels()))]
+
+    def _number_steps(self, source: str) -> int:
+        "How many steps the given source holds; data without steps holds one."
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            source,
+            lambda raw: raw,
+            lambda raw: len(raw.function),
         )

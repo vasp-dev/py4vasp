@@ -371,7 +371,9 @@ def test_selections(bandgap):
             "qp_linearized_kpoint",
             "qp_zeros",
             "qp_zeros_kpoint",
-        ]
+        ],
+        # the gaps to_graph plots; without spin polarization there are no channels
+        "gap": ["fundamental", "direct"],
     }
 
 

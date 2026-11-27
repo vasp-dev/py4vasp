@@ -14,12 +14,13 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    selections_with_axes,
     slice_steps,
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw.models import LocalMomentModel
 from py4vasp._third_party import view
-from py4vasp._util import check, documentation, select
+from py4vasp._util import check, documentation, form, select
 
 _index_note = """\
 Notes
@@ -255,12 +256,13 @@ class LocalMomentHandler:
 
     def _raise_error_if_selection_not_available(self, selection):
         if len(selection) != 1:
-            raise exception.IncorrectUsage()
+            raise exception.IncorrectUsage(field="selection")
         selection = selection[0]
         if selection not in ("spin", "orbital", "total"):
             raise exception.IncorrectUsage(
                 f"The selection {selection} is incorrect. Please check if it is spelled "
-                "correctly. Possible choices are total, spin, or orbital."
+                "correctly. Possible choices are total, spin, or orbital.",
+                field="selection",
             )
         if selection != "orbital" or self._has_orbital_moments:
             return
@@ -360,7 +362,7 @@ class LocalMoment(view.Mixin):
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -450,7 +452,11 @@ class LocalMoment(view.Mixin):
         return self.read(selection)
 
     @documentation.format(selection=_moment_selection)
-    def to_view(self, selection="total", supercell=None):
+    def to_view(
+        self,
+        selection: str = "total",
+        supercell: int | tuple[int, int, int] | None = None,
+    ) -> view.View:
         """Visualize the magnetic moments as arrows inside the structure.
 
         Be aware that the magnetic moments are rescaled for better visibility. The length
@@ -765,15 +771,10 @@ class LocalMoment(view.Mixin):
     def selections(self) -> dict:
         from py4vasp._raw import definition as raw_module
 
-        handler_selections = merge_default(
-            self._source,
-            self._quantity_name,
-            None,
-            self._handler_factory,
-            LocalMomentHandler.selections,
-        )
-        sources = list(raw_module.selections(self._quantity_name))
-        return {self._quantity_name: sources, **handler_selections}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
     def number_steps(self, selection: str | None = None) -> int:
         """Return the number of local moments in the trajectory.
@@ -800,6 +801,22 @@ class LocalMoment(view.Mixin):
             LocalMomentHandler.from_data,
             LocalMomentHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method != "to_view":
+            return []
+        has_orbital_moments = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: handler._has_orbital_moments,
+        )
+        moments = (
+            ("total", "spin", "orbital") if has_orbital_moments else ("total", "spin")
+        )
+        return [form.choice_axis("component", moments)]
 
 
 def _sum_over_orbitals(quantity, is_vector=False):
@@ -834,4 +851,6 @@ def _color(selection):
         return _config.VASP_COLORS["purple"]
     if selection == "orbital":
         return _config.VASP_COLORS["red"]
-    raise exception.IncorrectUsage(f"Unknown component {selection} selected.")
+    raise exception.IncorrectUsage(
+        f"Unknown component {selection} selected.", field="selection"
+    )

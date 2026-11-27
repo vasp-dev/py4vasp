@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import contextlib
 import itertools
 
 import numpy as np
@@ -7,6 +8,14 @@ import pytest
 
 from py4vasp import exception
 from py4vasp._util import index, select
+
+
+@contextlib.contextmanager
+def raises_selection_error():
+    "The error names the selection, so a tool can point at it."
+    with pytest.raises(exception.IncorrectUsage) as error:
+        yield
+    assert error.value.field == "selection"
 
 
 def make_range(left, right):
@@ -185,7 +194,7 @@ def test_error_if_assignment_key_is_invalid():
     data = np.zeros((3, 2))
     map_ = {0: {"x": {}}}
     selector = index.Selector(map_, data)
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selector[(select.Assignment("y", 1),)]
 
 
@@ -193,7 +202,7 @@ def test_error_if_assignment_value_is_not_present():
     data = np.zeros((3, 2))
     map_ = {0: {"x": {1: 0}}}
     selector = index.Selector(map_, data)
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selector[(select.Assignment("x", 2),)]
 
 
@@ -201,7 +210,7 @@ def test_error_if_assignment_used_on_non_mapping():
     data = np.zeros((3, 2))
     map_ = {0: {"x": 1}}
     selector = index.Selector(map_, data)
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selector[(select.Assignment("x", 1),)]
 
 
@@ -217,7 +226,7 @@ def test_error_if_typecasting_fails(selection):
     data = np.zeros((3, 2))
     map_ = {0: {"x": {1: 0}, "y": {1.5: 1}}}
     selector = index.Selector(map_, data)
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selector[selection]
 
 
@@ -228,7 +237,7 @@ def test_error_if_nonassignment_used_on_mapping(selection):
     data = np.zeros((3, 2))
     map_ = {0: {"x": {1: 0}}}
     selector = index.Selector(map_, data)
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selector[selection]
 
 
@@ -486,14 +495,14 @@ def test_error_when_numbers_are_longer_than_one():
 )
 def test_error_when_key_is_not_present(selection):
     map_ = {0: {"B": 1}}
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         index.Selector(map_, np.zeros(10))[selection]
 
 
 def test_error_when_range_belongs_to_different_dimensions():
     map_ = {0: {"A": 1}, 1: {"x": 2}}
     selector = index.Selector(map_, np.zeros((3, 4)))
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selector[(select.Group(["A", "x"], select.range_separator),)]
 
 
@@ -502,13 +511,13 @@ def test_error_when_slice_has_step(range_):
     map_ = {0: {"A": slice(1, 5, -1), "B": 2, "C": [1, 4]}}
     selector = index.Selector(map_, np.zeros(10))
     group = select.Group(range_, select.range_separator)
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         selector[(group,)]
 
 
 def test_error_when_two_selections_for_the_same_dimension():
     map_ = {0: {"A": 1, "B": 2}}
-    with pytest.raises(exception.IncorrectUsage):
+    with raises_selection_error():
         index.Selector(map_, np.zeros(10))[("A", "B")]
 
 

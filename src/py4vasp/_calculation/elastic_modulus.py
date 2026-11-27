@@ -651,7 +651,7 @@ class ElasticModulus:
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -699,7 +699,7 @@ def _parse_tensor_selection(selection):
                 f"of the elastic moduli {', '.join(_TENSORS)}. Select one or both of "
                 "them, separated by a comma."
             )
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         choices.append(parts[0])
     return tuple(choices)
 

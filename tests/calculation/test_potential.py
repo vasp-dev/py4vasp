@@ -12,7 +12,7 @@ from py4vasp._calculation.potential import VALID_KINDS, Potential, PotentialHand
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.models import PotentialModel
 from py4vasp._third_party.view import Isosurface
-from py4vasp._util import slicing
+from py4vasp._util import check, slicing
 
 
 @pytest.fixture(params=["total", "ionic", "hartree", "xc", "all"])
@@ -466,8 +466,43 @@ def test_print_writes_to_stdout(reference_potential, capsys):
     assert capsys.readouterr().out == str(reference_potential) + "\n"
 
 
+_SPIN_COMPONENTS = {
+    1: ["0", "unity", "sigma_0", "scalar"],
+    # a collinear potential has the magnetic z component and two spin channels
+    2: [
+        "0",
+        "unity",
+        "sigma_0",
+        "scalar",
+        "3",
+        "sigma_z",
+        "z",
+        "sigma_3",
+        "up",
+        "down",
+    ],
+    4: [
+        *("0", "unity", "sigma_0", "scalar"),
+        *("1", "sigma_x", "x", "sigma_1"),
+        *("2", "sigma_y", "y", "sigma_2"),
+        *("3", "sigma_z", "z", "sigma_3"),
+    ],
+}
+
+
 def test_selections(reference_potential):
-    assert reference_potential.selections() == {"potential": ["default"]}
+    raw = reference_potential.ref.raw_potential
+    kinds = [kind for kind in VALID_KINDS if not raw_is_none(raw, kind)]
+    components = _SPIN_COMPONENTS[len(raw.total_potential)]
+    assert reference_potential.selections() == {
+        "potential": ["default"],
+        "kind": kinds,
+        "component": components,
+    }
+
+
+def raw_is_none(raw, kind):
+    return check.is_none(getattr(raw, f"{kind}_potential"))
 
 
 def test_factory_methods(raw_data, check_factory_methods):

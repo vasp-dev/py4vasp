@@ -7,6 +7,7 @@ import numpy as np
 from py4vasp import raw
 from py4vasp._calculation.dispatch import (
     DataSource,
+    is_available_raw,
     merge_default,
     merge_strings,
     quantity,
@@ -14,7 +15,7 @@ from py4vasp._calculation.dispatch import (
 from py4vasp._calculation.electron_phonon_accumulator import ElectronPhononAccumulator
 from py4vasp._calculation.electron_phonon_instance import ElectronPhononInstance
 from py4vasp._third_party import graph
-from py4vasp._util import convert, index, select
+from py4vasp._util import check, convert, index, select
 
 
 class BandgapInstance(ElectronPhononInstance, graph.Mixin):
@@ -238,7 +239,7 @@ class ElectronPhononBandgap(abc.Sequence):
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -250,7 +251,7 @@ class ElectronPhononBandgap(abc.Sequence):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None):
+    def read(self, selection: str | None = None) -> dict:
         """
         Converts the bandgap data to a dictionary format.
         """
@@ -262,11 +263,11 @@ class ElectronPhononBandgap(abc.Sequence):
             ElectronPhononBandgapHandler.to_dict,
         )
 
-    def to_dict(self, selection=None):
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
-    def selections(self, selection=None):
+    def selections(self, selection: str | None = None) -> dict:
         """Return a dictionary describing what options are available to read the
         electron transport coefficients.
 
@@ -332,3 +333,12 @@ class ElectronPhononBandgap(abc.Sequence):
     def __len__(self):
         with self._source.access(self._quantity_name) as raw:
             return len(self._handler_factory(raw))
+
+    def _is_available(self, raw_data, selection=None, method=None) -> bool:
+        if not is_available_raw(self._quantity_name, raw_data, selection=selection):
+            return False
+        # VASP does not write the scattering approximation in every run; the instances
+        # can still be read, but printing or listing them needs it
+        reading = method in (None, "read", "to_dict")
+        approximations = raw_data.scattering_approximation
+        return reading or not any(map(check.is_none, approximations))

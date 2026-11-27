@@ -3,7 +3,7 @@
 import copy
 import dataclasses
 import warnings
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -14,13 +14,14 @@ from py4vasp._calculation.dispatch import (
     merge_default,
     merge_strings,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._third_party import view
 from py4vasp._third_party.graph import Graph
 from py4vasp._third_party.graph.contour import Contour
-from py4vasp._util import check, import_, select
+from py4vasp._util import check, form, import_, select
 from py4vasp._util.slicing import plane
 
 _OPTIONS = ("isolevel", "color", "opacity")
@@ -114,7 +115,7 @@ class PartialDensityHandler:
         if selection == "down":
             return parchg[:, :, :, :, band, kpoint] @ np.array([0.5, -0.5])
         message = f"Spin '{selection}' not understood. Use 'up', 'down' or 'total'."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def to_view(
         self,
@@ -258,7 +259,7 @@ class PartialDensityHandler:
     def _raise_error_if_selection_not_understood(self, selection, mode, spin):
         if len(selection) != int(mode is not None) + int(spin is not None):
             message = f"STM mode '{selection}' was parsed as mode='{mode}' and spin='{spin}' which could not be used. Please use 'constant_height' or 'constant_current' as mode and 'up', 'down', or 'total' as spin."
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
 
     def _get_stm_data(self, spin, stm_settings):
         if 0 not in self.bands() or 0 not in self.kpoints():
@@ -432,9 +433,10 @@ class PartialDensity(view.Mixin):
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
 
-        The returned dictionary contains a single item with the name of the quantity
-        mapping to all possible selections. Each of these selections may be passed to
-        the other methods of this quantity to choose which output of VASP is used.
+        The returned dictionary maps the name of the quantity to all its sources; each
+        may be passed to the other methods of this quantity to choose which output of
+        VASP is used. The other items list the tokens the selection of those methods
+        combines, provided this calculation contains the data they are read from.
         Not every calculation contains every source; use :py:meth:`is_available` to
         check which ones this calculation contains.
 
@@ -446,9 +448,12 @@ class PartialDensity(view.Mixin):
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -614,19 +619,19 @@ class PartialDensity(view.Mixin):
     def to_view(
         self,
         selection: str = "total",
-        supercell: Optional[Union[int, np.ndarray]] = None,
-        **user_options,
-    ):
+        supercell: int | tuple[int, int, int] | None = None,
+        **user_options: Any,
+    ) -> view.View:
         """Plot the selected partial density as a 3d isosurface within the structure.
 
         Parameters
         ----------
         selection : str
             Can be *"total"*, *"up"* or *"down"*.
-        supercell : int | np.ndarray | None
+        supercell : int | tuple[int, int, int] | None
             If present the data is replicated the specified number of times along each
             direction.
-        user_options
+        user_options : Any
             Settings of the isosurface; any other keyword raises an error:
 
             - *isolevel* (default 0.2): the value at which the isosurface is
@@ -677,8 +682,8 @@ class PartialDensity(view.Mixin):
         *,
         tip_height: float = 2.0,
         current: float = 1.0,
-        supercell: Union[int, np.ndarray] = 2,
-        stm_settings=None,
+        supercell: int | tuple[int, int] = 2,
+        stm_settings: PartialDensityHandler.STM_settings | None = None,
     ) -> Graph:
         """Generate STM image data from the partial charge density.
 
@@ -694,9 +699,9 @@ class PartialDensity(view.Mixin):
         current : float
             The tunneling current in nA. The default is 1.
             Only used in "constant_current" mode.
-        supercell : int | np.ndarray
+        supercell : int | tuple[int, int]
             The supercell to be used for plotting the STM. The default is 2.
-        stm_settings : STM_settings
+        stm_settings : STM_settings | None
             Settings for the STM simulation concerning smoothening parameters
             and interpolation. The default is STM_settings().
 
@@ -803,6 +808,23 @@ class PartialDensity(view.Mixin):
     @staticmethod
     def _smooth_stm_data(data, stm_settings):
         return PartialDensityHandler._smooth_stm_data(data, stm_settings)
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("to_view", "to_stm"):
+            return []
+        spin_polarized = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: handler._spin_polarized(),
+        )
+        spins = form.choice_axis("spin", _SPINS if spin_polarized else ("total",))
+        if method == "to_view":
+            return [spins]
+        modes = [form.token(names[0], names[1:]) for names in _STM_MODES.values()]
+        return [form.choice_axis("mode", modes), spins]
 
 
 def _raise_error_if_vacuum_too_small(vacuum_thickness, min_vacuum=5.0):

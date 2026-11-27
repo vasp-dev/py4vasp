@@ -15,7 +15,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.models import RamanModel
 from py4vasp._third_party import graph, numeric
-from py4vasp._util import convert, select
+from py4vasp._util import convert, form, select
 
 # Modes below this energy translate or rotate the system instead of vibrating it. The
 # same threshold and the same keyword name the phonon modes use, so that the two
@@ -378,7 +378,7 @@ class RamanHandler:
             f"crystallite, or one of {directions} for a single element of the tensor "
             "of an oriented crystal."
         )
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def intensity(
         self,
@@ -993,7 +993,7 @@ class Raman(graph.Mixin):
         *,
         laser: float = 0.0,
         temperature: float | None = None,
-        shape=None,
+        shape: broadening.Gaussian | broadening.Lorentzian | None = None,
         minimum_frequency: float = _MINIMUM_FREQUENCY,
     ) -> graph.Graph:
         """Broaden the lines of the selected observable into a spectrum.
@@ -1016,7 +1016,7 @@ class Raman(graph.Mixin):
             plot the intensity a spectrometer measures instead, which also needs a
             laser energy; pass 0 for that intensity without the thermal enhancement.
             The axis label says which of the two is drawn.
-        shape : Gaussian | Lorentzian
+        shape : Gaussian | Lorentzian | None
             The line shape every mode is broadened with, by default a Lorentzian of
             1 meV. Use :class:`py4vasp.broadening.Gaussian` or
             :class:`py4vasp.broadening.Lorentzian` and note that the width is an
@@ -1139,3 +1139,17 @@ class Raman(graph.Mixin):
             RamanHandler.from_data,
             RamanHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method != "to_graph":
+            return []
+        selections = self.selections()
+        # a ratio of two activities has no area to broaden into a spectrum
+        observables = [
+            item for item in selections["observables"] if item != "depolarization"
+        ]
+        return [
+            form.choice_axis("observables", observables),
+            form.choice_axis("directions", selections["directions"]),
+        ]

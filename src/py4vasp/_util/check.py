@@ -12,9 +12,9 @@ def is_none(obj):
     return obj is None
 
 
-def raise_error_if_not_string(test_if_string, error_message):
+def raise_error_if_not_string(test_if_string, error_message, field=None):
     if test_if_string.__class__ != str:
-        raise exception.IncorrectUsage(error_message)
+        raise exception.IncorrectUsage(error_message, field=field)
 
 
 def raise_error_if_not_number(test_if_number, error_message):

@@ -189,6 +189,9 @@ def test_selections(MD_energy, raw_data):
         (0, "step 1"),
         (slice(None), "step 4 of range 1:4"),
         (slice(1, 3), "step 3 of range 2:3"),
+        # the label and the values belong to the last step the slice selects
+        (slice(0, 500), "step 4 of range 1:4"),
+        (slice(0, 4, 2), "step 3 of range 1:3"),
     ],
 )
 def test_print(steps, step_label, MD_energy, format_):
@@ -196,7 +199,7 @@ def test_print(steps, step_label, MD_energy, format_):
     if isinstance(steps, int):
         last_step = steps
     else:
-        last_step = (steps.stop or MD_energy.ref.number_steps) - 1
+        last_step = range(MD_energy.ref.number_steps)[steps][-1]
     energies = MD_energy.ref.values[:, last_step]
     lines = [f"Energies at {step_label}:"]
     lines += [
@@ -299,3 +302,9 @@ def test_print_writes_to_stdout(MD_energy, capsys):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.energy("MD")
     check_factory_methods(Energy, data)
+
+
+@pytest.mark.parametrize("steps", (slice(100, None), slice(3, 1)))
+def test_print_empty_range(MD_energy, steps):
+    with pytest.raises(exception.IncorrectUsage):
+        str(MD_energy[steps])

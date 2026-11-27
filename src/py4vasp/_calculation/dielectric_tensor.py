@@ -322,7 +322,7 @@ class DielectricTensor:
 
         return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -364,10 +364,10 @@ def _parse_incar_selection(selection):
         message = (
             f"The selection {unknown} is not one of the dielectric tensors {valid}."
         )
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
     if len(parts) > 1:
         message = f"PHON_DIELECTRIC holds a single tensor, but you selected {parts}."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
     return parts[0] if parts else "clamped_ion"
 
 

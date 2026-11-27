@@ -2,7 +2,7 @@
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import abc
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from py4vasp import exception
 from py4vasp._third_party.graph.graph import (
@@ -24,7 +24,7 @@ class Mixin(abc.ABC):
     def to_graph(self, *args, **kwargs):
         pass
 
-    def plot(self, *args, **kwargs) -> Graph:
+    def plot(self, *args: Any, **kwargs: Any) -> Graph:
         """Plot the data by generating and optionally merging graphs.
 
         This method is almost identical to :py:meth:`to_graph`, but with one key difference:
@@ -33,9 +33,9 @@ class Mixin(abc.ABC):
 
         Parameters
         ----------
-        *args : tuple
+        *args : Any
             Positional arguments passed to :py:meth:`to_graph`.
-        **kwargs : dict
+        **kwargs : Any
             Keyword arguments passed to :py:meth:`to_graph`.
 
         Returns

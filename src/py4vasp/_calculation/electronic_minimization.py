@@ -16,10 +16,11 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._raw.models import ElectronicMinimizationModel
 from py4vasp._third_party import graph
-from py4vasp._util import check, index, select
+from py4vasp._util import check, form, index, select
 
 # VASP labels that clash with the selection grammar (parentheses mean nesting) are
 # exposed under a grammar-safe alias. The raw label is kept for display / printing.
@@ -129,7 +130,9 @@ class ElectronicMinimizationHandler:
                 key = selectors[0].label(sel)
                 columns = [selector[sel] for selector in selectors]
             except exception.IncorrectUsage as error:
-                raise exception.RefinementError(_SELECTION_ERROR_MESSAGE) from error
+                raise exception.RefinementError(
+                    _SELECTION_ERROR_MESSAGE, field="selection"
+                ) from error
             if sanitize:
                 columns = [self._sanitize(column) for column in columns]
             values = [list(column) for column in columns]
@@ -372,12 +375,12 @@ class ElectronicMinimization(graph.Mixin):
     def _handler_factory(self, raw_data):
         return ElectronicMinimizationHandler.from_data(raw_data, steps=self._steps)
 
-    def read(self, selection=None) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Extract convergence data from the HDF5 file and make it available in a dict
 
         Parameters
         ----------
-        selection: str
+        selection : str | None
             Choose from either iteration_number, free_energy, free_energy_change,
             bandstructure_energy_change, number_hamiltonian_evaluations, norm_residual,
             difference_charge_density to get specific columns of the OSZICAR file. In
@@ -396,16 +399,16 @@ class ElectronicMinimization(graph.Mixin):
             ElectronicMinimizationHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
-    def to_graph(self, selection=None) -> graph.Graph:
+    def to_graph(self, selection: str | None = None) -> graph.Graph:
         """Graph the convergence data against the iteration number.
 
         Parameters
         ----------
-        selection: str
+        selection : str | None
             Choose strings consistent with the OSZICAR format (N, E, dE, deps, ncg, rms,
             rms_c), optionally composed with the standard selection grammar (e.g.
             "E + dE"). Without a selection a convergence overview is produced with the
@@ -457,9 +460,10 @@ class ElectronicMinimization(graph.Mixin):
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
 
-        The returned dictionary contains a single item with the name of the quantity
-        mapping to all possible selections. Each of these selections may be passed to
-        the other methods of this quantity to choose which output of VASP is used.
+        The returned dictionary maps the name of the quantity to all its sources; each
+        may be passed to the other methods of this quantity to choose which output of
+        VASP is used. The other items list the tokens the selection of those methods
+        combines, provided this calculation contains the data they are read from.
         Not every calculation contains every source; use :py:meth:`is_available` to
         check which ones this calculation contains.
 
@@ -471,9 +475,12 @@ class ElectronicMinimization(graph.Mixin):
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -492,4 +499,27 @@ class ElectronicMinimization(graph.Mixin):
             self._quantity_name,
             ElectronicMinimizationHandler.from_data,
             ElectronicMinimizationHandler.to_database,
+        )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("read", "to_dict", "to_graph"):
+            return []
+        tokens = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            ElectronicMinimizationHandler._tokens,
+        )
+        return [form.choice_axis("column", tokens)]
+
+    def _number_steps(self, source: str) -> int:
+        "How many steps the given source holds; data without steps holds one."
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            source,
+            lambda raw: raw,
+            lambda raw: len(raw.is_elmin_converged),
         )

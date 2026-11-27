@@ -787,3 +787,41 @@ def test_plot_rejects_unknown_options(reference_density):
         exception.IncorrectUsage, match="'isolevel'.*'color'.*'opacity'"
     ):
         reference_density.plot(isovalue=0.3)
+
+
+@pytest.mark.parametrize(
+    "selection, expected",
+    (
+        ("Sr2TiO4", {"0": ["unity", "sigma_0", "scalar"]}),
+        (
+            "Fe3O4 collinear",
+            {
+                "0": ["unity", "sigma_0", "scalar"],
+                "3": ["sigma_z", "z", "sigma_3", "magnetization", "mag", "m"],
+            },
+        ),
+        (
+            "Fe3O4 noncollinear",
+            {
+                "0": ["unity", "sigma_0", "scalar"],
+                "1": ["sigma_x", "x", "sigma_1"],
+                "2": ["sigma_y", "y", "sigma_2"],
+                "3": ["sigma_z", "z", "sigma_3"],
+            },
+        ),
+    ),
+)
+def test_components_offered_with_every_name(raw_data, selection, expected):
+    density = Density.from_data(raw_data.density(selection))
+    for method in ("to_view", "to_contour"):
+        (axis,) = density._selection_axes(method)
+        assert axis["name"] == "component"
+        actual = {token["name"]: token["aliases"] for token in axis["tokens"]}
+        assert actual == expected
+        assert all(token["description"] for token in axis["tokens"])
+
+
+@pytest.mark.parametrize("method", ("read", "to_dict", "to_quiver"))
+def test_routines_taking_only_a_source_offer_no_components(raw_data, method):
+    density = Density.from_data(raw_data.density("Fe3O4 collinear"))
+    assert density._selection_axes(method) == []

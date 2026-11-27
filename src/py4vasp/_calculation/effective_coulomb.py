@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from types import EllipsisType
 
@@ -20,7 +21,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.models import EffectiveCoulombModel
 from py4vasp._third_party import graph, numeric
-from py4vasp._util import check, convert, index, select
+from py4vasp._util import check, convert, form, index, select
 
 
 class EffectiveCoulombHandler:
@@ -208,7 +209,7 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         selection: str = "U J V",
         omega: None | EllipsisType | np.ndarray = None,
         radius: None | EllipsisType | np.ndarray = None,
-        radius_max: None | float = None,
+        radius_max: float | None = None,
         config=None,
     ) -> graph.Graph:
         """Generate a graph representation of the effective Coulomb interaction.
@@ -259,6 +260,9 @@ screened Hubbard J = {data["screened_J_uppercase"].real:8.4f} {data["screened_J_
         """
         if config is None:
             config = interpolate.AAAConfig()
+        # a list of values, e.g. from a form, is used like an array
+        omega = omega if omega is None or omega is Ellipsis else np.asarray(omega)
+        radius = radius if radius is None or radius is Ellipsis else np.asarray(radius)
         tree = select.Tree.from_selection(selection)
         plotter = self._make_plotter(omega, radius, radius_max, config)
         potentials = self._get_effective_potentials(tree, plotter)
@@ -459,10 +463,10 @@ class EffectiveCoulomb(graph.Mixin):
     def to_graph(
         self,
         selection: str = "U J V",
-        omega: None | EllipsisType | np.ndarray = None,
-        radius: None | EllipsisType | np.ndarray = None,
-        radius_max: None | float = None,
-        config=None,
+        omega: EllipsisType | Sequence[float] | None = None,
+        radius: EllipsisType | Sequence[float] | None = None,
+        radius_max: float | None = None,
+        config: interpolate.AAAConfig | None = None,
     ) -> graph.Graph:
         """Generate a graph representation of the effective Coulomb interaction.
 
@@ -475,7 +479,7 @@ class EffectiveCoulomb(graph.Mixin):
 
         Parameters
         ----------
-        selection
+        selection : str
             Specifies which data to plot. Default is "U", "V", and "J". You can also
             select "u" or "v". For collinear calculations, you select a specific spin
             coupling with "up~up" or "up~down". Different choices can be combined, e.g.,
@@ -484,23 +488,23 @@ class EffectiveCoulomb(graph.Mixin):
             prefix is given, it is deduced from the selection, e.g., "U" is interpreted
             as "screened(U)".
 
-        omega
+        omega : ellipsis | Sequence[float] | None
             Frequency values for frequency-dependent plots. If not set, or set to
             ellipsis (...), the frequency points along the imaginary axis are used.
             You can also provide specific frequencies on the real axis, then the data
             will be analytically continued and plotted for the selected frequencies.
 
-        radius
+        radius : ellipsis | Sequence[float] | None
             Radial distance values for radial-dependent plots. If not set, the plot
             will be for r=0. If set to ellipsis (...), the radial points used in VASP
             are used. You can also provide specific radii, then the data  will be
             interpolated to the selected radii.
 
-        radius_max
+        radius_max : float | None
             Maximum radius for radial-dependent plots. If set, all data for radii
             greater than this value will be ignored.
 
-        config
+        config : AAAConfig | None
             Configuration for the analytic continuation of the frequency-dependent data.
             Use this if you need to adjust the parameters of the analytic continuation.
 
@@ -551,7 +555,7 @@ class EffectiveCoulomb(graph.Mixin):
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -592,6 +596,13 @@ class EffectiveCoulomb(graph.Mixin):
             EffectiveCoulombHandler.from_data,
             EffectiveCoulombHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method != "to_graph":
+            return []
+        names = ("potential", "screening", "spin")
+        return form.axes_from_selections(self.selections(), names)
 
 
 @dataclass

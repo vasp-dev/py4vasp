@@ -1,5 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+from collections.abc import Mapping
+
 import numpy as np
 
 from py4vasp import exception, raw
@@ -10,6 +12,7 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._calculation.kpoint import Kpoint
 from py4vasp._calculation.structure import (
@@ -19,7 +22,7 @@ from py4vasp._calculation.structure import (
 )
 from py4vasp._raw.models import PhononModeModel
 from py4vasp._third_party import numeric, view
-from py4vasp._util import check, convert
+from py4vasp._util import check, convert, form
 from py4vasp._util import masses as mass_table
 from py4vasp._util import select
 
@@ -325,7 +328,7 @@ class PhononModeHandler:
             "combinations like '1 + 2' are not implemented; please select the modes "
             "one by one, e.g. '1, 2, 3'."
         )
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
     def _number_modes(self) -> int:
         # a dispersion reports the modes of every q point, so they are the last axis
@@ -342,7 +345,7 @@ class PhononModeHandler:
                 f"'{label}' is not a phonon mode of this structure. Please select a "
                 f"mode by the number print labels it with, from 1 to {number_modes}."
             )
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         return number - 1
 
     def _raise_error_if_modes_are_resolved_by_qpoint(self):
@@ -488,9 +491,10 @@ class PhononMode(view.Mixin):
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
 
-        The returned dictionary contains a single item with the name of the quantity
-        mapping to all possible selections. Each of these selections may be passed to
-        the other methods of this quantity to choose which output of VASP is used.
+        The returned dictionary maps the name of the quantity to all its sources; each
+        may be passed to the other methods of this quantity to choose which output of
+        VASP is used. The other items list the tokens the selection of those methods
+        combines, provided this calculation contains the data they are read from.
         Not every calculation contains every source; use :py:meth:`is_available` to
         check which ones this calculation contains.
 
@@ -509,7 +513,7 @@ class PhononMode(view.Mixin):
         >>> calculation = demo.calculation()
 
         >>> calculation.phonon.mode.selections()
-        {'phonon_mode': ['default', 'dispersion']}
+        {'phonon_mode': ['default', 'dispersion'], 'mode': [...]}
 
         The default modes are the ones a linear response calculation reports at the
         zone centre. "dispersion" selects the modes VASP evaluates along a path when it
@@ -517,9 +521,12 @@ class PhononMode(view.Mixin):
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -619,9 +626,9 @@ class PhononMode(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Which modes VASP computed to read. Defaults to the modes of a linear
-            response calculation at the zone centre; pass "dispersion" for the ones
-            evaluated along a path.
+            The source, i.e. which modes VASP computed to read. Defaults to the modes
+            of a linear response calculation at the zone centre; pass "dispersion" for
+            the ones evaluated along a path.
 
         Returns
         -------
@@ -685,7 +692,8 @@ class PhononMode(view.Mixin):
         Parameters
         ----------
         selection : str | None
-            Which modes VASP computed to use. Defaults to the modes at the zone centre.
+            The source, i.e. which modes VASP computed to use. Defaults to the modes at
+            the zone centre.
         tolerance : float
             Two modes closer than this energy in eV form one group. The default of
             0.1 meV is below what a vibrational experiment resolves and above the
@@ -885,7 +893,12 @@ class PhononMode(view.Mixin):
         )
         return _wrap_structures(result)
 
-    def to_view(self, selection=None, supercell=None, masses=None) -> view.View:
+    def to_view(
+        self,
+        selection: str | None = None,
+        supercell: int | tuple[int, int, int] | None = None,
+        masses: Mapping[str, float] | None = None,
+    ) -> view.View:
         """Visualize the modes as an animation of the vibrating crystal.
 
         VASP reports the eigenvectors of the dynamical matrix, which are weighted with
@@ -904,11 +917,11 @@ class PhononMode(view.Mixin):
             "1, 2"; the viewer then offers exactly those. If you do not select any mode,
             py4vasp shows all of them, including the ones that translate the crystal.
 
-            A calculation that evaluated the modes along a path stores them under
-            "dispersion", which you select the same way: "dispersion" shows all of its
-            modes and "dispersion(4)" the fourth one at every **q** point. Use
+            A calculation that evaluated the modes along a path stores them under the
+            source "dispersion", which you select the same way: "dispersion" shows all
+            of its modes and "dispersion(4)" the fourth one at every **q** point. Use
             :py:meth:`selections` to see which of the two your calculation contains.
-        supercell : int or np.ndarray
+        supercell : int | tuple[int, int, int] | None
             If present the structure is replicated the specified number of times
             along each direction. A mode away from the zone centre moves the atoms out
             of phase from one cell to the next, so pass a supercell to see that wave;
@@ -994,6 +1007,19 @@ class PhononMode(view.Mixin):
             PhononModeHandler.from_data,
             PhononModeHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method != "to_view":
+            return []
+        number_modes = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: np.shape(handler._raw_phonon_mode.frequencies)[-1],
+        )
+        return [form.index_axis("mode", number_modes)]
 
 
 def _wrap_structures(result):

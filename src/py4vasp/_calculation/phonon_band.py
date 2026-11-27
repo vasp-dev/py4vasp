@@ -19,7 +19,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.models import PhononBandModel
 from py4vasp._third_party import graph
-from py4vasp._util import convert, documentation, index, select
+from py4vasp._util import convert, documentation, form, index, select
 
 
 class PhononBandHandler:
@@ -163,7 +163,7 @@ class PhononBand(graph.Mixin):
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -175,7 +175,7 @@ class PhononBand(graph.Mixin):
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def read(self, selection=None) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the phonon band structure into a dictionary.
 
         Returns
@@ -221,7 +221,7 @@ class PhononBand(graph.Mixin):
             PhononBandHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`."""
         return self.read(selection=selection)
 
@@ -271,7 +271,7 @@ class PhononBand(graph.Mixin):
             width=width,
         )
 
-    def selections(self, selection=None) -> dict:
+    def selections(self, selection: str | None = None) -> dict:
         """Return atom and direction selections available for projection."""
         return merge_default(
             self._source,
@@ -289,3 +289,9 @@ class PhononBand(graph.Mixin):
             PhononBandHandler.from_data,
             PhononBandHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method != "to_graph":
+            return []
+        return form.axes_from_selections(self.selections(), ("atom", "direction"))

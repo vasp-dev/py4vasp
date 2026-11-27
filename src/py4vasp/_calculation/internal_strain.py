@@ -107,7 +107,7 @@ class InternalStrain:
     def _repr_pretty_(self, p, cycle):
         p.text(str(self))
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,

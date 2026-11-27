@@ -1,7 +1,7 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 import copy
-from typing import Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 
@@ -15,12 +15,13 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._calculation.structure import StructureHandler
 from py4vasp._raw import data as raw
 from py4vasp._raw.models import NicsModel
 from py4vasp._third_party import graph, view
-from py4vasp._util import check, documentation, import_, index, select, slicing
+from py4vasp._util import check, documentation, form, import_, index, select, slicing
 
 _DEFAULT_SELECTION: str = "isotropic"
 _NEVER_NEGATIVE = ("span", "asymmetry")
@@ -310,9 +311,10 @@ class Nics(view.Mixin):
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
 
-        The returned dictionary contains a single item with the name of the quantity
-        mapping to all possible selections. Each of these selections may be passed to
-        the other methods of this quantity to choose which output of VASP is used.
+        The returned dictionary maps the name of the quantity to all its sources; each
+        may be passed to the other methods of this quantity to choose which output of
+        VASP is used. The other items list the tokens the selection of those methods
+        combines, provided this calculation contains the data they are read from.
         Not every calculation contains every source; use :py:meth:`is_available` to
         check which ones this calculation contains.
 
@@ -324,9 +326,12 @@ class Nics(view.Mixin):
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
-    def __str__(self, selection=None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -393,22 +398,22 @@ class Nics(view.Mixin):
     def to_view(
         self,
         selection: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
-        **user_options,
-    ):
+        supercell: int | tuple[int, int, int] | None = None,
+        **user_options: Any,
+    ) -> view.View:
         """Plot the selected chemical shift as a 3d isosurface within the structure.
 
         Parameters
         ----------
-        selection : str or None
+        selection : str | None
             Axis along which to plot.
             Can be one of "xx", "xy", ...
             Can also be "isotropic" to plot the trace.
             If selection is None, it defaults to "isotropic".
-        supercell : int or np.ndarray
+        supercell : int | tuple[int, int, int] | None
             If present the data is replicated the specified number of times along each
             direction.
-        user_options
+        user_options : Any
             Settings of the isosurfaces; any other keyword raises an error:
 
             - *isolevel* (default 1.0): the isosurfaces are drawn at +isolevel and
@@ -457,12 +462,12 @@ class Nics(view.Mixin):
         self,
         selection: Optional[str] = None,
         *,
-        a: Optional[float] = None,
-        b: Optional[float] = None,
-        c: Optional[float] = None,
-        normal: Optional[str] = None,
-        supercell: Optional[Union[int, np.ndarray]] = None,
-    ):
+        a: slicing.CutFraction = None,
+        b: slicing.CutFraction = None,
+        c: slicing.CutFraction = None,
+        normal: Literal["x", "y", "z", "auto"] | None = None,
+        supercell: int | tuple[int, int] | None = None,
+    ) -> graph.Graph:
         """Generate a contour plot of chemical shift.
 
         {plane}
@@ -470,12 +475,12 @@ class Nics(view.Mixin):
         Parameters
         ----------
         {parameters}
-        selection : str or None
+        selection : str | None
             Axis along which to plot.
             Can be one of "xx", "xy", ...
             Can also be "isotropic" to plot the trace.
             If selection is None, it defaults to "isotropic".
-        supercell : int or np.ndarray
+        supercell : int | tuple[int, int] | None
             If present the data is replicated the specified number of times along each
             direction.
 
@@ -565,6 +570,12 @@ class Nics(view.Mixin):
             NicsHandler.from_data,
             NicsHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("to_view", "to_contour"):
+            return []
+        return [form.choice_axis("element", list(NicsHandler._init_directions_dict()))]
 
 
 class _TensorReduction(index.Reduction):

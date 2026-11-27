@@ -18,7 +18,7 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.models import PhononDosModel
 from py4vasp._third_party import graph
-from py4vasp._util import check, convert, documentation, index, select
+from py4vasp._util import check, convert, documentation, form, index, select
 
 
 class PhononDosHandler:
@@ -205,7 +205,7 @@ class PhononDos(graph.Mixin):
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -310,7 +310,7 @@ class PhononDos(graph.Mixin):
             PhononDosHandler.to_graph,
         )
 
-    def selections(self, selection=None) -> dict:
+    def selections(self, selection: str | None = None) -> dict:
         """Return atom and direction selections available for projection.
 
         Examples
@@ -341,6 +341,12 @@ class PhononDos(graph.Mixin):
             PhononDosHandler.from_data,
             PhononDosHandler.to_database,
         )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("read", "to_dict", "to_graph"):
+            return []
+        return form.axes_from_selections(self.selections(), ("atom", "direction"))
 
 
 def _series(data):

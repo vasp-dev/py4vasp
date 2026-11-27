@@ -1,5 +1,6 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import random
 import re
 import types
@@ -165,6 +166,11 @@ def test_selections(raw_transport, chemical_potential, Assert):
     assert set(transport_quantities) == transport.units.keys()
     expected = selections.pop(f"selfen_{chemical_potential.ref.param}")
     Assert.allclose(expected, np.unique(chemical_potential.ref.expected_data))
+    # the plot also takes a direction and filters the temperatures with T=...
+    directions = [key for key in DIRECTIONS if key]
+    assert selections.pop("direction") == directions
+    temperatures = [str(value) for value in np.unique(raw_transport.temperatures)]
+    assert selections.pop("T") == temperatures
     expected_keys = {"nbands_sum", "scattering_approx", "selfen_delta"}
     assert selections.keys() == expected_keys
     Assert.allclose(selections["nbands_sum"], np.unique(raw_transport.nbands_sum))
@@ -509,6 +515,8 @@ def test_factory_methods(raw_data, check_factory_methods):
         "to_plotly": {"selection": "mobility"},
     }
     skip_methods = ["count", "access", "index"]  # inherited from Sequence
+    # selections reads the data again to offer the tokens of the plot
+    skip_methods.append("selections")
     check_factory_methods(ElectronPhononTransport, data, parameters, skip_methods)
 
 
@@ -782,3 +790,38 @@ def test_plot_no_spin_data_mobility_spin_selection_raises(transport):
     """Selecting spin on non-spin mobility data should raise an error."""
     with pytest.raises(exception.IncorrectUsage):
         transport[0].plot("mobility(up)")
+
+
+def test_selection_axes_offer_the_filters_of_the_run(transport, raw_transport):
+    axes = {axis["name"]: axis for axis in transport._selection_axes("to_graph")}
+    assert set(axes) == {"transport", "direction", "filter"}
+    keys = axes["filter"]["keys"]
+    selections = transport._filter_selections()
+    filters = set(selections) - {"electron_phonon_transport", "transport"}
+    assert set(keys) == filters | {"T"}
+    for key in filters:
+        tokens = [token["name"] for token in keys[key]["tokens"]]
+        assert tokens == [str(value) for value in selections[key]]
+    temperatures = [token["name"] for token in keys["T"]["tokens"]]
+    assert temperatures == [
+        str(value) for value in np.unique(raw_transport.temperatures)
+    ]
+
+
+def test_filter_matching_no_instance_names_the_selection(transport):
+    with pytest.raises(exception.IncorrectUsage, match="nbands_sum=800"):
+        transport.to_graph("mobility(nbands_sum=800)")
+
+
+def test_available_with_a_single_doping(transport):
+    assert transport.is_available() is True
+    assert transport.is_available(method="to_graph") is True
+
+
+def test_filters_without_values_are_not_offered(raw_transport):
+    raw = dataclasses.replace(
+        raw_transport, temperatures=[[] for _ in raw_transport.temperatures]
+    )
+    transport = ElectronPhononTransport.from_data(raw)
+    filters = transport._selection_axes("to_graph")[-1]["keys"]
+    assert "T" not in filters

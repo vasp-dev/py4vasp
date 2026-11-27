@@ -19,9 +19,9 @@ from py4vasp._calculation.dispatch import (
     quantity,
 )
 from py4vasp._calculation.neighbor_list import _replica_counts
-from py4vasp._calculation.structure import StructureHandler
+from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._third_party import graph
-from py4vasp._util import select
+from py4vasp._util import form, select
 
 # ReactionPath owns no raw data of its own; it derives the distances from the
 # structure, so dispatch accesses the "structure" schema entry.
@@ -448,7 +448,7 @@ select pairs of atoms by their index, e.g. '1~2', or by element if it occurs onc
     def to_path(self, selection=None) -> "ReactionPathHandler.Path":
         if not selection:
             message = "Please select the pairs of atoms whose distances define the path, e.g. '1~2, 1~3'. Use `selections` to list all pairs."
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         selections = list(select.Tree.from_selection(selection).selections())
         labels = [_selection_label(selection) for selection in selections]
         atom_pairs = [self._atom_pair(selection) for selection in selections]
@@ -466,7 +466,7 @@ select pairs of atoms by their index, e.g. '1~2', or by element if it occurs onc
         first, second = (_atom_index(atom, elements) for atom in selection[0].group)
         if first == second:
             message = f"The selection '{_selection_label(selection)}' measures the distance of atom {first} to itself. Please select two different atoms."
-            raise exception.IncorrectUsage(message)
+            raise exception.IncorrectUsage(message, field="selection")
         return [first, second]
 
     def _distances(self, first, second):
@@ -590,7 +590,7 @@ def _raise_if_not_pair(selection):
     )
     if not is_pair:
         message = f"The selection '{_selection_label(selection)}' is not a pair of atoms. Please join exactly two atoms with a tilde, e.g. '1~2' or 'C~H', and separate pairs with commas."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
 
 def _atom_index(atom, elements):
@@ -604,13 +604,13 @@ def _atom_index(atom, elements):
         message = f"The element '{atom}' is not present in the structure. The available elements are: {available}."
     else:
         message = f"The element '{atom}' occurs {len(indices)} times in the structure, at the atoms {indices}. Please select the atom by its index instead."
-    raise exception.IncorrectUsage(message)
+    raise exception.IncorrectUsage(message, field="selection")
 
 
 def _check_index(index, number_atoms):
     if not 1 <= index <= number_atoms:
         message = f"The atom index {index} is out of range. Atoms are counted from 1 in the order of the POSCAR file, and the structure has {number_atoms} atoms."
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
     return index
 
 
@@ -678,6 +678,9 @@ class ReactionPath:
     # is_available checks the structure, which is where the data actually lives.
     _availability_quantity = _DATA_QUANTITY
 
+    # Without indexing, the path covers every step (in the notation of backend.call).
+    _steps_by_default = ":"
+
     def __init__(self, source, quantity_name: str = "reaction_path", steps=slice(None)):
         self._source = source
         self._quantity_name = quantity_name
@@ -696,15 +699,17 @@ class ReactionPath:
     def _handler_factory(self, raw_data):
         return ReactionPathHandler.from_data(raw_data, steps=self._steps)
 
-    def read(self, selection=None) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the distances between the selected pairs of atoms at every step.
 
         Parameters
         ----------
-        selection : str
+        selection : str | None
             The pairs of atoms joined by a tilde, e.g. '1~2', separated by commas. Give
             an atom by its index counted from 1 in the order of the POSCAR file, or by
-            its element if the structure contains only one atom of that element.
+            its element if the structure contains only one atom of that element. Nest
+            the pairs inside a source of the structure to use another structure than
+            the default, e.g. 'final(1~2)'.
 
         Returns
         -------
@@ -739,7 +744,7 @@ class ReactionPath:
             ReactionPathHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection)
 
@@ -825,7 +830,7 @@ class ReactionPath:
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             _DATA_QUANTITY,
@@ -836,3 +841,15 @@ class ReactionPath:
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("read", "to_dict"):
+            return []
+        pairs = (pair.split(select.pair_separator) for pair in self.selections())
+        number_atoms = max(int(index) for pair in pairs for index in pair)
+        return [form.pair_axis("pair", form.index_axis("atom", number_atoms))]
+
+    def _number_steps(self, source: str) -> int:
+        "How many steps the given source holds; data without steps holds one."
+        return Structure(source=self._source)._number_steps(source)

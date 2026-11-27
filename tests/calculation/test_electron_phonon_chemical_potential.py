@@ -1,10 +1,12 @@
 # Copyright © VASP Software GmbH,
 # Licensed under the Apache License 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+import dataclasses
 import re
 import types
 
 import pytest
 
+from py4vasp import raw as raw_module
 from py4vasp._calculation.electron_phonon_chemical_potential import (
     ElectronPhononChemicalPotential as ChemicalPotential,
 )
@@ -110,3 +112,22 @@ def test_selections(chemical_potential):
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.electron_phonon_chemical_potential("carrier_den")
     check_factory_methods(ChemicalPotential, data, skip_methods=["selections"])
+
+
+@pytest.mark.parametrize("doping", ("carrier_den", "carrier_per_cell", "mu"))
+def test_available_with_the_one_doping_vasp_writes(raw_data, doping):
+    # VASP writes only the doping that was set in the INCAR file
+    raw = raw_data.electron_phonon_chemical_potential("carrier_den")
+    values = raw.carrier_den
+    others = {
+        name: raw_module.VaspData(None)
+        for name in ("carrier_den", "carrier_per_cell", "mu")
+    }
+    raw = dataclasses.replace(raw, **{**others, doping: values})
+    assert ChemicalPotential.from_data(raw).is_available() is True
+
+
+def test_not_available_without_any_doping(raw_data):
+    raw = raw_data.electron_phonon_chemical_potential("carrier_den")
+    raw = dataclasses.replace(raw, carrier_den=raw_module.VaspData(None))
+    assert ChemicalPotential.from_data(raw).is_available() is False

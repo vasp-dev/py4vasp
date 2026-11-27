@@ -158,7 +158,9 @@ def test_print_writes_to_stdout(pair_correlation, capsys):
 
 
 def test_selections(pair_correlation):
-    assert pair_correlation.selections() == {"pair_correlation": ["default"]}
+    functions = list(pair_correlation.labels())
+    expected = {"pair_correlation": ["default"], "function": functions}
+    assert pair_correlation.selections() == expected
 
 
 def test_factory_methods(raw_data, check_factory_methods):

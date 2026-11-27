@@ -10,6 +10,7 @@ import pytest
 from py4vasp import exception, raw
 from py4vasp._calculation import _kpoints_file
 from py4vasp._calculation._stoichiometry import Stoichiometry, StoichiometryHandler
+from py4vasp._calculation.dispatch import DictSource
 from py4vasp._calculation.structure import Structure, StructureHandler
 from py4vasp._raw.models import StructureModel
 from py4vasp._util import check, import_
@@ -481,7 +482,7 @@ def test_incorrect_step(Sr2TiO4, Ca3AsBr3):
     with pytest.raises(exception.IncorrectUsage):
         Sr2TiO4[[0, 1]].read()
     with pytest.raises(exception.IncorrectUsage):
-        Ca3AsBr3[0]
+        Ca3AsBr3[1].read()
 
 
 def test_Sr2TiO4_to_lammps(Sr2TiO4):
@@ -497,24 +498,73 @@ def test_ZnS_to_lammps(ZnS):
     assert ZnS.to_lammps(standard_form=False) == REF_LAMMPS_ZnS_general
 
 
-@pytest.mark.parametrize("steps", (None, 0, slice(1, 3)))
-def test_print_final(Sr2TiO4, steps, format_):
+@pytest.mark.parametrize(
+    "steps, step_string",
+    (
+        (None, ""),
+        (0, " (step 1)"),
+        # a slice prints its last step and names the range it was taken from
+        (slice(1, 3), " (step 3 of range 2:3)"),
+        (slice(None), " (step 4 of range 1:4)"),
+        (slice(-2, None), " (step 4 of range 3:4)"),
+        (slice(0, 4, 2), " (step 3 of range 1:3)"),
+    ),
+)
+def test_print_final(Sr2TiO4, steps, step_string, format_):
     if steps is None:
         structure = Sr2TiO4
     else:
         structure = Sr2TiO4[steps]
     actual, _ = format_(structure)
-    reference = get_reference_output(steps, **Sr2TiO4.ion_type_arg)
+    reference = get_reference_output(step_string, **Sr2TiO4.ion_type_arg)
     assert actual == reference
 
 
-def get_reference_output(steps, ion_types=None):
-    if steps == 0:
-        step_string = " (step 1)"
-    elif steps == slice(1, 3):
-        step_string = " from step 2 to 4"
-    else:
-        step_string = ""
+@pytest.mark.parametrize(
+    "steps, last_step",
+    (
+        # a stop beyond the trajectory selects up to its last step
+        (slice(0, 500), 3),
+        (slice(0, 4, 2), 2),
+        (slice(None, None, -1), 0),
+    ),
+)
+def test_print_slice_shows_last_selected_step(Fe3O4, steps, last_step):
+    without_comment_line = lambda structure: str(structure).splitlines()[1:]
+    actual = without_comment_line(Fe3O4[steps])
+    assert actual == without_comment_line(Fe3O4[last_step])
+
+
+@pytest.mark.parametrize("source", ("final", "phonon"))
+def test_print_all_steps_of_single_structure(raw_data, source):
+    # The steps are chosen before the source, so selecting all steps of a trajectory
+    # may meet a source holding a single structure. It has no steps to label.
+    single = raw_data.structure("Ca3AsBr3")
+    trajectory = raw_data.structure("Sr2TiO4")
+    data = {"structure": trajectory, ("structure", source): single}
+    structure = Structure(source=DictSource(data))[:]
+    assert structure.__str__(source) == str(Structure.from_data(single))
+    assert structure.number_steps(source) == 1
+
+
+@pytest.mark.parametrize("steps", (0, -1, slice(None), slice(0, 1), slice(-1, None)))
+def test_single_structure_takes_the_steps_of_its_one_step(raw_data, steps):
+    # A single structure behaves like a trajectory with one step, also as the default
+    # source; it has no steps to label.
+    structure = Structure.from_data(raw_data.structure("Ca3AsBr3"))
+    assert str(structure[steps]) == str(structure)
+    np.testing.assert_equal(structure[steps].read(), structure.read())
+    assert structure[steps].number_steps() == 1
+
+
+@pytest.mark.parametrize("steps", (1, -2, slice(1, 3)))
+def test_single_structure_has_no_other_step(raw_data, steps):
+    structure = Structure.from_data(raw_data.structure("Ca3AsBr3"))
+    with pytest.raises(exception.IncorrectUsage, match="has 1 step"):
+        structure[steps].read()
+
+
+def get_reference_output(step_string, ion_types=None):
     ref_plain = REF_POSCAR.replace("Sr2TiO4", f"Sr2TiO4{step_string}")
     ref_html = REF_HTML.replace("Sr2TiO4", f"Sr2TiO4{step_string}")
     if ion_types is not None:
@@ -681,7 +731,6 @@ def test_selections(Sr2TiO4):
 
 def test_factory_methods(raw_data, check_factory_methods):
     data = raw_data.structure("Sr2TiO4")
-    parameters = {"__getitem__": {"steps": slice(None)}}
     # the Sr2TiO4 trajectory carries no symmetry, so the symmetry-derived methods
     # raise NoData; they are exercised on the perovskite fixture instead
     # the schema-only selections never opens the data file, so it cannot satisfy the
@@ -693,7 +742,7 @@ def test_factory_methods(raw_data, check_factory_methods):
         "standardized_cell",
         "prototype",
     ]
-    check_factory_methods(Structure, data, parameters, skip_methods=skip_methods)
+    check_factory_methods(Structure, data, skip_methods=skip_methods)
 
 
 # ---------------------------------------------------------------------------

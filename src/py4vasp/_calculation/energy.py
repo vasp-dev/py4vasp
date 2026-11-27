@@ -17,15 +17,17 @@ from py4vasp._calculation.dispatch import (
 )
 from py4vasp._raw.models import EnergyAfqmcModel, EnergyMDModel, EnergyRelaxationModel
 from py4vasp._third_party import graph
-from py4vasp._util import convert, documentation, index, select
+from py4vasp._util import convert, documentation, form, index, select
 
 
-def _selection_string(default):
+def _selection_string(default, type_="str | None"):
     return f"""\
-selection : str or None
+selection : {type_}
     String specifying the labels of the energy to be read. If no energy is selected
     this will default to selecting {default}. Separate distinct labels by commas or
     whitespace. You can add or subtract different contributions e.g. `TOTEN + EKIN`.
+    Name a source to read another one than the default, e.g. "afqmc" for the energies
+    of an AFQMC run, and nest labels inside it to select them there.
     For a complete list of all possible selections, please use the
     :meth:`~py4vasp._calculation.energy.Energy.selections` method.
 """
@@ -227,8 +229,19 @@ class EnergyHandler:
         if self._steps is None or self._steps == -1:
             return -1
         if isinstance(self._steps, slice):
-            return (self._steps.stop or 0) - 1
+            return self._selected_steps()[-1]
         return self._steps
+
+    def _selected_steps(self):
+        number_steps = len(self._raw_energy.values)
+        steps = range(number_steps)[self._steps]
+        if not steps:
+            message = (
+                f"The steps {self._steps} select nothing, the energy has "
+                f"{number_steps} step(s)."
+            )
+            raise exception.IncorrectUsage(message)
+        return steps
 
     @property
     def _to_slice(self):
@@ -240,11 +253,9 @@ class EnergyHandler:
 
     def _step_string(self):
         if isinstance(self._steps, slice):
-            n = len(self._raw_energy.values)
-            range_ = range(n)[self._steps]
-            start = range_.start + 1
-            stop = range_.stop
-            return f"step {stop} of range {start}:{stop}"
+            steps = self._selected_steps()
+            first, last = steps[0] + 1, steps[-1] + 1
+            return f"step {last} of range {first}:{last}"
         elif self._steps == -1 or self._steps is None:
             return "final step"
         else:
@@ -353,7 +364,7 @@ class Energy(graph.Mixin):
         selection=_selection_string("all energies"),
         examples=slice_.examples("energy", "to_dict"),
     )
-    def read(self, selection=None) -> dict:
+    def read(self, selection: str | None = None) -> dict:
         """Read the energy data and store it in a dictionary.
 
         Parameters
@@ -396,15 +407,15 @@ class Energy(graph.Mixin):
             EnergyHandler.to_dict,
         )
 
-    def to_dict(self, selection=None) -> dict:
+    def to_dict(self, selection: str | None = None) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection=selection)
 
     @documentation.format(
-        selection=_selection_string("the total energy"),
+        selection=_selection_string("the total energy", type_="str"),
         examples=slice_.examples("energy", "to_graph"),
     )
-    def to_graph(self, selection="TOTEN") -> graph.Graph:
+    def to_graph(self, selection: str = "TOTEN") -> graph.Graph:
         """Read the energy data and generate a figure of the selected components.
 
         Parameters
@@ -546,6 +557,34 @@ class Energy(graph.Mixin):
             self._quantity_name,
             self._handler_factory,
             EnergyHandler.to_database,
+        )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("read", "to_dict", "to_graph", "to_numpy"):
+            return []
+        labels = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: list(handler._raw_energy.labels),
+        )
+        tokens = []
+        for label in map(convert.text_to_string, labels):
+            names = _SELECTIONS.get(label.strip())
+            if names:
+                tokens.append(form.token(names[0], names[1:], " ".join(label.split())))
+        return [form.choice_axis("component", tokens)]
+
+    def _number_steps(self, source: str) -> int:
+        "How many steps the given source of the energy holds."
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            source,
+            self._handler_factory,
+            lambda handler: len(handler._raw_energy.values),
         )
 
 

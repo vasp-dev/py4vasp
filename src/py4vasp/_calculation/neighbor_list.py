@@ -15,8 +15,8 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     quantity,
 )
-from py4vasp._calculation.structure import StructureHandler
-from py4vasp._util import import_, select
+from py4vasp._calculation.structure import Structure, StructureHandler
+from py4vasp._util import form, import_, select
 
 # scipy is only required for the full (not core) installation, so import it
 # lazily; the k-d tree is only touched when a neighbor list is actually computed.
@@ -103,7 +103,7 @@ def _part_mask(part, elements, source, neighbor):
         f"The selection '{part}' is not supported. Please select pairs of atom "
         "types with a tilde, e.g. 'Sr~Ti', or a single atom type, e.g. 'Sr'."
     )
-    raise exception.IncorrectUsage(message)
+    raise exception.IncorrectUsage(message, field="selection")
 
 
 def _raise_if_unknown(atom_type, elements):
@@ -113,7 +113,7 @@ def _raise_if_unknown(atom_type, elements):
             f"The atom type '{atom_type}' is not present in the structure. "
             f"The available atom types are: {available}."
         )
-        raise exception.IncorrectUsage(message)
+        raise exception.IncorrectUsage(message, field="selection")
 
 
 class NeighborListHandler:
@@ -275,6 +275,9 @@ class NeighborList:
         by pair for one step.
     """
 
+    _step_selection = "single"
+    "The neighbors are found in one structure; indexing selects its step."
+
     # is_available checks the structure, which is where the data actually lives.
     _availability_quantity = _DATA_QUANTITY
 
@@ -296,15 +299,19 @@ class NeighborList:
     def _handler_factory(self, raw_data):
         return NeighborListHandler.from_data(raw_data, steps=self._steps)
 
-    def read(self, selection=None, *, cutoff, sorted=True) -> dict:
+    def read(
+        self, selection: str | None = None, *, cutoff: float, sorted: bool = True
+    ) -> dict:
         """Compute the neighbor list and store it in a dictionary.
 
         Parameters
         ----------
-        selection : str
+        selection : str | None
             Select pairs of atom types with a tilde, e.g. 'Sr~Ti'. Combine
             multiple selections with commas or whitespace. When no selection is
-            given, all pairs are returned.
+            given, all pairs are returned. Nest the pairs inside a source of the
+            structure to use another structure than the default, e.g.
+            'final(Sr~Ti)'.
         cutoff : float
             The neighbor cutoff radius in Å. Only pairs closer than this radius
             are returned.
@@ -351,7 +358,9 @@ class NeighborList:
             sorted=sorted,
         )
 
-    def to_dict(self, selection=None, *, cutoff, sorted=True) -> dict:
+    def to_dict(
+        self, selection: str | None = None, *, cutoff: float, sorted: bool = True
+    ) -> dict:
         """Convenient alias for :py:meth:`read`. Please read the documentation there."""
         return self.read(selection, cutoff=cutoff, sorted=sorted)
 
@@ -445,7 +454,7 @@ class NeighborList:
         """
         print(self.__str__(selection))
 
-    def __str__(self, selection=None) -> str:
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             _DATA_QUANTITY,
@@ -456,3 +465,16 @@ class NeighborList:
 
     def _repr_pretty_(self, p, cycle):
         p.text(str(self) if not cycle else "...")
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method not in ("read", "to_dict"):
+            return []
+        pairs = (pair.split(select.pair_separator) for pair in self.selections())
+        elements = list(dict.fromkeys(element for pair in pairs for element in pair))
+        members = form.choice_axis("element", elements)
+        return [form.pair_axis("pair", members, distinct=False)]
+
+    def _number_steps(self, source: str) -> int:
+        "How many steps the given source holds; data without steps holds one."
+        return Structure(source=self._source)._number_steps(source)

@@ -14,10 +14,11 @@ from py4vasp._calculation.dispatch import (
     merge_strings,
     merge_to_database,
     quantity,
+    selections_with_axes,
 )
 from py4vasp._raw.models import BandgapModel
 from py4vasp._third_party import graph
-from py4vasp._util import convert, select
+from py4vasp._util import convert, form, select
 
 
 class _Gap(typing.NamedTuple):
@@ -224,7 +225,8 @@ Fermi energy:    {fermi_energy}"""
     def _raise_error_if_unused_selection(self, selection):
         if rest := set(selection).difference(GAPS).difference(COMPONENTS):
             raise exception.IncorrectUsage(
-                f"A part of your selection {rest} could not be mapped to a valid selection"
+                f"A part of your selection {rest} could not be mapped to a valid selection",
+                field="selection",
             )
 
     def _parse_components(self, selection):
@@ -233,7 +235,8 @@ Fermi energy:    {fermi_energy}"""
             components = ("independent",)
         elif not self._spin_polarized():
             raise exception.IncorrectUsage(
-                f"You selected a component {components} but the VASP calculation did not include spin polarization."
+                f"You selected a component {components} but the VASP calculation did not include spin polarization.",
+                field="selection",
             )
         return components
 
@@ -243,7 +246,8 @@ Fermi energy:    {fermi_energy}"""
             labels = GAPS.keys()
         elif len(labels) > 1:
             raise exception.IncorrectUsage(
-                f"Two conflicting labels selected {labels}. Please check your input."
+                f"Two conflicting labels selected {labels}. Please check your input.",
+                field="selection",
             )
         return labels
 
@@ -509,7 +513,7 @@ class Bandgap(graph.Mixin):
             BandgapHandler.conduction_band_minimum,
         )
 
-    def to_graph(self, selection="fundamental, direct") -> graph.Graph:
+    def to_graph(self, selection: str = "fundamental, direct") -> graph.Graph:
         """Plot the direct and fundamental bandgap along the trajectory.
 
         Parameters
@@ -517,7 +521,9 @@ class Bandgap(graph.Mixin):
         selection : str
             Select which bandgap to include in the plot. By default the fundamental
             and the direct one are included. In spin-polarized calculations, you can
-            also select up or down to obtain the bandgap without spin flips.
+            also select up or down to obtain the bandgap without spin flips. Nest
+            this choice inside a source to plot the bandgap of another source than
+            the default one, e.g. ``"qp(fundamental)"``.
 
         Returns
         -------
@@ -566,9 +572,10 @@ class Bandgap(graph.Mixin):
     def selections(self) -> dict:
         """Returns possible alternatives for this particular quantity VASP can produce.
 
-        The returned dictionary contains a single item with the name of the quantity
-        mapping to all possible selections. Each of these selections may be passed to
-        the other methods of this quantity to choose which output of VASP is used.
+        The returned dictionary maps the name of the quantity to all its sources; each
+        may be passed to the other methods of this quantity to choose which output of
+        VASP is used. The other items list the tokens the selection of those methods
+        combines, provided this calculation contains the data they are read from.
         Not every calculation contains every source; use :py:meth:`is_available` to
         check which ones this calculation contains.
 
@@ -580,9 +587,12 @@ class Bandgap(graph.Mixin):
         """
         from py4vasp._raw import definition as raw_module
 
-        return {self._quantity_name: list(raw_module.selections(self._quantity_name))}
+        sources = {
+            self._quantity_name: list(raw_module.selections(self._quantity_name))
+        }
+        return selections_with_axes(self, sources)
 
-    def __str__(self, selection: str | None = None):
+    def __str__(self, selection: str | None = None) -> str:
         return merge_strings(
             self._source,
             self._quantity_name,
@@ -606,4 +616,30 @@ class Bandgap(graph.Mixin):
             self._quantity_name,
             self._handler_factory,
             BandgapHandler.to_database,
+        )
+
+    def _selection_axes(self, method: str) -> list[dict]:
+        "The tokens the selection of *method* combines besides the source."
+        if method != "to_graph":
+            return []
+        spin_polarized = merge_default(
+            self._source,
+            self._quantity_name,
+            None,
+            self._handler_factory,
+            lambda handler: handler._spin_polarized(),
+        )
+        gaps = form.choice_axis("gap", list(GAPS))
+        if not spin_polarized:
+            return [gaps]
+        return [gaps, form.choice_axis("spin", COMPONENTS)]
+
+    def _number_steps(self, source: str) -> int:
+        "How many steps the given source holds; data without steps holds one."
+        return merge_default(
+            self._source,
+            self._quantity_name,
+            source,
+            lambda raw: raw,
+            lambda raw: len(raw.values),
         )

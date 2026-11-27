@@ -382,11 +382,11 @@ class ElectronPhononChemicalPotential:
     "Computed carrier density for each temperature and doping"
     temperatures: VaspData
     "List of temperatures at which the chemical potential is computed"
-    carrier_per_cell: VaspData  # values of the selfen_carrier_per_cell incar tag
+    carrier_per_cell: VaspData = NONE()  # values of the selfen_carrier_per_cell tag
     "The doping specified by the additional number of carriers per cell"
-    carrier_den: VaspData  # values of th selfen_carrier_den incar tag
+    carrier_den: VaspData = NONE()  # values of the selfen_carrier_den incar tag
     "The doping specified by an additional carrier density"
-    mu: VaspData  # values of the selfen_mu incar tag
+    mu: VaspData = NONE()  # values of the selfen_mu incar tag
     "The doping specified by an energy shift with respect to the fermi energy"
 
 
