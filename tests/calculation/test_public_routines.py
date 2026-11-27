@@ -54,19 +54,25 @@ def _routines():
             yield pytest.param(routine, id=f"{cls.__name__}.{name}")
 
 
-@pytest.mark.parametrize("routine", _routines())
-def test_docstring_is_prose_outside_the_examples(routine):
+def _prose(routine):
     parsed = docstring.parse(inspect.getdoc(routine))
     prose = [parsed.summary, parsed.extended_summary]
     prose += [entry.description for entry in parsed.parameters + parsed.returns]
     prose += [text for name, text in parsed.sections.items() if name != "Examples"]
-    assert not any(">>>" in text for text in prose)
+    return prose
+
+
+@pytest.mark.parametrize("routine", list(_routines()))
+def test_docstring_is_prose_outside_the_examples(routine):
+    assert not any(">>>" in text for text in _prose(routine))
 
 
 # A tool shows the documentation of a routine without its Examples section, so the
 # rest must not send the reader there; it can give a short example inline instead.
 _POINTS_TO_THE_EXAMPLES = re.compile(
-    r"\bexamples?\s+(below|above)\b|\bthe\s+examples\b|\bexamples\s+section\b",
+    r"(?<!for )\bexamples?\s+(below|above)\b"
+    r"|\bthe\s+examples\b|\bexamples?\s+section\b"
+    r"|\bsee\s+(the\s+)?examples?\b|\bfollowing\s+examples?\b",
     re.IGNORECASE,
 )
 
@@ -79,17 +85,29 @@ def _all_public_routines():
                 yield pytest.param(routine, id=f"{cls.__name__}.{name}")
 
 
-@pytest.mark.parametrize("routine", _all_public_routines())
+@pytest.mark.parametrize(
+    "text, points",
+    [
+        ("the examples below show how to list them", True),
+        ("see Examples for how to list them", True),
+        ("as the following example shows", True),
+        ("details are in the Example section", True),
+        ("states, for example below the Fermi energy, are", False),
+        ("For the example data of the demo module", False),
+    ],
+)
+def test_what_counts_as_pointing_to_the_examples(text, points):
+    assert bool(_POINTS_TO_THE_EXAMPLES.search(text)) == points
+
+
+@pytest.mark.parametrize("routine", list(_all_public_routines()))
 def test_prose_does_not_point_to_the_examples(routine):
-    parsed = docstring.parse(inspect.getdoc(routine))
-    prose = [parsed.summary, parsed.extended_summary]
-    prose += [entry.description for entry in parsed.parameters + parsed.returns]
-    prose += [text for name, text in parsed.sections.items() if name != "Examples"]
+    prose = _prose(routine)
     pointers = [text for text in prose if _POINTS_TO_THE_EXAMPLES.search(text)]
     assert pointers == []
 
 
-@pytest.mark.parametrize("routine", _routines())
+@pytest.mark.parametrize("routine", list(_routines()))
 def test_every_parameter_and_the_return_are_annotated(routine):
     hints = typing.get_type_hints(routine, include_extras=True)
     parameters = inspect.signature(routine).parameters
@@ -97,7 +115,7 @@ def test_every_parameter_and_the_return_are_annotated(routine):
     assert "return" in hints
 
 
-@pytest.mark.parametrize("routine", _routines())
+@pytest.mark.parametrize("routine", list(_routines()))
 def test_documented_types_match_the_annotations(routine):
     hints = typing.get_type_hints(routine, include_extras=True)
     for entry in docstring.parse(inspect.getdoc(routine)).parameters:
@@ -105,7 +123,7 @@ def test_documented_types_match_the_annotations(routine):
         assert entry.type == docstring.format_type(hints[entry.name]), entry.name
 
 
-@pytest.mark.parametrize("routine", _routines())
+@pytest.mark.parametrize("routine", list(_routines()))
 def test_cut_plane_takes_exactly_one_of_a_b_c(routine):
     hints = typing.get_type_hints(routine, include_extras=True)
     cuts = [name for name in "abc" if name in inspect.signature(routine).parameters]
